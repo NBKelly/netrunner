@@ -160,6 +160,8 @@
           (cons "advance" %) %))
       (#(if (and (= type "Agenda") (>= advance-counter current-cost))
           (cons "score" %) %))
+      (#(if (#{"ICE" "Program"} type)
+          (cons "trash" %) %))
       (#(if (#{"Asset" "ICE" "Upgrade"} type)
           (if-not rezzed (cons "rez" %) (cons "derez" %))
           %))))
@@ -176,7 +178,7 @@
         (or (< 1 c)
             (pos? (+ (count corp-abilities)
                      (count runner-abilities)))
-            (some #{"rez" "derez" "advance"} actions)
+            (some #{"rez" "derez" "advance" "trash"} actions)
             (and (= type "ICE")
                  (not (:run @game-state)))
             (and (corp? card)
@@ -690,7 +692,7 @@
                (or (pos? (+ (count actions)
                             (count abilities)
                             (count subroutines)))
-                   (some #{"derez" "rez" "advance"} actions)
+                   (some #{"derez" "rez" "advance" "trash"} actions)
                    (= type "ICE")))
       [:div.panel.blue-shade.abilities {:style {:display "inline"}}
        (when (seq actions)
@@ -1623,17 +1625,17 @@
 
      (when (= "encounter-ice" (:phase @run))
        [cond-button
-        "Pass ice and jack out"
-        (or (not= "runner" (:no-action @run))
-            (not (:jack-out-after-pass @run)))
-        #(send-command "continue" {:jack-out true})])
-
-     (when (= "encounter-ice" (:phase @run))
-       [cond-button
         "Pass ice and continue"
         (or (not= "runner" (:no-action @run))
             (:jack-out-after-pass @run))
-        #(send-command "continue" {:jack-out false})])]))
+        #(send-command "continue" {:jack-out false})])
+
+     (when (= "encounter-ice" (:phase @run))
+       [cond-button
+        "Pass ice and jack out"
+        (or (not= "runner" (:no-action @run))
+            (not (:jack-out-after-pass @run)))
+        #(send-command "continue" {:jack-out true})])]))
 
 (defn run-div
   [side run]
