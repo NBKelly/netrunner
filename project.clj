@@ -11,7 +11,7 @@
                  [cheshire "5.6.3"]
                  [danhut/monger "3.1.0"]
                  [org.clojure/core.match "0.3.0-alpha4"]
-                 [differ "0.3.1"]
+                 [differ "0.3.3"]
                  [com.taoensso/sente "1.11.0"]
                  [ring "1.6.2"]
                  [ring/ring-json "0.4.0"]
@@ -110,6 +110,7 @@
 
   :figwheel {:http-server-root "public"
              :server-port 3449
+             :reload-clj-files false
              :css-dirs ["resources/public/css"]}
 
   ;; Set timeout to 2 min to allow for full compilation after a clean.

@@ -29,7 +29,7 @@
   ([state side card message choices f args] (show-prompt state side (make-eid state) card message choices f args))
   ([state side eid card message choices f
     {:keys [priority prompt-type show-discard cancel-effect end-effect] :as args}]
-   (let [prompt (if (string? message) message (message state side nil card nil))
+   (let [prompt (if (string? message) message (message state side eid card nil))
          choices (choice-parser choices)
          newitem {:eid eid
                   :msg prompt
@@ -122,6 +122,7 @@
               #(conj (vec %) {:ability (-> ability
                                            (dissoc :choices)
                                            (assoc :card card))
+                              :cards []
                               :card (get-in ability [:choices :card])
                               :req (get-in ability [:choices :req])
                               :not-self (when (get-in ability [:choices :not-self]) (:cid card))

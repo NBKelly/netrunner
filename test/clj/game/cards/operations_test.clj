@@ -207,15 +207,13 @@
       (take-credits state :corp)
       (run-on state :hq)
       (run-continue state)
-      (run-continue state)
       (changes-val-macro -2 (count (:hand (get-runner)))
                          "Runner took 2 meat damage"
-                         (run-successful state))
+                         (run-continue state))
       (click-prompt state :runner "No action")
-      (run-empty-server state :rd)
       (changes-val-macro 0 (count (:hand (get-runner)))
                          "Runner took no meat damage on unprotected server"
-                         (run-successful state)))))
+                         (run-empty-server state :rd)))))
 
 (deftest ark-lockdown
   ;; Ark Lockdown
@@ -1113,7 +1111,6 @@
         (card-ability state :runner sneakdoor 0)
         (is (= 3 (:click (get-runner))) "Runner doesn't spend 1 additional click to run with a card ability")
         (run-continue state)
-        (run-successful state)
         (run-empty-server state :archives)
         (is (= 1 (:click (get-runner))) "Runner spends 1 additional click to make a run")
         (take-credits state :runner)
@@ -1145,7 +1142,6 @@
       (click-prompt state :runner "Archives")
       (is (= 3 (:click (get-runner))) "Runner doesn't spend 1 additional click to run with a run event")
       (run-continue state)
-      (run-successful state)
       (run-empty-server state :archives)
       (is (= 1 (:click (get-runner))) "Runner spends 1 additional click to make a run")
       (take-credits state :runner)
@@ -2343,7 +2339,6 @@
         (dotimes [_ 2] (core/advance state :corp {:card (refresh atlas)}))
         (take-credits state :corp)
         (run-empty-server state :remote1)
-        (run-successful state)
         (changes-val-macro -8 (:credit (get-runner))
                            "Paid 8c to steal 1adv Atlas"
                            (click-prompt state :runner "Pay to steal"))))))
@@ -2582,7 +2577,22 @@
       (take-credits state :corp)
       (run-empty-server state :archives)
       (take-credits state :runner)
-      (play-from-hand state :corp "Power Shutdown"))))
+      (play-from-hand state :corp "Power Shutdown")))
+  (testing "Can trash any number of cards up to deck size per nisei CR 1.4 errata removal, issue #5144"
+    (do-game
+     (new-game {:corp {:deck [(qty "Hedge Fund" 3) (qty "Ice Wall" 3)]
+                        :hand [(qty "Power Shutdown" 1)]}
+                 :runner {:deck ["Grimoire"]}})
+      (take-credits state :corp)
+      (play-from-hand state :runner "Grimoire")
+      (run-empty-server state :archives)
+      (take-credits state :runner)
+      (play-from-hand state :corp "Power Shutdown")
+      (click-prompt state :corp "5")
+      (is (= 5 (count (:discard (get-corp)))) "5 cards trashed from R&D")
+      (is (= 0 (count (:deck (get-corp)))) "0 card remaining in R&D") ;; one card was drawn at turn start
+      (click-card state :runner (get-hardware state 0)) ; target grimoire
+      (is (= 1 (count (:discard (get-runner)))) "Grimoire trashed"))))
 
 (deftest precognition
   ;; Precognition - Full test
@@ -2794,28 +2804,77 @@
       (is (empty? (:prompt (get-runner))) "Runner should have no more prompt"))))
 
 (deftest red-planet-couriers
-  ;; Red Planet Couriers - Move all advancements on cards to 1 advanceable card
-  (do-game
-    (new-game {:corp {:deck ["Red Planet Couriers" (qty "Ice Wall" 2)
-                             "GRNDL Refinery" "Government Takeover"]}})
-    (core/gain state :corp :click 4)
-    (play-from-hand state :corp "Government Takeover" "New remote")
-    (play-from-hand state :corp "GRNDL Refinery" "New remote")
-    (play-from-hand state :corp "Ice Wall" "HQ")
-    (play-from-hand state :corp "Ice Wall" "R&D")
-    (let [gt (get-content state :remote1 0)
-          gr (get-content state :remote2 0)
-          iw1 (get-ice state :hq 0)
-          iw2 (get-ice state :rd 0)]
-      (core/add-prop state :corp gr :advance-counter 3)
-      (core/add-prop state :corp iw1 :advance-counter 2)
-      (core/add-prop state :corp iw2 :advance-counter 1)
-      (play-from-hand state :corp "Red Planet Couriers")
-      (click-card state :corp gt)
-      (is (zero? (get-counters (refresh gr) :advancement)) "Advancements removed")
-      (is (zero? (get-counters (refresh iw1) :advancement)) "Advancements removed")
-      (is (zero? (get-counters (refresh iw2) :advancement)) "Advancements removed")
-      (is (= 6 (get-counters (refresh gt) :advancement)) "Gained 6 advancements"))))
+  ;; Red Planet Couriers
+  (testing "Move all advancements on cards to 1 advanceable card"
+    (do-game
+     (new-game {:corp {:deck ["Red Planet Couriers" (qty "Ice Wall" 2)
+                              "GRNDL Refinery" "Government Takeover"]}})
+     (core/gain state :corp :click 4)
+     (play-from-hand state :corp "Government Takeover" "New remote")
+     (play-from-hand state :corp "GRNDL Refinery" "New remote")
+     (play-from-hand state :corp "Ice Wall" "HQ")
+     (play-from-hand state :corp "Ice Wall" "R&D")
+     (let [gt (get-content state :remote1 0)
+           gr (get-content state :remote2 0)
+           iw1 (get-ice state :hq 0)
+           iw2 (get-ice state :rd 0)]
+       (core/add-prop state :corp gr :advance-counter 3)
+       (core/add-prop state :corp iw1 :advance-counter 2)
+       (core/add-prop state :corp iw2 :advance-counter 1)
+       (play-from-hand state :corp "Red Planet Couriers")
+       (click-card state :corp gt)
+       (is (zero? (get-counters (refresh gr) :advancement)) "Advancements removed")
+       (is (zero? (get-counters (refresh iw1) :advancement)) "Advancements removed")
+       (is (zero? (get-counters (refresh iw2) :advancement)) "Advancements removed")
+       (is (= 6 (get-counters (refresh gt) :advancement)) "Gained 6 advancements"))))
+  (testing "interaction with masvingo - should correctly reset subs issue #5090"
+    (do-game
+     (new-game {:corp {:deck ["Red Planet Couriers" (qty "Masvingo" 2)]}})
+     (core/gain state :corp :click 2)
+     (core/gain state :corp :credit 6)
+     (play-from-hand state :corp "Masvingo" "HQ")
+     (play-from-hand state :corp "Masvingo" "R&D")
+     (let [mas-hq (get-ice state :hq 0)
+           mas-rd (get-ice state :rd 0)]
+       (core/rez state :corp mas-hq)
+       (core/rez state :corp mas-rd)
+       (core/add-prop state :corp mas-hq :advance-counter 2)
+       (play-from-hand state :corp "Red Planet Couriers")
+       (click-card state :corp (refresh mas-rd))
+       (is (zero? (get-counters (refresh mas-hq) :advancement)) "Advancements removed")
+       (is (zero? (count (:subroutines (refresh mas-hq)))) "Subroutines set to 0")
+       (is (= 4 (get-counters (refresh mas-rd) :advancement)) "Increased to 4 advancements")
+       (is (= 4 (count (:subroutines (refresh mas-rd)))) "Subroutines set to 4")))))
+
+(deftest restore
+  ;;Restore
+  (testing "Show agenda name in log when installed"
+    (do-game
+      (new-game {:corp {:discard ["Project Vitruvius"]
+                        :hand ["Restore"]}})
+      (play-from-hand state :corp "Restore")
+      (click-card state :corp (find-card "Project Vitruvius" (:discard (get-corp))))
+      (click-prompt state :corp "New remote")
+      (is (not(:seen (get-content state :remote1 0))) "Agenda is facedown")
+      (is (last-log-contains? state "Corp uses Restore to install Project Vitruvius from Archives.") "Should write correct log")))
+  (testing "Show removed count in log when installed"
+    (do-game
+      (new-game {:corp {:discard [(qty "Marilyn Campaign" 3)]
+                        :hand ["Restore"]}})
+      (play-from-hand state :corp "Restore")
+      (click-card state :corp (find-card "Marilyn Campaign" (:discard (get-corp))))
+      (click-prompt state :corp "New remote")
+      (is (last-log-contains? state "Corp removes 2 copies of Marilyn Campaign from the game.") "Should write correct log")))
+  (testing "Card is installed and rezzed"
+    (do-game
+      (new-game {:corp {:discard ["Marilyn Campaign"]
+                        :hand ["Restore"]}})
+      (play-from-hand state :corp "Restore")
+      (click-card state :corp (find-card "Marilyn Campaign" (:discard (get-corp))))
+      (click-prompt state :corp "New remote")
+      (is (= "Marilyn Campaign" (:title (get-content state :remote1 0))) "Marilyn Campaign should be installed")
+      (is (rezzed? (get-content state :remote1 0)) "Marilyn Campaign was rezzed")
+      (is (= 2 (:credit (get-corp))) "Rezzed Marilyn Campaign 2 credit + 1 credit for Restore"))))
 
 (deftest reuse
   ;; Reuse - Gain 2 credits for each card trashed from HQ
@@ -2961,7 +3020,7 @@
       (run-on state :hq)
       (run-continue state)
       (core/play-dynamic-ability state :runner {:dynamic "auto-pump-and-break" :card (refresh corr)})
-      (core/no-action state :corp nil)
+      (core/continue state :corp nil)
       (run-jack-out state)
       (is (= 2 (core/get-strength (refresh icew))) "Ice Wall gained 1 str from Rover Algorithm")
       (run-on state :hq)
@@ -3185,7 +3244,6 @@
        (is (= 1 (:credit (get-runner)))
            "Runner spends 1 additional credit to run with a card ability")
        (run-continue state)
-       (run-successful state)
        (run-on state :archives)
        (is (= 1 (:credit (get-runner)))
            "Runner doesn't spend 1 credit to make a run"))))
@@ -3201,7 +3259,6 @@
      (is (= 3 (:credit (get-runner)))
          "Runner spends 1 additional credit to run with a run event")
      (run-continue state)
-     (run-successful state)
      (run-empty-server state :archives)
      (is (= 3 (:credit (get-runner)))
          "Runner doesn't spend 1 credit to make a run")
@@ -3500,7 +3557,6 @@
       (play-from-hand state :corp "Subliminal Messaging")
       (take-credits state :corp)
       (run-on state "R&D")
-      (run-continue state)
       (run-jack-out state)
       (take-credits state :runner)
       (is (empty? (:prompt (get-corp))) "No prompt here because runner made a run last turn")
@@ -3554,7 +3610,6 @@
       (trash-from-hand state :corp "Subliminal Messaging")
       (take-credits state :corp)
       (run-on state "R&D")
-      (run-continue state)
       (run-jack-out state)
       (take-credits state :runner)
       (is (empty? (:prompt (get-corp))) "No prompt here because runner made a run last turn")
@@ -3651,7 +3706,6 @@
         "Successful Demonstration precondition not met; card not played")
     (take-credits state :corp)
     (run-on state "R&D")
-    (run-continue state)
     (run-jack-out state)
     (take-credits state :runner)
     (play-from-hand state :corp "Successful Demonstration")
@@ -3708,7 +3762,6 @@
         (is (= 1 (get-counters (refresh dr) :power)) "Data Raven should gain a power counter from trace")
         (run-continue state)
         (run-continue state)
-        (run-successful state)
         (play-from-hand state :runner "Scrubbed")
         (run-on state :hq)
         (run-continue state)
@@ -3742,7 +3795,6 @@
         (is (= 1 (get-counters (refresh dr) :power)) "Data Raven should gain a power counter from trace")
         (run-continue state)
         (run-continue state)
-        (run-successful state)
         (click-card state :runner bn)
         (click-prompt state :runner "Steal")
         (click-card state :runner fc)
@@ -4122,7 +4174,7 @@
     (take-credits state :corp)
     (play-from-hand state :runner "Film Critic")
     (play-from-hand state :runner "Khusyuk")
-    (run-successful state)
+    (run-continue state)
     (click-prompt state :runner "1 [Credit]: 1 card")
     (click-prompt state :runner "Ice Wall")
     (click-prompt state :runner "No action")
@@ -4175,8 +4227,8 @@
       (run-on state :hq)
       (run-continue state)
       (run-continue state)
-      (run-successful state)
       (click-prompt state :runner "No action")
+      (click-prompt state :runner "Yes")
       (is (zero? (count (:discard (get-corp)))) "Corp starts with no discards")
       (play-from-hand state :runner "En Passant")
       (click-card state :runner (get-ice state :hq 0))
@@ -4198,7 +4250,7 @@
       (take-credits state :corp)
       (play-from-hand state :runner "Desperado")
       (play-from-hand state :runner "Embezzle")
-      (run-successful state)
+      (run-continue state)
       (click-prompt state :runner "Operation")
       (take-credits state :runner)
       (play-from-hand state :corp "Wake Up Call")
@@ -4216,7 +4268,7 @@
       (play-from-hand state :runner "Stargate")
       (play-from-hand state :runner "Acacia")
       (card-ability state :runner (get-program state 0) 0)
-      (run-successful state)
+      (run-continue state)
       (click-prompt state :runner "Hedge Fund")
       (take-credits state :runner)
       (play-from-hand state :corp "Wake Up Call")

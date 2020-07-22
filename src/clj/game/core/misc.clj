@@ -81,8 +81,8 @@
   [card1 card2]
   (and card1
        card2
-       (let [zone1 (get-nested-zone card1)
-             zone2 (get-nested-zone card2)]
+       (let [zone1 (get-zone card1)
+             zone2 (get-zone card2)]
          (= (second zone1) (second zone2)))))
 
 (defn protecting-same-server?
@@ -90,16 +90,16 @@
   [card ice]
   (and card
        ice
-       (let [zone1 (get-nested-zone card)
-             zone2 (get-nested-zone ice)]
+       (let [zone1 (get-zone card)
+             zone2 (get-zone ice)]
          (and (= (second zone1) (second zone2))
               (= :ices (last zone2))))))
 
 (defn in-same-server?
   "True if the two cards are installed IN the same server, or hosted on cards IN the same server."
   [card1 card2]
-  (let [zone1 (get-nested-zone card1)
-        zone2 (get-nested-zone card2)]
+  (let [zone1 (get-zone card1)
+        zone2 (get-zone card2)]
     (and card1
          card2
          (= zone1 zone2)
@@ -112,7 +112,7 @@
   (and (:cid upgrade)
        (:cid target)
        (= (central->zone (:zone target))
-          (butlast (get-nested-zone upgrade)))))
+          (butlast (get-zone upgrade)))))
 
 (defn all-installed
   "Returns a vector of all installed cards for the given side, including those hosted on other cards,
@@ -255,17 +255,19 @@
     (check-winner state side)))
 
 (defn remove-old-current
-  "Removes the old current when a new one is played, or an agenda is stolen / scored"
-  [state side current-side]
-  (when-let [current (first (get-in @state [current-side :current]))] ; trash old current
-    (trigger-event state side :trash-current current)
-    (unregister-constant-effects state side current)
-    (let [current (get-card state current)]
-      (if (get-in current [:special :rfg-when-trashed])
-        (do (system-say state side (str (:title current) " is removed from the game."))
-            (move state (other-side side) current :rfg))
-        (do (system-say state side (str (:title current) " is trashed."))
-            (trash state (to-keyword (:side current)) current))))))
+  "Trashes or RFG the existing current when a new current is played, or an agenda is stolen / scored"
+  [state side eid current-side]
+  (if-let [current (first (get-in @state [current-side :current]))]
+    (do (trigger-event state side :trash-current current)
+        (unregister-constant-effects state side current)
+        (let [current (get-card state current)]
+          (if (get-in current [:special :rfg-when-trashed])
+            (do (system-say state side (str (:title current) " is removed from the game."))
+                (move state (other-side side) current :rfg)
+                (effect-completed state side eid))
+            (do (system-say state side (str (:title current) " is trashed."))
+                (trash state (to-keyword (:side current)) eid current nil)))))
+    (effect-completed state side eid)))
 
 ;;; Functions for icons associated with special cards - e.g. Femme Fatale
 (defn add-icon

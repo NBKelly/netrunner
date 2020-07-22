@@ -5,7 +5,7 @@
             [clojure.test :refer :all]
             [hawk.core :as hawk]
             [game.core :as core]
-            [game.core.card :refer [make-cid get-card rezzed? active? get-counters]]
+            [game.core.card :refer [get-card rezzed? active? get-counters]]
             [game.utils :as utils :refer [server-card]]
             [game.core.eid :as eid]
             [game.utils-test :refer [click-prompt]]
@@ -22,7 +22,6 @@
 (defn load-all-cards []
   (when (empty? @all-cards)
     (->> (load-cards)
-         (map #(assoc % :cid (make-cid)))
          (map (juxt :title identity))
          (into {})
          (reset! all-cards))
@@ -57,10 +56,7 @@
                               (require [(get nspaces filename) :reload true])))}]))
 
 ;; General utilities necessary for starting a new game
-(defn find-card
-  "Return a card with given title from given sequence"
-  [title from]
-  (some #(when (= (:title %) title) %) from))
+(def find-card core/find-card)
 
 (defn starting-hand
   "Moves all cards in the player's hand to their draw pile, then moves the specified card names
@@ -331,15 +327,23 @@
 
 (defmacro run-continue
   "No action from corp and continue for runner to proceed in current run."
-  [state]
-  `(let [run# (:run @~state)]
-     (is (some? run#) "There is a run happening")
-     (is (not (:no-action run#)) "The run can continue")
-     (when (and (some? run#)
-                (not (:no-action run#)))
-       (core/no-action ~state :corp nil)
-       (core/continue ~state :runner nil)
-       true)))
+  ([state] `(run-continue ~state :any))
+  ([state phase]
+   `(let [run# (:run @~state)]
+      (is (some? run#) "There is a run happening")
+      (is (empty? (get-in @~state [:runner :prompt])) "No open prompts for the runner")
+      (is (empty? (get-in @~state [:corp :prompt])) "No open prompts for the corp")
+      (is (not (:no-action run#)) "No player has pressed continue yet")
+      (is (not= :access-server (:phase run#))
+          "The run has not reached the server yet")
+      (when (and (some? run#)
+                 (not (:no-action run#))
+                 (not= :access-server (:phase run#)))
+        (core/continue ~state :corp nil)
+        (core/continue ~state :runner nil))
+      (if (not= :any ~phase)
+        (is (= ~phase (get-in @~state [:run :phase])) "Run is in the correct phase"))
+      true)))
 
 (defmacro run-phase-43
   "Ask for triggered abilities phase 4.3"
@@ -347,23 +351,13 @@
   `(let [run# (:run @~state)]
      (is (some? run#) "There is a run happening")
      (is (zero? (:position run#)) "Runner has passed all ice")
-     (when (and (some? run#)
-                (zero? (:position run#)))
-       (core/corp-phase-43 ~state :corp nil)
-       (core/successful-run ~state :runner nil)
-       true)))
-
-(defmacro run-successful
-  "No action from corp and successful run for runner."
-  [state]
-  `(let [run# (:run @~state)]
-     (is (some? run#) "There is a run happening")
-     (is (zero? (:position run#)) "Runner has passed all ice")
-     (is (= :approach-server (:phase run#)) "Run is in the right phase")
+     (is (not (:no-action run#)) "No player has pressed continue yet")
+     (is (= :approach-server (:phase run#)) "Runner is approaching the server")
      (when (and (some? run#)
                 (zero? (:position run#))
                 (= :approach-server (:phase run#)))
-       (core/successful-run ~state :runner nil)
+       (core/corp-phase-43 ~state :corp nil)
+       (core/continue ~state :runner nil)
        true)))
 
 (defmacro run-jack-out
@@ -379,8 +373,7 @@
   "Make a successful run on specified server, assumes no ice in place."
   [state server]
   `(when (run-on ~state ~server)
-     (when (run-continue ~state)
-       (run-successful ~state))))
+     (run-continue ~state)))
 
 (defmacro fire-subs
   [state card]
@@ -403,11 +396,9 @@
      (is (:run @~state) "There is a run happening")
      (is (= [~server] (get-in @~state [:run :server])) "Correct server is run")
      (is (get-in @~state [:run :run-effects]) "There is a run-effect")
-     ; (when (run-next-phase ~state)
-       (when (run-continue ~state)
-         (when (run-successful ~state)
-           (is (get-in @~state [:runner :prompt]) "A prompt is shown")
-           (is (get-in @~state [:run :successful]) "Run is marked successful"))))) ;)
+     (when (run-continue ~state)
+       (is (get-in @~state [:runner :prompt]) "A prompt is shown")
+       (is (get-in @~state [:run :successful]) "Run is marked successful"))))
 
 (defn get-run-event
   ([state] (get-in @state [:runner :play-area]))
@@ -434,15 +425,21 @@
    (dotimes [_ n]
      (core/advance state :corp {:card (get-card state card)}))))
 
+(defn trash
+  [state side card]
+  (is (:cid card) "It's a card object")
+  (when (:cid card)
+    (core/trash state side (eid/make-eid state) card nil)))
+
 (defn trash-from-hand
   "Trash specified card from hand of specified side"
   [state side title]
-  (core/trash state side (find-card title (get-in @state [side :hand]))))
+  (core/trash state side (eid/make-eid state) (find-card title (get-in @state [side :hand])) nil))
 
 (defn trash-resource
   "Trash specified card from rig of the runner"
   [state title]
-  (core/trash state :runner (find-card title (get-in @state [:runner :rig :resource]))))
+  (core/trash state :runner (eid/make-eid state) (find-card title (get-in @state [:runner :rig :resource])) nil))
 
 (defn accessing
   "Checks to see if the runner has a prompt accessing the given card title"

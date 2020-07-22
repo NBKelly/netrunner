@@ -213,6 +213,9 @@
   ([state side eid ice subroutines] (resolve-next-unbroken-sub state side eid ice subroutines nil))
   ([state side eid ice subroutines msgs]
    (if (and (seq subroutines)
+            (if (installed? ice)
+              (rezzed? ice)
+              true)
             (:run @state)
             (not (get-in @state [:run :ended])))
      (let [sub (first subroutines)]
@@ -346,7 +349,8 @@
   "Get the zero-based index of the given ice in its server's list of ice, where index 0
   is the innermost ice."
   [state ice]
-  (first (keep-indexed #(when (same-card? %2 ice) %1) (get-in @state (cons :corp (:zone ice))))))
+  (or (:index ice)
+      (first (keep-indexed #(when (same-card? %2 ice) %1) (get-in @state (cons :corp (get-zone ice)))))))
 
 ;; Break abilities
 (defn- break-subroutines-impl

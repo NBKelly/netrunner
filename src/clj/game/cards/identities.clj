@@ -107,7 +107,13 @@
               {:event :derez
                :req (req (same-card? target current-ice))
                :effect (req (when (outermost? run-position run-ices)
-                              (activate state card false)))}]}))
+                              (activate state card false)))}
+              {:event :corp-trash
+               :req (req (some #(same-card? % current-ice) targets))
+               :effect (req (activate state card false))}
+              {:event :runner-trash
+               :req (req (some #(same-card? % current-ice) targets))
+               :effect (req (activate state card false))}]}))
 
 (define-card "Adam: Compulsive Hacker"
   {:events [{:event :pre-start-game
@@ -117,7 +123,8 @@
                           (let [directives (->> (server-cards)
                                                 (filter #(has-subtype? % "Directive"))
                                                 (map make-card)
-                                                (zone :play-area))]
+                                                (map #(assoc % :zone [:play-area]))
+                                                (into []))]
                             ;; Add directives to :play-area - assumed to be empty
                             (swap! state assoc-in [:runner :play-area] directives)
                             (continue-ability state side
@@ -145,13 +152,11 @@
                 :prompt "Choose another server and redirect the run to its outermost position"
                 :choices (req (cancellable (remove #{(-> @state :run :server central->name)} servers)))
                 :msg (msg "trash the approached ICE. The Runner is now running on " target)
-                :effect (req (let [dest (server->zone state target)]
-                               (swap! state update :run
-                                      #(assoc % :position (count (get-in corp (conj dest :ices)))
-                                              :server (rest dest)))
-                               (if (pos? (count (get-in corp (conj dest :ices))))
-                                 (set-next-phase state :encounter-ice)
-                                 (set-next-phase state :approach-server))
+                :effect (req (let [dest (server->zone state target)
+                                   ice (count (get-in corp (conj dest :ices)))
+                                   phase (if (pos? ice) :encounter-ice :approach-server)]
+                               (redirect-run state side target phase)
+                               (start-next-phase state side nil)
                                (trash state side eid current-ice {:unpreventable true})))}]})
 
 (define-card "Akiko Nisei: Head Case"
@@ -174,10 +179,13 @@
                              (continue-ability
                                {:prompt "Choose a card in HQ to discard"
                                 :player :corp
-                                :choices (req (:hand corp))
+                                :choices {:all true
+                                          :card #(and (in-hand? %)
+                                                      (corp? %))}
                                 :msg "force the Corp to trash 1 card from HQ"
-                                :effect (effect (trash :corp target)
-                                                (clear-wait-prompt :runner))}
+                                :async true
+                                :effect (effect (clear-wait-prompt :runner)
+                                                (trash :corp eid target nil))}
                                card nil))}]})
 
 (define-card "Andromeda: Dispossessed Ristie"
@@ -228,14 +236,14 @@
              :async true
              :req (req (first-event? state :corp :corp-install))
              :effect (req (let [installed-card target
-                                z (butlast (:zone installed-card))]
+                                z (butlast (get-zone installed-card))]
                             (continue-ability
                               state side
                               {:prompt (str "Select a "
                                             (if (is-remote? z)
                                               "non-agenda"
                                               "piece of ice")
-                                            " in HQ to install with Asa Group: Security Through Vigilance (optional)")
+                                            " in HQ to install")
                                :choices {:card #(and (in-hand? %)
                                                      (corp? %)
                                                      (corp-installable-type? %)
@@ -358,7 +366,8 @@
              :req (req (and (= target :net)
                             (corp-can-choose-damage? state)
                             (pos? (last targets))
-                            (empty? (filter #(= :net (first %)) (turn-events state :runner :damage)))))
+                            (empty? (filter #(= :net (first %)) (turn-events state :runner :damage)))
+                            (pos? (count (:hand runner)))))
              :effect (req (show-wait-prompt state :runner "Corp to use Chronos Protocol: Selective Mind-mapping")
                           (continue-ability
                             state :corp
@@ -404,14 +413,19 @@
                                      (and (:flipped card)
                                           (in-coll? (keys (get-remotes state)) (:server (second targets))))))
                          :value (req [:credit (if (:flipped card) 6 1)])}]
+     :async true
      ; This effect will be resolved when the ID is reenabled after Strike / Direct Access
      :effect (effect
                (continue-ability
                  {:req (req (< 1 (count (get-remotes state))))
                   :prompt "Select a server to be saved from the rules apocalypse"
                   :choices (req (get-remote-names state))
-                  :effect (req (let [to-be-trashed (remove #(in-coll? ["Archives" "R&D" "HQ" target] (zone->name (second (:zone %)))) (all-installed state :corp))]
-                                 (system-msg state side (str "chooses " target " to be saved from the rules apocalypse and trashes " (count to-be-trashed) " cards"))
+                  :async true
+                  :effect (req (let [to-be-trashed (remove #(in-coll? ["Archives" "R&D" "HQ" target] (zone->name (second (get-zone %))))
+                                                           (all-installed state :corp))]
+                                 (system-msg state side (str "chooses " target
+                                                             " to be saved from the rules apocalypse and trashes "
+                                                             (quantify (count to-be-trashed) "card")))
                                  ; even :unpreventable does not trash Architect
                                  (trash-cards state side eid to-be-trashed {:unpreventable true})))}
                  card nil))
@@ -423,21 +437,20 @@
 
 (define-card "Edward Kim: Humanity's Hammer"
   {:events [{:event :access
-             :async true
              :once :per-turn
              :req (req (and (operation? target)
-                            (turn-flag? state side card :can-trash-operation)))
-             :effect (req (when run
-                            (swap! state assoc-in [:run :did-trash] true))
-                          (swap! state assoc-in [:runner :register :trashed-card] true)
-                          (register-turn-flag! state side card :can-trash-operation (constantly false))
-                          (trash state side eid target nil))
-             :msg (msg "trash " (:title target))}
-            {:event :end-access-phase
-             :req (req (and (= :archives (:from-server target))
-                            (pos? (get-in @state [:run :cards-accessed :discard] 0))
-                            (seq (filter operation? (:discard corp)))))
-             :effect (effect (register-turn-flag! card :can-trash-operation (constantly false)))}]})
+                            (first-event? state side :access #(operation? (first %)))))
+             :async true
+             :effect (req (if (in-discard? target)
+                            (effect-completed state side eid)
+                            (do (when run
+                                  (swap! state assoc-in [:run :did-trash] true))
+                                (swap! state assoc-in [:runner :register :trashed-card] true)
+                                (system-msg state :runner
+                                            (str "uses Edward Kim: Humanity's Hammer to"
+                                                 " trash " (:title target)
+                                                 " at no cost"))
+                                (trash state side eid target nil))))}]})
 
 (define-card "Ele \"Smoke\" Scovak: Cynosure of the Net"
   {:recurring 1
@@ -513,7 +526,7 @@
 
 (define-card "Gagarin Deep Space: Expanding the Horizon"
   {:events [{:event :pre-access-card
-             :req (req (is-remote? (second (:zone target))))
+             :req (req (is-remote? (second (get-zone target))))
              :effect (effect (access-cost-bonus [:credit 1]))
              :msg "make the Runner spend 1 [Credits] to access"}]})
 
@@ -952,6 +965,7 @@
                              (if (pos? (count deck))
                                (str "trash " (join ", " (map :title (take 2 deck))) " from their Stack and draw 1 card")
                                "trash the top 2 cards from their Stack and draw 1 card - but their Stack is empty")))
+                 :label "trash and draw cards"
                  :once :per-turn
                  :async true
                  :effect (req (wait-for (mill state :runner :runner 2)
@@ -978,12 +992,12 @@
                :effect (req (let [cid (first target)
                                   ability-idx (:ability-idx (:source-info eid))
                                   bac-cid (get-in @state [:corp :basic-action-card :cid])
-                                  cause (if (number? (first target))
-                                          (seq [cid ability-idx])
+                                  cause (if (keyword? (first target))
                                           (case (first target)
-                                            :play-instant (seq [bac-cid 3])
-                                            :corp-click-install (seq [bac-cid 2])
-                                            (first target)))
+                                            :play-instant [bac-cid 3]
+                                            :corp-click-install [bac-cid 2]
+                                            (first target)) ; in clojure there's: (= [1 2 3] '(1 2 3))
+                                          [cid ability-idx])
                                   prev-actions (get-in card [:special :mm-actions] [])
                                   actions (conj prev-actions cause)]
                               (update! state side (assoc-in card [:special :mm-actions] actions))
@@ -997,7 +1011,7 @@
                          :req (req (and (get-in card [:special :mm-click])
                                         (let [cid (:cid target)
                                               ability-idx (nth targets 2 nil)
-                                              cause (seq [cid ability-idx])
+                                              cause [cid ability-idx]
                                               prev-actions (get-in card [:special :mm-actions] [])
                                               actions (conj prev-actions cause)]
                                           (not (and (= 4 (count actions))
@@ -1022,7 +1036,10 @@
                                                      :front true})
                                       (swap! state assoc-in [:run :position] 1)
                                       (set-next-phase state :approach-ice)
-                                      (effect-completed state side eid)))}}}]})
+                                      (update-all-ice state side)
+                                      (update-all-icebreakers state side)
+                                      (effect-completed state side eid)
+                                      (start-next-phase state side nil)))}}}]})
 
 (define-card "Nasir Meidan: Cyber Explorer"
   {:events [{:event :approach-ice
@@ -1114,8 +1131,9 @@
                               :async true
                               :choices {:card #(and (has-subtype? % "Current")
                                                     (corp? %)
-                                                    (#{[:hand] [:discard]} (:zone %)))}
-                              :msg (msg "play a current from " (name-zone "Corp" (:zone target)))
+                                                    (or (in-hand? %)
+                                                        (in-discard? %)))}
+                              :msg (msg "play a current from " (name-zone "Corp" (get-zone target)))
                               :effect (effect (play-instant eid target nil))}}}]
     {:events [(assoc nasol :event :agenda-scored)
               (assoc nasol :event :agenda-stolen)]}))
@@ -1136,6 +1154,7 @@
                                       (update! state side (assoc card :fill-hq true))
                                       (effect-completed state side eid)))}]
      :abilities [{:req (req (:fill-hq card))
+                  :label "draw remaining cards"
                   :msg (msg "draw " (- 5 (count (:hand corp))) " cards")
                   :effect (req (draw state side (- 5 (count (:hand corp))))
                                (update! state side (dissoc card :fill-hq))
@@ -1280,6 +1299,7 @@
 (define-card "Seidr Laboratories: Destiny Defined"
   {:implementation "Manually triggered"
    :abilities [{:req (req (:run @state))
+                :label "add card from Archives to HQ"
                 :once :per-turn
                 :prompt "Select a card to add to the top of R&D"
                 :show-discard true
@@ -1469,6 +1489,7 @@
                                     (has-most-faction? state :corp "Jinteki")
                                     (> (count (filter ice? (all-installed state :corp))) 1)))}
    :abilities [{:prompt "Select two pieces of ICE to swap positions"
+                :label "swap two ice"
                 :choices {:card #(and (installed? %)
                                       (ice? %))
                           :max 2}

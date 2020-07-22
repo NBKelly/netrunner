@@ -8,6 +8,11 @@
          use-mu)
 
 ;;; Functions for loading card information.
+(defn find-card
+  "Return a card with given title from given sequence"
+  [title from]
+  (some #(when (= (:title %) title) %) from))
+
 (defn find-cid
   "Return a card with specific :cid from given sequence"
   [cid from]
@@ -36,7 +41,8 @@
   (cond
     (= type "Identity")
     (when (= side (to-keyword (:side card)))
-      (swap! state assoc-in [side :identity] card))
+      (swap! state assoc-in [side :identity] card)
+      card)
 
     host
     (update-hosted! state side card)
@@ -45,7 +51,8 @@
     (let [z (cons (to-keyword (or (get-scoring-owner state card) (:side card))) zone)
               [head tail] (split-with #(not= (:cid %) cid) (get-in @state z))]
           (when (not-empty tail)
-            (swap! state assoc-in z (vec (concat head [card] (rest tail))))))))
+            (swap! state assoc-in z (vec (concat head [card] (rest tail))))
+            card))))
 
 ;; Helpers for move
 (defn- remove-old-card
@@ -68,6 +75,7 @@
         to-installed (#{:servers :rig} (first dest))
         trash-hosted (fn [h]
                        (trash state side
+                              (make-eid state)
                               (update-in h [:zone] #(map to-keyword %))
                               {:unpreventable true
                                :host-trashed true
@@ -101,7 +109,10 @@
               :else
               card)
             card)
-        c (if (and (or installed
+        c (if (and (not (and (= (get-scoring-owner state card) :runner)
+                             (#{:scored} src-zone)
+                             (#{:hand :deck :discard :rfg} target-zone)))
+                   (or installed
                        host
                        (#{:servers :scored :current :play-area} src-zone))
                    (or (#{:hand :deck :discard :rfg} target-zone)
@@ -118,9 +129,14 @@
         c (if (= :scored (first dest))
             (assoc c :scored-side side)
             c)
+        cid (if (and (not (contains? #{:deck :hand :discard} src-zone))
+                     (contains? #{:deck :hand :discard} target-zone))
+              (make-cid)
+              (:cid c))
         moved-card (assoc c :zone dest
                             :host nil
                             :hosted hosted
+                            :cid cid
                             :previous-zone (:zone c))
         ;; Set up abilities for stolen agendas
         moved-card (if (and (= :scored (first dest))
@@ -140,6 +156,11 @@
                                 :seen seen
                                 :zone zone)))))
 
+(defn update-installed-card-indices
+  [state side server]
+  (swap! state update-in (cons side server)
+         #(into [] (map-indexed (fn [idx card] (assoc card :index idx)) %))))
+
 (defn move
   "Moves the given card to the given new zone."
   ([state side card to] (move state side card to nil))
@@ -156,7 +177,7 @@
                       (some #(same-card? card %) (get-in @state (cons :runner (vec zone))))
                       (some #(same-card? card %) (get-in @state (cons :corp (vec zone)))))
                   (or force
-                      (empty? (get-in @state [side :locked (-> card :zone first)]))))
+                      (empty? (get-in @state [(to-keyword (:side card)) :locked (-> card :zone first)]))))
          (trigger-event state side :pre-card-moved card src-zone target-zone)
          (let [dest (if (sequential? to) (vec to) [to])
                moved-card (get-moved-card state side card to)]
@@ -165,8 +186,7 @@
                                       front 0
                                       :else (count (get-in @state (cons side dest))))]
              (swap! state update-in (cons side dest) #(into [] (concat (take pos-to-move-to %) [moved-card] (drop pos-to-move-to %)))))
-           (swap! state update-in (cons side dest)
-                  #(into [] (map-indexed (fn [idx card] (assoc card :index idx)) %)))
+           (update-installed-card-indices state side dest)
            (let [z (vec (cons :corp (butlast zone)))]
              (when (and (not keep-server-alive)
                         (is-remote? z)
@@ -245,19 +265,18 @@
 (defn shuffle!
   "Shuffles the vector in @state [side kw]."
   [state side kw]
-  (wait-for (trigger-event-sync state side (when (= :deck kw)
-                                             (if (= :corp side) :corp-shuffle-deck :runner-shuffle-deck))
-                                nil)
-            (swap! state update-in [side kw] shuffle)))
+  (when (contains? #{:deck :hand :discard} kw)
+    (trigger-event state side (when (= :deck kw) (if (= :corp side) :corp-shuffle-deck :runner-shuffle-deck)) nil)
+    (when (and (:access @state)
+               (= :deck kw))
+      (swap! state assoc-in [:run :shuffled-during-access :rd] true))
+    (swap! state update-in [side kw] shuffle)))
 
 (defn shuffle-into-deck
   [state side & args]
-  (let [player (side @state)
-        zones (filter #(not (seq (get-in @state [side :locked %]))) args)
-        deck (shuffle (reduce concat (:deck player) (for [p zones] (zone :deck (p player)))))]
-    (swap! state assoc-in [side :deck] deck)
-    (doseq [p zones]
-      (swap! state assoc-in [side p] []))))
+  (doseq [zone (filter keyword? args)]
+    (move-zone state side zone :deck))
+  (shuffle! state side :deck))
 
 ;;; Misc card functions
 (defn get-virus-counters

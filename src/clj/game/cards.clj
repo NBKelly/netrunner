@@ -15,22 +15,25 @@
                     :msg (msg "trash " (:title target))
                     :choices {:card #(and (installed? %)
                                           (program? %))}
-                    :effect (effect (trash target {:cause :subroutine})
-                                    (clear-wait-prompt :runner))})
+                    :async true
+                    :effect (effect (clear-wait-prompt :runner)
+                                    (trash eid target {:cause :subroutine}))})
 
 (def trash-hardware {:prompt "Select a piece of hardware to trash"
                      :label "Trash a piece of hardware"
                      :msg (msg "trash " (:title target))
                      :choices {:card #(and (installed? %)
                                            (hardware? %))}
-                     :effect (effect (trash target {:cause :subroutine}))})
+                     :async true
+                     :effect (effect (trash eid target {:cause :subroutine}))})
 
 (def trash-resource-sub {:prompt "Select a resource to trash"
                          :label "Trash a resource"
                          :msg (msg "trash " (:title target))
                          :choices {:card #(and (installed? %)
                                                (resource? %))}
-                         :effect (effect (trash target {:cause :subroutine}))})
+                         :async true
+                         :effect (effect (trash eid target {:cause :subroutine}))})
 
 (def trash-installed-sub
   {:async true
@@ -101,12 +104,16 @@
                (and (= dest "bottom") (= target "Done"))
                (do (swap! state update-in [reorder-side :deck]
                           #(vec (concat (drop (count chosen) %) (reverse chosen))))
+                   (when (and (= :corp reorder-side) (:access @state))
+                     (swap! state assoc-in [:run :shuffled-during-access :rd] true))
                    (clear-wait-prompt state wait-side)
                    (effect-completed state side eid))
 
                (= target "Done")
                (do (swap! state update-in [reorder-side :deck]
                           #(vec (concat chosen (drop (count chosen) %))))
+                   (when (and (= :corp reorder-side) (:access @state))
+                     (swap! state assoc-in [:run :shuffled-during-access :rd] true))
                    (clear-wait-prompt state wait-side)
                    (effect-completed state side eid))
 
@@ -122,6 +129,8 @@
         b-new (assoc b :zone (:zone a))]
     (swap! state update-in (cons :corp (:zone a)) #(assoc % a-index b-new))
     (swap! state update-in (cons :corp (:zone b)) #(assoc % b-index a-new))
+    (update-installed-card-indices state :corp (:zone a))
+    (update-installed-card-indices state :corp (:zone b))
     (doseq [newcard [a-new b-new]]
       (unregister-events state side newcard)
       (when (rezzed? newcard)
@@ -136,12 +145,14 @@
             (register-events state side newh)))))
     (trigger-event state side :swap a-new b-new)
     (update-ice-strength state side a-new)
-    (update-ice-strength state side b-new)))
+    (update-ice-strength state side b-new)
+    (set-current-ice state)))
 
 (defn card-index
   "Get the zero-based index of the given card in its server's list of content. Same as ice-index"
   [state card]
-  (first (keep-indexed #(when (same-card? %2 card) %1) (get-in @state (cons :corp (:zone card))))))
+  (or (:index card)
+      (first (keep-indexed #(when (same-card? %2 card) %1) (get-in @state (cons :corp (:zone card)))))))
 
 (defn swap-installed
   "Swaps two installed corp cards - like swap ICE except no strength update"
@@ -152,6 +163,8 @@
         b-new (assoc b :zone (:zone a))]
     (swap! state update-in (cons :corp (:zone a)) #(assoc % a-index b-new))
     (swap! state update-in (cons :corp (:zone b)) #(assoc % b-index a-new))
+    (update-installed-card-indices state :corp (:zone a))
+    (update-installed-card-indices state :corp (:zone b))
     (doseq [newcard [a-new b-new]]
       (doseq [h (:hosted newcard)]
         (let [newh (-> h

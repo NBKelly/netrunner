@@ -63,8 +63,8 @@
         room
         (t/now)
         spectatorhands
-        (new-corp (:user corp) corp-identity corp-options (zone :deck corp-deck) corp-deck-id corp-quote)
-        (new-runner (:user runner) runner-identity runner-options (zone :deck runner-deck) runner-deck-id runner-quote)))))
+        (new-corp (:user corp) corp-identity corp-options (map #(assoc % :zone [:deck]) corp-deck) corp-deck-id corp-quote)
+        (new-runner (:user runner) runner-identity runner-options (map #(assoc % :zone [:deck]) runner-deck) runner-deck-id runner-quote)))))
 
 (defn init-game
   "Initializes a new game with the given players vector."
@@ -72,6 +72,8 @@
   (let [state (init-game-state game)
         corp-identity (get-in @state [:corp :identity])
         runner-identity (get-in @state [:runner :identity])]
+    (when-let [messages (seq (:messages game))]
+      (swap! state assoc :log (conj (vec messages) {:user "__system__" :text "[hr]"})))
     (init-identity state :corp corp-identity)
     (init-identity state :runner runner-identity)
     (create-basic-action-cards state)
@@ -102,16 +104,14 @@
        (assoc :cid cid
               :implementation (card-implemented card)
               :subroutines (subroutines-init (assoc card :cid cid) (card-def card)))
-       (dissoc :setname :text :_id :influence :number :influencelimit :factioncost)
+       (dissoc :setname :text :_id :influence :number :influencelimit
+               :factioncost :format :quantity)
        (map->Card))))
 
 (defn build-card
   [card]
-  (let [server-card (or (server-card (:title card)) card)
-        c (assoc (make-card server-card) :art (:art card))]
-    (if-let [init (:init (card-def c))]
-      (merge c init)
-      c)))
+  (let [server-card (or (server-card (:title card)) card)]
+    (assoc (make-card server-card) :art (:art card))))
 
 (defn create-deck
   "Creates a shuffled draw deck (R&D/Stack) from the given list of cards.

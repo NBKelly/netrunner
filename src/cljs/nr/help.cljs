@@ -71,6 +71,7 @@
                           [:li [:code "/move-hand"] " - Pick a card from your play-area to put into your hand"]
                           [:li [:code "/peek n"] " - See n top cards of your deck"]
                           [:li [:code "/psi"] " - Start a Psi game (Corp only)"]
+                          [:li [:code "/replace-id n"] " - Replace your ID with the card \"n\""]
                           [:li [:code "/rez"] " - Select a card to rez, ignoring all costs (Corp only)"]
                           [:li [:code "/rez-all"] " - Rez all cards, ignoring all costs and flip cards in archives faceup (Corp only). For revealing your servers at the end of a game."]
                           [:li [:code "/rfg"] " - Select a card to remove from the game"]
@@ -84,7 +85,8 @@
                           [:li [:code "/take-net n"] " - Take n net damage (Runner only)"]
                           [:li [:code "/trace n"] " - Start a trace with base strength n (Corp only)"]
                           [:li [:code "/undo-click"] " - Resets the game back to start of the click.  One click only retained. Only allowed for active player"]
-                          [:li [:code "/undo-turn"] " - Resets the game back to end of the last turn. Requires both players to request it"]]]]}
+                          [:li [:code "/undo-turn"] " - Resets the game back to end of the last turn. Requires both players to request it"]
+                          [:li [:code "/unique"] " - Toggles uniqueness of selected card (can be used to e.g. play with non-errata version of Wireless Net Pavillion)"]]]]}
             {:id "documentation"
              :title "Is there more documentation on how to use Jinteki.net?"
              :content [:ul

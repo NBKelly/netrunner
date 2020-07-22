@@ -2,9 +2,10 @@
   (:require [cheshire.core :refer [parse-string generate-string]]
             [cheshire.generate :refer [add-encoder encode-str]]
             [game.core :refer [card-is-public?] :as core]
+            [game.core.eid :as eid]
             [game.core.toasts :refer [toast]]
             [game.core.card :refer [private-card get-card]]
-            [differ.core :as differ]))
+            [game.utils :refer [dissoc-in]]))
 
 (add-encoder java.lang.Object encode-str)
 
@@ -36,7 +37,6 @@
    "keep" core/keep-hand
    "move" core/move-card
    "mulligan" core/mulligan
-   "no-action" core/no-action
    "play" core/play
    "purge" core/do-purge
    "remove-tag" core/remove-tag
@@ -48,20 +48,13 @@
    "shuffle" core/shuffle-deck
    "start-turn" core/start-turn
    "subroutine" core/play-subroutine
-   "successful-run" core/successful-run
    "system-msg" #(core/system-msg %1 %2 (:msg %3))
    "toast" toast
    "toggle-auto-no-action" core/toggle-auto-no-action
-   "trash" #(core/trash %1 %2 (get-card %1 (:card %3)))
+   "trash" #(core/trash %1 %2 (eid/make-eid %1) (get-card %1 (:card %3)) nil)
    "trash-resource" core/trash-resource
    "unbroken-subroutines" core/play-unbroken-subroutines
    "view-deck" core/view-deck})
-
-(defn strip [state]
-  (-> state
-    (dissoc :eid :events :turn-events :per-turn :prevent :damage :effect-completed :click-state :turn-state)
-    (update-in [:corp :register] dissoc :most-recent-drawn)
-    (update-in [:runner :register] dissoc :most-recent-drawn)))
 
 (defn not-spectator?
   "Returns true if the specified user in the specified state is not a spectator"
@@ -69,74 +62,6 @@
   (let [corp-id (get-in @state [:corp :user :_id])
         runner-id (get-in @state [:runner :user :_id])]
     (and state ((set [corp-id runner-id]) (:_id user)))))
-
-(defn- private-card-vector [state side cards]
-  (vec (map (fn [card]
-              (cond
-                (not (card-is-public? state side card)) (private-card card)
-                (:hosted card) (update-in card [:hosted] #(private-card-vector state side %))
-                :else card))
-            cards)))
-
-(defn- make-private-runner [state]
-  (-> (:runner @state)
-      (dissoc :runnable-list)
-      (update-in [:hand] #(private-card-vector state :runner %))
-      (update-in [:discard] #(private-card-vector state :runner %))
-      (update-in [:deck] #(private-card-vector state :runner %))
-      (update-in [:rig :facedown] #(private-card-vector state :runner %))
-      (update-in [:rig :resource] #(private-card-vector state :runner %))))
-
-(defn- make-private-corp [state]
-  (let [zones (concat [[:hand]] [[:discard]] [[:deck]]
-                      (for [server (keys (:servers (:corp @state)))] [:servers server :ices])
-                      (for [server (keys (:servers (:corp @state)))] [:servers server :content]))
-        corp (-> (:corp @state)
-                 (dissoc :install-list))]
-    (loop [s corp
-           z zones]
-      (if (empty? z)
-        s
-        (recur (update-in s (first z) #(private-card-vector state :corp %)) (rest z))))))
-
-(defn- make-private-deck [state side deck]
-  (if (:view-deck (side @state))
-    deck
-    (private-card-vector state side deck)))
-
-(defn- private-states
-  "Generates privatized states for the Corp, Runner and any spectators from the base state.
-  If `:spectatorhands` is on, all information is passed on to spectators as well."
-  [state]
-  ;; corp, runner, spectator
-  (let [corp-private (make-private-corp state)
-        runner-private (make-private-runner state)
-        corp-deck (update-in (:corp @state) [:deck] #(make-private-deck state :corp %))
-        runner-deck (update-in (:runner @state) [:deck] #(make-private-deck state :runner %))]
-    [(assoc @state :runner runner-private
-                   :corp corp-deck)
-     (assoc @state :corp corp-private
-                   :runner runner-deck)
-     (if (get-in @state [:options :spectatorhands])
-       (assoc @state :corp corp-deck :runner runner-deck)
-       (assoc @state :corp corp-private :runner runner-private))]))
-
-(defn public-states [state]
-  (let [[new-corp new-runner new-spect] (private-states state)]
-    {:runner-state (strip new-runner)
-     :corp-state   (strip new-corp)
-     :spect-state  (strip new-spect)}))
-
-(defn public-diffs [old-state new-state]
-  (let [[old-corp old-runner old-spect] (when old-state (private-states (atom old-state)))
-        [new-corp new-runner new-spect] (private-states new-state)
-
-        runner-diff (differ/diff (strip old-runner) (strip new-runner))
-        corp-diff (differ/diff (strip old-corp) (strip new-corp))
-        spect-diff (differ/diff (strip old-spect) (strip new-spect))]
-    {:runner-diff runner-diff
-     :corp-diff   corp-diff
-     :spect-diff  spect-diff}))
 
 (defn set-action-id
   "Creates a unique action id for each server response - used in client lock"

@@ -198,7 +198,6 @@
                         :deck ["Vanilla" (qty "Hedge Fund" 5)]}})
       (take-credits state :corp)
       (run-on state :archives)
-      (run-continue state)
       (is (not (is-tagged? state)) "No ice to encounter")))
   (testing "No tag when encountering second ice"
     (do-game
@@ -243,7 +242,23 @@
       (is (rezzed? (get-content state :remote1 0)) "NGO Front now rezzed")
       (is (= 1 (get-in @state [:runner :tag :additional])) "Runner does not gain a tag when asset rezzed")
       (run-continue state)
-      (is (not (is-tagged? state)) "Runner is not tagged when encountering second ice"))))
+      (is (not (is-tagged? state)) "Runner is not tagged when encountering second ice")))
+  (testing "Trashing the ice removes the tag #4984"
+    (do-game
+      (new-game {:corp {:id "Acme Consulting: The Truth You Need"
+                        :deck ["Ice Wall"]}
+                 :runner {:deck ["Corroder" "Hippo"]}})
+      (play-from-hand state :corp "Ice Wall" "New remote")
+      (take-credits state :corp)
+      (play-from-hand state :runner "Hippo")
+      (play-from-hand state :runner "Corroder")
+      (run-on state "Server 1")
+      (core/rez state :corp (get-ice state :remote1 0))
+      (run-continue state)
+      (card-ability state :runner (get-program state 0) 0)
+      (click-prompt state :runner "End the run")
+      (click-prompt state :runner "Yes")
+      (is (zero? (count-tags state)) "Acme additional tag falls off"))))
 
 (deftest adam-compulsive-hacker
   ;; Adam
@@ -298,6 +313,70 @@
       (is (= 2 (:brain-damage (get-runner))) "Runner took 2 brain damage")
       (is (= 1 (count (:discard (get-corp)))) "1 card in archives"))))
 
+(deftest aginfusion-new-miracles-for-a-new-world
+  (testing "Ability works. #5056"
+    (do-game
+      (new-game {:corp {:id "AgInfusion: New Miracles for a New World"
+                        :deck [(qty "Hedge Fund" 5)]
+                        :hand ["Hedge Fund" "Ice Wall" "Kakugo"]}})
+      (play-from-hand state :corp "Ice Wall" "R&D")
+      (play-from-hand state :corp "Kakugo" "HQ")
+      (take-credits state :corp)
+      (run-on state "R&D")
+      (is (= (get-ice state :rd 0) (core/get-current-ice state)))
+      (card-ability state :corp (:identity (get-corp)) 0)
+      (click-prompt state :corp "HQ")
+      (let [ice-passed-last-run
+            (->> (:events (get-run))
+                 (filter #(= :pass-ice (first %)))
+                 (keep second))]
+        (is (= 1 (count ice-passed-last-run)))
+        (is (utils/same-card? (get-ice state :hq 0) (ffirst ice-passed-last-run))))
+      (run-continue state)
+      (click-prompt state :runner "No action")
+      (is (nil? (get-run)))
+      (is (empty? (:prompt (get-corp))))
+      (is (empty? (:prompt (get-runner))))))
+  (testing "Works with passing effects"
+    (do-game
+      (new-game {:corp {:id "AgInfusion: New Miracles for a New World"
+                        :deck [(qty "Hedge Fund" 5)]
+                        :hand ["Hedge Fund" "Ice Wall" "Kakugo"]}
+                 :runner {:hand ["En Passant"]}})
+      (play-from-hand state :corp "Ice Wall" "R&D")
+      (play-from-hand state :corp "Kakugo" "HQ")
+      (take-credits state :corp)
+      (run-on state "R&D")
+      (is (= (get-ice state :rd 0) (core/get-current-ice state)))
+      (card-ability state :corp (:identity (get-corp)) 0)
+      (click-prompt state :corp "HQ")
+      (run-continue state)
+      (click-prompt state :runner "No action")
+      (play-from-hand state :runner "En Passant")
+      (click-card state :runner "Kakugo")
+      (is (nil? (get-ice  state :hq 0)))
+      (is (find-card "Kakugo" (:discard (get-corp))))))
+  (testing "Uses up on-encounter bypass effects"
+    (do-game
+      (new-game {:corp {:id "AgInfusion: New Miracles for a New World"
+                        :deck [(qty "Hedge Fund" 5)]
+                        :hand ["Hedge Fund" "Ice Wall" "Vanilla" "Kakugo"]
+                        :credits 10}
+                 :runner {:hand ["Inside Job"]}})
+      (play-from-hand state :corp "Ice Wall" "R&D")
+      (play-from-hand state :corp "Kakugo" "HQ")
+      (core/rez state :corp (get-ice state :hq 0))
+      (play-from-hand state :corp "Vanilla" "HQ")
+      (take-credits state :corp)
+      (play-from-hand state :runner "Inside Job")
+      (click-prompt state :runner "R&D")
+      (is (= (get-ice state :rd 0) (core/get-current-ice state)))
+      (card-ability state :corp (:identity (get-corp)) 0)
+      (click-prompt state :corp "HQ")
+      (is (= (get-ice state :hq 0) (core/get-current-ice state)))
+      (run-continue state)
+      (is (last-log-contains? state "Runner encounters Kakugo protecting HQ at position 0.")))))
+
 (deftest akiko-nisei-head-case
   ;; Akiko Nisei
   (testing "Basic test"
@@ -333,14 +412,13 @@
         (run-continue state)
         (card-subroutine state :corp shiro 1)
         (click-prompt state :corp "No")
-        (run-continue state)
-        (run-continue state)
         (click-prompt state :corp "0 [Credits]")
         (click-prompt state :runner "0 [Credits]")
         (is (= 2 (:total (core/num-cards-to-access state :runner :rd nil))) "Should access additional card from ability")
         (click-prompt state :runner "No action")
         (click-prompt state :runner "No action")
-        (run-successful state)
+        (run-continue state)
+        (run-continue state)
         (take-credits state :runner)
         (take-credits state :corp)
         (run-on state :remote1)
@@ -362,7 +440,7 @@
     (take-credits state :corp)
     (click-prompt state :runner "Archives")
     (run-empty-server state "Archives")
-    (click-prompt state :corp (find-card "Hedge Fund" (:hand (get-corp))))
+    (click-card state :corp (find-card "Hedge Fund" (:hand (get-corp))))
     (is (= 1 (-> (get-corp) :discard count)) "Alice ability should trash 1 card from HQ")
     (is (-> (get-corp) :discard first :seen not) "Discarded card should be facedown when access is replaced")))
 
@@ -460,9 +538,10 @@
         (play-from-hand state :corp "Shipment from MirrorMorph")
         (click-card state :corp marilyn)
         (click-prompt state :corp "New remote")
-        (is (= (:cid marilyn) (:cid (get-content state :remote1 0))) "Marilyn is installed as first card")
-        (click-card state :corp herrings) ;; This should be the Asa prompt, should be automatically installed in remote1
-        (is (= (:cid herrings) (:cid (get-content state :remote1 1))) "Red Herrings is installed in Server 1")
+        (is (= "Marilyn Campaign" (:title (get-content state :remote1 0))) "Marilyn is installed as first card")
+        (is (= "Select a non-agenda in HQ to install" (:msg (prompt-map :corp))))
+        (click-card state :corp herrings)
+        (is (= "Red Herrings" (:title (get-content state :remote1 1))) "Red Herrings is installed in Server 1")
         (click-card state :corp vitruvius)
         (click-prompt state :corp "New remote")
         (click-card state :corp pup)
@@ -631,7 +710,19 @@
       (take-credits state :corp)
       (play-from-hand state :runner "Scrubbed")
       (core/damage state :corp :net 1)
-      (is (utils/same-card? (:card (prompt-map :corp)) (:identity (get-corp))) "Employee Strike out of play - Ability turned on correctly"))))
+      (is (utils/same-card? (:card (prompt-map :corp)) (:identity (get-corp))) "Employee Strike out of play - Ability turned on correctly")))
+  (testing "Doesn't prompt when Runner's hand is empty"
+    (do-game
+      (new-game {:corp {:id "Chronos Protocol: Selective Mind-mapping"
+                        :deck [(qty "Hedge Fund" 5)]
+                        :hand ["Neural EMP"]}
+                 :runner {:discard ["Sure Gamble"]}})
+      (take-credits state :corp)
+      (run-empty-server state "Archives")
+      (take-credits state :runner)
+      (play-from-hand state :corp "Neural EMP")
+      (is (empty? (:prompt (get-corp))) "No choice because grip is empty")
+      (is (= :corp (:winner @state))))))
 
 (deftest earth-station-sea-headquarters
   ;;Earth Station: SEA Headquarters
@@ -791,9 +882,9 @@
       (run-empty-server state "Archives")
       (run-empty-server state "HQ")
       (is (= 2 (count (:discard (get-corp)))) "1 operation trashed from HQ; accessed non-operation in Archives first")
-      (take-credits state :runner)
-      (play-from-hand state :corp "Hedge Fund")
-      (take-credits state :corp)))
+      (is (empty? (:prompt (get-corp))))
+      (is (empty? (:prompt (get-runner))))
+      (is (nil? (get-run)))))
   (testing "Interaction with Eater"
     (do-game
       (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
@@ -812,11 +903,10 @@
         (click-prompt state :runner "End the run")
         (run-continue state)
         (run-continue state)
-        (run-successful state)
         (is (= 1 (count (:discard (get-corp)))))
         (run-empty-server state "HQ")
         (is (= 2 (count (:discard (get-corp)))) "1 operation trashed from HQ; accessed non-operation in Archives first"))))
-  (testing "Do not trigger maw on first Operation access (due to trash)"
+  (testing "Do not trigger Maw on first Operation access (due to trash)"
     (do-game
       (new-game {:corp {:deck [(qty "Hedge Fund" 3) (qty "Restructure" 2)]}
                  :runner {:id "Edward Kim: Humanity's Hammer"
@@ -840,7 +930,6 @@
       (is (= 1 (count (:discard (get-corp)))) "Only Hedge Fund in archives")
       (play-from-hand state :runner "Divide and Conquer")
       (run-continue state)
-      (run-successful state)
       (is (= 1 (count (:discard (get-corp)))) "Still only Hedge Fund in archives")))
   (testing "Trashing an operation not during a run won't create a run. Issue #3399"
     (do-game
@@ -854,7 +943,25 @@
       (play-and-score state "Hostile Takeover")
       (is (empty? (:prompt (get-corp))))
       (is (empty? (:prompt (get-runner))))
-      (is (nil? (:run @state)) "No run has been created"))))
+      (is (nil? (get-run)) "No run has been created")))
+  (testing "Interaction with Aumakua and accessing an operation in archives #5054"
+    (do-game
+      (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                        :discard [(qty "Hedge Fund" 2)]}
+                 :runner {:id "Edward Kim: Humanity's Hammer"
+                          :hand ["Aumakua"]}})
+      (take-credits state :corp)
+      (play-from-hand state :runner "Aumakua")
+      (run-empty-server state "Archives")
+      (is (= 1 (get-counters (get-program state 0) :virus)))))
+  (testing "Trashed card is logged"
+    (do-game
+      (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                        :hand ["Hedge Fund"]}
+                 :runner {:id "Edward Kim: Humanity's Hammer"}})
+      (take-credits state :corp)
+      (run-empty-server state "HQ")
+      (is (last-log-contains? state "Runner uses Edward Kim: Humanity's Hammer to trash Hedge Fund at no cost.")))))
 
 (deftest ele-smoke-scovak-cynosure-of-the-net
   ;; Ele "Smoke" Scovak: Cynosure of the Net
@@ -1298,7 +1405,7 @@
       (card-ability state :runner (get-resource state 0) 1)
       (is (empty? (:prompt (get-corp))) "No Hayley wait prompt for facedown installs."))))
 
-(deftest hoshiko-shiro-untold-proganoist
+(deftest hoshiko-shiro-untold-protagonist
   ;; Hoshiko Shiro
   (testing "ID ability"
     (do-game
@@ -1353,7 +1460,6 @@
         (click-prompt state :runner "End the run")
         (run-continue state)
         (run-continue state)
-        (run-successful state)
         (take-credits state :runner)
         (is (not (:flipped (refresh ho))) "Hoshiko does not flip"))))
   (testing "Changing link and subtype when flipping"
@@ -1473,7 +1579,6 @@
        (take-credits state :runner)
        (take-credits state :corp)
        (run-on state "Archives")
-       (run-continue state)
        (is (changes-credits (get-corp) 1
                             (run-jack-out state))) ; triggers reflection
        (take-credits state :runner)
@@ -1608,10 +1713,8 @@
         (run-continue state)
         (click-prompt state :runner "Take 1 tag")
         (is (= 1 (count-tags state)) "Jesminder did not avoid the second tag during the run")
-        (core/no-action state :corp nil)
-        (core/continue state :runner nil)
-        (core/no-action state :corp nil)
-        (core/successful-run state :runner nil)
+        (run-continue state)
+        (run-continue state)
         (run-empty-server state "R&D") ; clear per-run buffer
         (take-credits state :runner)
         (play-from-hand state :corp "SEA Source")
@@ -1625,7 +1728,6 @@
       (take-credits state :corp)
       (play-from-hand state :runner "John Masanori")
       (run-on state "HQ")
-      (run-continue state)
       (run-jack-out state)
       (is (= 1 (count-tags state)) "Jesminder did not avoid John Masanori tag"))))
 
@@ -2200,7 +2302,6 @@
                         :deck ["Enigma"]}})
       (take-credits state :corp)
       (run-on state "HQ")
-      (run-continue state)
       (is (zero? (get-in @state [:run :position])) "Initial position approaching server")
       (click-prompt state :corp "Yes")
       (click-card state :corp (find-card "Enigma" (:hand (get-corp))))
@@ -2217,7 +2318,6 @@
       (run-on state "R&D")
       (run-continue state)
       (run-continue state)
-      (run-continue state)
       (is (zero? (get-in @state [:run :position])) "Initial position approaching server")
       (click-prompt state :corp "Yes")
       (click-card state :corp (find-card "Enigma" (:hand (get-corp))))
@@ -2230,7 +2330,6 @@
                         :deck ["Kakugo"]}})
       (take-credits state :corp)
       (run-on state "HQ")
-      (run-continue state)
       (is (zero? (get-in @state [:run :position])) "Initial position approaching server")
       (click-prompt state :corp "Yes")
       (click-card state :corp (find-card "Kakugo" (:hand (get-corp))))
@@ -2238,7 +2337,6 @@
       (is (= "Kakugo" (:title (get-ice state :hq 0))) "Kakugo was installed")
       (is (empty? (:hand (get-corp))) "Kakugo removed from HQ")
       (core/rez state :corp (get-ice state :hq 0))
-      (run-next-phase state)
       (run-continue state)
       (run-continue state)
       (is (= 1 (-> (get-runner) :discard count)) "Runner should take 1 net damage from Kakugo"))))
@@ -2340,7 +2438,6 @@
       (play-from-hand state :runner "Direct Access")
       (click-prompt state :runner "Server 1")
       (run-continue state)
-      (run-successful state)
       (click-prompt state :runner "Pay 2 [Credits] to trash")
       (click-prompt state :runner "Yes")
       (run-empty-server state "Server 2")
@@ -2617,7 +2714,6 @@
       (let [omar (get-in @state [:runner :identity])]
         (card-ability state :runner omar 0)
         (run-continue state)
-        (run-successful state)
         (click-prompt state :runner "HQ")
         (is (= [:hq] (get-in @state [:runner :register :successful-run])))
         (is (= "You accessed Hedge Fund." (:msg (prompt-map :runner))))
@@ -2631,7 +2727,6 @@
         (is (= [:rd] (get-in @state [:runner :register :successful-run])))
         (card-ability state :runner omar 0)
         (run-continue state)
-        (run-successful state)
         (click-prompt state :runner "HQ")
         (is (= [:hq :rd] (get-in @state [:runner :register :successful-run]))))))
   (testing "Ash prevents access, but not successful run"
@@ -2646,7 +2741,6 @@
         (core/rez state :corp ash)
         (card-ability state :runner omar 0)
         (run-continue state)
-        (run-successful state)
         (click-prompt state :runner "HQ")
         (click-prompt state :corp "0")
         (click-prompt state :runner "0")
@@ -2664,7 +2758,6 @@
         (core/rez state :corp cr)
         (card-ability state :runner omar 0)
         (run-continue state)
-        (run-successful state)
         (is (= (:cid cr) (-> (prompt-map :runner) :card :cid)))
         (is (empty? (-> (get-runner) :register :successful-run)))
         (is (= :archives (get-in @state [:run :server 0]))))))
@@ -2678,7 +2771,6 @@
             medium (get-program state 0)]
         (card-ability state :runner omar 0)
         (run-continue state)
-        (run-successful state)
         (click-prompt state :runner "R&D")
         (is (= 1 (get-counters (refresh medium) :virus))))))
   (testing "When selecting HQ, ability adds counters to Nerve Agent"
@@ -2691,7 +2783,6 @@
             nerve (get-program state 0)]
         (card-ability state :runner omar 0)
         (run-continue state)
-        (run-successful state)
         (click-prompt state :runner "HQ")
         (is (= 1 (get-counters (refresh nerve) :virus))))))
   (testing "Moving to a different server shouldn't trigger ability. Issue #3969"
@@ -2711,9 +2802,7 @@
         (click-prompt state :runner "1 [Credits]")
         (click-prompt state :corp "R&D")
         (is (= [:rd] (:server (get-run))))
-        (run-next-phase state)
         (run-continue state)
-        (run-successful state)
         (is (empty? (prompt-map :corp)))
         (is (empty? (prompt-map :runner)))))))
 
@@ -2887,7 +2976,6 @@
     (is (empty? (filter #(= "The Maker's Eye" (:title %)) (-> (get-corp) :prompt first :choices))) "No Maker's Eye choice")
     (click-prompt state :corp "Cancel")
     (run-continue state)
-    (run-successful state)
     (is (= "You accessed Quandary." (:msg (prompt-map :runner))) "1st quandary")
     (click-prompt state :runner "No action")
     (is (= "You accessed Quandary." (:msg (prompt-map :runner))) "2nd quandary")
@@ -3060,11 +3148,12 @@
     (take-credits state :runner)
     (gain-tags state :runner 1)
     (card-ability state :corp (get-in @state [:corp :identity]) 0)
+    (swap! state assoc-in [:corp :credit] 0)
     (changes-val-macro 0 (:credit (get-runner))
                        "Paid 0c to trash resource"
                        (core/trash-resource state :corp nil)
                        (click-card state :corp (get-resource state 0)))
-    (is (= 1 (count (:discard (get-runner)))) "Trashed Fan Site")))
+    (is (= ["Fan Site"] (map :title (:discard (get-runner)))) "Trashed Fan Site")))
 
 (deftest the-foundry-refining-the-process
   ;; The Foundry
@@ -3076,7 +3165,7 @@
       (play-from-hand state :corp "Accelerated Beta Test" "New remote")
       (score-agenda state :corp (get-content state :remote1 0))
       (click-prompt state :corp "Yes")
-      (click-card state :corp (find-card "Eli 1.0" (:play-area (get-corp))))
+      (click-prompt state :corp "Eli 1.0")
       (click-prompt state :corp "Archives")
       (click-prompt state :corp "Yes")
       (is (empty? (:play-area (get-corp))) "Play area shuffled into R&D")

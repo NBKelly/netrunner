@@ -1,7 +1,11 @@
 (ns game.utils
   (:require [clojure.string :refer [split-lines split join]]
             [clojure.stacktrace :refer [print-stack-trace]]
-            [jinteki.cards :refer [all-cards]]))
+            [jinteki.cards :refer [all-cards]]
+            [clj-uuid :as uuid]))
+
+(defn make-cid []
+  (uuid/to-string (uuid/v4)))
 
 (defn server-card
   [title]
@@ -55,13 +59,6 @@
 
       :else
       (= value cv))))
-
-(defn zone
-  "Associate the specified zone to each item in the collection.
-  Zone can be a singleton or a sequential collection"
-  [zone coll]
-  (let [dest (if (sequential? zone) (vec zone) [zone])]
-    (map #(assoc % :zone dest) coll)))
 
 (defn to-keyword [string]
   (cond
