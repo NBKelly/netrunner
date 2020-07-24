@@ -56,6 +56,7 @@
 (defn handle-post [event url s]
   (.preventDefault event)
   (swap! s assoc :flash-message "Updating profile...")
+  (swap! app-state assoc-in [:options :pronouns] (:pronouns @s))
   (swap! app-state assoc-in [:options :sounds] (:sounds @s))
   (swap! app-state assoc-in [:options :lobby-sounds] (:lobby-sounds @s))
   (swap! app-state assoc-in [:options :sounds-volume] (:volume @s))
@@ -197,6 +198,7 @@
 (defn account-view [user]
   (let [s (r/atom {:flash-message ""
                    :background (get-in @app-state [:options :background])
+                   :pronouns (get-in @app-state [:options :pronouns])
                    :sounds (get-in @app-state [:options :sounds])
                    :lobby-sounds (get-in @app-state [:options :lobby-sounds])
                    :volume (get-in @app-state [:options :sounds-volume])
@@ -235,7 +237,18 @@
          [:section
           [:h3 "Avatar"]
           [avatar @user {:opts {:size 38}}]
-          [:a {:href "http://gravatar.com" :target "_blank"} "Change on gravatar.com"]]
+          [:a {:href "http://gravatar.com" :target "_blank"} "Change on gravatar.com"]
+          [:h3 "Pronouns"]
+          [:select {:value (:pronouns @s "none")
+                    :default-value "Unspecified"
+                    :on-change #(swap! s assoc :pronouns (.. % -target -value))}
+           (doall
+             (for [option [{:name "Unspecified" :ref "none"}
+                           {:name "They/them" :ref "they"}
+                           {:name "She/her" :ref "she"}
+                           {:name "He/him" :ref "he"}
+                           {:name "Any" :ref "any"}]]
+               [:option {:value (:ref option)} (:name option)]))]]
          [:section
           [:h3 "Sounds"]
           [:div

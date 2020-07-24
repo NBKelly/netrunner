@@ -63,7 +63,8 @@
                                         (get-in @state [:runner :register :must-trash-with-credits]))
           ; Access abilities
           access-ab-cards (when-not must-trash-with-credits?
-                            (seq (filter #(can-trigger? state :runner eid (access-ab %) % [card])
+                            (seq (filter #(and (can-trigger? state :runner eid (access-ab %) % [card])
+                                               (can-pay? state :runner eid % nil (card-ability-cost state side (access-ab %) % [card])))
                                          (all-active state :runner))))
           ; Remove any non-trash abilities, as they can't be used if we're forced to trash
           trash-ab-cards (seq (filter #(:trash? (access-ab %) true) access-ab-cards))
@@ -182,7 +183,8 @@
         can-steal (can-steal? state side card)
         ; Access abilities are useless in the discard
         access-ab-cards (when-not (in-discard? card)
-                          (seq (filter #(can-trigger? state :runner eid (access-ab %) % [card])
+                          (seq (filter #(and (can-trigger? state :runner eid (access-ab %) % [card])
+                                             (can-pay? state :runner eid % nil (card-ability-cost state side (access-ab %) % [card])))
                                        (all-active state :runner))))
         ability-strs (mapv access-ab-label access-ab-cards)
         ;; strs
@@ -823,7 +825,7 @@
 (defn- access-inactive-archives-cards
   ([state side eid cards access-amount] (access-inactive-archives-cards state side eid cards access-amount '()))
   ([state side eid cards {:keys [base total] :as access-amount} accessed-cards]
-   (if (pos? (:total access-amount))
+   (if (and (seq cards) (pos? (:total access-amount)))
      (wait-for (access-card state side (first cards) nil {:no-msg true})
                (let [access-amount {:base (dec base)
                                     :total (dec total)}]
@@ -930,9 +932,9 @@
         (req (let [accessed (get-archives-inactive state)]
                (system-msg state side "accesses everything else in Archives")
                (wait-for (access-inactive-archives-cards state side accessed access-amount)
-                         (let [already-accessed (apply conj already-accessed (map :cid async-result))
-                               access-amount {:base (min 0 (- base (count async-result)))
-                                              :total (min 0 (- total (count async-result)))}]
+                         (let [already-accessed (apply conj already-accessed (keep :cid async-result))
+                               access-amount {:base (max 0 (- base (count async-result)))
+                                              :total (max 0 (- total (count async-result)))}]
                            (continue-ability
                              state side
                              (access-helper-archives state access-amount already-accessed args)

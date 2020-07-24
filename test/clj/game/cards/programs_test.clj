@@ -2278,7 +2278,17 @@
       (is (= 0 (get-counters (get-program state 1) :virus)))
       (run-empty-server state "HQ")
       (click-prompt state :runner "[Imp] Hosted virus counter: Trash card")
-      (is (= 1 (count (:discard (get-corp))))))))
+      (is (= 1 (count (:discard (get-corp)))))))
+  (testing "can't be used when empty #5190"
+    (do-game
+      (new-game {:corp {:hand ["Hostile Takeover"]}
+                 :runner {:hand ["Imp" "Cache"]}})
+      (take-credits state :corp)
+      (play-from-hand state :runner "Cache")
+      (play-from-hand state :runner "Imp")
+      (core/update! state :runner (assoc-in (get-program state 1) [:counter :virus] 0))
+      (run-empty-server state "HQ")
+      (is (= ["Steal"] (prompt-buttons :runner)) "Should only get the option to steal Hostile on access in Archives"))))
 
 (deftest incubator
   ;; Incubator - Gain 1 virus counter per turn; trash to move them to an installed virus program
@@ -2420,7 +2430,31 @@
         (run-continue state)
         (is (not (prompt-is-card? state :runner inv)) "Prompt shouldn't be Inversificator")
         (is (empty? (:prompt (get-corp))) "Corp shouldn't have a prompt")
-        (is (empty? (:prompt (get-runner))) "Runner shouldn't have a prompt")))))
+        (is (empty? (:prompt (get-runner))) "Runner shouldn't have a prompt"))))
+  (testing "shouldn't fire ice's on-pass ability #5143"
+    (do-game
+      (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                        :hand ["Kakugo" "Quandary"]
+                        :credits 20}
+                 :runner {:hand ["Sure Gamble" "Inversificator"]
+                          :credits 20}})
+      (play-from-hand state :corp "Quandary" "HQ")
+      (play-from-hand state :corp "Kakugo" "HQ")
+      (take-credits state :corp)
+      (play-from-hand state :runner "Inversificator")
+      (run-on state "HQ")
+      (core/rez state :corp (get-ice state :hq 1))
+      (core/update! state :corp (assoc (get-ice state :hq 1) :subtype "Code Gate"))
+      (run-continue state)
+      (let [inv (get-program state 0)]
+        (card-ability state :runner (refresh inv) 1)
+        (card-ability state :runner (refresh inv) 0)
+        (click-prompt state :runner "End the run")
+        (run-continue state)
+        (click-prompt state :runner "Yes")
+        (click-card state :runner (get-ice state :hq 1))
+        (click-card state :runner (get-ice state :hq 0))
+        (is (= 1 (count (:hand (get-runner)))))))))
 
 (deftest ixodidae
   ;; Ixodidae should not trigger on psi-games
