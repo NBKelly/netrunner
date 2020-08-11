@@ -1,7 +1,6 @@
 (ns game.cards.ice
   (:require [game.core :refer :all]
             [game.core.card :refer :all]
-            [game.core.card-defs :refer [define-card]]
             [game.core.eid :refer [make-eid effect-completed complete-with-result]]
             [game.core.card-defs :refer [card-def]]
             [game.core.prompts :refer [show-wait-prompt clear-wait-prompt]]
@@ -57,20 +56,6 @@
      (trigger-event state side :subroutines-changed (get-card state new-card)))))
 
 ;;; Runner abilites for breaking subs
-(defn runner-pay-or-break
-  "Ability to break a subroutine by spending a resource (Bioroids, Negotiator, etc)"
-  [cost qty label]
-  (let [cost-str (build-cost-string cost cost->label)
-        subs-str (quantify qty "subroutine")]
-    {:cost cost
-     :label (str label " " subs-str)
-     :effect (req (system-msg state :runner (str "spends " cost-str " to " label " " subs-str " on " (:title card))))}))
-
-(defn runner-pay
-  "Ability to pay to avoid a subroutine by spending a resource (Popup Window, Turing, etc)"
-  [cost qty]
-  (runner-pay-or-break cost qty "pay for"))
-
 (defn bioroid-break
   ([cost qty] (bioroid-break cost qty nil))
   ([cost qty args]
@@ -92,6 +77,18 @@
    :async true
    :effect (effect (end-run :corp eid card))})
 
+(defn runner-pays
+  "Ability to pay to avoid a subroutine by paying a resource"
+  [cost]
+  {:async true
+   :effect (req (wait-for (pay state :runner card cost)
+                          (when async-result
+                            (let [cost-str (str async-result
+                                                " due to " (:title card)
+                                                " subroutine")]
+                              (system-msg state :runner cost-str)))
+                          (effect-completed state side eid)))})
+
 (defn end-the-run-unless-runner-pays
   [amount]
   {:player :runner
@@ -104,13 +101,7 @@
                   (do (system-msg state :corp
                                   (str "uses " (:title card) " to end the run"))
                       (end-run state :corp eid card))
-                  (wait-for (pay-sync state :runner card [:credit amount])
-                            (when async-result
-                              (let [cost-str (str async-result
-                                                  " due to " (:title card)
-                                                  " subroutine")]
-                                (system-msg state :runner cost-str)))
-                            (effect-completed state side eid))))})
+                  (continue-ability state side (runner-pays [:credit amount]) card nil)))})
 
 (defn end-the-run-unless-corp-pays
   [amount]
@@ -121,7 +112,7 @@
              (str "Pay " amount " [Credits]")]
    :effect (req (if (= "End the run" target)
                   (end-run state :corp eid card)
-                  (pay-sync state :corp eid card [:credit amount])))})
+                  (pay state :corp eid card [:credit amount])))})
 
 (defn end-the-run-unless-runner
   [label prompt ability]
@@ -132,7 +123,9 @@
    :choices ["End the run"
              (capitalize prompt)]
    :effect (req (if (= "End the run" target)
-                  (end-run state :corp eid card)
+                  (do (system-msg state :corp
+                                  (str "uses " (:title card) " to end the run"))
+                      (end-run state :corp eid card))
                   (continue-ability state side ability card nil)))})
 
 (defn give-tags
@@ -628,7 +621,7 @@
      :choices {:card #(and (ice? %)
                            (in-hand? %))}
      :effect (req (corp-install state side eid
-                                target (zone->name (first (:server run)))
+                                target (zone->name (target-server run))
                                 {:ignore-all-cost true
                                  :index (max (dec run-position) 0)})
                   (swap! state update-in [:run :position] inc))}]})
@@ -705,7 +698,7 @@
 
 (define-card "Cell Portal"
   {:subroutines [{:msg "make the Runner approach the outermost ICE"
-                  :effect (req (let [server (central->name (first (:server run)))]
+                  :effect (req (let [server (central->name (target-server run))]
                                  (redirect-run state side server :approach-ice)
                                  (derez state side card)))}]})
 
@@ -972,7 +965,7 @@
                   :async true
                   :effect (req (if (= target "Pay 3 [Credits]")
                                  (do (system-msg state :runner "pays 3 [Credits]")
-                                     (pay-sync state :runner eid card :credit 3))
+                                     (pay state :runner eid card :credit 3))
                                  (do (system-msg state :runner "takes 1 tag on encountering Data Ward")
                                      (gain-tags state :runner eid 1))))}
    :subroutines [end-the-run-if-tagged
@@ -982,7 +975,8 @@
 
 (define-card "Datapike"
   {:subroutines [{:msg "force the Runner to pay 2 [Credits] if able"
-                  :effect (effect (pay :runner card :credit 2))}
+                  :async true
+                  :effect (effect (pay :runner eid card :credit 2))}
                  end-the-run]})
 
 (define-card "DNA Tracker"
@@ -1046,7 +1040,7 @@
               {:asycn true
                :effect
                (req (if (seq unbroken-subs)
-                      (wait-for (pay-sync state :runner (make-eid state {:source-type :subroutine}) card [:credit 1])
+                      (wait-for (pay state :runner (make-eid state {:source-type :subroutine}) card [:credit 1])
                                 (system-msg state :runner async-result)
                                 (continue-ability
                                   state side
@@ -1186,7 +1180,7 @@
              :async true
              :effect (req (if (= target "Pay 1 [Credits]")
                             (do (system-msg state side "pays 1 [Credits]")
-                                (pay-sync state side eid card :credit 1))
+                                (pay state side eid card :credit 1))
                             (continue-ability state :runner runner-trash-installed-sub card nil)))}]
     {:subroutines [sub
                    sub]
@@ -1201,7 +1195,7 @@
              :async true
              :effect (req (if (= target "Pay 2 [Credits]")
                             (do (system-msg state side "pays 2 [Credits]")
-                                (pay-sync state side eid card :credit 2))
+                                (pay state side eid card :credit 2))
                             (continue-ability state :runner runner-trash-installed-sub card nil)))}]
     {:subroutines [sub
                    sub
@@ -1217,7 +1211,7 @@
              :async true
              :effect (req (if (= target "Pay 3 [Credits]")
                             (do (system-msg state side "pays 3 [Credits]")
-                                (pay-sync state side eid card :credit 3))
+                                (pay state side eid card :credit 3))
                             (continue-ability state :runner runner-trash-installed-sub card nil)))}]
     {:subroutines [sub
                    sub
@@ -1285,7 +1279,7 @@
        :async true
        :effect (req (wait-for (rez state side card nil)
                               (move state side (get-card state card)
-                                    [:servers (first (:server run)) :ices]
+                                    [:servers (target-server run) :ices]
                                     {:front true})
                               (swap! state assoc-in [:run :position] 1)
                               (set-next-phase state :encounter-ice)
@@ -1465,14 +1459,15 @@
                   :choices (req (map str (range (inc (min 2 (:credit corp))))))
                   :effect (req (let [c (str->int target)]
                                  (if (can-pay? state side (assoc eid :source card :source-type :subroutine) card (:title card) :credit c)
-                                   (do (pay state :corp card :credit c)
-                                       (continue-ability
-                                         state side
-                                         {:msg (msg "pay " c "[Credits] and place " (quantify c " advancement token")
-                                                    " on " (card-str state target))
-                                          :choices {:card can-be-advanced?}
-                                          :effect (effect (add-prop target :advance-counter c {:placed true}))}
-                                         card nil))
+                                   (let [new-eid (make-eid state {:source card :source-type :subroutine})]
+                                     (wait-for (pay state :corp new-eid card :credit c)
+                                               (continue-ability
+                                                 state side
+                                                 {:msg (msg "pay " c "[Credits] and place " (quantify c " advancement token")
+                                                            " on " (card-str state target))
+                                                  :choices {:card can-be-advanced?}
+                                                  :effect (effect (add-prop target :advance-counter c {:placed true}))}
+                                                 card nil)))
                                    (effect-completed state side eid))))}]
    :access {:async true
             :req (req (not (in-discard? card)))
@@ -2132,7 +2127,7 @@
                   :choices {:card #(and (ice? %)
                                         (in-hand? %))}
                   :prompt "Choose an ICE to install from HQ"
-                  :effect (effect (corp-install eid target (zone->name (first (:server run))) {:ignore-all-cost true}))}]})
+                  :effect (effect (corp-install eid target (zone->name (target-server run)) {:ignore-all-cost true}))}]})
 
 (define-card "Mirāju"
   {:events [{:event :encounter-ice-ends
@@ -2420,7 +2415,7 @@
                                     :effect (req (clear-wait-prompt state :corp)
                                                  (if (= target "Access card")
                                                    (access-card state :runner eid c)
-                                                   (pay-sync state :runner eid card :credit 3)))}
+                                                   (pay state :runner eid card :credit 3)))}
                                    card nil)))}]})
 
 (define-card "Owl"
@@ -2473,7 +2468,7 @@
                        "Pay 1 [Credits]"]
              :effect (req (if (= "Suffer 1 net damage" target)
                             (continue-ability state :corp (do-net-damage 1) card nil)
-                            (pay-sync state :runner eid card [:credit 1])))}]
+                            (pay state :runner eid card [:credit 1])))}]
     {:subroutines [sub
                    sub]}))
 
@@ -2895,7 +2890,7 @@
                        "Pay 3 [Credits]"]
              :effect (req (if (= "Corp trash" target)
                             (continue-ability state :corp trash-program card nil)
-                            (pay-sync state :runner eid card [:credit 3])))}
+                            (pay state :runner eid card [:credit 3])))}
         ability {:req (req (same-card? card target))
                  :effect (effect (reset-variable-subs card (get-counters card :advancement) sub))}]
     {:advanceable :always
@@ -3029,7 +3024,7 @@
 
 (define-card "Tollbooth"
   {:on-encounter {:async true
-                  :effect (req (wait-for (pay-sync state :runner card [:credit 3])
+                  :effect (req (wait-for (pay state :runner card [:credit 3])
                                          (if-let [cost-str async-result]
                                            (do (system-msg state :corp "uses Tollbooth to force the Runner to pay 3 [Credits]")
                                                (effect-completed state side eid))
@@ -3040,6 +3035,7 @@
 (define-card "Tour Guide"
   (let [ef (effect (reset-variable-subs card (count (filter asset? (all-active-installed state :corp))) end-the-run))
         ability {:label "Reset number of subs"
+                 :silent (req true)
                  :req (req (asset? target))
                  :effect ef}
         trash-req (req (some #(and (asset? %)
@@ -3104,7 +3100,7 @@
    :subroutines [(end-the-run-unless-runner
                    "spends [Click][Click][Click]"
                    "spend [Click][Click][Click]"
-                   (runner-pay [:click 3] 1))]
+                   (runner-pays [:click 3]))]
    :strength-bonus (req (if (is-remote? (second (get-zone card))) 3 0))})
 
 (define-card "Turnpike"
@@ -3265,7 +3261,7 @@
   {:subroutines [(end-the-run-unless-runner
                    "spends [Click][Click]"
                    "spend [Click][Click]"
-                   (runner-pay [:click 2] 1))
+                   (runner-pays [:click 2]))
                  (end-the-run-unless-runner-pays 3)
                  (end-the-run-unless-runner
                    "trashes an installed program"

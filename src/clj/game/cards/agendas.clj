@@ -1,7 +1,6 @@
 (ns game.cards.agendas
   (:require [game.core :refer :all]
             [game.core.card :refer :all]
-            [game.core.card-defs :refer [define-card]]
             [game.core.effects :refer [register-floating-effect]]
             [game.core.eid :refer [effect-completed]]
             [game.core.card-defs :refer [card-def]]
@@ -320,19 +319,22 @@
                                      :choices {:number (req (min (:credit corp)
                                                                  (count (:hand runner))))}
                                      :async true
-                                     :effect (req (when (pos? target)
-                                                    (pay state :corp card :credit target)
-                                                    (let [from (take target (shuffle (:hand runner)))]
-                                                      (doseq [c from]
-                                                        (move state :runner c :deck))
-                                                      (system-msg state side (str "uses Brain Rewiring to pay " target
-                                                                                  " [Credits] and add " target
-                                                                                  " cards from the Runner's Grip"
-                                                                                  " to the bottom of their Stack."
-                                                                                  " The Runner draws 1 card"))
-                                                      (wait-for (draw state :runner 1 nil)
-                                                                (clear-wait-prompt state :runner)
-                                                                (effect-completed state side eid)))))}
+                                     :effect (req (if (pos? target)
+                                                    (wait-for
+                                                      (pay state :corp card :credit target)
+                                                      (let [from (take target (shuffle (:hand runner)))]
+                                                        (doseq [c from]
+                                                          (move state :runner c :deck))
+                                                        (system-msg state side (str "uses Brain Rewiring to pay " target
+                                                                                    " [Credits] and add " target
+                                                                                    " cards from the Runner's Grip"
+                                                                                    " to the bottom of their Stack."
+                                                                                    " The Runner draws 1 card"))
+                                                        (wait-for (draw state :runner 1 nil)
+                                                                  (clear-wait-prompt state :runner)
+                                                                  (effect-completed state side eid))))
+                                                    (do (clear-wait-prompt state :runner)
+                                                        (effect-completed state side eid))))}
                        :no-ability {:effect (effect (clear-wait-prompt :runner))}}}
                      card nil))})
 
@@ -451,7 +453,7 @@
 (define-card "Dedicated Neural Net"
   {:events [{:event :successful-run
              :interactive (req true)
-             :psi {:req (req (= target :hq))
+             :psi {:req (req (= (target-server target) :hq))
                    :once :per-turn
                    :not-equal {:effect (effect (register-floating-effect
                                                  card
@@ -1602,25 +1604,16 @@
                             card nil))}]})
 
 (define-card "Transport Monopoly"
-  (let [suppress-event {:req (req (and (get-in (get-card state card) [:special :transport-monopoly])
-                                       (not (same-card? target card))))}]
-    {:silent (req true)
-     :effect (effect (add-counter card :agenda 2))
-     :abilities [{:cost [:agenda 1]
-                  :req (req run)
-                  :msg "prevent this run from becoming successful"
-                  :effect (effect (update! (assoc-in (get-card state card) [:special :transport-monopoly] true)))}]
-     :suppress [(assoc suppress-event :event :pre-successful-run)
-                (assoc suppress-event :event :successful-run)]
-     :events [{:event :pre-successful-run
-               :silent (req true)
-               :req (req (get-in (get-card state card) [:special :transport-monopoly]))
-               :effect (req (swap! state update-in [:run :run-effects] #(mapv (fn [x] (dissoc x :replace-access)) %))
-                            (swap! state update-in [:run] dissoc :successful)
-                            (swap! state update-in [:runner :register :successful-run] #(seq (rest %))))}
-              {:event :run-ends
-               :silent (req true)
-               :effect (req (update! state side (dissoc-in (get-card state card) [:special :transport-monopoly])))}]}))
+  {:silent (req true)
+   :effect (effect (add-counter card :agenda 2))
+   :abilities [{:cost [:agenda 1]
+                :req (req run)
+                :msg "prevent this run from becoming successful"
+                :effect (effect (register-floating-effect
+                                  card
+                                  {:type :block-successful-run
+                                   :duration :end-of-run
+                                   :value true}))}]})
 
 (define-card "Underway Renovation"
   (letfn [(adv4? [s c] (if (>= (get-counters (get-card s c) :advancement) 4) 2 1))]

@@ -795,7 +795,7 @@
   ;; Capstone
   (do-game
     (new-game {:runner {:deck [(qty "Sure Gamble" 10)]
-                        :hand ["Capstone" (qty "Corroder" 2) (qty "Cache" 2) "Patchwork"]
+                        :hand ["Capstone" (qty "Corroder" 3) (qty "Cache" 2) "Patchwork"]
                         :credits 100}})
     (take-credits state :corp)
     (core/gain state :runner :click 10)
@@ -804,12 +804,13 @@
     (play-from-hand state :runner "Cache")
     (let [capstone (get-hardware state 0)]
       (card-ability state :runner capstone 0)
-      (click-card state :runner (find-card "Corroder" (:hand (get-runner))))
-      (click-card state :runner (find-card "Cache" (:hand (get-runner))))
-      (click-card state :runner (find-card "Patchwork" (:hand (get-runner)))))))
+      (is (= 4 (count (:hand (get-runner)))) "4 cards in hand before using Capstone")
+      (dotimes [n 4]
+        (click-card state :runner (nth (:hand (get-runner)) n))))
+    (is (= 3 (count (:hand (get-runner)))) "3 cards in hand after using Capstone")))
 
 (deftest chop-bot-3000
-  ;; Chop Bot 3000 - when your turn beings trash 1 card, then draw or remove tag
+  ;; Chop Bot 3000 - when your turn begins trash 1 card, then draw or remove tag
   (do-game
     (new-game {:runner {:deck ["Chop Bot 3000" "Spy Camera"]}})
     (take-credits state :corp)
@@ -1753,7 +1754,34 @@
       (click-prompt state :runner "End the run")
       (click-prompt state :runner "Yes")
       (run-continue state)
-      (is (= 1 (get-counters (get-program state 0) :power)) "Nfr gains 1 counter"))))
+      (is (= 1 (get-counters (get-program state 0) :power)) "Nfr gains 1 counter")))
+  (testing "Can't be used after first ice on another server. Issue #4970"
+    (do-game
+      (new-game {:corp {:hand ["Ice Wall" "Vanilla"]}
+                 :runner {:hand ["Corroder" "Hippo"]
+                          :credits 20}})
+      (play-from-hand state :corp "Ice Wall" "HQ")
+      (play-from-hand state :corp "Vanilla" "R&D")
+      (take-credits state :corp)
+      (play-from-hand state :runner "Hippo")
+      (play-from-hand state :runner "Corroder")
+      (run-on state "HQ")
+      (core/rez state :corp (get-ice state :hq 0))
+      (run-continue state)
+      (is (not-empty (get-hardware state)) "Hippo installed")
+      (is (get-ice state :hq 0) "Ice Wall installed")
+      (card-ability state :runner (get-program state 0) 0)
+      (click-prompt state :runner "End the run")
+      (click-prompt state :runner "No")
+      (is (get-ice state :hq 0) "Ice Wall is not removed")
+      (run-continue state)
+      (run-continue state)
+      (run-on state "R&D")
+      (core/rez state :corp (get-ice state :rd 0))
+      (run-continue state)
+      (card-ability state :runner (get-program state 0) 0)
+      (click-prompt state :runner "End the run")
+      (is (empty? (:prompt (get-runner))) "No Hippo prompt on later ice"))))
 
 (deftest keiko
   ;; Keiko
@@ -3274,7 +3302,7 @@
           "Corroder is installed for free"
           (card-ability state :runner (get-hardware state 0) 0)
           ;; Issue #4889
-          (is (= "Choose 1 program to trash" (:msg (prompt-map :runner)))
+          (is (= "Choose 1 installed program to trash" (:msg (prompt-map :runner)))
               "Runner chooses program to trash as a cost")
           (click-card state :runner "Corroder"))
         (is (= "Select a target for Simulchip" (:msg (prompt-map :runner)))

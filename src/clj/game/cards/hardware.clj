@@ -1,7 +1,6 @@
 (ns game.cards.hardware
   (:require [game.core :refer :all]
             [game.core.card :refer :all]
-            [game.core.card-defs :refer [define-card]]
             [game.core.effects :refer [register-floating-effect unregister-floating-effects]]
             [game.core.eid :refer [make-eid make-result effect-completed]]
             [game.core.card-defs :refer [card-def]]
@@ -278,7 +277,7 @@
                                                                  (set installed-card-names))]
                                (wait-for (trash-cards state side targets {:unpreventable true})
                                          (let [trashed-cards async-result]
-                                           (wait-for (draw state side (count overlap) nil)
+                                           (wait-for (draw state side (count (filter overlap trashed-card-names)) nil)
                                                      (system-msg state side
                                                                  (str "spends [Click] to use Capstone to trash "
                                                                       (join ", " (map :title trashed-cards))
@@ -894,7 +893,7 @@
              :msg "force the Corp to lose 1 [Credits]"
              :effect (effect (lose-credits :corp 1))}
             {:event :successful-run
-             :req (req (= target :archives))
+             :req (req (= (target-server target) :archives))
              :optional
              {:prompt "Trash Hijacked Router to force the Corp to lose 3 [Credits]?"
               :yes-ability
@@ -905,19 +904,24 @@
                                       (effect-completed state side eid)))}}}]})
 
 (define-card "Hippo"
-  {:events [{:event :subroutines-broken
-             :optional
-             {:req (req (let [pred #(and (same-card? (last run-ices) (first %))
-                                         (every? :broken (:subroutines (first %))))]
-                          (and (same-card? (last run-ices) target)
-                               (every? :broken (:subroutines target))
-                               (first-event? state side :subroutines-broken pred))))
-              :prompt (msg "Remove Hippo from the game to trash " (:title target) "?")
-              :yes-ability
-              {:async true
-               :effect (effect (system-msg (str "removes Hippo from the game to trash " (card-str state target)))
-                               (move card :rfg)
-                               (trash eid target nil))}}}]})
+  (letfn [(build-hippo-pred [outermost-ices]
+            (fn [events]
+              (not (empty? (filter #(true? %) (map #(and (same-card? % (first events))
+                                                         (every? :broken (:subroutines (first events)))) outermost-ices))))))]
+    {:events [{:event :subroutines-broken
+               :optional
+               {:req (req (let [servers (->> (:corp @state) :servers seq flatten)
+                                outermost-ices (filter #(some? %) (map #(last (:ices %)) servers))
+                                pred (build-hippo-pred outermost-ices)]
+                            (and (same-card? (last run-ices) target)
+                                 (every? :broken (:subroutines target))
+                                 (first-event? state side :subroutines-broken pred))))
+                :prompt (msg "Remove Hippo from the game to trash " (:title target) "?")
+                :yes-ability
+                {:async true
+                 :effect (effect (system-msg (str "removes Hippo from the game to trash " (card-str state target)))
+                                 (move card :rfg)
+                                 (trash eid target nil))}}}]}))
 
 (define-card "HQ Interface"
   {:in-play [:hq-access 1]})
@@ -1089,7 +1093,7 @@
    :implementation "Power counters added automatically"
    :events [{:event :successful-run
              :silent (req true)
-             :req (req (= target :rd))
+             :req (req (= (target-server target) :rd))
              :effect (effect (add-counter card :power 1))}]
    :abilities [{:async true
                 :cost [:click 1 :power 3]
@@ -1100,7 +1104,7 @@
   {:in-play [:memory 2]
    :events [{:event :successful-run
              :async true
-             :req (req (= target :rd))
+             :req (req (= (target-server target) :rd))
              :effect (effect (continue-ability
                                {:prompt "Select a card and replace 1 spent [Recurring Credits] on it"
                                 :choices {:card #(< (get-counters % :recurring) (:recurring (card-def %) 0))}
@@ -1125,7 +1129,7 @@
      :async true
      :effect (effect (continue-ability (mhelper 1) card nil))
      :abilities [{:msg "prevent 1 brain or net damage"
-                  :cost [:trash-program-from-grip 1]
+                  :cost [:trash-program-from-hand 1]
                   :effect (effect (damage-prevent :brain 1)
                                   (damage-prevent :net 1))}]}))
 
@@ -1133,7 +1137,7 @@
   {:implementation "Stealth credit restriction not enforced"
    :events [{:event :successful-run
              :optional
-             {:req (req (and (= target :hq)
+             {:req (req (and (= (target-server target) :hq)
                              (some #(has-subtype? % "Stealth")
                                    (all-active state :runner))))
               :prompt "Pay 1 [Credits] to access 1 additional card?"
@@ -1151,7 +1155,7 @@
                    card nil))}}}
             {:event :successful-run
              :optional
-             {:req (req (and (= target :rd)
+             {:req (req (and (= (target-server target) :rd)
                              (some #(has-subtype? % "Stealth")
                                    (all-active state :runner))))
               :prompt "Pay 2 [Credits] to access 1 additional card?"
@@ -1238,10 +1242,10 @@
    :events [{:event :run-ends
              :once :per-turn
              :req (req (and (:successful target)
-                            (#{:rd :hq} (first (:server target)))
+                            (#{:rd :hq} (target-server target))
                             (first-event? state side :run-ends
                                           #(and (:successful (first %))
-                                                (#{:rd :hq} (first (:server (first %))))))))
+                                                (#{:rd :hq} (target-server (first %)))))))
              :msg (msg "draw " (total-cards-accessed target) " cards")
              :async true
              :effect (effect (draw eid (total-cards-accessed target) nil))}
@@ -1527,7 +1531,7 @@
 (define-card "Record Reconstructor"
   {:events
    [{:event :successful-run
-     :req (req (= target :archives))
+     :req (req (= (target-server target) :archives))
      :effect (effect (add-run-effect
                        {:card card
                         :replace-access
@@ -1912,7 +1916,7 @@
 (define-card "Top Hat"
   {:events [{:event :successful-run
              :interactive (req true)
-             :req (req (and (= target :rd)
+             :req (req (and (= (target-server target) :rd)
                             (not= (:max-access run) 0)))
              :async true
              :effect

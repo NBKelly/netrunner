@@ -1,7 +1,6 @@
 (ns game.cards.upgrades
   (:require [game.core :refer :all]
             [game.core.card :refer :all]
-            [game.core.card-defs :refer [define-card]]
             [game.core.effects :refer [register-floating-effect]]
             [game.core.eid :refer [make-eid effect-completed]]
             [game.core.card-defs :refer [card-def]]
@@ -275,7 +274,7 @@
                       :effect (req (clear-wait-prompt state :corp)
                                    (if (= target "End the run")
                                      (end-run state side eid card)
-                                     (pay-sync state :runner eid card :credit cost)))})
+                                     (pay state :runner eid card :credit cost)))})
                    card nil))}]
      :abilities [ability]}))
 
@@ -335,15 +334,9 @@
                             card nil))}]})
 
 (define-card "Crisium Grid"
-  (let [suppress-event {:req (req (and this-server (not (same-card? target card))))}]
-    {:suppress [(assoc suppress-event :event :pre-successful-run)
-                (assoc suppress-event :event :successful-run)]
-     :events [{:event :pre-successful-run
-               :silent (req true)
-               :req (req this-server)
-               :effect (req (swap! state update-in [:run :run-effects] #(mapv (fn [x] (dissoc x :replace-access)) %))
-                            (swap! state update-in [:run] dissoc :successful)
-                            (swap! state update-in [:runner :register :successful-run] #(seq (rest %))))}]}))
+  {:constant-effects [{:type :block-successful-run
+                       :req (req this-server)
+                       :value true}]})
 
 (define-card "Cyberdex Virus Suite"
   {:flags {:rd-reveal (req true)}
@@ -460,6 +453,7 @@
 
 (define-card "Embolus"
   (let [maybe-gain-counter {:once :per-turn
+                            :async true
                             :label "Place a power counter on Embolus"
                             :effect (effect
                                       (continue-ability
@@ -523,7 +517,7 @@
 
 (define-card "Georgia Emelyov"
   {:events [{:event :unsuccessful-run
-             :req (req (= (first (:server target))
+             :req (req (= (target-server target)
                           (second (get-zone card))))
              :async true
              :msg "do 1 net damage"
@@ -562,11 +556,10 @@
                                                 ["End the run"])
                                :effect (req (clear-wait-prompt state :corp)
                                             (if (= c-pay-str target)
-                                              (do (pay state :runner card :credit cost)
-                                                  (system-msg state :runner (str "pays " cost " [Credits]")))
-                                              (do (end-run state side eid card)
-                                                  (system-msg state :corp "ends the run")))
-                                            (effect-completed state side eid))}
+                                              (do (system-msg state :runner (str "pays " cost " [Credits]"))
+                                                  (pay state :runner eid card :credit cost))
+                                              (do (system-msg state :corp "ends the run")
+                                                  (end-run state :corp eid card))))}
                               card nil)))}]})
 
 (define-card "Heinlein Grid"
@@ -763,6 +756,7 @@
                                           (in-same-server? card target)))}
                  :effect (effect (add-prop target :advance-counter 1 {:placed true}))}]
     {:install-req (req (remove #{"HQ" "R&D" "Archives"} targets))
+     :derezzed-events [corp-rez-toast]
      :events [(assoc ability :event :corp-turn-begins)]
      :abilities [ability]}))
 
@@ -815,7 +809,7 @@
   {:events [{:event :run-ends
              :msg "gain a [Click] next turn"
              :req (req (and (:successful target)
-                            (= (first (:server target)) (second (get-zone card)))
+                            (= (target-server target) (second (get-zone card)))
                             (or (< (:credit runner) 6) (zero? (:click runner)))))
              :effect (req (swap! state update-in [:corp :extra-click-temp] (fnil inc 0)))}]})
 
@@ -953,7 +947,7 @@
                        :req (req (let [target-card (first targets)]
                                    (and run
                                         (= (:side target-card) "Runner")
-                                        (= (first (:server run)) (second (get-zone card)))
+                                        (= (target-server run) (second (get-zone card)))
                                         (not (has-subtype? target-card "Icebreaker")))))
                        :value true}]})
 
@@ -1018,7 +1012,7 @@
    :events [{:event :runner-turn-begins
              :effect (req (prevent-run-on-server state card (second (get-zone card))))}
             {:event :successful-run
-             :req (req (= target :hq))
+             :req (req (= (target-server target) :hq))
              :async true
              :effect (req (enable-run-on-server state card (second (get-zone card)))
                           (system-msg state :corp (str "trashes Off the Grid"))
@@ -1104,7 +1098,7 @@
   {:install-req (req (filter #{"HQ"} targets))
    :abilities [{:cost [:credit 1]
                 :msg "draw 1 card"
-                :req (req (and run (= (first (:server run)) :hq)))
+                :req (req (and run (= (target-server run) :hq)))
                 :effect (effect (draw))}]})
 
 (define-card "Port Anson Grid"
@@ -1387,15 +1381,13 @@
                                :msg "do 1 brain damage instead of net damage"
                                :effect (req (swap! state update-in [:damage] dissoc :damage-replace :defer-damage)
                                             (clear-wait-prompt state :runner)
-                                            (pay state :corp card :credit 2)
-                                            (wait-for (damage state side :brain 1 {:card card})
-                                                      (do (swap! state assoc-in [:damage :damage-replace] true)
-                                                          (effect-completed state side eid))))}
+                                            (wait-for (pay state :corp card :credit 2)
+                                                      (wait-for (damage state side :brain 1 {:card card})
+                                                                (swap! state assoc-in [:damage :damage-replace] true)
+                                                                (effect-completed state side eid))))}
                               :no-ability
-                              {:async true
-                               :effect (req (swap! state update-in [:damage] dissoc :damage-replace)
-                                            (clear-wait-prompt state :runner)
-                                            (effect-completed state side eid))}}}
+                              {:effect (req (swap! state update-in [:damage] dissoc :damage-replace)
+                                            (clear-wait-prompt state :runner))}}}
                             card nil))}
             {:event :prevented-damage
              :req (req (and this-server

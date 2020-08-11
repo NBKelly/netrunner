@@ -1,6 +1,5 @@
 (ns game.cards.programs
   (:require [game.core :refer :all]
-            [game.core.card-defs :refer [define-card]]
             [game.core.eid :refer :all]
             [game.core.card-defs :refer [card-def]]
             [game.core.prompts :refer [show-wait-prompt clear-wait-prompt]]
@@ -142,25 +141,24 @@
                                          (if (pos? pumps-needed) -1 0)))) ;already broken once with last pump
               total-cost (when (and breaker-ability
                                     ability-uses-needed)
-                                 (if x-breaker
-                                   [:credit x-number]
-                                   (repeat ability-uses-needed (:cost breaker-ability))))]
+                           (if x-breaker
+                             [:credit x-number]
+                             (repeat ability-uses-needed (:cost breaker-ability))))]
           (update! state side
                    (assoc card :abilities
                           (if (and (seq total-cost)
                                    (rezzed? current-ice)
                                    (= :encounter-ice (:phase run))
                                    breaker-ability)
-                            (vec (concat (when (and breaker-ability
+                            (vec (concat abs
+                                         (when (and breaker-ability
                                                     no-unbreakable-subs
                                                     (pos? unbroken-subs)
                                                     (can-pay? state side eid card total-cost))
                                            [{:dynamic :auto-pump-and-break
-                                             :label (str (when (seq total-cost)
-                                                           (str (build-cost-label total-cost) ": "))
-                                                         "Match strength and fully break "
-                                                         (:title current-ice))}])
-                                         abs))
+                                             :cost total-cost
+                                             :label (str "Match strength and fully break "
+                                                         (:title current-ice))}])))
                             abs)))))})
 
 (defn- mu-based-strength
@@ -257,7 +255,7 @@
   [break pump]
   (auto-icebreaker
     {:abilities [(break-sub (:break-cost break) (:break break) (:breaks break)
-                            {:req (req (and (#{:hq :rd :archives} (first (:server run)))
+                            {:req (req (and (#{:hq :rd :archives} (target-server run))
                                             (<= (get-strength current-ice) (get-strength card))
                                             (has-subtype? current-ice (:breaks break))))})
                  pump]}))
@@ -507,14 +505,8 @@
                                          (installed? %))}
                    :effect (req (when (host state side card target)
                                   (gain :memory (:memoryunits target))))}
-        gain-abis (req (let [new-abis (mapcat (fn [c] (map-indexed #(assoc %2
-                                                                           :dynamic :copy
-                                                                           :source (:title c)
-                                                                           :index %1
-                                                                           :label (make-label %2))
-                                                                   (:abilities (card-def c))))
-                                              (:hosted card))]
-                         (update! state :runner (assoc card :abilities (concat new-abis [host-click host-free])))))]
+        gain-abis (req (let [new-abis (mapcat (comp ability-init card-def) (:hosted card))]
+                         (update! state :runner (assoc card :abilities (concat [host-click host-free] new-abis)))))]
     {:abilities [host-click host-free]
      :hosted-gained gain-abis
      :hosted-lost gain-abis}))
@@ -654,7 +646,7 @@
   {:leave-play (effect (update-all-advancement-costs))
    :events [{:event :successful-run
              :silent (req true)
-             :req (req (= target :rd))
+             :req (req (= (target-server target) :rd))
              :effect (effect (add-counter card :virus 1))}
             {:event :pre-advancement-cost
              :req (req (>= (get-virus-counters state card) 3))
@@ -777,9 +769,9 @@
    :events [{:event :successful-run
              :interactive (req true)
              :optional
-             {:req (req (and (is-central? target)
+             {:req (req (and (is-central? (target-server target))
                              (can-pay? state side eid card nil [:virus 1])
-                             (not-empty (get-in @state [:corp :servers target :ices]))
+                             (not-empty (get-in @state [:corp :servers (target-server target) :ices]))
                              (<= 2 (count (filter ice? (all-installed state :corp))))))
               :once :per-turn
               :prompt "Use Cordyceps to swap ice?"
@@ -787,7 +779,7 @@
               {:prompt "Select ice protecting this server"
                :choices {:req (req (and (installed? target)
                                         (ice? target)
-                                        (= (first (:server (:run @state))) (second (get-zone target)))))}
+                                        (= (target-server (:run @state)) (second (get-zone target)))))}
                :async true
                :effect (effect
                          (continue-ability
@@ -852,7 +844,7 @@
                                           "remove a virus token from Crypsis"
                                           "trash Crypsis"))
                               :async true
-                              :effect (req (wait-for (pay-sync state :runner card [:virus 1])
+                              :effect (req (wait-for (pay state :runner card [:virus 1])
                                                      (if async-result
                                                        (effect-completed state side eid)
                                                        (trash state side eid card nil))))}]}))
@@ -896,10 +888,10 @@
                     :effect (effect (update! (assoc card :server-target target)))
                     :leave-play (effect (update! (dissoc card :server-target)))
                     :abilities [(break-sub 1 1 "Code Gate" {:req (req (if (:server-target card)
-                                                                        (#{(last (server->zone state (:server-target card)))} (first (:server run)))
+                                                                        (#{(last (server->zone state (:server-target card)))} (target-server run))
                                                                         true))})
                                 (strength-pump 1 1 :end-of-encounter {:req (req (if (:server-target card)
-                                                                                  (#{(last (server->zone state (:server-target card)))} (first (:server run)))
+                                                                                  (#{(last (server->zone state (:server-target card)))} (target-server run))
                                                                                   true))})]}))
 
 (define-card "D4v1d"
@@ -934,7 +926,7 @@
 (define-card "Datasucker"
   {:events [{:event :successful-run
              :silent (req true)
-             :req (req (#{:hq :rd :archives} target))
+             :req (req (is-central? (target-server target)))
              :effect (effect (add-counter card :virus 1))}]
    :abilities [{:cost [:virus 1]
                 :label "Give -1 strength to current ICE"
@@ -947,29 +939,36 @@
   {:events [{:event :successful-run
              :silent (req true)
              :effect (effect (add-counter card :power 1))}]
-   :abilities [{:prompt "Choose a card to install from your Grip"
-                :label "install a card from the grip"
-                :req (req (and (not (install-locked? state side))
+   :abilities [{:req (req (and (not (install-locked? state side))
                                (some #(and (or (hardware? %)
                                                (program? %)
                                                (resource? %))
                                            (<= (install-cost state side %) (get-counters card :power)))
                                      (:hand runner))))
-                :choices {:req (req (and (in-hand? target)
-                                         (or (hardware? target)
-                                             (program? target)
-                                             (resource? target))
-                                         (<= (install-cost state side target) (get-counters card :power))))}
-                :msg (msg "install " (:title target) " at no cost")
+                :label "install a card from the grip"
                 :cost [:trash]
                 :async true
-                :effect (effect (runner-install (assoc eid :source card :source-type :runner-install) target {:ignore-install-cost true}))}]})
+                :effect (req (let [counters (get-counters card :power)]
+                               (show-wait-prompt state :corp "Runner to use DaVinci")
+                               (continue-ability
+                                 state side
+                                 {:prompt "Choose a card to install from your Grip"
+                                  :msg (msg "install " (:title target) " at no cost")
+                                  :choices {:req  (req (and (in-hand? target)
+                                                            (or (hardware? target)
+                                                                (program? target)
+                                                                (resource? target))
+                                                            (<= (install-cost state side target) counters)))}
+                                  :async true
+                                  :effect (req (clear-wait-prompt state :corp)
+                                               (runner-install state side (assoc eid :source card :source-type :runner-install) target {:ignore-install-cost true}))}
+                                 card nil)))}]})
 
 (define-card "Deep Thought"
   {:events [{:event :successful-run
              :silent (req true)
              :effect (effect (add-counter card :virus 1))
-             :req (req (= target :rd))}
+             :req (req (= (target-server target) :rd))}
             {:event :runner-turn-begins
              :req (req (>= (get-virus-counters state card) 3)) :msg "look at the top card of R&D"
              :effect (effect (prompt! card (str "The top card of R&D is "
@@ -1167,7 +1166,7 @@
                                                                                        " from the top of R&D"))
                                                         (continue-ability state side (force-draw topcard) card nil)))}}}]
     {:events [{:event :successful-run
-               :req (req (= target :rd))
+               :req (req (= (target-server target) :rd))
                :async true
                :interactive (req true)
                :effect (effect (continue-ability reveal card nil))}]}))
@@ -1505,7 +1504,7 @@
                                     {:optional
                                      {:prompt (str "Swap " (:title ice) " with another ice?")
                                       :yes-ability
-                                      {:prompt "Select the Code Gate you just passed and another piece of ICE to swap positions"
+                                      {:prompt "Select another ice"
                                        :choices {:card #(and (installed? %)
                                                              (ice? %)
                                                              (not (same-card? % ice)))}
@@ -1581,7 +1580,7 @@
 
 (define-card "Lamprey"
   {:events [{:event :successful-run
-             :req (req (= target :hq))
+             :req (req (= (target-server target) :hq))
              :msg "force the Corp to lose 1 [Credits]"
              :effect (effect (lose-credits :corp 1))}
             {:event :purge
@@ -1713,7 +1712,7 @@
 
 (define-card "Medium"
   {:events [{:event :successful-run
-             :req (req (= target :rd))
+             :req (req (= (target-server target) :rd))
              :effect (effect (add-counter card :virus 1))}
             {:event :pre-access
              :async true
@@ -1739,7 +1738,7 @@
                 :async true
                 ;; TODO use :x-credits when it's built
                 :effect (req (let [new-eid (make-eid state (assoc eid :source card :source-type :ability))]
-                               (wait-for (pay-sync state :runner new-eid card [:credit target])
+                               (wait-for (pay state :runner new-eid card [:credit target])
                                          (if-let [cost-str async-result]
                                            (do (system-msg state :runner
                                                            (str (build-spend-msg cost-str "use")
@@ -1787,7 +1786,7 @@
 
 (define-card "Nerve Agent"
   {:events [{:event :successful-run
-             :req (req (= target :hq))
+             :req (req (= (target-server target) :hq))
              :effect (effect (add-counter card :virus 1))}
             {:event :pre-access
              :async true
@@ -2091,7 +2090,7 @@
                      (set-prop state side card :rec-counter (get-counters card :virus))))
    :events [{:event :successful-run
              :silent (req true)
-             :req (req (= target :hq))
+             :req (req (= (target-server target) :hq))
              :effect (effect (add-counter card :virus 1))}]
    :interactions {:pay-credits {:req (req (= :hq (get-in @state [:run :server 0])))
                                 :type :recurring}}})
@@ -2223,8 +2222,9 @@
                           (update! state :runner (assoc-in card [:special :rng-highest] cost))
                           cost)))]
               {:event :successful-run
-               :req (req (and (#{:hq :rd} target)
-                              (first-event? state :runner :successful-run #{[:hq] [:rd]})))
+               :req (req (and (#{:hq :rd} (target-server target))
+                              (first-event? state :runner :successful-run
+                                            (fn [targets] #{:hq :rd} (first (:server (first targets)))))))
                :optional
                {:prompt "Fire RNG Key?"
                 :autoresolve (get-autoresolve :auto-fire)
@@ -2598,7 +2598,7 @@
   {:implementation "Power counters added automatically"
    :events [{:event :successful-run
              :silent (req true)
-             :req (req (= target :rd))
+             :req (req (= (target-server target) :rd))
              :effect (effect (add-counter card :power 1))}]
    :abilities [{:cost [:click 1 :power 3]
                 :once :per-turn
@@ -2652,7 +2652,7 @@
     {:events [{:event :successful-run
                :interactive (req true)
                :async true
-               :req (req (and (= target :hq)
+               :req (req (and (= (target-server target) :hq)
                               (first-successful-run-on-server? state :hq)
                               (some #(and (ice? %) (not (rezzed? %)))
                                     (all-installed state :corp))))

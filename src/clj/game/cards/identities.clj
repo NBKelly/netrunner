@@ -1,6 +1,5 @@
 (ns game.cards.identities
   (:require [game.core :refer :all]
-            [game.core.card-defs :refer [define-card]]
             [game.core.effects :refer [register-floating-effect]]
             [game.core.eid :refer [effect-completed make-eid complete-with-result]]
             [game.core.card-defs :refer [card-def]]
@@ -73,13 +72,15 @@
                                               :player :corp
                                               :no-ability
                                               {:async true
-                                               :effect (req (expose state :runner eid itarget)
-                                                            (clear-wait-prompt state :runner))}
+                                               :effect (req (clear-wait-prompt state :runner)
+                                                            (expose state :runner eid itarget))}
                                               :yes-ability
-                                              {:effect (req (pay state :corp card [:credit 1])
-                                                            (system-msg state :corp (str "spends 1 [Credits] to prevent "
-                                                                                         " card from being exposed"))
-                                                            (clear-wait-prompt state :runner))}}}
+                                              {:async true
+                                               :effect (req (wait-for (pay state :corp card [:credit 1])
+                                                                      (system-msg state :corp (str "spends 1 [Credits] to prevent "
+                                                                                                   " card from being exposed"))
+                                                                      (clear-wait-prompt state :runner)
+                                                                      (effect-completed state side eid)))}}}
                                             card nil))))}}}
                       card nil)))}]
    :abilities [(set-autoresolve :auto-419 "419")]})
@@ -174,7 +175,7 @@
   {:events [{:event :successful-run
              :async true
              :interactive (req true)
-             :req (req (and (= target :archives)
+             :req (req (and (= (target-server target) :archives)
                             (first-successful-run-on-server? state :archives)
                             (not-empty (:hand corp))))
              :effect (effect (show-wait-prompt :runner "Corp to trash 1 card from HQ")
@@ -405,7 +406,7 @@
                :req (req (= side :corp))
                :effect (effect (update! (assoc card :flipped false)))}
               {:event :successful-run
-               :req (req (and (= target :hq)
+               :req (req (and (= (target-server target) :hq)
                               (:flipped card)))
                :effect flip-effect}]
      :constant-effects [{:type :run-additional-cost
@@ -520,7 +521,7 @@
 (define-card "Gabriel Santiago: Consummate Professional"
   {:events [{:event :successful-run
              :silent (req true)
-             :req (req (and (= target :hq)
+             :req (req (and (= (target-server target) :hq)
                             (first-successful-run-on-server? state :hq)))
              :msg "gain 2 [Credits]"
              :effect (effect (gain-credits 2))}]})
@@ -530,6 +531,11 @@
              :req (req (is-remote? (second (get-zone target))))
              :effect (effect (access-cost-bonus [:credit 1]))
              :msg "make the Runner spend 1 [Credits] to access"}]})
+
+(define-card "GameNET: Where Dreams are Real"
+  {:implementation "Credit gain not implemented. You can use shortcut ability."
+   :abilities [{:msg "gain 1 [Credits] (shortcut)"
+                :effect (req (gain-credits state :corp 1))}]})
 
 (define-card "GRNDL: Power Unleashed"
   {:events [{:event :pre-start-game
@@ -832,7 +838,7 @@
              :effect (req (apply enable-run-on-server
                                  state card (map first (get-remotes state))))}]
    :req (req (empty? (let [successes (turn-events state side :successful-run)]
-                       (filter #(is-central? %) successes))))
+                       (filter #(is-central? %) (:map :server successes)))))
    :effect (req (apply prevent-run-on-server state card (map first (get-remotes state))))
    :leave-play (req (apply enable-run-on-server state card (map first (get-remotes state))))})
 
@@ -1036,7 +1042,7 @@
                                      (in-hand? %))}
                :async true
                :msg "install ice at the innermost position of this server. Runner is now approaching that ice"
-               :effect (req (wait-for (corp-install state side target (zone->name (first (:server run)))
+               :effect (req (wait-for (corp-install state side target (zone->name (target-server run))
                                                     {:ignore-all-cost true
                                                      :front true})
                                       (swap! state assoc-in [:run :position] 1)
@@ -1318,7 +1324,7 @@
   {:events [{:event :successful-run
              :interactive (req (some #(not (rezzed? %)) (all-installed state :corp)))
              :async true
-             :req (req (and (= target :hq)
+             :req (req (and (= (target-server target) :hq)
                             (first-successful-run-on-server? state :hq)))
              :effect (effect (continue-ability {:choices {:card #(and (installed? %)
                                                                       (not (rezzed? %)))}
@@ -1415,7 +1421,7 @@
 
 (define-card "Steve Cambridge: Master Grifter"
   {:events [{:event :successful-run
-             :req (req (and (= target :hq)
+             :req (req (and (= (target-server target) :hq)
                             (first-successful-run-on-server? state :hq)
                             (<= 2 (count (:discard runner)))))
              :interactive (req true)

@@ -202,6 +202,12 @@
   (.println *err* (str "Prompt: " prompt))
   (.println *err* (str "Prompt args: " prompt-args)))
 
+(defn maybe-pay
+  [state side eid card choices choice]
+  (if (= choices :credit)
+    (pay state side eid card :credit (min choice (get-in @state [side :credit])))
+    (effect-completed state side eid)))
+
 (defn resolve-prompt
   "Resolves a prompt by invoking its effect function with the selected target of the prompt.
   Triggered by a selection of a prompt choice button in the UI."
@@ -218,15 +224,14 @@
           (:number choices))
       (if (number? choice)
         (do (swap! state update-in [side :prompt] (fn [pr] (filter #(not= % prompt) pr)))
-            (when (= choices :credit) ; :credit prompts require payment
-              (pay state side card :credit (min choice (get-in @state [side :credit]))))
-            (when (:counter choices)
-              ;; :Counter prompts deduct counters from the card
-              (add-counter state side card (:counter choices) (- choice)))
-            ;; trigger the prompt's effect function
-            (when effect
-              (effect (or choice card)))
-            (finish-prompt state side prompt card))
+            (wait-for (maybe-pay state side card choices choice)
+                      (when (:counter choices)
+                        ;; :Counter prompts deduct counters from the card
+                        (add-counter state side card (:counter choices) (- choice)))
+                      ;; trigger the prompt's effect function
+                      (when effect
+                        (effect (or choice card)))
+                      (finish-prompt state side prompt card)))
         (prompt-error "in an integer prompt" prompt args))
 
       ;; List of card titles for auto-completion
@@ -308,17 +313,8 @@
   "Triggers a card's ability using its zero-based index into the card's card-def :abilities vector."
   [state side {:keys [card ability targets] :as args}]
   (let [card (get-card state card)
-        cdef (card-def card)
-        abilities (:abilities cdef)
-        ab (if (= ability (count abilities))
-             ;; recurring credit abilities are not in the :abilities map and are implicit
-             {:msg "take 1 [Recurring Credits]"
-              :req (req (pos? (get-counters card :recurring)))
-              :async true
-              :effect (req (add-prop state side card :rec-counter -1)
-                           (gain state side :credit 1)
-                           (trigger-event-sync state side eid :spent-credits-from-card card))}
-             (get-in cdef [:abilities ability]))
+        abilities (:abilities card)
+        ab (nth abilities ability)
         cannot-play (or (:disabled card)
                         (any-effects state side :prevent-ability true? card [ab ability]))]
     (when-not cannot-play
@@ -347,7 +343,7 @@
                                    times-pump)
                           (repeat times-pump (:cost pump-ability)))]
     (when (can-pay? state side eid card total-pump-cost)
-      (wait-for (pay-sync state side (make-eid state eid) card total-pump-cost)
+      (wait-for (pay state side (make-eid state eid) card total-pump-cost)
                 (dotimes [n times-pump]
                   (resolve-ability state side (dissoc pump-ability :cost :msg) (get-card state card) nil))
                 (system-msg state side (str (build-spend-msg async-result "increase")
@@ -423,7 +419,7 @@
                              (repeat times-break (:break-cost break-ability)))
           total-cost (merge-costs (conj total-pump-cost total-break-cost))]
       (when (can-pay? state side eid card (:title card) total-cost)
-        (wait-for (pay-sync state side (make-eid state eid) card total-cost)
+        (wait-for (pay state side (make-eid state eid) card total-cost)
                   (dotimes [n times-pump]
                     (resolve-ability state side (dissoc pump-ability :cost :msg) (get-card state card) nil))
                   (let [cost-str async-result
@@ -522,7 +518,7 @@
                        [:credit x-number]
                        (repeat ability-uses-needed (:cost breaker-ability))))]
     (when (can-pay? state side eid card (:title card) total-cost)
-      (wait-for (pay-sync state side (make-eid state eid) card total-cost)
+      (wait-for (pay state side (make-eid state eid) card total-cost)
                 (if x-breaker
                   (pump state side (get-card state card) x-number)
                   (pump state side (get-card state card) (* pump-strength-at-once ability-uses-needed)))
@@ -538,20 +534,9 @@
                                              " and break all subroutines on " (:title current-ice)))
                             (continue state side nil)))))))
 
-(defn play-copy-ability
-  "Play an ability from another card's definition."
-  [state side {:keys [card source index] :as args}]
-  (let [card (get-card state card)
-        source-abis (:abilities (card-def source))
-        abi (when (< -1 index (count source-abis))
-              (nth source-abis index))]
-    (when abi
-      (do-play-ability state side card abi index nil))))
-
 (def dynamic-abilities
   {"auto-pump" play-auto-pump
-   "auto-pump-and-break" play-auto-pump-and-break
-   "copy" play-copy-ability})
+   "auto-pump-and-break" play-auto-pump-and-break})
 
 (defn play-dynamic-ability
   "Triggers an ability that was dynamically added to a card's data but is not necessarily present in its
@@ -659,7 +644,7 @@
            card nil)
          (let [cdef (card-def card)
                costs (get-rez-cost state side card args)]
-           (wait-for (pay-sync state side (make-eid state eid) card costs)
+           (wait-for (pay state side (make-eid state eid) card costs)
                      (if-let [cost-str (and (string? async-result) async-result)]
                        (do (when (:derezzed-events cdef)
                              (unregister-events state side card))
@@ -722,7 +707,7 @@
    (let [card (get-card state card)
          eid (eid-set-defaults eid :source nil :source-type :advance)]
      (when (can-advance? state side card)
-       (wait-for (pay-sync state side (make-eid state eid) card :click (if-not no-cost 1 0) :credit (if-not no-cost 1 0) {:action :corp-advance})
+       (wait-for (pay state side (make-eid state eid) card :click (if-not no-cost 1 0) :credit (if-not no-cost 1 0) {:action :corp-advance})
                  (when-let [cost-str async-result]
                    (let [spent   (build-spend-msg cost-str "advance")
                          card    (card-str state card)

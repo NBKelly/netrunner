@@ -72,12 +72,6 @@
     :else
     string))
 
-(defn capitalize [string]
-  (str (Character/toUpperCase (first string)) (subs string 1)))
-
-(defn decapitalize [string]
-  (str (Character/toLowerCase (first string)) (subs string 1)))
-
 (defn vdissoc [v n]
   (vec (concat (subvec v 0 n) (subvec v (inc n)))))
 
@@ -289,3 +283,8 @@
                   (when (pred x)
                     idx))
                 coll))
+
+(defn target-server
+  [run]
+  "Returns the server keyword corresponding to the target of a run."
+  (first (:server run)))

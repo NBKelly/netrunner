@@ -2174,26 +2174,49 @@
 
 (deftest jackson-howard
   ;; Jackson Howard - Draw 2 cards
-  (do-game
-    (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
-                      :hand ["Jackson Howard"]
-                      :discard ["Ice Wall" "Enigma" "Rototurret"]}})
-    (play-from-hand state :corp "Jackson Howard" "New remote")
-    (let [jhow (get-content state :remote1 0)]
-      (core/rez state :corp jhow)
-      (is (zero? (count (:hand (get-corp)))))
-      (is (= 2 (:click (get-corp))))
-      (card-ability state :corp jhow 0)
-      (is (= 2 (count (:hand (get-corp)))) "Drew 2 cards")
-      (is (= 1 (:click (get-corp))))
-      (card-ability state :corp jhow 1)
-      (click-card state :corp "Ice Wall")
-      (click-card state :corp "Enigma")
-      (click-card state :corp "Rototurret")
-      (is (find-card "Jackson Howard" (:rfg (get-corp))) "Jackson is rfg'd")
-      (is (find-card "Ice Wall" (:deck (get-corp))) "Ice Wall is shuffled back into the deck")
-      (is (find-card "Enigma" (:deck (get-corp))) "Enigma is shuffled back into the deck")
-      (is (find-card "Rototurret" (:deck (get-corp))) "Rototurret is shuffled back into the deck"))))
+  (testing "Basic test"
+    (do-game
+     (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                       :hand ["Jackson Howard"]
+                       :discard ["Ice Wall" "Enigma" "Rototurret"]}})
+     (play-from-hand state :corp "Jackson Howard" "New remote")
+     (let [jhow (get-content state :remote1 0)]
+       (core/rez state :corp jhow)
+       (is (zero? (count (:hand (get-corp)))))
+       (is (= 2 (:click (get-corp))))
+       (card-ability state :corp jhow 0)
+       (is (= 2 (count (:hand (get-corp)))) "Drew 2 cards")
+       (is (= 1 (:click (get-corp))))
+       (card-ability state :corp jhow 1)
+       (click-card state :corp "Ice Wall")
+       (click-card state :corp "Enigma")
+       (click-card state :corp "Rototurret")
+       (is (find-card "Jackson Howard" (:rfg (get-corp))) "Jackson is rfg'd")
+       (is (find-card "Ice Wall" (:deck (get-corp))) "Ice Wall is shuffled back into the deck")
+       (is (find-card "Enigma" (:deck (get-corp))) "Enigma is shuffled back into the deck")
+       (is (find-card "Rototurret" (:deck (get-corp))) "Rototurret is shuffled back into the deck"))))
+  (testing "Mid-run usage does not allow successful run effects to trigger"
+    (do-game
+     (new-game {:corp {:deck ["Jackson Howard"]
+                       :discard ["Enigma" "Ice Wall"]}
+                :runner {:deck ["Desperado"]}})
+      (play-from-hand state :corp "Jackson Howard" "New remote")
+      (let [jhow (get-content state :remote1 0)]
+        (core/rez state :corp jhow)
+        (take-credits state :corp)
+        (play-from-hand state :runner "Desperado")
+        (run-on state :remote1)
+        (is (changes-credits
+             (get-runner) 0
+             (do (card-ability state :corp jhow 1)
+                 (click-card state :corp "Enigma")
+                 (click-prompt state :corp "Done")
+                 (is (find-card "Jackson Howard" (:rfg (get-corp))) "Jackson is rfg'd")
+                 (is (find-card "Enigma" (:deck (get-corp))) "Enigma is shuffled back into the deck")
+                 (is (nil? (refresh jhow)))
+                 (run-continue state)
+                 (is (nil? (:run @state)))))
+            "A server vanishing by mid-run does not trigger Desperado even if players proceed to access")))))
 
 (deftest jeeves-model-bioroids
   ;; Jeeves Model Bioroids
@@ -2578,28 +2601,39 @@
 
 (deftest marilyn-campaign
   ;; Marilyn Campaign
-  (do-game
-    (new-game {:corp {:deck ["Marilyn Campaign"]}})
-    (play-from-hand state :corp "Marilyn Campaign" "New remote")
-    (let [marilyn (get-content state :remote1 0)]
-      (core/rez state :corp marilyn)
-      (is (= 8 (get-counters (refresh marilyn) :credit)) "Marilyn Campaign should start with 8 credits")
-      (is (zero? (-> (get-corp) :deck count)) "R&D should be empty")
-      (take-credits state :corp)
-      (take-credits state :runner)
-      (is (= 6 (get-counters (refresh marilyn) :credit)) "Marilyn Campaign should lose 2 credits start of turn")
-      (take-credits state :corp)
-      (take-credits state :runner)
-      (is (= 4 (get-counters (refresh marilyn) :credit)) "Marilyn Campaign should lose 2 credits start of turn")
-      (take-credits state :corp)
-      (take-credits state :runner)
-      (is (= 2 (get-counters (refresh marilyn) :credit)) "Marilyn Campaign should lose 2 credits start of turn")
-      (take-credits state :corp)
-      (take-credits state :runner)
-      (is (zero? (get-counters (refresh marilyn) :credit)) "Marilyn Campaign should lose 2 credits start of turn")
-      (click-prompt state :corp "Yes")
-      (is (= 1 (-> (get-corp) :hand count)) "HQ should have 1 card in it, after mandatory draw")
-      (is (= "Marilyn Campaign" (-> (get-corp) :hand first :title)) "Marilyn Campaign should be in HQ, after mandatory draw"))))
+  (testing "Basic test"
+    (do-game
+      (new-game {:corp {:deck ["Marilyn Campaign"]}})
+      (play-from-hand state :corp "Marilyn Campaign" "New remote")
+      (let [marilyn (get-content state :remote1 0)]
+        (core/rez state :corp marilyn)
+        (is (= 8 (get-counters (refresh marilyn) :credit)) "Marilyn Campaign should start with 8 credits")
+        (is (zero? (-> (get-corp) :deck count)) "R&D should be empty")
+        (take-credits state :corp)
+        (take-credits state :runner)
+        (is (= 6 (get-counters (refresh marilyn) :credit)) "Marilyn Campaign should lose 2 credits start of turn")
+        (take-credits state :corp)
+        (take-credits state :runner)
+        (is (= 4 (get-counters (refresh marilyn) :credit)) "Marilyn Campaign should lose 2 credits start of turn")
+        (take-credits state :corp)
+        (take-credits state :runner)
+        (is (= 2 (get-counters (refresh marilyn) :credit)) "Marilyn Campaign should lose 2 credits start of turn")
+        (take-credits state :corp)
+        (take-credits state :runner)
+        (is (zero? (get-counters (refresh marilyn) :credit)) "Marilyn Campaign should lose 2 credits start of turn")
+        (click-prompt state :corp "Yes")
+        (is (= 1 (-> (get-corp) :hand count)) "HQ should have 1 card in it, after mandatory draw")
+        (is (= "Marilyn Campaign" (-> (get-corp) :hand first :title)) "Marilyn Campaign should be in HQ, after mandatory draw"))))
+  (testing "Marilyn derez & rez gives additional credits. Issue #4581"
+    (do-game
+      (new-game {:corp {:hand ["Marilyn Campaign"]}})
+      (play-from-hand state :corp "Marilyn Campaign" "New remote")
+      (let [marilyn (get-content state :remote1 0)]
+        (core/rez state :corp (refresh marilyn))
+        (is (= 8 (get-counters (refresh marilyn) :credit)) "Marilyn Campaign should start with 8 credits")
+        (core/derez state :corp (refresh marilyn))
+        (core/rez state :corp (refresh marilyn))
+        (is (= 16 (get-counters (refresh marilyn) :credit)) "Marilyn Campaign should now have 16 credits")))))
 
 (deftest mark-yale
   ;; Mark Yale
@@ -3355,7 +3389,25 @@
         (take-credits state :corp)
         (play-from-hand state :runner "Zer0")
         (card-ability state :runner (get-hardware state 0) 0)
-        (is (empty? (:prompt (get-corp))) "Prana condenser doesn't proc from Zer0")))))
+        (is (empty? (:prompt (get-corp))) "Prana condenser doesn't proc from Zer0"))))
+  (testing "PAD Tap gains credits from Prana trigger. Issue #5250"
+    (do-game
+      (new-game {:corp {:hand ["Prāna Condenser" "Bio-Ethics Association"]}
+                 :runner {:deck [(qty "Sure Gamble" 5)]
+                          :hand [(qty "PAD Tap" 3)]}})
+      (play-from-hand state :corp "Prāna Condenser" "New remote")
+      (play-from-hand state :corp "Bio-Ethics Association" "New remote")
+      (let [pc (get-content state :remote1 0)
+            bio (get-content state :remote2 0)]
+        (core/rez state :corp pc)
+        (core/rez state :corp bio)
+        (take-credits state :corp)
+        (play-from-hand state :runner "PAD Tap")
+        (play-from-hand state :runner "PAD Tap")
+        (play-from-hand state :runner "PAD Tap")
+        (take-credits state :runner)
+        (click-prompt state :corp "Yes")
+        (is (= 9 (:credit (get-runner))) "Runner gained 3 credits from Prana")))))
 
 (deftest primary-transmission-dish
   ;; Primary Transmission Dish
@@ -3746,7 +3798,17 @@
         (is (zero? (get-counters (refresh rex) :power)))
         (click-prompt state :corp "Remove 1 bad publicity")
         (is (zero? (count-bad-pub state)) "Should not have the same amount of bad publicity")
-        (is (= "Rex Campaign" (-> (get-corp) :discard first :title)))))))
+        (is (= "Rex Campaign" (-> (get-corp) :discard first :title))))))
+  (testing "No trigger when trashed by Runner"
+    (do-game
+      (new-game {:corp {:deck ["Rex Campaign"]}})
+      (play-from-hand state :corp "Rex Campaign" "New remote")
+      (let [rex (get-content state :remote1 0)]
+        (core/rez state :corp rex)
+        (take-credits state :corp)
+        (run-empty-server state :remote1)
+        (click-prompt state :runner "Pay 3 [Credits] to trash")
+        (is (empty? (:prompt (get-corp))) "No prompt to trigger Rex Campaign when trashed by the Runner")))))
 
 (deftest ronald-five
   ;; Ronald Five - Runner loses a click every time they trash a Corp card
@@ -4985,6 +5047,8 @@
         (changes-val-macro 1 (:credit (get-corp))
                            "Gained 1 credit"
                            (click-prompt state :corp "Gain 1 [Credits]"))
+        (is (= ["Draw 1 card" "Place 1 advancement token on a piece of ice" "Add this asset to HQ" "Done"]
+               (prompt-buttons :corp)) "Chosen options are removed")
         (changes-val-macro 1 (count (:hand (get-corp)))
                            "Drew 1 card"
                            (click-prompt state :corp "Draw 1 card"))

@@ -81,9 +81,8 @@
   ([state side eid cards {:keys [cause keep-server-alive host-trashed game-trash] :as args}]
    (let [num-cards (< 1 (count cards))]
      (letfn [(get-card? [s c]
-               ;; Holdover from old code. Should be `get-card` in all cases, but that
-               ;; requires fixing a bunch of cards and there's not been time yet.
-               (if num-cards (get-card s c) c))
+               (when-let [card (get-card s c)]
+                 (assoc card :seen (:seen c))))
              (preventrec [cs]
                (if (seq cs)
                  (wait-for (prevent-trash state side (get-card? state (first cs)) eid args)
@@ -106,26 +105,31 @@
                        ;; No card should end up in the opponent's discard pile, so instead
                        ;; of using `side`, we use the card's `:side`.
                        move-card #(move state (to-keyword (:side %)) % :discard {:keep-server-alive keep-server-alive})
+                       ;; If the trashed card is installed, update all of the indicies
+                       ;; of the other installed cards in the same location
+                       update-indicies (fn [card]
+                                         (when (installed? card)
+                                           (update-installed-card-indices state side (:zone card))))
                        ;; Perform the move of the cards from their current location to
                        ;; the discard. At the same time, gather their `:trash-effect`s
                        ;; to be used in the simult event later.
-                       moved-cards (->> trashlist
-                                        (keep #(get-card? state %))
-                                        ;; juxt is used to perform both the move and
-                                        ;; `get-trash-effect` on each card in the list.
-                                        ;; This gives us a list of tuples:
-                                        ;; the moved card and the trash effect
-                                        ;; This is used when we build the `card-abilities`
-                                        ;; list of effects, applying the pair to
-                                        ;; `ability-as-handler`, which is the format
-                                        ;; `trigger-event-simult` handles the additional
-                                        ;; abilities.
-                                        (map (juxt move-card get-trash-effect))
-                                        (into []))
+                       moved-cards (reduce
+                                     (fn [acc card]
+                                       (if-let [card (get-card? state card)]
+                                         (let [moved-card (move-card card)
+                                               trash-effect (get-trash-effect card)]
+                                           (update-indicies card)
+                                           (conj acc [moved-card trash-effect]))
+                                         acc))
+                                     []
+                                     trashlist)
                        card-abilities (mapv #(apply ability-as-handler %) moved-cards)]
                    (swap! state update-in [:trash :trash-list] dissoc eid)
                    (when (seq (remove #{side} (map #(to-keyword (:side %)) trashlist)))
                      (swap! state assoc-in [side :register :trashed-card] true))
+                   ;; Pseudo-shuffle archives. Keeps seen cards in play order and shuffles unseen cards.
+                   (swap! state assoc-in [:corp :discard]
+                     (vec (sort-by #(if (:seen %) -1 (rand-int 30)) (get-in @state [:corp :discard]))))
                    (let [;; The trash event will be determined by who is performing the
                          ;; trash. `:game-trash` in this case refers to when a checkpoint
                          ;; sees a card has been trashed and it has hosted cards, so it

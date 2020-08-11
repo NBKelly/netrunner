@@ -5,7 +5,7 @@
             [differ.core :as differ]
             [game.core.card :refer [active? has-subtype? asset? rezzed? ice? corp?
                                     faceup? installed? same-card?]]
-            [jinteki.utils :refer [str->int is-tagged?] :as utils]
+            [jinteki.utils :refer [str->int is-tagged? add-cost-to-label] :as utils]
             [jinteki.cards :refer [all-cards]]
             [nr.appstate :refer [app-state]]
             [nr.auth :as auth]
@@ -662,7 +662,7 @@
          [:div {:key i
                 :on-click #(send-command "runner-ability" {:card card
                                                            :ability i})}
-          (render-icons (:label ab))])
+          (render-icons (add-cost-to-label ab))])
        runner-abilities)
      (when (seq subroutines)
        [:div {:on-click #(send-command "system-msg"
@@ -695,7 +695,7 @@
        (fn [i ab]
          [:div {:on-click #(send-command "corp-ability" {:card card
                                                          :ability i})}
-          (render-icons (:label ab))])
+          (render-icons (add-cost-to-label ab))])
        corp-abilities)]))
 
 (defn card-abilities [card c-state abilities subroutines]
@@ -717,20 +717,22 @@
                     :on-click #(do (send-command action {:card card}))}
               (capitalize action)])
            actions))
-       (when (seq abilities)
+       (when (and (active? card)
+                  (seq abilities))
          [:span.float-center "Abilities:"])
-       (when (seq abilities)
+       (when (and (active? card)
+                  (seq abilities))
          (map-indexed
            (fn [i ab]
              (if (:dynamic ab)
                [:div {:key i
                       :on-click #(send-command "dynamic-ability" (assoc (select-keys ab [:dynamic :source :index])
                                                                         :card card))}
-                (render-icons (:label ab))]
+                (render-icons (add-cost-to-label ab))]
                [:div {:key i
                       :on-click #(send-command "ability" {:card card
                                                           :ability (- i dynabi-count)})}
-                (render-icons (:label ab))]))
+                (render-icons (add-cost-to-label ab))]))
            abilities))
        (when (seq (remove :fired subroutines))
          [:div {:on-click #(send-command "unbroken-subroutines" {:card card})}
@@ -749,7 +751,7 @@
                            (false? (:resolve sub))
                            {:class :dont-resolve
                             :style {:text-decoration :line-through}})
-               (render-icons (str " [Subroutine]" " " (:label sub)))]
+               (render-icons (str " [Subroutine] " (:label sub)))]
               [:span.float-right
                (cond (:broken sub) banned-span
                      (:fired sub) "✅")]])
@@ -1096,18 +1098,17 @@
     [:button.small {:on-click #(send-command "change" {:key key :delta decrement}) :type "button"} "-"]
     [:button.small {:on-click #(send-command "change" {:key key :delta increment}) :type "button"} "+"]]))
 
-(defn namearea
+(defn name-area
   [user]
   [:div.namearea [avatar user {:opts {:size 32}}]
    [:div.namebox
     [:div.username (:username user)]
     (if-let [pronouns (case (get-in user [:options :pronouns])
-                        "none" "unspecified"
                         "they" "they/them"
                         "she" "she/her"
                         "he" "he/him"
                         "any" "any"
-                        nil)]
+                        "unspecified pronouns")]
       [:div.pronouns pronouns])]])
 
 (defmulti stats-view #(get-in @% [:identity :side]))
@@ -1118,7 +1119,7 @@
       (let [{:keys [user click credit run-credit memory link tag
                     brain-damage agenda-point hand-size active]} @runner]
         [:div.panel.blue-shade.stats {:class (when active "active-player")}
-         (namearea user)
+         (name-area user)
          [:div (str click " Click" (if (not= click 1) "s" ""))
           (when me? (controls :click))]
          [:div (str credit " Credit" (if (not= credit 1) "s" "")
@@ -1152,7 +1153,7 @@
     (fn [corp]
       (let [{:keys [user click credit agenda-point bad-publicity hand-size active]} @corp]
         [:div.panel.blue-shade.stats {:class (when active "active-player")}
-         (namearea user)
+         (name-area user)
          [:div (str click " Click" (if (not= click 1) "s" ""))
           (when me? (controls :click))]
          [:div (str credit " Credit" (if (not= credit 1) "s" ""))
@@ -1174,8 +1175,6 @@
                                   "encounter"
                                   :else
                                   "")}]])
-
-(enable-console-print!)
 
 (defn server-view [{:keys [server central-view run]} opts]
   (let [content (:content server)

@@ -1,7 +1,6 @@
 (ns game.cards.assets
   (:require [game.core :refer :all]
             [game.core.card :refer :all]
-            [game.core.card-defs :refer [define-card]]
             [game.core.effects :refer [register-floating-effect]]
             [game.core.eid :refer [effect-completed]]
             [game.core.card-defs :refer [card-def]]
@@ -345,8 +344,7 @@
              :effect (req (case target
                             "Pay 1 [Credits]"
                             (do (system-msg state :runner "pays 1 [Credits]")
-                                (pay state :runner card :credit 1)
-                                (effect-completed state side eid))
+                                (pay state :runner eid card :credit 1))
                             (do (system-msg state :runner "takes 1 tag")
                                 (gain-tags state :corp eid 1))))}]})
 
@@ -386,7 +384,7 @@
                  :effect (req (case target
                                 "Pay 1 [Credits]"
                                 (do (system-msg state side "pays 1 [Credits]")
-                                    (pay-sync state side eid card :credit 1))
+                                    (pay state side eid card :credit 1))
                                 "Trash top card"
                                 (do (system-msg state side "trashes the top card of the Stack")
                                     (mill state :runner eid :runner 1))))}]
@@ -1108,9 +1106,9 @@
                               (if (not (pos? (get-counters (get-card state card) :credit)))
                                 (trash state :corp eid card {:unpreventable true})
                                 (effect-completed state :corp eid)))}]
-    {:data {:counter {:credit 8}}
-     :derezzed-events [corp-rez-toast]
+    {:derezzed-events [corp-rez-toast]
      :events [(assoc ability :event :corp-turn-begins)]
+     :effect (req (add-counter state side card :credit 8))
      :abilities [(set-autoresolve :auto-reshuffle "Marilyn reshuffle")]
      :trash-effect {:req (req (= :servers (first (:previous-zone card))))
                     :async true
@@ -1509,7 +1507,7 @@
                                  :effect (req (swap! state update-in [:damage] dissoc :damage-replace)
                                               (clear-wait-prompt state :runner)
                                               (add-counter state side (get-card state card) :power 1)
-                                              (gain state side :credit 3)
+                                              (gain-credits state :corp 3)
                                               ;temporarily disable prana to not trigger on X-1 net damage
                                               (update! state side (assoc-in (get-card state card) [:special :prana-disabled] true))
                                               (wait-for (damage state side :net (dec amount) {:card damagecard})
@@ -1706,23 +1704,25 @@
                 :effect (effect (lose-credits :runner (* 4 (get-counters card :advancement))))}]})
 
 (define-card "Rex Campaign"
-  (let [ability {:once :per-turn
+  (let [payout-ab {:prompt "Remove 1 bad publicity or gain 5 [Credits]?"
+                   :choices ["Remove 1 bad publicity" "Gain 5 [Credits]"]
+                   :msg (msg (if (= target "Remove 1 bad publicity")
+                               "remove 1 bad publicity" "gain 5 [Credits]"))
+                   :effect (req (if (= target "Remove 1 bad publicity")
+                                  (lose-bad-publicity state side 1)
+                                  (gain-credits state side 5)))}
+        ability {:once :per-turn
                  :req (req (:corp-phase-12 @state))
                  :label "Remove 1 counter (start of turn)"
-                 :effect (effect (add-counter card :power -1))}]
+                 :effect (req (add-counter state side card :power -1)
+                              (if (zero? (get-counters (get-card state card) :power))
+                                (wait-for (trash state side card nil)
+                                          (continue-ability state side payout-ab card nil))))}]
     {:effect (effect (add-counter card :power 3))
      :derezzed-events [corp-rez-toast]
-     :events [(trash-on-empty :power)
-              (assoc ability :event :corp-turn-begins)]
-     :ability [ability]
-     :trash-effect {:req (req (zero? (get-counters card :power)))
-                    :prompt "Remove 1 bad publicity or gain 5 [Credits]?"
-                    :choices ["Remove 1 bad publicity" "Gain 5 [Credits]"]
-                    :msg (msg (if (= target "Remove 1 bad publicity")
-                                "remove 1 bad publicity" "gain 5 [Credits]"))
-                    :effect (req (if (= target "Remove 1 bad publicity")
-                                   (lose-bad-publicity state side 1)
-                                   (gain-credits state side 5)))}}))
+     :events [(assoc ability :event :corp-turn-begins)]
+     :ability [ability]}))
+
 
 (define-card "Ronald Five"
   (let [ability {:req (req (and (some corp? targets)
@@ -2205,7 +2205,7 @@
                                    (wait-for (resolve-ability state side chosen-ability card nil)
                                      (if (and (pos? (dec n))
                                               (not= "Done" chosen))
-                                       (continue-ability state side (choice (remove-once #(= % chosen) abis) (dec n)) card nil)
+                                       (continue-ability state side (choice (remove-once #(= % chosen-ability) abis) (dec n)) card nil)
                                        (effect-completed state side eid)))))}))
         ability {:async true
                  :label "resolve an ability"

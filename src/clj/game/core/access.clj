@@ -29,9 +29,11 @@
   (interactions card :access-ability))
 
 (defn- access-ab-label
-  [card]
+  [state card]
   (let [title (first (string/split (:title card) #":"))
-        label (make-label (access-ab card))]
+        access-ability (access-ab card)
+        ability (add-cost-label-to-ability access-ability (card-ability-cost state :runner access-ability card))
+        label (add-cost-to-label ability)]
     (str "[" title "] " label)))
 
 (defn access-non-agenda
@@ -54,6 +56,8 @@
           ; Trash costs
           trash-cost (trash-cost state side card)
           trash-eid (assoc eid :source card :source-type :runner-trash-corp-cards)
+          ; Runner cannot trash (eg Trebuchet)
+          can-trash (can-trash? state side c)
           can-pay (when trash-cost
                     (can-pay? state :runner trash-eid card nil [:credit trash-cost]))
           trash-cost-str (when can-pay
@@ -76,12 +80,12 @@
                              (card-flag-fn? state side card :must-trash true)))
           ; If we must trash, make the label only from the trash abilities
           ; Otherwise, make the label from all abilities
-          ability-strs (mapv access-ab-label
+          ability-strs (mapv #(access-ab-label state %)
                              (if must-trash? trash-ab-cards access-ab-cards))
           ; Only display "No action" when we're not forced to do anything
           no-action-str (when-not (or must-trash? must-trash-with-credits?)
                           ["No action"])
-          choices (vec (concat ability-strs trash-cost-str no-action-str))]
+          choices (vec (if can-trash (concat ability-strs trash-cost-str no-action-str) no-action-str))]
       (continue-ability
         state :runner
         {:async true
@@ -94,7 +98,7 @@
 
                         ; Pay credits (from pool or cards) to trash
                         (= target (first trash-cost-str))
-                        (wait-for (pay-sync state side (make-eid state trash-eid) card [:credit trash-cost])
+                        (wait-for (pay state side (make-eid state trash-eid) card [:credit trash-cost])
                                   (when (:run @state)
                                     (swap! state assoc-in [:run :did-trash] true)
                                     (when must-trash?
@@ -177,7 +181,6 @@
   (trigger-event state side :pre-steal-cost card)
   (swap! state update-in [:stats :runner :access :cards] (fnil inc 0))
   (let [cost (steal-cost state side card)
-        part-cost (partition 2 cost)
         cost-strs (build-cost-string cost)
         can-pay (can-pay? state side (make-eid state eid) card (:title card) cost)
         can-steal (can-steal? state side card)
@@ -186,7 +189,7 @@
                           (seq (filter #(and (can-trigger? state :runner eid (access-ab %) % [card])
                                              (can-pay? state :runner eid % nil (card-ability-cost state side (access-ab %) % [card])))
                                        (all-active state :runner))))
-        ability-strs (mapv access-ab-label access-ab-cards)
+        ability-strs (mapv #(access-ab-label state %) access-ab-cards)
         ;; strs
         steal-str (when (and can-steal can-pay)
                     (if (not (blank? cost-strs))
@@ -218,7 +221,7 @@
 
                       ;; Pay additiional costs to steal
                       (= target "Pay to steal")
-                      (wait-for (pay-sync state side nil cost {:action :steal-cost})
+                      (wait-for (pay state side nil cost {:action :steal-cost})
                                 (system-msg state side (str async-result " to steal "
                                                             (:title card) " from "
                                                             (name-zone :corp (get-zone card))))
@@ -346,7 +349,7 @@
            :effect (req (if (or (= "OK" target)
                                 (= "No action" target))
                           (access-end state side eid accessed-card)
-                          (wait-for (pay-sync state side accessed-card cost)
+                          (wait-for (pay state side accessed-card cost)
                                     (if async-result
                                       (access-trigger-events state side eid accessed-card title (assoc args :cost-msg async-result))
                                       (access-end state side eid accessed-card)))))})
