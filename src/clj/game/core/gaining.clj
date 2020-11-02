@@ -1,6 +1,20 @@
-(in-ns 'game.core)
+(ns game.core.gaining
+  (:require
+    [game.core.eid :refer [make-eid effect-completed]]
+    [game.core.engine :refer [trigger-event trigger-event-sync]]
+    [game.core.toasts :refer [toast]]))
 
-(defn- deduct
+(defn safe-inc-n
+  "Helper function to safely update a value by n. Returns a function to use with `update` / `update-in`"
+  [n]
+  (partial (fnil + 0 0) n))
+
+(defn sub->0
+  "Helper function for use in `update` or `update-in` to subtract for a value, to a minimum of 0."
+  [n]
+  #(max 0 ((fnil - 0 0) % n)))
+
+(defn deduct
   "Deduct the value from the player's attribute."
   [state side [attr value]]
   (cond
@@ -14,7 +28,7 @@
                                                    (sub->0 value))))
 
     ;; values that expect map, if passed a number use default subattr of :mod
-    (#{:hand-size :memory} attr)
+    (#{:memory} attr)
     (deduct state side [attr {:mod value}])
 
     ;; default case for tags and bad-publicity is `:base`
@@ -66,23 +80,56 @@
 
 (defn gain-credits
   "Utility function for triggering events"
-  ([state side amount] (gain-credits state side (make-eid state) amount nil))
-  ([state side amount args] (gain-credits state side (make-eid state) amount args))
+  ([state side eid amount] (gain-credits state side eid amount nil))
   ([state side eid amount args]
    (if (and amount
             (pos? amount))
      (do (gain state side :credit amount)
-         (trigger-event-sync state side eid (if (= :corp side) :corp-credit-gain :runner-credit-gain) args))
+         (trigger-event-sync state side eid (if (= :corp side) :corp-credit-gain :runner-credit-gain) amount args))
      (effect-completed state side eid))))
 
 (defn lose-credits
   "Utility function for triggering events"
-  ([state side amount] (lose-credits state side (make-eid state) amount nil))
-  ([state side amount args] (lose-credits state side (make-eid state) amount args))
+  ([state side eid amount] (lose-credits state side eid amount nil))
   ([state side eid amount args]
    (if (and amount
             (or (= :all amount)
                 (pos? amount)))
      (do (lose state side :credit amount)
-         (trigger-event-sync state side eid (if (= :corp side) :corp-credit-loss :runner-credit-loss) args))
+         (when (and (= side :runner)
+                    (= :all amount))
+           (lose state :runner :run-credit :all))
+         (trigger-event-sync state side eid (if (= :corp side) :corp-credit-loss :runner-credit-loss) amount args))
      (effect-completed state side eid))))
+
+;;; Stuff for handling {:base x :mod y} data structures
+(defn base-mod-size
+  "Returns the value of properties using the `base` and `mod` system"
+  [state side prop]
+  (let [base (get-in @state [side prop :base] 0)
+        mod (get-in @state [side prop :mod] 0)]
+    (+ base mod)))
+
+(defn available-mu
+  "Returns the available MU the runner has"
+  [state]
+  (- (base-mod-size state :runner :memory)
+     (get-in @state [:runner :memory :used] 0)))
+
+(defn toast-check-mu
+  "Check runner has not exceeded, toast if they have"
+  [state]
+  (when (neg? (available-mu state))
+    (toast state :runner "You have exceeded your memory units!")))
+
+(defn free-mu
+  "Frees up specified amount of mu (reduces :used)"
+  ([state _ n] (free-mu state n))
+  ([state n]
+   (deduct state :runner [:memory {:used n}])))
+
+(defn use-mu
+  "Increases amount of mu used (increased :used)"
+  ([state _ n] (use-mu state n))
+  ([state n]
+   (gain state :runner :memory {:used n})))
