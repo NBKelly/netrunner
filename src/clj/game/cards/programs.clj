@@ -588,10 +588,9 @@
                          (can-host? %))}
    :events [{:event :runner-turn-begins
              :effect (req (add-counter state side card :virus 1))}]
-    :abilities [
-      (break-sub
-        [:virus 1] 1 "All"
-        {:req (:req (req (same-card? (:ice context) (:host card))))})]})
+    :abilities [(break-sub
+                  [:virus 1] 1 "All"
+                  {:req (:req (req (same-card? (:ice context) (:host card))))})]})
 
 (defcard "Bug"
   {:implementation "Can only pay to see last card drawn after multiple draws"
@@ -619,6 +618,11 @@
                 :effect (effect (gain-credits eid 1))
                 :msg "gain 1 [Credits]"}]
    :data {:counter {:virus 3}}})
+
+(defcard "Carmen"
+   (auto-icebreaker {:install-cost-bonus (req (if (:successful-run runner-reg) -2 0))
+                     :abilities [(break-sub 1 1 "Sentry")
+                                 (strength-pump 2 3)]}))
 
 (defcard "Cerberus \"Cuj.0\" H3"
   (power-counter-break "Sentry"))

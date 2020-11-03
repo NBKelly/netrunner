@@ -864,6 +864,40 @@
           (click-prompt state :runner "Do 1 net damage unless the Runner pays 1 [Credits]"))
         (run-jack-out state)))))
 
+(deftest carmen
+  ;; Carmen ability
+  (testing "Basic test"
+    (do-game
+      (new-game {:runner {:deck ["Carmen"]
+                          :credits 20}
+                 :corp {:deck ["Anansi"]
+                        :credits 20}})
+      (play-from-hand state :corp "Anansi" "HQ")
+      (take-credits state :corp)
+      (changes-val-macro
+          -5 (:credit (get-runner))
+          "Carmen costs 5 [Credits] to install"
+          (play-from-hand state :runner "Carmen"))
+      (let [carmen (get-program state 0)
+            anansi (get-ice state :hq 0)]
+        (run-on state :hq)
+        (rez state :corp (refresh anansi))
+        (run-continue state)
+        (changes-val-macro
+          -5 (:credit (get-runner))
+          "Carmen breaks Anansi for 5 [Credits]"
+          (core/play-dynamic-ability state :runner {:dynamic "auto-pump-and-break" :card (refresh carmen)}))
+        (is (zero? (count (remove :broken (:subroutines (refresh anansi))))) "All subroutines have been broken"))))
+  (testing "Carmen discount test"
+    (do-game
+      (new-game {:runner {:deck ["Carmen"]}})
+      (take-credits state :corp)
+      (run-empty-server state :hq)
+      (changes-val-macro
+          -3 (:credit (get-runner))
+          "Carmen costs 3 [Credits] to install"
+          (play-from-hand state :runner "Carmen")))))
+
 (deftest cerberus-rex-h2
   ;; Cerberus "Rex" H2 - boost 1 for 1 cred, break for 1 counter
   (do-game
