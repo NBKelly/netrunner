@@ -2853,6 +2853,59 @@
       (core/purge state :corp)
       (is (empty? (get-program state)) "Lamprey trashed by purge"))))
 
+(deftest leech
+  ;; Leech - Reduce strength of encountered ICE
+  (testing "Basic test"
+    (do-game
+      (new-game {:corp {:deck ["Fire Wall"]}
+                 :runner {:deck ["Leech"]}})
+      (play-from-hand state :corp "Fire Wall" "New remote")
+      (take-credits state :corp)
+      (core/gain state :runner :click 3)
+      (play-from-hand state :runner "Leech")
+      (let [le (get-program state 0)
+            fw (get-ice state :remote1 0)]
+        (run-empty-server state "Archives")
+        (click-prompt state :runner "Yes")
+        (is (= 1 (get-counters (refresh le) :virus)))
+        (run-empty-server state "Archives")
+        (click-prompt state :runner "Yes")
+        (is (= 2 (get-counters (refresh le) :virus)))
+        (run-on state "Server 1")
+        (run-continue state)
+        (run-continue state)
+        (is (= 2 (get-counters (refresh le) :virus)) "No counter gained, not a central server")
+        (run-on state "Server 1")
+        (rez state :corp fw)
+        (run-continue state)
+        (is (= 5 (get-strength (refresh fw))))
+        (card-ability state :runner le 0)
+        (is (= 1 (get-counters (refresh le) :virus)) "1 counter spent from Leech")
+        (is (= 4 (get-strength (refresh fw))) "Fire Wall strength lowered by 1"))))
+  (testing "does not affect next ice when current is trashed. Issue #1788"
+    (do-game
+      (new-game {:corp {:deck ["Wraparound" "Spiderweb"]}
+                 :runner {:deck ["Leech" "Parasite"]}})
+      (play-from-hand state :corp "Wraparound" "HQ")
+      (play-from-hand state :corp "Spiderweb" "HQ")
+      (take-credits state :corp)
+      (core/gain state :corp :credit 10)
+      (play-from-hand state :runner "Leech")
+      (let [leech (get-program state 0)
+            wrap (get-ice state :hq 0)
+            spider (get-ice state :hq 1)]
+        (core/add-counter state :runner leech :virus 2)
+        (rez state :corp spider)
+        (rez state :corp wrap)
+        (play-from-hand state :runner "Parasite")
+        (click-card state :runner "Spiderweb")
+        (run-on state "HQ")
+        (run-continue state)
+        (card-ability state :runner (refresh leech) 0)
+        (card-ability state :runner (refresh leech) 0)
+        (is (find-card "Spiderweb" (:discard (get-corp))) "Spiderweb trashed by Parasite + Leech")
+        (is (= 7 (get-strength (refresh wrap))) "Wraparound not reduced by Leech")))))
+
 (deftest legba6
   ;; Legba.6
   (do-game

@@ -1544,6 +1544,33 @@
              :async true
              :effect (effect (trash eid card {:cause :purge}))}]})
 
+(defcard "Leech"
+  {:events [{:event :successful-run
+             :req (req (is-central? (target-server context)))
+             :async true
+             :interactive (get-autoresolve :autofire (complement never?))
+             :silent (get-autoresolve :autofire never?)
+             :effect (req (show-wait-prompt state :corp "Runner to decide if they will use Leech")
+                          (continue-ability state side
+                            {:optional {
+                              :player :runner
+                              :autoresolve (get-autoresolve :auto-fire)
+                              :prompt "Use Leech?"
+                              :end-effect (req (clear-wait-prompt state :corp))
+                              :yes-ability 
+                                {:msg "add 1 virus counter to Leech"
+                                 :effect (req (add-counter state side card :virus 1))}
+                              :no-ability
+                                {:effect (req (system-msg state side "does not add counter to Leech"))}}} card nil))}]
+   :autoresolve (get-autoresolve :auto-fire)
+   :abilities [{:cost [:virus 1]
+                :label "Give -1 strength to current ICE"
+                :req (req (and (rezzed? current-ice)
+                               (= :encounter-ice (:phase run))))
+                :msg (msg "give -1 strength to " (:title current-ice))
+                :effect (effect (pump-ice current-ice -1))}
+                (set-autoresolve :auto-fire "Leech")]})
+
 (defcard "Legba.6"
   (auto-icebreaker {:abilities [(break-sub 1 2 "Code Gate")
                                 (strength-pump 3 1)]}))
