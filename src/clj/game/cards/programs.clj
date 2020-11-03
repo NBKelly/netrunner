@@ -1544,6 +1544,10 @@
              :async true
              :effect (effect (trash eid card {:cause :purge}))}]})
 
+(defcard "Legba.6"
+  (auto-icebreaker {:abilities [(break-sub 1 2 "Code Gate")
+                                (strength-pump 3 1)]}))
+
 (defcard "Leprechaun"
   {:abilities [{:label "Install a program on Leprechaun"
                 :req (req (< (count (get-in card [:special :hosted-programs])) 2))

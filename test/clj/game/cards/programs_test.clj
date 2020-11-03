@@ -2853,6 +2853,25 @@
       (core/purge state :corp)
       (is (empty? (get-program state)) "Lamprey trashed by purge"))))
 
+(deftest legba6
+  ;; Legba.6
+  (do-game
+    (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                      :hand ["DNA Tracker"]
+                      :credits 20}
+               :runner {:deck ["Legba.6"]
+                        :credits 20}})
+    (play-from-hand state :corp "DNA Tracker" "HQ")
+    (rez state :corp (get-ice state :hq 0))
+    (take-credits state :corp)
+    (play-from-hand state :runner "Legba.6")
+    (let [legba (get-program state 0)]
+      (run-on state :hq)
+      (run-continue state)
+      (changes-val-macro -11 (:credit (get-runner))
+                             "Paid 11 to fully break DNA Tracker with Legba.6"
+                             (core/play-dynamic-ability state :runner {:dynamic "auto-pump-and-break" :card (refresh legba)})))))
+
 (deftest leprechaun
   ;; Leprechaun - hosting a breaker with strength based on unused MU should calculate correctly
   (testing "Basic test"
