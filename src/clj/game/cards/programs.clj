@@ -1748,6 +1748,10 @@
 (defcard "Musaazi"
   (virus-breaker "Sentry"))
 
+(defcard "Mustang"
+  (auto-icebreaker {:abilities [(break-sub 1 2 "Barrier")
+                                (strength-pump 2 1)]}))
+
 (defcard "Na'Not'K"
   (auto-icebreaker {:strength-bonus (req (count run-ices))
                     :abilities [(break-sub 1 1 "Sentry")

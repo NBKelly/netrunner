@@ -3312,6 +3312,27 @@
       (is (zero? (get-counters (refresh imp) :virus)) "Imp lost its final virus counter")
       (is (zero? (get-counters (refresh imp) :virus)) "Musaazi lost its virus counter"))))
 
+(deftest mustang
+  ;; Mustang
+  (do-game
+    (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                      :hand ["Fire Wall"]}
+               :runner {:credits 15
+                        :hand ["Mustang"]}})
+    (play-from-hand state :corp "Fire Wall" "HQ")
+    (take-credits state :corp)
+    (play-from-hand state :runner "Mustang")
+    (let [fw (get-ice state :hq 0)
+          mu (get-program state 0)]
+      (rez state :corp fw)
+      (run-on state :hq)
+      (run-continue state)
+      (changes-val-macro -5 (:credit (get-runner))
+                             "Paid 5 to fully break Fire wall with Mustang"
+                             (core/play-dynamic-ability state :runner {:dynamic "auto-pump-and-break" :card (refresh mu)}))
+      (is (zero? (count (remove :broken (:subroutines (refresh fw))))) "All subroutines have been broken"))))
+  
+
 (deftest na-not-k
   ;; Na'Not'K - Strength adjusts accordingly when ice installed during run
   (testing "Basic test"
