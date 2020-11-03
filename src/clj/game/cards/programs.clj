@@ -582,6 +582,17 @@
   (central-only (break-sub 2 3 "Barrier")
                 (strength-pump 2 4)))
 
+(defcard "Botulus"
+  {:data {:counter {:virus 1}}
+   :hosting {:card #(and (ice? %)
+                         (can-host? %))}
+   :events [{:event :runner-turn-begins
+             :effect (req (add-counter state side card :virus 1))}]
+    :abilities [
+      (break-sub
+        [:virus 1] 1 "All"
+        {:req (:req (req (same-card? (:ice context) (:host card))))})]})
+
 (defcard "Bug"
   {:implementation "Can only pay to see last card drawn after multiple draws"
    :req (req (some #{:hq} (:successful-run runner-reg)))

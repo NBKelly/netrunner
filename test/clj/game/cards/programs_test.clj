@@ -655,6 +655,26 @@
       (run-continue state)
       (is (empty? (:prompt (get-runner))) "Black Orchestra prompt did not come up"))))
 
+(deftest botulus
+  ;; Botulus
+  (do-game
+    (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                      :hand ["Ice Wall"]}
+               :runner {:credits 15
+                        :hand ["Botulus"]}})
+    (play-from-hand state :corp "Ice Wall" "HQ")
+    (take-credits state :corp)
+    (play-from-hand state :runner "Botulus")
+    (click-card state :runner (get-ice state :hq 0))
+    (let [iw (get-ice state :hq 0)
+          bot (first (:hosted (refresh iw)))]
+      (run-on state :hq)
+      (rez state :corp iw)
+      (run-continue state)
+      (card-ability state :runner (refresh bot) 0)
+      (click-prompt state :runner "End the run")
+      (is (zero? (count (remove :broken (:subroutines (refresh iw))))) "All subroutines have been broken"))))
+
 (deftest brahman
   ;; Brahman
   (testing "Basic test"
@@ -3331,7 +3351,6 @@
                              "Paid 5 to fully break Fire wall with Mustang"
                              (core/play-dynamic-ability state :runner {:dynamic "auto-pump-and-break" :card (refresh mu)}))
       (is (zero? (count (remove :broken (:subroutines (refresh fw))))) "All subroutines have been broken"))))
-  
 
 (deftest na-not-k
   ;; Na'Not'K - Strength adjusts accordingly when ice installed during run
