@@ -589,8 +589,8 @@
    :events [{:event :runner-turn-begins
              :effect (req (add-counter state side card :virus 1))}]
     :abilities [(break-sub
-                  [:virus 1] 1 "All"
-                  {:req (:req (req (same-card? (:ice context) (:host card))))})]})
+                  [:virus 1] 1 "All" 
+                  {:req (req (same-card? current-ice (:host card)))})]})
 
 (defcard "Bug"
   {:implementation "Can only pay to see last card drawn after multiple draws"
