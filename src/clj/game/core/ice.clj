@@ -1,12 +1,52 @@
-(in-ns 'game.core)
+(ns game.core.ice
+  (:require
+    [game.core.board :refer [all-active-installed all-installed]]
+    [game.core.card :refer [get-card ice? installed? rezzed? has-subtype?]]
+    [game.core.card-defs :refer [card-def]]
+    [game.core.cost-fns :refer [break-sub-ability-cost]]
+    [game.core.eid :refer [complete-with-result effect-completed make-eid make-result]]
+    [game.core.effects :refer [get-effects register-floating-effect sum-effects]]
+    [game.core.engine :refer [ability-as-handler pay resolve-ability trigger-event trigger-event-simult]]
+    [game.core.flags :refer [card-flag?]]
+    [game.core.payment :refer [can-pay? merge-costs]]
+    [game.core.say :refer [system-msg]]
+    [game.core.update :refer [update!]]
+    [game.macros :refer [req effect msg continue-ability wait-for]]
+    [game.utils :refer [same-card? pluralize quantify remove-once]]
+    [jinteki.utils :refer [make-label]]
+    [clojure.string :as string]))
 
-(declare card-flag?)
+;; These should be in runs.clj, but `req` needs get-current-ice and
+;; moving.clj needs set-current-ice
+(defn get-run-ices
+  [state]
+  (when-let [run (:run @state)]
+    (get-in @state (concat [:corp :servers] (:server run) [:ices]))))
+
+(defn get-current-ice
+  [state]
+  (when-let [run (:run @state)]
+    (let [ice (:current-ice run)]
+      (or (get-card state ice) ice))))
+
+(defn set-current-ice
+  ([state]
+   (when (:run @state)
+     (let [run-ice (get-run-ices state)
+           pos (get-in @state [:run :position])]
+       (when (and pos
+                  (pos? pos)
+                  (<= pos (count run-ice)))
+         (set-current-ice state (nth run-ice (dec pos)))))))
+  ([state card]
+   (when (:run @state)
+     (swap! state assoc-in [:run :current-ice] (get-card state card)))))
 
 ;;; Ice subroutine functions
 (defn add-sub
   ([ice sub] (add-sub ice sub (:cid ice) nil))
   ([ice sub cid] (add-sub ice sub cid nil))
-  ([ice sub cid {:keys [front back printed variable] :as args}]
+  ([ice sub cid {:keys [front back printed variable]}]
    (let [curr-subs (:subroutines ice [])
          position (cond
                     back 1
@@ -189,7 +229,8 @@
   (for [sub (remove #(or (:broken %)
                          (not (if (fn? (:breakable %))
                                 ((:breakable %) state side eid ice [card])
-                                (:breakable % true)))) (:subroutines ice))]
+                                (:breakable % true))))
+                    (:subroutines ice))]
     (make-label (:sub-effect sub))))
 
 (defn resolve-subroutine
@@ -232,12 +273,12 @@
                               :source-type :subroutine})]
      (resolve-unbroken-subs! state side eid ice)))
   ([state side eid ice]
-   (if-let [subroutines (remove #(or (:broken %) (= false (:resolve %))) (:subroutines ice))]
+   (if-let [subroutines (seq (remove #(or (:broken %) (= false (:resolve %))) (:subroutines ice)))]
      (wait-for (resolve-next-unbroken-sub state side (make-eid state eid) ice subroutines)
                (system-msg state :corp (str "resolves " (quantify (count async-result) "unbroken subroutine")
                                             " on " (:title ice)
                                             " (\"[subroutine] "
-                                            (join "\" and \"[subroutine] "
+                                            (string/join "\" and \"[subroutine] "
                                                   (map :label (sort-by :index async-result)))
                                             "\")"))
                (effect-completed state side eid))
@@ -246,8 +287,11 @@
 ;;; Ice strength functions
 (defn get-strength
   [card]
-  (or (:current-strength card)
-      (:strength card)))
+  (when (or (ice? card)
+            (has-subtype? card "Icebreaker"))
+    (or (:current-strength card)
+        (:strength card)
+        0)))
 
 (defn sum-ice-strength-effects
   "Sums the results from get-effects."
@@ -271,10 +315,11 @@
   "Updates the given ice's strength by triggering strength events and updating the card."
   [state side ice]
   (let [ice (get-card state ice)
-        oldstren (get-strength ice)]
+        old-strength (get-strength ice)
+        new-strength (ice-strength state side ice)]
     (when (rezzed? ice)
-      (update! state side (assoc ice :current-strength (ice-strength state side ice)))
-      (trigger-event state side :ice-strength-changed (get-card state ice) oldstren))))
+      (update! state side (assoc ice :current-strength new-strength))
+      (trigger-event state side :ice-strength-changed (get-card state ice) old-strength))))
 
 (defn update-ice-in-server
   "Updates all ice in the given server's :ices field."
@@ -300,6 +345,11 @@
       :value n})
    (update-ice-strength state side (get-card state card))))
 
+(defn pump-all-ice
+  ([state side n] (pump-all-ice state side n :end-of-encounter))
+  ([state side n duration]
+   (doseq [ice (filter ice? (all-active-installed state :corp))]
+     (pump-ice state side ice n duration))))
 
 ;;; Icebreaker functions
 (defn breaker-strength
@@ -316,9 +366,10 @@
   "Updates a breaker's current strength by triggering updates and applying their effects."
   [state side breaker]
   (let [breaker (get-card state breaker)
-        oldstren (get-strength breaker)]
-    (update! state side (assoc (get-card state breaker) :current-strength (breaker-strength state side breaker)))
-    (trigger-event state side :breaker-strength-changed (get-card state breaker) oldstren)))
+        old-strength (get-strength breaker)
+        new-strength (breaker-strength state side breaker)]
+    (update! state side (assoc (get-card state breaker) :current-strength new-strength))
+    (trigger-event state side :breaker-strength-changed (get-card state breaker) old-strength)))
 
 (defn update-all-icebreakers
   [state side]
@@ -344,14 +395,6 @@
    (doseq [icebreaker (filter #(has-subtype? % "Icebreaker") (all-active-installed state :runner))]
      (pump state side icebreaker n duration))))
 
-;;; Others
-(defn ice-index
-  "Get the zero-based index of the given ice in its server's list of ice, where index 0
-  is the innermost ice."
-  [state ice]
-  (or (:index ice)
-      (first (keep-indexed #(when (same-card? %2 ice) %1) (get-in @state (cons :corp (get-zone ice)))))))
-
 ;; Break abilities
 (defn- break-subroutines-impl
   ([ice target-count] (break-subroutines-impl ice target-count '() nil))
@@ -370,7 +413,15 @@
     :effect (req (if (= "Done" target)
                    (complete-with-result state side eid {:broken-subs broken-subs
                                                          :early-exit true})
-                   (let [sub (first (filter #(and (not (:broken %)) (= target (make-label (:sub-effect %)))) (:subroutines ice)))
+                   (let [subroutines (filter #(and (not (:broken %))
+                                                   (if (fn? (:breakable %))
+                                                     ((:breakable %) state side eid ice [card])
+                                                     (:breakable % true)))
+                                             (:subroutines ice))
+                         idx (:idx (first targets))
+                         sub (if (number? idx)
+                               (nth subroutines idx)
+                               (first (filter #(= target (make-label (:sub-effect %))) subroutines)))
                          ice (break-subroutine ice sub)
                          broken-subs (cons sub broken-subs)
                          breakable-subs (breakable-subroutines-choice state side eid card ice)]
@@ -391,7 +442,7 @@
                                 "subroutine"))
         " on " (:title ice)
         " (\"[subroutine] "
-        (join "\" and \"[subroutine] "
+        (string/join "\" and \"[subroutine] "
               (map :label (sort-by :index broken-subs)))
         "\")")))
 
@@ -415,9 +466,9 @@
                            message (when (seq broken-subs)
                                      (break-subroutines-msg ice broken-subs breaker args))]
                        (wait-for (pay state side (make-eid state {:source-type :ability}) card total-cost)
-                                 (if-let [cost-str async-result]
-                                   (do (when (not (blank? message))
-                                         (system-msg state :runner (str cost-str " to " message)))
+                                 (if-let [payment-str (:msg async-result)]
+                                   (do (when (not (string/blank? message))
+                                         (system-msg state :runner (str payment-str " to " message)))
                                        (doseq [sub broken-subs]
                                          (break-subroutine! state (get-card state ice) sub breaker)
                                          (resolve-ability state side (make-eid state {:source card :source-type :ability})
@@ -458,7 +509,8 @@
                              (= :encounter-ice (:phase run))
                              (if subtype
                                (or (= subtype "All")
-                                   (has-subtype? current-ice subtype)))
+                                   (has-subtype? current-ice subtype))
+                               true)
                              (pos? (count (breakable-subroutines-choice state side eid card current-ice)))
                              (if (:req args)
                                ((:req args) state side eid card targets)

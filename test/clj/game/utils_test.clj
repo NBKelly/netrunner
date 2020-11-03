@@ -33,7 +33,7 @@
            (or (map? card)
                (string? card)))
       (if (map? card)
-        (core/select state side {:card card})
+        (core/process-action "select" state side {:card card})
         (let [all-cards (concat (core/get-all-installed state)
                                 (mapcat (fn [side]
                                           (mapcat #(-> @state side %)
@@ -41,7 +41,7 @@
                                         [:corp :runner]))
               matching-cards (filter #(= card (:title %)) all-cards)]
           (if (= (count matching-cards) 1)
-            (core/select state side {:card (first matching-cards)})
+            (core/process-action "select" state side {:card (first matching-cards)})
             (is (= (count matching-cards) 1)
                 (str "Expected to click card [ " card
                      " ] but found " (count matching-cards)
@@ -60,7 +60,7 @@
 
 (defn click-prompt
   "Clicks a button in a prompt. {choice} is a string or map only, no numbers."
-  [state side choice]
+  [state side choice & args]
   (let [prompt (get-prompt state side)
         choices (:choices prompt)]
     (cond
@@ -68,7 +68,7 @@
       (or (= choices :credit)
           (:counter choices)
           (:number choices))
-      (when-not (core/resolve-prompt state side {:choice (Integer/parseInt choice)})
+      (when-not (core/process-action "choice" state side {:choice (Integer/parseInt choice)})
         (is (number? (Integer/parseInt choice))
             (expect-type "number string" choice)))
 
@@ -76,13 +76,13 @@
       (let [int-choice (Integer/parseInt choice)
             under (<= int-choice (:choices prompt))]
         (when-not (and under
-                       (when under (core/resolve-prompt state side {:choice int-choice})))
+                       (when under (core/process-action "choice" state side {:choice int-choice})))
           (is under (str (side-str side) " expected to click [ "
                          int-choice " ] but couldn't find it. Current prompt is: \n" prompt))))
 
       ;; List of card titles for auto-completion
       (:card-title choices)
-      (when-not (core/resolve-prompt state side {:choice choice})
+      (when-not (core/process-action "choice" state side {:choice choice})
         (is (or (map? choice)
                 (string? choice))
             (expect-type "card string or map" choice)))
@@ -92,8 +92,9 @@
       (let [choice-fn #(or (= choice (:value %))
                            (= choice (get-in % [:value :title]))
                            (same-card? choice (:value %)))
-            chosen (first (filter choice-fn choices))]
-        (when-not (core/resolve-prompt state side {:choice {:uuid (:uuid chosen)}})
+            idx (or (:idx (first args)) 0)
+            chosen (nth (filter choice-fn choices) idx nil)]
+        (when-not (and chosen (core/process-action "choice" state side {:choice {:uuid (:uuid chosen)}}))
           (is (= choice (first choices))
               (str (side-str side) " expected to click [ "
                    (if (string? choice) choice (:title choice ""))

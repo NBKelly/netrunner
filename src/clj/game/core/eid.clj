@@ -2,17 +2,14 @@
 
 (defn make-eid
   ([state] (make-eid state nil))
-  ([state {:keys [source source-type source-info]}]
-   (merge {:eid (:eid (swap! state update-in [:eid] inc))}
-          (when source {:source source})
-          (when source-type {:source-type source-type})
-          (when source-info {:source-info source-info}))))
+  ([state existing-eid]
+   (assoc existing-eid :eid (:eid (swap! state update :eid inc)))))
 
 (defn eid-set-defaults
   "Set default values for fields in the `eid` if they are not already set."
   [eid & args]
   (let
-    [remove-fn (fn [[k v]]
+    [remove-fn (fn [[k _]]
                  (contains? eid k))
      kvs (remove remove-fn (partition 2 args))]
     (if (not-empty kvs)
@@ -20,18 +17,17 @@
       eid)))
 
 (defn register-effect-completed
-  [state side eid effect]
-  (swap! state update-in [:effect-completed (:eid eid)] #(conj % effect)))
+  [state eid effect]
+  (if (get-in @state [:effect-completed (:eid eid)])
+    (throw (Exception. (str "Eid has alreasy been registered")))
+    (swap! state assoc-in [:effect-completed (:eid eid)] effect)))
 
 (defn effect-completed
-  [state side eid]
-  (let [results
-        (reduce (fn [result handler]
-                  (conj result (handler state side eid)))
-                []
-                (get-in @state [:effect-completed (:eid eid)]))]
-    (swap! state update-in [:effect-completed] dissoc (:eid eid))
-    results))
+  [state _ eid]
+  (when-let [handler (get-in @state [:effect-completed (:eid eid)])]
+    (let [results (handler eid)]
+      (swap! state update :effect-completed dissoc (:eid eid))
+      results)))
 
 (defn make-result
   [eid result]
