@@ -3324,6 +3324,35 @@
         (card-subroutine state :corp pachinko 0)
         (is (not (:run @state)) "Run ended")))))
 
+(deftest palisade
+  ;; Palisade
+  (testing "Basic Test"
+    (do-game
+      (new-game {:corp {:hand [(qty "Palisade" 2)]}})
+      (click-credit state :corp)
+      (play-from-hand state :corp "Palisade" "HQ")
+      (play-from-hand state :corp "Palisade" "New remote")
+      (take-credits state :corp)
+      (let [palisadeCentral (get-ice state :hq 0)
+            palisadeRemote (get-ice state :remote1 0)]
+        (rez state :corp palisadeCentral)
+        (is (= 2 (core/get-strength (refresh palisadeCentral))) "Normal Strength")
+        (rez state :corp palisadeRemote)
+        (is (= 4 (core/get-strength (refresh palisadeRemote))) "Boosted Strength on Remote")
+        (run-on state "HQ")
+        (run-continue state)
+        (fire-subs state palisadeCentral)
+        (is (not (:run @state)) "Run ended")
+        )
+
+
+
+      (println (prompt-fmt :runner))
+      (println (clojure.string/join "\n" (map :text (:log @state))))
+
+      ))
+  )
+
 (deftest paper-wall
   ;;Paper Wall
   (testing "Basic trash test"

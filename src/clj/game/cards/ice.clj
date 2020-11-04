@@ -2517,6 +2517,10 @@
   {:subroutines [end-the-run-if-tagged
                  end-the-run-if-tagged]})
 
+(defcard "Palisade"
+  {:strength-bonus (req (if (is-remote? (second (get-zone card))) 2 0))
+   :subroutines [end-the-run]})
+
 (defcard "Paper Wall"
   {:events [{:event :subroutines-broken
              :req (req (and (same-card? card target)
