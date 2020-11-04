@@ -1567,16 +1567,16 @@
              :silent (get-autoresolve :autofire never?)
              :effect (req (show-wait-prompt state :corp "Runner to decide if they will use Leech")
                           (continue-ability state side
-                            {:optional {
-                              :player :runner
-                              :autoresolve (get-autoresolve :auto-fire)
-                              :prompt "Use Leech?"
-                              :end-effect (req (clear-wait-prompt state :corp))
-                              :yes-ability 
-                                {:msg "add 1 virus counter to Leech"
-                                 :effect (req (add-counter state side card :virus 1))}
-                              :no-ability
-                                {:effect (req (system-msg state side "does not add counter to Leech"))}}} card nil))}]
+                                            {:optional
+                                             {:player :runner
+                                              :autoresolve (get-autoresolve :auto-fire)
+                                              :prompt "Use Leech?"
+                                              :end-effect (req (clear-wait-prompt state :corp))
+                                              :yes-ability
+                                              {:msg "add 1 virus counter to Leech"
+                                               :effect (req (add-counter state side card :virus 1))}
+                                              :no-ability
+                                              {:effect (req (system-msg state side "does not add counter to Leech"))}}} card nil))}]
    :autoresolve (get-autoresolve :auto-fire)
    :abilities [{:cost [:virus 1]
                 :label "Give -1 strength to current ICE"
