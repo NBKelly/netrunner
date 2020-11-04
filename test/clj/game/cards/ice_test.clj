@@ -384,6 +384,42 @@
       (rez state :corp (refresh ab))
       (is (= 5 (:credit (get-corp))) "Paid 3 credits to rez; 2 advancments on Asteroid Belt"))))
 
+(deftest ballista
+  ;; Ballista
+  (testing "Basic Test"
+    (do-game
+      (new-game {:corp {:hand ["Ballista" "Hedge Fund" "Ice Wall"]}
+                 :runner {:hand ["Datasucker"]}})
+      (play-from-hand state :corp "Ballista" "HQ")
+      (play-from-hand state :corp "Hedge Fund")
+      (take-credits state :corp)
+      (play-from-hand state :runner "Datasucker")
+      (let [ball (get-ice state :hq 0)]
+        (run-on state "HQ")
+        (rez state :corp (refresh ball))
+        (run-continue state)
+        (fire-subs state ball)
+        (is (= ["Trash a program" "End the run"] (prompt-buttons :corp)) "Corp should have 2 options")
+        (click-prompt state :corp "End the run")
+        (is (not (:run @state)) "Run ended")
+        (run-on state "HQ")
+        (run-continue state)
+        (fire-subs state ball)
+        (is (= ["Trash a program" "End the run"] (prompt-buttons :corp)) "Corp should have 2 options")
+        (click-prompt state :corp "Trash a program")
+        (click-card state :corp "Datasucker")
+        (is (nil? (get-program state 0)) "Datasucker is trashed")
+        (is (:run @state) "Run continues")
+        (run-continue state)
+        (run-continue state)
+        (click-prompt state :runner "No action")
+        (run-on state "HQ")
+        (run-continue state)
+        (fire-subs state ball)
+        (is (= ["End the run"] (prompt-buttons :corp)) "Corp should have 1 option")
+        (click-prompt state :corp "End the run")
+        (is (not (:run @state)) "Run ended")))))
+
 (deftest bandwidth
   ;; Bandwidth - Give the Runner 1 tag; remove 1 tag if the run is successful
   (do-game

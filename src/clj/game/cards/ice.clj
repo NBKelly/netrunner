@@ -594,6 +594,17 @@
    :abilities [(gain-credits-sub 1)]
    :subroutines [end-the-run]})
 
+(defcard "Ballista"
+  {:subroutines [{:label "Trash 1 program or end the run"
+                  :prompt "Choose one"
+                  :choices (req (if (empty? (filter program? (all-active-installed state :runner)))
+                                  ["End the run"]
+                                  ["Trash a program" "End the run"]))
+                  :async true
+                  :effect (req (if (= target "Trash a program")
+                                 (continue-ability state side trash-program-sub card nil)
+                                 (continue-ability state side end-the-run card nil)))}]})
+
 (defcard "Bandwidth"
   {:subroutines [{:msg "give the Runner 1 tag"
                   :async true
