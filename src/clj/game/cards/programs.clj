@@ -701,8 +701,7 @@
   {:events [{:event :run-ends
              :req (req (and (:successful target)
                             (= :rd (target-server context))))
-             :effect (req (update! state side (dissoc-in card [:special :conduit]))
-                          (show-wait-prompt state :corp "Runner to decide if they will use Conduit")
+             :effect (req (show-wait-prompt state :corp "Runner to decide if they will use Conduit")
                           (continue-ability state side
                                             {:optional
                                              {:player :runner
@@ -718,14 +717,13 @@
              :silent (req true)
           
              :req (req (and (= :rd (target-server context))
-                            (get-in card [:special :conduit])))
+                            this-card-run))
              :effect (req (access-bonus state side :rd (max 0 (get-virus-counters state card))))}]
    :abilities [{:cost [:click 1]
                 :msg "make a run on R&D"
                 :makes-run true
                 :async true
-                :effect (req (update! state side (assoc-in card [:special :conduit] true))
-                             (make-run state side eid :rd nil card))}
+                :effect (req (make-run state side eid :rd nil card))}
                (set-autoresolve :auto-conduit "Conduit")]})
 
 (defcard "Consume"
