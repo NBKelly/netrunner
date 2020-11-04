@@ -1109,6 +1109,35 @@
                            (card-ability state :runner refr 1)
                            (click-card state :runner cl))))))
 
+(deftest conduit
+  ;; Conduit
+  (testing "Basic test"
+    (do-game
+     (new-game {:corp {:deck [(qty "Ice Wall" 8)]
+                       :hand ["Hedge Fund"]}
+                :runner {:deck ["Conduit"]}})
+     (take-credits state :corp)
+     (play-from-hand state :runner "Conduit")
+     (let [conduit (get-program state 0)]
+     (card-ability state :runner conduit 0)
+     (is (:run @state) "Run initiated")
+     (run-continue state)
+     (click-prompt state :runner "No action") 
+     (click-prompt state :runner "Yes")
+     (is (empty? (:prompt (get-runner))) "Prompt closed")
+     (is (= 1 (get-counters (refresh conduit) :virus)))
+     (is (not (:run @state)) "Run ended")
+       
+     (card-ability state :runner conduit 0)
+     (run-continue state)
+     (is (= 1 (core/access-bonus-count state :runner :rd)) "Runner should access 1 additional card")
+     (click-prompt state :runner "No action")
+     (click-prompt state :runner "No action")
+     (click-prompt state :runner "Yes")
+     (is (= 2 (get-counters (refresh conduit) :virus)))
+     (run-empty-server state :rd)
+     (is (= 0 (core/access-bonus-count state :runner :rd)) "Runner should access 0 additional card on normal run")))))
+
 (deftest consume
   ;; Consume - gain virus counter for trashing corp card. click to get 2c per counter.
   (testing "Trash and cash out"

@@ -697,6 +697,37 @@
              :async true
              :effect (effect (draw :runner eid 1 nil))}]})
 
+(defcard "Conduit"
+  {:events [{:event :run-ends
+             :req (req (and (:successful target)
+                            (= :rd (target-server context))))
+             :effect (req (update! state side (dissoc-in card [:special :conduit]))
+                          (show-wait-prompt state :corp "Runner to decide if they will use Conduit")
+                          (continue-ability state side
+                                            {:optional
+                                             {:player :runner
+                                              :autoresolve (get-autoresolve :auto-conduit)
+                                              :prompt "Use Conduit?"
+                                              :end-effect (req (clear-wait-prompt state :corp))
+                                              :yes-ability
+                                              {:msg "add 1 virus counter to Conduit"
+                                               :effect (req (add-counter state side card :virus 1))}
+                                              :no-ability
+                                              {:effect (req (system-msg state side "does not add counter to Conduit"))}}} card nil))}
+            {:event :successful-run
+             :silent (req true)
+          
+             :req (req (and (= :rd (target-server context))
+                            (get-in card [:special :conduit])))
+             :effect (req (access-bonus state side :rd (max 0 (get-virus-counters state card))))}]
+   :abilities [{:cost [:click 1]
+                :msg "make a run on R&D"
+                :makes-run true
+                :async true
+                :effect (req (update! state side (assoc-in card [:special :conduit] true))
+                             (make-run state side eid :rd nil card))}
+               (set-autoresolve :auto-conduit "Conduit")]})
+
 (defcard "Consume"
   {:events [{:event :runner-trash
              :once-per-instance true
@@ -2604,6 +2635,7 @@
 (defcard "Unity"
   {:abilities [(break-sub 1 1 "Code Gate")
                {:label "1 [Credits]: Add 1 strength for each installed icebreaker"
+                :async true
                 :effect (req (continue-ability state side
                                                (strength-pump 1 (count (filter #(and (program? %)
                                                                                      (has-subtype? % "Icebreak"))
