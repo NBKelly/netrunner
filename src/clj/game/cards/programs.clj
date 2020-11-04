@@ -1095,6 +1095,13 @@
                                                       :label "break 1 subroutine and access 0 cards"})
                                 (strength-pump 1 1)]}))
 
+(defcard "Echelon"
+  (auto-icebreaker {:strength-bonus (req (count (filter #(and (program? %)
+                                                              (has-subtype? % "Icebreak"))
+                                                        (all-active-installed state :runner))))
+                    :abilities [(break-sub 1 1 "Sentry")
+                                (strength-pump 3 2)]}))
+
 (defcard "Egret"
   {:implementation "Added subtypes don't get removed when Egret is moved/trashed"
    :hosting {:card #(and (ice? %)

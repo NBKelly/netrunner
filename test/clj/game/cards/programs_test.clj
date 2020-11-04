@@ -1817,6 +1817,41 @@
         (is (find-card "Eater" (:discard (get-runner))) "Eater is trashed")
         (is (empty? (:prompt (get-runner))) "No prompt for accessing cards")))))
 
+(deftest echelon
+  ;; Echelon
+  (testing "Basic test"
+    (do-game
+     (new-game {:runner {:deck ["Echelon"]
+                         :credits 20}
+                :corp {:deck ["Anansi"]
+                       :credits 20}})
+     (play-from-hand state :corp "Anansi" "HQ")
+     (take-credits state :corp)
+     (play-from-hand state :runner "Echelon")
+     (let [echelon (get-program state 0)
+           anansi (get-ice state :hq 0)]
+       (is (= 1 (get-strength (refresh echelon))) "0 + 1 icebreaker installed")
+       (run-on state :hq)
+       (rez state :corp (refresh anansi))
+       (run-continue state)
+       (changes-val-macro
+        -9 (:credit (get-runner))
+        "Echelon breaks Anansi for 9 [Credits]"
+        (core/play-dynamic-ability state :runner {:dynamic "auto-pump-and-break" :card (refresh echelon)}))
+       (is (zero? (count (remove :broken (:subroutines (refresh anansi))))) "All subroutines have been broken"))))
+  (testing "Echelon STR boost test"
+    (do-game
+     (new-game {:runner {:deck [(qty "Echelon" 5)]
+                         :credits 50}})
+     (take-credits state :corp)
+     (play-from-hand state :runner "Echelon")
+     (let [echelon (get-program state 0)]
+       (is (= 1 (get-strength (refresh echelon))) "0 + 1 icebreaker installed")
+       (play-from-hand state :runner "Echelon")
+       (is (= 2 (get-strength (refresh echelon))) "0 + 2 icebreaker installed")
+       (play-from-hand state :runner "Echelon")
+       (is (= 3 (get-strength (refresh echelon))) "0 + 3 icebreaker installed")))))
+
 (deftest egret
   ;; Egret
   (do-game
