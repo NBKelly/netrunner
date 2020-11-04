@@ -4875,6 +4875,42 @@
         (click-prompt state :runner "The Runner cannot jack out for the remainder of this run")
         (is (refresh wp) "Whirlpool not trashed")))))
 
+(deftest whitespace
+  ;; Whitespace
+  (testing "Basic Test"
+    (do-game
+      (new-game {:corp {:hand ["Whitespace" "Hedge Fund"]}
+                 :runner {:hand [(qty "Sure Gamble" 2)]}})
+      (play-from-hand state :corp "Whitespace" "HQ")
+      (take-credits state :corp)
+      (let [ws (get-ice state :hq 0)]
+        (play-from-hand state :runner "Sure Gamble")
+        (click-credit state :runner)
+        (run-on state :hq)
+        (rez state :corp ws)
+        (run-continue state)
+        (is (= 10 (:credit (get-runner))) "Starting with 10 credits")
+        (fire-subs state ws)
+        (is (= 7 (:credit (get-runner))) "Lost 3 credits")
+        (is (:run @state) "Runner has sufficient credits")
+        (run-continue state)
+        (run-continue state)
+        (click-prompt state :runner "No action")
+        (run-on state :hq)
+        (run-continue state)
+        (is (= 7 (:credit (get-runner))) "Starting with 7 credits")
+        (fire-subs state ws)
+        (is (= 4 (:credit (get-runner))) "Lost 3 credits")
+        (is (not (:run @state)) "Runner has insufficient credits")
+
+        )
+
+      (println (prompt-fmt :runner))
+      (println (clojure.string/join "\n" (map :text (:log @state))))
+
+      ))
+  )
+
 (deftest winchester
   ;; Winchester
   (testing "Basic test - 3 sub on HQ"

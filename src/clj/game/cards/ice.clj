@@ -197,6 +197,15 @@
    :msg "force the Runner to lose 1 [Click] if able"
    :effect (effect (lose :runner :click 1))})
 
+(defn runner-loses-credits
+  [credits]
+  ; Runner loses credits effect
+  {:label (str "Runner loses " credits "[Credits]")
+   :msg (str "force the Runner to lose " credits " [Credits]")
+   :async true
+   :effect (effect (lose-credits :runner eid credits))}
+  )
+
 (def add-runner-card-to-grip
   "Add 1 installed Runner card to the grip"
   {:async true
@@ -3341,6 +3350,14 @@
                                  (continue state :corp nil)
                                  (continue state :runner nil))
                                (trash state side eid card {:cause :subroutine}))}]})
+
+(defcard "Whitespace"
+  {:subroutines [(runner-loses-credits 3)
+                 {:label "End the run if the Runner has fewer than 7[Credits]"
+                  :req (req (> 7 (:credit runner)))
+                  :msg "end the run"
+                  :async true
+                  :effect (effect (end-run :corp eid card))}]})
 
 (defcard "Winchester"
   (let [ab {:req (req (protecting-hq? card))
