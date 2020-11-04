@@ -3385,6 +3385,34 @@
       (click-prompt state :runner "End the run")
       (is (not (:run @state)) "Run ended"))))
 
+(deftest pharos
+  ;; Pharos
+  (testing "Basic Test"
+    (do-game
+      (new-game {:corp {:hand ["Pharos" (qty "Hedge Fund" 2)]}})
+      (play-from-hand state :corp "Pharos" "HQ")
+      (play-from-hand state :corp "Hedge Fund")
+      (play-from-hand state :corp "Hedge Fund")
+      (take-credits state :corp)
+      (is (= 0 (count-tags state)))
+      (let [pha (get-ice state :hq 0)]
+        (run-on state "HQ")
+        (rez state :corp (refresh pha))
+        (run-continue state)
+        (fire-subs state pha)
+        (is (= 1 (count-tags state)))
+        (is (not (:run @state)) "Run ended")
+        (take-credits state :runner)
+        (is (= 0 (get-counters (refresh pha) :advancement)) "Pharos has no adv tokens")
+        (is (= 5 (get-strength (refresh pha))) "Pharos starts at 5 strength")
+        (dotimes [n 2]
+          (advance state pha)
+          (is (= (inc n) (get-counters (refresh pha) :advancement)) (str "Pharos has " (inc n) " adv tokens"))
+          (is (= 5 (get-strength (refresh pha))) "Pharos stays at 5 strength"))
+        (advance state pha)
+        (is (= 3 (get-counters (refresh pha) :advancement)) "Pharos has 3 adv tokens")
+        (is (= 10 (get-strength (refresh pha))) "Pharos is now at 10 strength")))))
+
 (deftest red-tape
   ;; Red Tape
   (do-game

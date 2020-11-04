@@ -2558,6 +2558,13 @@
      :events [{:event :run-ends
                :effect (effect (reset-variable-subs card 0 nil))}]}))
 
+(defcard "Pharos"
+  {:advanceable :always
+   :subroutines [(give-tags 1)
+                 end-the-run
+                 end-the-run]
+   :strength-bonus (req (if (<= 3 (get-counters card :advancement)) 5 0))})
+
 (defcard "Pop-up Window"
   {:on-encounter (gain-credits-sub 1)
    :subroutines [(end-the-run-unless-runner-pays 1)]})
