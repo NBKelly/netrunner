@@ -201,7 +201,7 @@
   [credits]
   ; Runner loses credits effect
   {:label (str "Runner loses " credits "[Credits]")
-   :msg (str "force the Runner to lose " credits " [Credits]")
+   :msg (str "force the Runner to lose " credits "[Credits]")
    :async true
    :effect (effect (lose-credits :runner eid credits))}
   )
