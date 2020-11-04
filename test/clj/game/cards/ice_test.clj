@@ -3342,16 +3342,7 @@
         (run-on state "HQ")
         (run-continue state)
         (fire-subs state palisadeCentral)
-        (is (not (:run @state)) "Run ended")
-        )
-
-
-
-      (println (prompt-fmt :runner))
-      (println (clojure.string/join "\n" (map :text (:log @state))))
-
-      ))
-  )
+        (is (not (:run @state)) "Run ended")))))
 
 (deftest paper-wall
   ;;Paper Wall
@@ -4901,15 +4892,7 @@
         (is (= 7 (:credit (get-runner))) "Starting with 7 credits")
         (fire-subs state ws)
         (is (= 4 (:credit (get-runner))) "Lost 3 credits")
-        (is (not (:run @state)) "Runner has insufficient credits")
-
-        )
-
-      (println (prompt-fmt :runner))
-      (println (clojure.string/join "\n" (map :text (:log @state))))
-
-      ))
-  )
+        (is (not (:run @state)) "Runner has insufficient credits")))))
 
 (deftest winchester
   ;; Winchester
