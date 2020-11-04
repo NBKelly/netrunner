@@ -5198,6 +5198,61 @@
         (core/continue state :corp nil)
         (is (= (+ credits 2) (:credit (get-corp))) "Corp gains 2 credits from Tycoon being used")))))
 
+
+(deftest unity
+  ;; Unity
+  (testing "Basic test"
+    (do-game
+     (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                       :hand ["Afshar"]
+                       :credits 20}
+                :runner {:deck ["Unity"]
+                         :credits 20}})
+     (play-from-hand state :corp "Afshar" "R&D")
+     (rez state :corp (get-ice state :rd 0))
+     (take-credits state :corp)
+     (play-from-hand state :runner "Unity")
+     (let [unity (get-program state 0)
+           ice (get-ice state :rd 0)]
+       (run-on state :rd)
+       (run-continue state)
+       (is (= 17 (:credit (get-runner))) "17 credits before breaking")
+       (card-ability state :runner unity 1) ;;temp boost because EDN file
+       (card-ability state :runner unity 0)
+       (click-prompt state :runner "Make the Runner lose 2 [Credits]")
+       (card-ability state :runner unity 0)
+       (click-prompt state :runner "End the run")
+       (is (= 14 (:credit (get-runner))) "14 credits after breaking")
+       (is (zero? (count (remove :broken (:subroutines (refresh ice))))) "All subroutines have been broken"))))
+  (testing "Boost test"
+    (do-game
+     (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                       :hand ["DNA Tracker"]
+                       :credits 20}
+                :runner {:deck [(qty "Unity" 3)]
+                         :credits 20}})
+     (play-from-hand state :corp "DNA Tracker" "HQ")
+     (rez state :corp (get-ice state :hq 0))
+     (take-credits state :corp)
+     (play-from-hand state :runner "Unity")
+     (play-from-hand state :runner "Unity")
+     (play-from-hand state :runner "Unity")
+     (let [unity (get-program state 0)
+           ice (get-ice state :hq 0)]
+       (run-on state :hq)
+       (run-continue state)
+       (is (= 11 (:credit (get-runner))) "11 credits before breaking")
+       (card-ability state :runner unity 1)
+       (card-ability state :runner unity 1)
+       (card-ability state :runner unity 0)
+       (click-prompt state :runner "Do 1 net damage and make the Runner lose 2 [Credits]")
+       (card-ability state :runner unity 0)
+       (click-prompt state :runner "Do 1 net damage and make the Runner lose 2 [Credits]")
+       (card-ability state :runner unity 0)
+       (click-prompt state :runner "Do 1 net damage and make the Runner lose 2 [Credits]")
+       (is (= 6 (:credit (get-runner))) "6 credits after breaking")
+       (is (zero? (count (remove :broken (:subroutines (refresh ice))))) "All subroutines have been broken")))))
+
 (deftest upya
   (do-game
     (new-game {:runner {:deck ["Upya"]}})
