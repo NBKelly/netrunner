@@ -1487,6 +1487,15 @@
              :async true
              :effect (effect (trash eid card {:cause :purge}))}]})
 
+(defcard "Ketamine"
+  {:data {:counter {:virus 1}}
+   :hosting {:card #(and (ice? %)
+                         (can-host? %))}
+   :events [{:event :runner-turn-begins
+             :effect (req (add-counter state side card :virus 1)
+                          (if (<= 2 (get-virus-counters state card))
+                            (derez state side (get-card state (:host card)))))}]})
+
 (defcard "Keyhole"
   {:abilities [{:cost [:click 1]
                 :msg "make a run on R&D"

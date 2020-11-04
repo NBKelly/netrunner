@@ -2744,6 +2744,34 @@
       (is (= 4 (:credit (get-corp))) "Corp lost 1 credit to Lamprey")
       (is (= 3 (:credit (get-runner))) "Runner gains 1 credit from Ixodidae due to Lamprey"))))
 
+(deftest ketamine
+  ;;Ketamine
+  (testing "Basic test"
+    (do-game
+     (new-game {:corp {:hand ["Ice Wall"]
+                       :deck [(qty "Hedge Fund" 10)]}
+                :runner {:hand ["Ketamine"]}})
+     (play-from-hand state :corp "Ice Wall" "HQ")
+     (take-credits state :corp)
+     (play-from-hand state :runner "Ketamine")
+     (click-card state :runner (get-ice state :hq 0))
+     (let [iw (get-ice state :hq 0)
+           ketamine (first (:hosted (refresh iw)))]
+       (is (= 1 (get-counters (refresh ketamine) :virus)))
+       (take-credits state :runner)
+       (rez state :corp iw)
+       (take-credits state :corp)
+       (is (= 2 (get-counters (refresh ketamine) :virus)))
+       (take-credits state :runner)
+       (take-credits state :corp)
+       (is (= 3 (get-counters (refresh ketamine) :virus)))
+       (is (not (rezzed? (refresh iw))) "Ice Wall derezzed")
+       (take-credits state :runner)
+       (rez state :corp iw)
+       (take-credits state :corp)
+       (is (= 4 (get-counters (refresh ketamine) :virus)))
+       (is (not (rezzed? (refresh iw))) "Ice Wall derezzed again")))))
+
 (deftest keyhole
   ;; Keyhole
   (testing "Basic test"
