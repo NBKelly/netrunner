@@ -4394,6 +4394,24 @@
       (click-card state :corp "Ice Wall")
       (is (= ["Thimblerig" "Ice Wall"] (map :title (get-ice state :hq)))))))
 
+(deftest tithe
+  ;; Tithe
+  (testing "Basic Test"
+    (do-game
+      (new-game {:corp {:hand ["Tithe"]}
+                 :runner {:hand ["Sure Gamble"]}})
+      (play-from-hand state :corp "Tithe" "HQ")
+      (take-credits state :corp)
+      (is (= 7 (:credit (get-corp))) "Gained 2 credits")
+      (rez state :corp (get-ice state :hq 0))
+      (is (= 6 (:credit (get-corp))) "Cost 1 to rez")
+      (run-on state "HQ")
+      (run-continue state)
+      (is (= 0 (count (:discard (get-runner)))) "heap empty")
+      (fire-subs state (get-ice state :hq 0))
+      (is (= 1 (count (:discard (get-runner)))) "Runner took net damage")
+      (is (= 7 (:credit (get-corp))) "Gained 1 credit"))))
+
 (deftest tithonium
   ;; Tithonium - Forfeit option as rez cost, can have hosted condition counters
   (testing "Basic test"

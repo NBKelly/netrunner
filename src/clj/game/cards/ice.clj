@@ -3051,6 +3051,10 @@
                                    :msg (msg "force the Runner to lose " (count-tags state) " [Credits]")
                                    :effect (effect (lose-credits :runner eid (count-tags state)))})]})
 
+(defcard "Tithe"
+  {:subroutines [(do-net-damage 1)
+                 (gain-credits-sub 1)]})
+
 (defcard "Tithonium"
   {:alternative-cost [:forfeit]
    :implementation "Does not handle UFAQ for Pawn or Blackguard interaction"
