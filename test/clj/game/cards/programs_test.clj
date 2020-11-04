@@ -3163,6 +3163,46 @@
         (take-credits state :runner)
         (take-credits state :corp)))))
 
+(deftest marjanah
+  ;; Marjanah
+  (testing "basic test"
+    (do-game
+     (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                       :hand ["Fire Wall"]}
+                :runner {:credits 15
+                         :hand ["Marjanah"]}})
+     (play-from-hand state :corp "Fire Wall" "HQ")
+     (take-credits state :corp)
+     (play-from-hand state :runner "Marjanah")
+     (run-on state :hq)
+     (let [fw (get-ice state :hq 0)
+           mar (get-program state 0)]
+       (rez state :corp fw)
+       (run-continue state)
+       (changes-val-macro -6 (:credit (get-runner))
+                          "Paid 6 to fully break Fire Wall with Marjanah"
+                          (core/play-dynamic-ability state :runner {:dynamic "auto-pump-and-break" :card (refresh mar)}))
+       (is (zero? (count (remove :broken (:subroutines (refresh fw))))) "All subroutines have been broken"))))
+  (testing "discount after successful run"
+    (do-game
+     (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                       :hand ["Fire Wall"]}
+                :runner {:credits 15
+                         :hand ["Marjanah"]}})
+     (play-from-hand state :corp "Fire Wall" "HQ")
+     (take-credits state :corp)
+     (play-from-hand state :runner "Marjanah")
+     (run-empty-server state :archives)
+     (run-on state :hq)
+     (let [fw (get-ice state :hq 0)
+           mar (get-program state 0)]
+       (rez state :corp fw)
+       (run-continue state)
+       (changes-val-macro -5 (:credit (get-runner))
+                          "Paid 5 to fully break Fire Wall with Marjanah"
+                          (core/play-dynamic-ability state :runner {:dynamic "auto-pump-and-break" :card (refresh mar)}))
+       (is (zero? (count (remove :broken (:subroutines (refresh fw))))) "All subroutines have been broken")))))
+
 (deftest mass-driver
   ;; Mass-Driver
   (testing "Basic test"

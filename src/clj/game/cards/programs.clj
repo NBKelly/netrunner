@@ -1690,6 +1690,15 @@
                                                    (program? target))))
                                 :type :recurring}}})
 
+(defcard "Marjanah"
+  (auto-icebreaker {:abilities [(break-sub 2 1 "Barrier"
+                                           {:label "Break 1 Barrier subroutine"
+                                            :req (req (not (:successful-run runner-reg)))})
+                                (break-sub 1 1 "Barrier"
+                                           {:label "Break 1 Barrier subroutine (Successful run restriction)"
+                                            :req (req (:successful-run runner-reg))})
+                                (strength-pump 1 1)]}))
+                  
 (defcard "Mass-Driver"
   (auto-icebreaker {:abilities [(break-sub 2 1 "Code Gate")
                                 (strength-pump 1 1)]
