@@ -175,11 +175,11 @@
     (cons "trash")
     ;; rez
     (and (#{"Asset" "ICE" "Upgrade"} type)
-         (not rezzd))
+         (not rezzed))
     (cons "rez")
     ;; derez
     (and (#{"Asset" "ICE" "Upgrade"} type)
-         rezzd)
+         rezzed)
     (cons "derez")))
 
 (defn handle-abilities
