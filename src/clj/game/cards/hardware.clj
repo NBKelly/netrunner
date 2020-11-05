@@ -1304,6 +1304,42 @@
                                                (same-card? card (:host target))))
                                 :type :recurring}}})
 
+(defcard "Pantograph"
+  (let [install-ability {:optional {:prompt "Install card with Pantograph ability?"
+                                    :yes-ability {:async true
+                                                  :msg "wants to install card with Pantgraph"
+                                                  :effect (req (continue-ability state side
+                                                                                 {:async true
+                                                                                  :prompt "Select a card to install with Pantograph"
+                                                                                  :choices
+                                                                                  {:req (req (and (runner? target)
+                                                                                                  (in-hand? target)
+                                                                                                  (not (event? target))
+                                                                                                  (can-pay? state side (assoc eid :source card :source-type :runner-install) target nil
+                                                                                                            [:credit (install-cost state side target nil)])))}
+                                                                                  :msg (msg "install " (:title target))
+                                                                                  :effect (effect (runner-install (assoc eid
+                                                                                                                         :source card
+                                                                                                                         :source-type :runner-install)
+                                                                                                                  target nil))
+                                                                                  :cancel-effect (effect (effect-completed eid))}
+                                                                                 card nil))}}}
+        gain-credit-ability {:async true
+                             :effect (req (wait-for (resolve-ability state side
+                                                                     {:optional {:prompt "Gain 1 [Credits] with Pantograph ability?"
+                                                                                 :yes-ability {:async true
+                                                                                               :msg "gain 1 [Credits]"
+                                                                                               :effect (req (gain-credits state :runner eid 1))}}} card nil)
+                                                    (continue-ability state side
+                                                                      install-ability
+                                                                      card nil)))}]
+    {:in-play [:memory 1]
+     :events [(assoc gain-credit-ability :event :agenda-scored
+                     :interactive (req true))
+              (assoc gain-credit-ability :event :agenda-stolen
+                     :interactive (req true))]}))
+
+
 (defcard "Paragon"
   {:in-play [:memory 1]
    :events [{:event :successful-run
