@@ -231,6 +231,18 @@
                                (do (flip-faceup state side target)
                                    (effect-completed state side eid))))}]})
 
+(defcard "Auntie Anjelica"
+  {:data {:counter {:credit 9}}
+   :events [(trash-on-empty :credit)]
+   :abilities [{:label "Take 3 [Credits] from this resource"
+                :cost [:click 1]
+                :once :per-turn
+                :msg (msg "gain 3 [Credits]")
+                :async true
+                :effect (req (let [credits (min 3 (get-counters card :credit))]
+                               (add-counter state side card :credit (- credits))
+                               (gain-credits state :runner eid credits)))}]})
+
 (defcard "Avulsion"
   {:events [{:event :runner-install
              :silent (req true)

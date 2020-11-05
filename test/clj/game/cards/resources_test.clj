@@ -115,6 +115,28 @@
     (is (= 4 (:click (get-runner))) "Spent 1 click; gained 2 clicks")
     (is (= 1 (count (:discard (get-runner)))) "All-nighter is trashed")))
 
+(deftest auntie-anjelica
+  ;; Auntie Anjelica
+  (testing "Basic test"
+    (do-game
+     (new-game {:runner {:deck ["Auntie Anjelica"]}})
+     (take-credits state :corp)
+     (play-from-hand state :runner "Auntie Anjelica")
+     (changes-val-macro 3 (:credit (get-runner))
+                        "Got 3 credits from Auntie Anjelica"
+                        (card-ability state :runner (get-resource state 0) 0))
+     (changes-val-macro 0 (:credit (get-runner))
+                        "Got 0 credits from second attempt to click Auntie Anjelica"
+                        (card-ability state :runner (get-resource state 0) 0))
+     (is (= 2 (:click (get-runner))) "No click taken from second attempt")
+     (take-credits state :runner)
+     (take-credits state :corp)
+     (card-ability state :runner (get-resource state 0) 0)
+     (take-credits state :runner)
+     (take-credits state :corp)
+     (card-ability state :runner (get-resource state 0) 0)
+     (is (empty? (get-resource state)) "Auntie Anjelica trashed after all credits taken"))))
+
 (deftest avulsion
   ;; Avulsion - add a free virus counter to installed virus programs
   (do-game
@@ -126,6 +148,7 @@
      (is (= 3 (get-counters (refresh imp) :virus)) "Imp received an extra virus counter on install"))))
 
 (deftest baklan-bochkin
+  ;; Baklan Bochkin
   (testing "Gaining power counters each run."
     (do-game
       (new-game {:corp {:deck ["Vanilla" "Vanilla"]}
