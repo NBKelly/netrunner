@@ -115,6 +115,16 @@
     (is (= 4 (:click (get-runner))) "Spent 1 click; gained 2 clicks")
     (is (= 1 (count (:discard (get-runner)))) "All-nighter is trashed")))
 
+(deftest avulsion
+  ;; Avulsion - add a free virus counter to installed virus programs
+  (do-game
+   (new-game {:runner {:deck ["Avulsion" "Imp"]}})
+   (take-credits state :corp)
+   (play-from-hand state :runner "Avulsion")
+   (play-from-hand state :runner "Imp")
+   (let [imp (get-program state 0)]
+     (is (= 3 (get-counters (refresh imp) :virus)) "Imp received an extra virus counter on install"))))
+
 (deftest baklan-bochkin
   (testing "Gaining power counters each run."
     (do-game

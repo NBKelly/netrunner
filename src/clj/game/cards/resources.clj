@@ -231,6 +231,12 @@
                                (do (flip-faceup state side target)
                                    (effect-completed state side eid))))}]})
 
+(defcard "Avulsion"
+  {:events [{:event :runner-install
+             :silent (req true)
+             :req (req (has-subtype? target "Virus"))
+             :effect (effect (add-counter target :virus 1))}]})
+
 (defcard "\"Baklan\" Bochkin"
   {:events [{:event :encounter-ice
              :req (req (first-run-event? state side :encounter-ice))
