@@ -2397,6 +2397,26 @@
                                                (effect-completed state side eid))))})
                    card nil))}}}]})
 
+(defcard "Smartware Distributor"
+  (let [ability {:once :per-turn
+                 :async true
+                 :label "Take 1 [Credits] (start of turn)"
+                 :req (req (pos? (get-counters card :credit)))         
+                 :effect (req (continue-ability state side
+                                                {:optional
+                                                 {:prompt "Use Smartware Distributor to gain 1 [Credits]?"
+                                                  :autoresolve (get-autoresolve :auto-distributor)
+                                                  :yes-ability {:async true
+                                                                :msg "take 1 [Credits]"
+                                                                :effect (req (add-counter state side card :credit -1)
+                                                                             (gain-credits state side eid 1))}}}
+                                                card nil))}]
+    {:abilities [{:cost [:click 1]
+                  :msg "place 3 [Credits]"
+                  :effect (req (add-counter state side card :credit 3))}
+                 (set-autoresolve :auto-distributor "take credit from Smartware Distributor")]
+     :events [(assoc ability :event :runner-turn-begins)]}))
+
 (defcard "Spoilers"
   {:events [{:event :agenda-scored
              :async true

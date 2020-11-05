@@ -4165,6 +4165,23 @@
       (run-continue state)
       (is (= :approach-server (:phase (get-run))) "Spear Phishing has bypassed Ice Wall"))))
 
+(deftest smartware-distributor
+  ;; Smartware Distributor
+  (testing "basic functionality"
+    (do-game
+     (new-game {:runner {:deck ["Smartware Distributor"]}})
+     (take-credits state :corp)
+     (play-from-hand state :runner "Smartware Distributor")
+     (is (= 0 (get-counters (get-resource state 0) :credit)) "Smartware Distributor is empty")
+     (card-ability state :runner (get-resource state 0) 0)
+     (is (= 3 (get-counters (get-resource state 0) :credit)) "Smartware Distributor has 3 credits")
+     (take-credits state :runner)
+     (take-credits state :corp)
+     (changes-val-macro 1 (:credit (get-runner))
+                        "Gain 1 credit from Smartware Distributor"
+                        (click-prompt state :runner "Yes"))
+     (is (= 2 (get-counters (get-resource state 0) :credit)) "Smartware Distributor has 2 credits left"))))
+
 (deftest spoilers
   ;; Spoilers - Mill the Corp when it scores an agenda
   (testing "basic functionality"
