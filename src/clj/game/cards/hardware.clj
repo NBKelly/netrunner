@@ -1885,6 +1885,12 @@
              :msg "gain a [click]"
              :effect (effect (gain :click 1))}]})
 
+(defcard "T400 Memory Diamond"
+  {:in-play [:memory 1]
+   :constant-effects [{:type :hand-size
+                       :req (req (= :runner side))
+                       :value 1}]})
+
 (defcard "The Gauntlet"
   {:in-play [:memory 2]
    :events [{:event :pre-access
