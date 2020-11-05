@@ -4601,6 +4601,43 @@
         (click-prompt state :runner "2")
         (is (not (rezzed? (refresh tmi))))))))
 
+(deftest topsy-turvy
+  ;; Topsy-Turvy
+  (testing "Basic Test"
+    (do-game
+      (new-game {:corp {:hand ["Topsy-Turvy"]}})
+      (play-from-hand state :corp "Topsy-Turvy" "HQ")
+      (take-credits state :corp)
+      (let [tt (get-ice state :hq 0)]
+        (run-on state "HQ")
+        (rez state :corp tt)
+        (run-continue state)
+        (click-prompt state :runner "End the run")
+        (is (not (:run @state)) "Run ended")
+        (run-on state "HQ")
+        (run-continue state)
+        (is (= 0 (count-tags state)))
+        (click-prompt state :runner "Take 1 tag")
+        (is (= 1 (count-tags state)))
+        (fire-subs state tt)
+        (click-prompt state :runner "Take 1 tag")
+        (is (= 2 (count-tags state)))
+        (run-jack-out state)
+        (run-on state "HQ")
+        (run-continue state)
+        (click-prompt state :runner "Take 1 tag")
+        (fire-subs state tt)
+        (is (= 5 (:credit (get-runner))))
+        (click-prompt state :runner "Pay 4[Credits]")
+        (is (= 1 (:credit (get-runner))))
+        (run-jack-out state)
+        (run-on state "HQ")
+        (run-continue state)
+        (click-prompt state :runner "Take 1 tag")
+        (fire-subs state tt)
+        (is (= 1 (:credit (get-runner))))
+        (is (= ["Take 1 tag"] (prompt-buttons :runner)) "Runner should have 1 option")))))
+
 (deftest tour-guide
   ;; Tour Guide
   (testing "Rez before other assets"

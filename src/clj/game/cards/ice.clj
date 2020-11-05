@@ -3160,6 +3160,30 @@
                                                (end-run state :corp eid card)))))}
    :subroutines [end-the-run]})
 
+(defcard "Topsy-Turvy"
+  {:on-encounter {:msg "force the Runner to take 1 tag or end the run"
+                  :player :runner
+                  :prompt "Choose one"
+                  :choices ["Take 1 tag" "End the run"]
+                  :async true
+                  :effect (req (if (= target "Take 1 tag")
+                                 (do (system-msg state :runner "chooses to take 1 tag")
+                                     (gain-tags state :runner eid 1))
+                                 (do (system-msg state :runner "ends the run")
+                                     (end-run state :runner eid card))))}
+   :subroutines [{:player :runner
+                  :async true
+                  :label "Give the Runner 1 tag unless they pay 4[Credits]"
+                  :prompt "Take 1 tag or pay 4[Credits]"
+                  :choices (req (if (can-pay? state :runner eid card "Topsy-Turvy" :credit 4)
+                                  ["Take 1 tag" "Pay 4[Credits]"]
+                                  ["Take 1 tag"]))
+                  :effect (req (if (= "Take 1 tag" target)
+                                 (continue-ability state side (give-tags 1) card nil)
+                                 (continue-ability state side (runner-pays [:credit 4]) card nil)))
+
+                  }]})
+
 (defcard "Tour Guide"
   (let [ef (effect (reset-variable-subs card (count (filter asset? (all-active-installed state :corp))) end-the-run))
         ability {:label "Reset number of subs"
