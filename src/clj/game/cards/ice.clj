@@ -2576,6 +2576,9 @@
                  end-the-run]
    :strength-bonus (req (if (<= 3 (get-counters card :advancement)) 5 0))})
 
+(defcard "Ping"
+  {:effect (req (give-tags 1))})
+
 (defcard "Pop-up Window"
   {:on-encounter (gain-credits-sub 1)
    :subroutines [(end-the-run-unless-runner-pays 1)]})
@@ -3180,9 +3183,7 @@
                                   ["Take 1 tag"]))
                   :effect (req (if (= "Take 1 tag" target)
                                  (continue-ability state side (give-tags 1) card nil)
-                                 (continue-ability state side (runner-pays [:credit 4]) card nil)))
-
-                  }]})
+                                 (continue-ability state side (runner-pays [:credit 4]) card nil)))}]})
 
 (defcard "Tour Guide"
   (let [ef (effect (reset-variable-subs card (count (filter asset? (all-active-installed state :corp))) end-the-run))

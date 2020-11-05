@@ -3449,6 +3449,30 @@
         (is (= 3 (get-counters (refresh pha) :advancement)) "Pharos has 3 adv tokens")
         (is (= 10 (get-strength (refresh pha))) "Pharos is now at 10 strength")))))
 
+(deftest ping
+  ;; Ping
+  (do-game
+    (new-game {:corp {:hand ["Hedge Fund" (qty "Ping" 2)]}})
+    (play-from-hand state :corp "Ping" "HQ")
+    (play-from-hand state :corp "Ping" "New remote")
+    (take-credits state :corp)
+    (let [png1 (get-ice state :hq 0)
+          png2 (get-ice state :remote1 0)]
+      (is (= 0 (count-tags state)))
+      (rez state :corp (refresh png2))
+      (is (= 0 (count-tags state)))
+      (run-on state "HQ")
+      (rez state :corp (refresh png1))
+      (is (= 1 (count-tags state)))
+      (run-continue state)
+      )
+
+    (println (prompt-fmt :runner))
+    (println (clojure.string/join "\n" (map :text (:log @state))))
+
+    )
+  )
+
 (deftest red-tape
   ;; Red Tape
   (do-game
