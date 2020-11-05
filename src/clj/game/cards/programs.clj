@@ -1288,6 +1288,18 @@
      :abilities [(break-sub 1 1 "Sentry")
                  (strength-pump 2 1)]}))
 
+(defcard "Fermenter"
+  {:events [{:event :runner-turn-begins
+             :effect (req (add-counter state side card :virus 1))}]
+   :abilities [{:req (req (pos? (get-virus-counters state card)))
+                :cost [:click 1 :trash]
+                :label "Gain 2 [Credits] for each hosted virus counter"
+                :async true
+                :effect (req (wait-for (gain-credits state side (* 2 (get-virus-counters state card)))
+                                       (effect-completed state side eid)))
+                :msg (msg (str "gain " (* 2 (get-virus-counters state card)) " [Credits]"))}]})
+
+
 (defcard "Flashbang"
   (auto-icebreaker {:abilities [{:label "Derez a Sentry being encountered"
                                  :cost [:credit 6]

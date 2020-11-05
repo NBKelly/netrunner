@@ -2202,6 +2202,40 @@
       (run-continue state)
       (is (nil? (prompt-map :runner)) "Femme ability doesn't fire after uninstall"))))
 
+(deftest fermenter
+  ;; Fermenter - click, trash to get 2c per counter.
+  (testing "Trash and cash out"
+    (do-game
+     (new-game {:runner {:deck ["Fermenter"]}})
+     (take-credits state :corp)
+     (play-from-hand state :runner "Fermenter")
+     (take-credits state :runner)
+     (take-credits state :corp)
+     (let [fermenter (get-program state 0)]
+       (is (= 1 (get-counters (refresh fermenter) :virus)) "Fermenter has 1 counter")
+       (changes-val-macro 2 (:credit (get-runner))
+                          "Gain 2 credits from Fermenter ability"
+                          (card-ability state :runner fermenter 0))
+       (is (= 1 (count (:discard (get-runner)))) "Fermenter is trashed"))))
+  (testing "Hivemind interaction"
+    (do-game
+     (new-game {:corp {:deck ["Adonis Campaign"]}
+                :runner {:deck ["Fermenter" "Hivemind"]}})
+     (take-credits state :corp)
+     (play-from-hand state :runner "Fermenter")
+     (play-from-hand state :runner "Hivemind")
+     (take-credits state :runner)
+     (take-credits state :corp)
+     (let [fermenter (get-program state 0)
+           hivemind (get-program state 1)]
+       (is (= 1 (get-counters (refresh fermenter) :virus)) "Fermenter has 1 counter")
+       (is (= 1 (get-counters (refresh hivemind) :virus)) "Hivemind has 1 counter")
+       (changes-val-macro 4 (:credit (get-runner))
+                          "Gain 4 credits from Fermenter ability"
+                          (card-ability state :runner fermenter 0))
+       (is (= 1 (count (:discard (get-runner)))) "Fermenter is trashed")
+       (is (= 1 (get-counters (refresh hivemind) :virus)) "Hivemind has still 1 counter")))))
+
 (deftest gauss
   ;; Gauss
   (testing "Loses strength at end of Runner's turn"
