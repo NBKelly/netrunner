@@ -2588,8 +2588,10 @@
    :strength-bonus (req (if (<= 3 (get-counters card :advancement)) 5 0))})
 
 (defcard "Ping"
-  {;TODO FINISH ME, give tag on rez during run
-   ;:effect (req (give-tags 1))
+  {:async true
+   :req (req (:run @state))
+   :effect (req (gain-tags state :corp eid 1))
+   :msg "give the Runner 1 tag"
    :subroutines [end-the-run]})
 
 (defcard "Pop-up Window"

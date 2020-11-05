@@ -3505,15 +3505,18 @@
       (take-credits state :corp)
       (let [png1 (get-ice state :hq 0)
             png2 (get-ice state :remote1 0)]
-        (is (= 0 (count-tags state)))
+        (is (= 0 (count-tags state)) "Start with no tags")
         (rez state :corp (refresh png2))
-        (is (= 0 (count-tags state)))
+        (is (= 0 (count-tags state)) "Didn't take tag on rez outside of run")
         (run-on state "HQ")
         (rez state :corp (refresh png1))
-        (is (= 1 (count-tags state)))
+        (is (= 1 (count-tags state)) "Took 1 tag during run")
         (run-continue state)
         (fire-subs state png1)
-        (is (not (:run @state)) "Run ended")))))
+        (is (not (:run @state)) "Run ended"))
+      (println (prompt-fmt :runner))
+      (println (clojure.string/join "\n" (map :text (:log @state))))
+      )))
 
 (deftest red-tape
   ;; Red Tape
