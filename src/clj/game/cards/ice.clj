@@ -411,6 +411,8 @@
 
 ;; Card definitions
 
+;(defcard "Ada 1.0")
+
 (defcard "Afshar"
   (let [breakable-fn (req (if (= :hq (second (get-zone card)))
                             (empty? (filter #(and (:broken %) (:printed %)) (:subroutines card)))
@@ -714,6 +716,8 @@
   {:on-encounter {:effect (effect (gain-variable-subs card (count (:hand runner)) (do-brain-damage 1)))}
    :events [{:event :run-ends
              :effect (effect (reset-variable-subs card 0 nil))}]})
+
+;(defcard "Brân 1.0")
 
 (defcard "Builder"
   (let [sub {:label "Place 1 advancement token on an ICE that can be advanced protecting this server"
@@ -1889,6 +1893,13 @@
                    (brain-trash "hardware")
                    (brain-trash "program")]
      :runner-abilities [(bioroid-break 1 1)]}))
+
+(defcard "Karunā"
+  {:subroutines [{:label "Do 2 net damage. The Runner may jack out"
+                  :async true
+                  ;TODO do 2 net and offer jack out sub
+                  }
+                 (do-net-damage 2)]})
 
 (defcard "Kitsune"
   {:subroutines [{:optional

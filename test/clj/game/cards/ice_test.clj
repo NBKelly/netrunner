@@ -7,6 +7,15 @@
             [game.macros-test :refer :all]
             [clojure.test :refer :all]))
 
+(deftest ada-1-0
+  ;Ada 1.0
+  (testing "Basic Test"
+    (do-game
+      (new-game {:corp {:hand ["Ada 1.0" "Eve Campaign" "Project Vitruvius"]
+                        :discard ["Adonis Campaign"]}
+                 :runner {:hand ["Corroder"]}})))
+  )
+
 (deftest afshar
   ;; Afshar
   (testing "Subroutines"
@@ -576,6 +585,14 @@
         (run-continue state)
         (click-prompt state :runner "No action")
         (is (zero? (count (:subroutines (refresh bs)))))))))
+
+(deftest bran-1-0
+  ;Brân 1.0
+  (testing "Basic Test"
+    (do-game
+      (new-game {:corp {:hand ["Brân 1.0" "Vanilla" ]
+                        :discard ["Gatekeeper"]}})))
+  )
 
 (deftest bullfrog
   ;; Bullfrog - Win psi to move to outermost position of another server and continue run there
@@ -2160,7 +2177,7 @@
         (click-prompt state :runner "Yes")
         (is (has-subtype? (refresh kakugo) "Code Gate") "Kakugo was made into a code gate")
         (run-continue state)
-        (empty? (:hand (get-runner)))) "Runner took damage passing kakugo"))
+        (is (empty? (:hand (get-runner))))) "Runner took damage passing kakugo"))
 
 (deftest kamali-1-0
   ;; Kamali 1.0
@@ -2193,6 +2210,35 @@
       (click-card state :runner (get-program state 0))
       (is (empty? (get-program state)) "Cache trashed")
       (is (= 2 (count (:discard (get-runner)))) "Runner trashed 1 card"))))
+
+(deftest karuna
+  (testing "Basic test"
+    (do-game
+      (new-game {:corp {:hand ["Karunā"]}
+                 :runner {:hand [(qty "Sure Gamble" 3) (qty "Easy Mark" 3)]}})
+      (play-from-hand state :corp "Karunā" "HQ")
+      (take-credits state :corp)
+      (let [kar (get-ice state :hq 0)]
+        (run-on state "HQ")
+        (rez state :corp kar)
+        (run-continue state)
+        (is (= 0 (count (:discard (get-runner)))) "Heap Empty")
+        (fire-subs state kar)
+        (is (= 2 (count (:discard (get-runner)))) "2 cards trashed")
+        (click-prompt state :runner "Jack out")
+        (is (nil? (:run @state)) "Runner jacked out")
+        (is (= 2 (count (:discard (get-runner)))) "2 cards trashed, 2nd sub didn't fire")
+        (run-on state "HQ")
+        (run-continue state)
+        (fire-subs state kar)
+        (is (= 4 (count (:discard (get-runner)))) "4 cards trashed")
+        (click-prompt state :runner "Continue")
+        (is (= 6 (count (:discard (get-runner)))) "6 cards trashed")
+        (is (not (nil? (:run @state))) "Run Continues"))
+      ;TODO DELETE LOGGING WHEN DONE
+      (println (prompt-fmt :runner))
+      (println (clojure.string/join "\n" (map :text (:log @state))))
+      )))
 
 (deftest kitsune
   (testing "Corp choices card for Runner to access"
