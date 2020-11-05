@@ -3782,6 +3782,20 @@
       (card-ability state :runner (get-resource state 0) 0)
       (is (empty? (:prompt (get-runner))) "Reclaim prompt did not come up"))))
 
+(deftest red-team
+  ;; Red Team
+  (testing "Basic test"
+    (do-game
+     (new-game {:runner {:deck ["Red Team"]}})
+     (take-credits state :corp)
+     (play-from-hand state :runner "Red Team")
+     (is (= 0 (:credit (get-runner))) "Runner has 0 credits")
+     (card-ability state :runner (get-resource state 0) 0)
+     (click-prompt state :runner "HQ")
+     (run-continue state)
+     (is (= 3 (:credit (get-runner))) "Runner has 3 credits")
+     (is (= 9 (get-counters (get-resource state 0) :credit)) "Red team has 9 credits remaining"))))
+
 (deftest rolodex
   ;; Rolodex - Full test
   (do-game
