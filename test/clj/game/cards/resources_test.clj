@@ -2433,6 +2433,34 @@
                            (click-card state :runner im)
                            (click-card state :runner im))))))
 
+(deftest intuitive-fluency
+  ;; Intuitive Fluency
+  (testing "Basic test"
+    (do-game
+     (new-game {:runner {:hand ["Intuitive Fluency"]
+                         :deck [(qty "Sure Gamble" 8)]}})
+     (take-credits state :corp)
+     (play-from-hand state :runner "Intuitive Fluency")
+     (changes-val-macro 2 (count (:hand (get-runner)))
+                        "First draw action draws 2 cards"
+                        (click-draw state :runner))
+     (changes-val-macro 1 (count (:hand (get-runner)))
+                        "Second draw action draws only 1 card"
+                        (click-draw state :runner))))
+  (testing "The first and second time you draw card each turn (with GCS installed), draw one card"
+    (do-game
+     (new-game {:runner {:hand ["Intuitive Fluency" "Gene Conditioning Shoppe"]
+                         :deck [(qty "Sure Gamble" 8)]}})
+     (take-credits state :corp)
+     (play-from-hand state :runner "Intuitive Fluency")
+     (play-from-hand state :runner "Gene Conditioning Shoppe")
+     (changes-val-macro 2 (count (:hand (get-runner)))
+                        "First draw action draws 2 cards"
+                        (click-draw state :runner))
+     (changes-val-macro 2 (count (:hand (get-runner)))
+                        "Second draw action draws also 2 cards"
+                        (click-draw state :runner)))))
+
 (deftest investigative-journalism
   ;; Investigative Journalism - 4 clicks and trash to give the Corp 1 bad pub
   (do-game

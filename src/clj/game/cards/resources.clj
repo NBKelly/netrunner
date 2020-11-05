@@ -1307,6 +1307,13 @@
                                                (hardware? target)))
                                 :type :recurring}}})
 
+(defcard "Intuitive Fluency"
+  {:events [{:event :runner-click-draw
+             :async true
+             :req (req (genetics-trigger? state side :runner-click-draw))
+             :msg "draw 1 additional card"
+             :effect (effect (draw-bonus 1))}]})
+
 (defcard "Investigative Journalism"
   {:req (req (has-bad-pub? state))
    :abilities [{:cost [:click 4 :trash]
