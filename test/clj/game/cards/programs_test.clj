@@ -3385,6 +3385,28 @@
         (click-prompt state :runner "End the run")
         (is (last-log-contains? state "Runner pays 2 \\[Credits\\] to use Maven to break 1 subroutine on Border Control.") "Correct log with single sub break")))))
 
+(deftest mayfly
+  ;; Mayfly
+  (testing "Basic test"
+    (do-game
+     (new-game {:corp {:deck ["Anansi"]
+                       :credits 20}
+                :runner {:hand ["Mayfly"]
+                         :credits 20}})
+     (play-from-hand state :corp "Anansi" "HQ")
+     (rez state :corp (get-ice state :hq 0))
+     (take-credits state :corp)
+     (play-from-hand state :runner "Mayfly")
+     (let [mayfly (get-program state 0)]
+       (run-on state "HQ")
+       (run-continue state)
+       (changes-val-macro -7 (:credit (get-runner))
+                          "Paid 7 to fully break Anansi with Mayfly"
+                          (core/play-dynamic-ability state :runner {:dynamic "auto-pump-and-break" :card (refresh mayfly)}))
+       (is (= 0 (count (remove :broken (:subroutines (get-ice state :hq 0))))) "Broken all subroutines")
+       (run-jack-out state)
+       (is (= 1 (count (:discard (get-runner)))) "Mayfly trashed when run ends")))))
+
 (deftest misdirection
   ;; Misdirection
   (testing "Recurring credits interaction. Issue #4868"

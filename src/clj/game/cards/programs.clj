@@ -1765,6 +1765,17 @@
   {:abilities [(break-sub 2 1)]
    :strength-bonus (req (count (filter program? (all-active-installed state :runner))))})
 
+(defcard "Mayfly"
+  (auto-icebreaker {:abilities [(break-sub 1 1 "All"
+                                           {:additional-ability {:msg "will trash itself when this run ends"
+                                                                 :effect (req (register-events state side
+                                                                                               card
+                                                                                               [{:event :run-ends
+                                                                                                 :duration :end-of-run
+                                                                                                 :unregister-once-resolved true
+                                                                                                 :effect (req (trash state side eid card nil))}]))}})
+                                (strength-pump 1 1)]}))
+
 (defcard "Medium"
   {:events [{:event :successful-run
              :req (req (= :rd (target-server context)))
