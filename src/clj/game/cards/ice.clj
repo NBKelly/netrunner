@@ -2577,7 +2577,9 @@
    :strength-bonus (req (if (<= 3 (get-counters card :advancement)) 5 0))})
 
 (defcard "Ping"
-  {:effect (req (give-tags 1))})
+  {;TODO FINISH ME, give tag on rez during run
+   ;:effect (req (give-tags 1))
+   :subroutines [end-the-run]})
 
 (defcard "Pop-up Window"
   {:on-encounter (gain-credits-sub 1)
@@ -3270,6 +3272,14 @@
                  (combine-abilities trash-installed-sub (gain-credits-sub 3))
                  end-the-run]
    :runner-abilities [(bioroid-break 1 1 {:additional-ability {:effect (req (swap! state update-in [:corp :extra-click-temp] (fnil inc 0)))}})]})
+
+(defcard "Ukemi"
+  {:subroutines [{:label "Do 1 net damage. If the trashed card has an odd play or install cost, end the run"
+                  :async true
+                  ;TODO Deal 1 net, check card trashed for cost, and etr if odd :effect (wait-for (do-net-damage 1))
+                  }]})
+
+
 
 (defcard "Universal Connectivity Fee"
   {:subroutines [{:label "Force the Runner to lose credits"

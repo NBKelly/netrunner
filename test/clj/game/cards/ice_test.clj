@@ -3451,27 +3451,23 @@
 
 (deftest ping
   ;; Ping
-  (do-game
-    (new-game {:corp {:hand ["Hedge Fund" (qty "Ping" 2)]}})
-    (play-from-hand state :corp "Ping" "HQ")
-    (play-from-hand state :corp "Ping" "New remote")
-    (take-credits state :corp)
-    (let [png1 (get-ice state :hq 0)
-          png2 (get-ice state :remote1 0)]
-      (is (= 0 (count-tags state)))
-      (rez state :corp (refresh png2))
-      (is (= 0 (count-tags state)))
-      (run-on state "HQ")
-      (rez state :corp (refresh png1))
-      (is (= 1 (count-tags state)))
-      (run-continue state)
-      )
-
-    (println (prompt-fmt :runner))
-    (println (clojure.string/join "\n" (map :text (:log @state))))
-
-    )
-  )
+  (testing "Basic Test"
+    (do-game
+      (new-game {:corp {:hand ["Hedge Fund" (qty "Ping" 2)]}})
+      (play-from-hand state :corp "Ping" "HQ")
+      (play-from-hand state :corp "Ping" "New remote")
+      (take-credits state :corp)
+      (let [png1 (get-ice state :hq 0)
+            png2 (get-ice state :remote1 0)]
+        (is (= 0 (count-tags state)))
+        (rez state :corp (refresh png2))
+        (is (= 0 (count-tags state)))
+        (run-on state "HQ")
+        (rez state :corp (refresh png1))
+        (is (= 1 (count-tags state)))
+        (run-continue state)
+        (fire-subs state png1)
+        (is (not (:run @state)) "Run ended")))))
 
 (deftest red-tape
   ;; Red Tape
@@ -4896,6 +4892,38 @@
         (run-jack-out state)
         (take-credits state :runner)
         (is (= 6 (:click (get-corp))) "Corp has 6 clicks")))))
+
+(deftest ukemi
+  ;; Ukemi
+  (testing "Basic Test with Even Cost Trash"
+    (do-game
+      (new-game {:corp {:hand ["Ukemi"]}
+                 :runner {:hand ["Corroder"]}})
+      (play-from-hand state :corp "Ukemi" "HQ")
+      (take-credits state :corp)
+      (run-on state :hq)
+      (let [uk (get-ice state :hq 0)]
+        (rez state :corp uk)
+        (run-continue state)
+        (is (= 0 (count (:discard (get-runner)))) "Heap Empty")
+        (fire-subs state uk)
+        (is (= 1 (count (:discard (get-runner)))) "1 card trashed")
+        (is (:run @state) "Corroder has an even cost, so run continues"))))
+  (testing "Basic Test with Odd Cost Trash"
+    (do-game
+      (new-game {:corp {:hand ["Ukemi"]}
+                 :runner {:hand ["Sure Gamble"]}})
+      (play-from-hand state :corp "Ukemi" "HQ")
+      (take-credits state :corp)
+      (run-on state :hq)
+      (let [uk (get-ice state :hq 0)]
+        (rez state :corp uk)
+        (run-continue state)
+        (is (= 0 (count (:discard (get-runner)))) "Heap Empty")
+        (fire-subs state uk)
+        (is (= 1 (count (:discard (get-runner)))) "1 card trashed")
+        (is (not (:run @state)) "Sure Gamble has an odd cost, so run ends"))))
+  )
 
 (deftest waiver
   ;; Waiver - Trash Runner cards in grip with play/install cost <= trace exceed
