@@ -2406,6 +2406,7 @@
                          :credits 20}})
      (take-credits state :corp)
      (play-from-hand state :runner "MD-2Z Optimizer")
+     (is (= 5 (core/available-mu state)) "Gain 1 memory")
      (changes-val-macro -2 (:credit (get-runner))
                         "Pays 2 credit for first install"
                         (play-from-hand state :runner "Aumakua"))
