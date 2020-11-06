@@ -355,15 +355,25 @@
                                      :duration :end-of-turn
                                      :req (req (same-card? target ice))
                                      :value [:credit 2]})))}]})
-
-(defcard "Cyberdelia"
+(defcard "Creuset"
   {:in-play [:memory 1]
-   :events [{:event :subroutines-broken
-             :req (req (and (every? :broken (:subroutines target))
-                            (first-event? state side :subroutines-broken #(every? :broken (:subroutines (first %))))))
-             :msg "gain 1 [Credits] for breaking all subroutines on a piece of ice"
-             :async true
-             :effect (effect (gain-credits eid 1))}]})
+   :interactions {:access-ability {:label "Trash card"
+                                   :req (req (and (not (get-in @state [:per-turn (:cid card)]))
+                                                  (<= 2 (count (:hand runner)))))
+                                   :cost [:trash-from-hand 2]
+                                   :msg (msg "trash " (:title target) " at no cost")
+                                   :once :per-turn
+                                   :async true
+                                   :effect (effect (trash eid (assoc target :seen true) {:accessed true}))}}})
+  
+  (defcard "Cyberdelia"
+    {:in-play [:memory 1]
+     :events [{:event :subroutines-broken
+               :req (req (and (every? :broken (:subroutines target))
+                              (first-event? state side :subroutines-broken #(every? :broken (:subroutines (first %))))))
+               :msg "gain 1 [Credits] for breaking all subroutines on a piece of ice"
+               :async true
+               :effect (effect (gain-credits eid 1))}]})
 
 (defcard "Cyberfeeder"
   {:recurring 1

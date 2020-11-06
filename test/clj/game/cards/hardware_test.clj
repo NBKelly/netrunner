@@ -948,6 +948,23 @@
       (rez state :corp quan)
       (is (= 4 (:credit (get-corp))) "Paid 3c instead of 1c to rez Quandary"))))
 
+
+(deftest creuset
+  ;; Creuset
+  (testing "Basic test"
+    (do-game
+     (new-game {:corp {:hand ["Anansi"]}
+                :runner {:hand ["Creuset" "Sure Gamble" "Aumakua"]}})
+     (take-credits state :corp)
+     (play-from-hand state :runner "Creuset")
+     (is (= 5 (core/available-mu state)) "Gain 1 memory")
+     (run-empty-server state "HQ")
+     (click-prompt state :runner "[Creuset] Trash 2 cards from your hand: Trash card")
+     (click-card state :runner (find-card "Sure Gamble" (:hand (get-runner))))
+     (click-card state :runner (find-card "Aumakua" (:hand (get-runner))))
+     (is (= 1 (count (:discard (get-corp)))))
+     (is (zero? (count (:hand (get-runner))))))))
+
 (deftest cyberdelia
   ;; Cyberdelia
   (testing "Basic test"
@@ -2666,6 +2683,7 @@
                 :runner {:hand ["Pantograph" "Bankroll"]}})
      (take-credits state :corp)
      (play-from-hand state :runner "Pantograph")
+     (is (= 5 (core/available-mu state)) "Gain 1 memory")
      (run-empty-server state :hq)
      (click-prompt state :runner "Steal")
      (changes-val-macro 1 (:credit (get-runner))
@@ -2821,6 +2839,7 @@
                 :runner {:deck ["Pennyshaver"]}})
      (take-credits state :corp)
      (play-from-hand state :runner "Pennyshaver")
+     (is (= 5 (core/available-mu state)) "Gain 1 memory")
      (let [pennyshaver (get-hardware state 0)]
        (is (= 0 (get-counters (refresh pennyshaver) :credit)) "0 credits on install")
        (run-empty-server state :hq)
