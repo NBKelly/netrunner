@@ -496,6 +496,14 @@
              :effect (effect (update! (dissoc-in card [:special :dino-breaker]))
                              (use-mu (:memoryunits target)))}]})
 
+(defcard "Docklands Pass"
+  {:events [{:event :pre-access
+             :req (req (= :hq target))
+             :silent (req true)
+             :once :per-turn
+             :msg (msg "access 1 additional cards from HQ")
+             :effect (effect (access-bonus :runner :hq 1))}]})
+
 (defcard "Doppelgänger"
   {:in-play [:memory 1]
    :events [{:event :runner-install

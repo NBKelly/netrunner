@@ -1136,6 +1136,25 @@
           (is (= 4 (core/available-mu state))
               "Battering Ram 2 MU not added to available MU when Battering Ram was trashed"))))))
 
+(deftest docklands-pass
+  ;; Docklands Pass - run again when successful
+  (testing "Corp doesn't trash, access HQ"
+    (do-game
+     (new-game {:runner {:hand ["Docklands Pass"]}
+                :corp {:hand [(qty "Vanilla" 4)]
+                       :deck [(qty "Vanilla" 10)]}})
+     (take-credits state :corp)
+     (play-from-hand state :runner "Docklands Pass")
+     (run-empty-server state "HQ")
+     (click-prompt state :runner "No action")
+     (click-prompt state :runner "No action")
+     (is (empty? (:prompt (get-runner))) "Runner done with run after 2 accesses")
+     (is (not (:run @state)) "2 access run over")
+     (run-empty-server state "HQ")
+     (click-prompt state :runner "No action")
+     (is (empty? (:prompt (get-runner))) "Second run is over after 1 access")
+     (is (not (:run @state)) "1 access run over"))))
+      
 (deftest doppelganger
   ;; Doppelgänger - run again when successful
   (testing "Basic test"
