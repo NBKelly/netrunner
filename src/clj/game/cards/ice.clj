@@ -1929,11 +1929,24 @@
      :runner-abilities [(bioroid-break 1 1)]}))
 
 (defcard "Karunā"
-  {:subroutines [{:label "Do 2 net damage. The Runner may jack out"
-                  :async true
-                  ;TODO do 2 net and offer jack out sub
-                  }
-                 (do-net-damage 2)]})
+  (let [offer-jack-out {:async true
+                        :effect (req (show-wait-prompt state :corp "Runner to decide on jack out")
+                                  (continue-ability
+                                    state side
+                                    {:optional
+                                     {:async true
+                                      :player :runner
+                                      :prompt "Jack out?"
+                                      :yes-ability {:async true
+                                                    :effect (effect (clear-wait-prompt :corp)
+                                                              (jack-out eid))}
+                                      :no-ability {:effect (effect (system-msg :runner "chooses to continue")
+                                                             (clear-wait-prompt :corp))}}} card nil))}]
+    {:subroutines [{:label "Do 2 net damage"
+                    :async true
+                    :effect (req (wait-for (resolve-ability state side (do-net-damage 2) card nil)
+                                   (continue-ability state side offer-jack-out card nil)))}
+                   (do-net-damage 2)]}))
 
 (defcard "Kitsune"
   {:subroutines [{:optional

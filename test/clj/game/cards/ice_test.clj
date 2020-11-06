@@ -616,8 +616,29 @@
   (testing "Basic Test"
     (do-game
       (new-game {:corp {:hand ["Brân 1.0" "Vanilla" ]
-                        :discard ["Gatekeeper"]}})))
-  )
+                        :discard ["Gatekeeper"]}})
+      (play-from-hand state :corp "Brân 1.0" "HQ")
+      (take-credits state :corp)
+      (run-on state :hq)
+      (let [bran (get-ice state :hq 0)]
+        (rez state :corp bran)
+        (run-continue state)
+        (fire-subs state bran)
+        (click-card state :corp "Vanilla")
+        (is (not (:run @state)) "Run has ended")
+        (is (= "Vanilla" (:title (get-ice state :hq 0))))
+        (is (= "Brân 1.0" (:title (get-ice state :hq 1))))
+        (run-on state :hq)
+        (run-continue state)
+        (fire-subs state bran)
+        (click-card state :corp "Gatekeeper")
+        (is (not (:run @state)) "Run has ended")
+        (is (= "Gatekeeper" (:title (get-ice state :hq 0))))
+        (is (= "Vanilla" (:title (get-ice state :hq 1))))
+        (is (= "Brân 1.0" (:title (get-ice state :hq 2))))
+        )
+
+      )))
 
 (deftest bullfrog
   ;; Bullfrog - Win psi to move to outermost position of another server and continue run there
@@ -2250,20 +2271,18 @@
         (is (= 0 (count (:discard (get-runner)))) "Heap Empty")
         (fire-subs state kar)
         (is (= 2 (count (:discard (get-runner)))) "2 cards trashed")
-        (click-prompt state :runner "Jack out")
+        (click-prompt state :runner "Yes")
         (is (nil? (:run @state)) "Runner jacked out")
         (is (= 2 (count (:discard (get-runner)))) "2 cards trashed, 2nd sub didn't fire")
+        (println (prompt-fmt :corp))
+        (println (prompt-fmt :runner))
         (run-on state "HQ")
         (run-continue state)
         (fire-subs state kar)
         (is (= 4 (count (:discard (get-runner)))) "4 cards trashed")
-        (click-prompt state :runner "Continue")
+        (click-prompt state :runner "No")
         (is (= 6 (count (:discard (get-runner)))) "6 cards trashed")
-        (is (not (nil? (:run @state))) "Run Continues"))
-      ;TODO DELETE LOGGING WHEN DONE
-      (println (prompt-fmt :runner))
-      (println (clojure.string/join "\n" (map :text (:log @state))))
-      )))
+        (is (not (nil? (:run @state))) "Run Continues")))))
 
 (deftest kitsune
   (testing "Corp choices card for Runner to access"
