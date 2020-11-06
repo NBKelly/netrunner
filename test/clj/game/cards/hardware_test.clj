@@ -2396,6 +2396,23 @@
       (is (= "Scorched Earth" (:title (last (:deck (get-corp))))) "Maya moved the accessed card to the bottom of R&D")
       (is (:prompt (get-runner)) "Runner has next access prompt"))))
 
+
+(deftest md-2z-optimizer
+  ;; MD-2Z Optimizer
+  (testing "Basic test"
+    (do-game
+     (new-game {:corp {:hand ["Hedge Fund"]}
+                :runner {:hand ["MD-2Z Optimizer" (qty "Aumakua" 2)]
+                         :credits 20}})
+     (take-credits state :corp)
+     (play-from-hand state :runner "MD-2Z Optimizer")
+     (changes-val-macro -2 (:credit (get-runner))
+                        "Pays 2 credit for first install"
+                        (play-from-hand state :runner "Aumakua"))
+     (changes-val-macro -3 (:credit (get-runner))
+                        "Pays 3 credit for second install"
+                        (play-from-hand state :runner "Aumakua")))))
+
 (deftest mind-s-eye
   ;; Mind's Eye - Gain power tokens on R&D runs, and for 3 tokens and a click, access the top card of R&D
   (testing "Interaction with RDI + Aeneas"

@@ -285,14 +285,15 @@
                                (and (resource? card)
                                     (or (has-subtype? card "Job")
                                         (has-subtype? card "Connection")))))
-          (not-triggered? [state card] (no-event? state :runner :runner-install #(az-type? (first %))))]
+          (not-triggered? [state card] (no-event? state :runner :runner-install #(az-type? (first %))))
+          (triggered? [state card] (first-event? state :runner :runner-install #(az-type? (first %))))]
     {:constant-effects [{:type :install-cost
                          :req (req (and (az-type? target)
                                         (not-triggered? state card)))
                          :value -1}]
      :events [{:event :runner-install
                :req (req (and (az-type? target)
-                              (not-triggered? state card)))
+                              (triggered? state card)))
                :silent (req true)
                :msg (msg "reduce the install cost of " (:title target) " by 1 [Credits]")}]}))
 

@@ -1112,6 +1112,20 @@
                                    (gain-tags state :runner eid 1))}}})
                  card nil))}]})
 
+(defcard "MD-2Z Optimizer"
+  (letfn [(not-triggered? [state card] (no-event? state :runner :runner-install #(program? (first %))))
+          (triggered? [state card] (first-event? state :runner :runner-install #(program? (first %))))]
+    {:in-play [:memory 1]
+     :constant-effects [{:type :install-cost
+                         :req (req (and (program? target)
+                                        (not-triggered? state card)))
+                         :value -1}]
+     :events [{:event :runner-install
+               :req (req (and (program? target)
+                              (triggered? state card)))
+               :silent (req true)
+               :msg (msg "reduce the install cost of " (:title target) " by 1 [Credits]")}]}))
+
 (defcard "MemStrips"
   {:implementation "MU usage restriction not enforced"
    :in-play [:memory 3]})
