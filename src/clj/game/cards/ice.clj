@@ -3312,10 +3312,14 @@
    :runner-abilities [(bioroid-break 1 1 {:additional-ability {:effect (req (swap! state update-in [:corp :extra-click-temp] (fnil inc 0)))}})]})
 
 (defcard "Ukemi"
-  {:subroutines [{:label "Do 1 net damage. If the trashed card has an odd play or install cost, end the run"
-                  :async true
-                  ;TODO Deal 1 net, check card trashed for cost, and etr if odd :effect (wait-for (do-net-damage 1))
-                  }]})
+  (let [etr-if-damage-odd {:async true
+                           :req (req (odd? (:cost (first (:discard (:runner @state))))))
+                           :msg "end the run"
+                           :effect (effect (end-run :corp eid card))}]
+    {:subroutines [{:label "Do 1 net damage"
+                    :async true
+                    :effect (req (wait-for (resolve-ability state side (do-net-damage 1) card nil)
+                                   (continue-ability state side etr-if-damage-odd card nil)))}]}))
 
 
 

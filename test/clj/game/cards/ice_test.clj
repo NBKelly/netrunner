@@ -4983,9 +4983,10 @@
   (testing "Basic Test with Odd Cost Trash"
     (do-game
       (new-game {:corp {:hand ["Ukemi"]}
-                 :runner {:hand ["Sure Gamble"]}})
+                 :runner {:hand ["Sure Gamble" "Buffer Drive"]}})
       (play-from-hand state :corp "Ukemi" "HQ")
       (take-credits state :corp)
+      (play-from-hand state :runner "Buffer Drive")
       (run-on state :hq)
       (let [uk (get-ice state :hq 0)]
         (rez state :corp uk)
@@ -4993,6 +4994,7 @@
         (is (= 0 (count (:discard (get-runner)))) "Heap Empty")
         (fire-subs state uk)
         (is (= 1 (count (:discard (get-runner)))) "1 card trashed")
+        (click-prompt state :runner (:title "Sure Gamble")) ;Testing edge case with Buffer Drive
         (is (not (:run @state)) "Sure Gamble has an odd cost, so run ends")))))
 
 (deftest waiver
