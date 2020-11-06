@@ -1577,6 +1577,21 @@
                        :req (req (= :corp side))
                        :value (req (- (count-bad-pub state)))}]})
 
+(defcard "Jailbreak"
+  {:req (req (or rd-runnable hq-runnable))
+   :prompt "Choose a server"
+   :choices ["HQ" "R&D"]
+   :makes-run true
+   :async true
+   :effect (req (make-run state side eid target nil card nil))
+   :events [{:event :successful-run
+             :silent (req true)
+             :req (req (and (or (= :hq (target-server context))
+                                (= :rd (target-server context)))
+                            this-card-run))
+             :effect (req (if (= :hq (target-server context)) (access-bonus state :runner :hq 1) (access-bonus state :runner :rd 1))
+                          (draw state side eid 1 nil))}]})
+  
 (defcard "Khusyuk"
   (let [access-revealed (fn [revealed]
                           {:async true
