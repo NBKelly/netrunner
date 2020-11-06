@@ -469,6 +469,13 @@
    :effect (req (swap! state update-in [:corp :bad-publicity :additional] inc))
    :leave-play (req (swap! state update-in [:corp :bad-publicity :additional] dec))})
 
+
+(defcard "Creative Commission"
+  {:msg (msg "gain 5 [Credits]" (when (pos? (:click runner)) " and lose [Click]"))
+   :async true
+   :effect (req (when (pos? (:click runner)) (lose state :runner :click 1))
+                (gain-credits state :runner eid 5))})
+
 (defcard "Credit Crash"
   {:async true
    :makes-run true

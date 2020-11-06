@@ -1136,6 +1136,20 @@
       (take-credits state :corp)
       (is (zero? (get-in (get-corp) [:bad-publicity :base])) "Corp has BP, didn't take 1 from Activist Support"))))
 
+(deftest creative-commision
+  ;; Creative Commission
+  (testing "Basic test"
+    (do-game
+     (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                       :hand [(qty "Hedge Fund" 2)]}
+                :runner {:hand ["Creative Commission"]}})
+     (take-credits state :corp)
+     (let [clicks (:click (get-runner))]
+       (changes-val-macro 4 (:credit (get-runner))
+                          "gain 4 credits from Creative Commission"
+                          (play-from-hand state :runner "Creative Commission"))
+       (is (= (+ clicks -1 -1) (:click (get-runner))) "Runner plays Creative Commission and loses 1 click")))))
+
 (deftest credit-crash
   ;; Credit Crash
   (testing "Corp pays to keep"
