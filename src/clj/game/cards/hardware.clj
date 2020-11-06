@@ -1424,6 +1424,21 @@
                         nil nil)))
        :type :custom}}}))
 
+(defcard "Pennyshaver"
+  {:in-play [:memory 1]
+   :events [{:event :successful-run
+             :silent (req true)
+             :async true
+             :msg "place 1 [Credits]"
+             :effect (req (add-counter state :runner eid card :credit 1 nil))}]
+   :abilities [{:cost [:click 1]
+                :label "Gain 1 [Credits]. Take all hosted [Credits]"
+                :async true
+                :msg (msg "gain " (inc (max 0 (get-counters card :credit))) " [Credits]")
+                :effect (req (let [credits (inc (max 0 (get-counters card :credit)))]
+                               (update! state side (assoc-in card [:counter :credit] 0))
+                               (gain-credits state :runner eid credits)))}]})
+
 (defcard "Plascrete Carapace"
   {:data [:counter {:power 4}]
    :interactions {:prevent [{:type #{:meat}

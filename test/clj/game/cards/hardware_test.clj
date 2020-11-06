@@ -2780,6 +2780,27 @@
       (is (= 1 (:credit (get-runner))) "Runner should still have 1c")
       (is (get-resource state 0) "Installed Film Critic"))))
 
+(deftest pennyshaver
+  ;; Pennyshaver - Prevent meat damage
+  (testing "Basic test"
+    (do-game
+     (new-game {:corp {:deck ["Hedge Fund"]}
+                :runner {:deck ["Pennyshaver"]}})
+     (take-credits state :corp)
+     (play-from-hand state :runner "Pennyshaver")
+     (let [pennyshaver (get-hardware state 0)]
+       (is (= 0 (get-counters (refresh pennyshaver) :credit)) "0 credits on install")
+       (run-empty-server state :hq)
+       (click-prompt state :runner "No action")
+       (is (= 1 (get-counters (refresh pennyshaver) :credit)) "1 credits after one run")
+       (run-empty-server state :hq)
+       (click-prompt state :runner "No action")
+       (is (= 2 (get-counters (refresh pennyshaver) :credit)) "2 credits after second run")
+       (changes-val-macro 3 (:credit (get-runner))
+                          "Gain 1 + 2 credit from Pennyshaver"
+                          (card-ability state :runner pennyshaver 0))))))
+
+
 (deftest plascrete-carapace
   ;; Plascrete Carapace - Prevent meat damage
   (do-game
