@@ -4993,8 +4993,7 @@
         (is (= 0 (count (:discard (get-runner)))) "Heap Empty")
         (fire-subs state uk)
         (is (= 1 (count (:discard (get-runner)))) "1 card trashed")
-        (is (not (:run @state)) "Sure Gamble has an odd cost, so run ends"))))
-  )
+        (is (not (:run @state)) "Sure Gamble has an odd cost, so run ends")))))
 
 (deftest waiver
   ;; Waiver - Trash Runner cards in grip with play/install cost <= trace exceed
