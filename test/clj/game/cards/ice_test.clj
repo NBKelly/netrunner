@@ -8,13 +8,38 @@
             [clojure.test :refer :all]))
 
 (deftest ada-1-0
-  ;Ada 1.0
+  ;; Ada 1.0
   (testing "Basic Test"
     (do-game
-      (new-game {:corp {:hand ["Ada 1.0" "Eve Campaign" "Project Vitruvius"]
+      (new-game {:corp {:hand ["Ada 1.0" "Crisium Grid" "Project Vitruvius"]
                         :discard ["Adonis Campaign"]}
-                 :runner {:hand ["Corroder"]}})))
-  )
+                 :runner {:hand ["Corroder"]}})
+      (play-from-hand state :corp "Ada 1.0" "HQ")
+      (play-from-hand state :corp "Crisium Grid" "HQ")
+      (take-credits state :corp)
+      (play-from-hand state :runner "Corroder")
+      (run-on state "HQ")
+      (let [ada (get-ice state :hq 0)]
+        (rez state :corp ada)
+        (run-continue state)
+        (fire-subs state ada)
+        (click-card state :corp "Corroder")
+        (click-card state :corp "Adonis Campaign")
+        (click-prompt state :corp "New remote")
+        (run-continue state)
+        (run-continue state)
+        (click-prompt state :runner "Unrezzed upgrade")
+        (click-prompt state :runner "No action")
+        (click-prompt state :runner "No action")
+
+        (run-on state "HQ")
+        (run-continue state)
+        (card-side-ability state :runner ada 0)
+        (click-prompt state :runner "Do 2 brain damage")
+        (println (prompt-fmt :corp))
+        (println (prompt-fmt :runner))
+        (println (clojure.string/join "\n" (map :text (:log @state))))
+      ))))
 
 (deftest afshar
   ;; Afshar
@@ -3513,10 +3538,7 @@
         (is (= 1 (count-tags state)) "Took 1 tag during run")
         (run-continue state)
         (fire-subs state png1)
-        (is (not (:run @state)) "Run ended"))
-      (println (prompt-fmt :runner))
-      (println (clojure.string/join "\n" (map :text (:log @state))))
-      )))
+        (is (not (:run @state)) "Run ended")))))
 
 (deftest red-tape
   ;; Red Tape

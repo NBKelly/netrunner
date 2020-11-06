@@ -267,6 +267,30 @@
          :label "Force the Runner to trash an installed card"
          :msg (msg "force the Runner to trash " (:title target))))
 
+(defn install-from-hq-or-archives-sub
+  [ignoring-all-cost]
+  {:async true
+   :label "Install a card from HQ or Archives"
+   :prompt "Select a card to install from Archives or HQ"
+   :show-discard true
+   :choices {:card #(and (corp? %)
+                      (not (operation? %))
+                      (or (in-hand? %)
+                        (in-discard? %)))}
+   :msg (msg (corp-install-msg target))
+   :effect (effect (corp-install eid target nil {:ignore-all-cost ignoring-all-cost}))})
+
+(def cannot-steal-or-trash-sub
+  {:label "The Runner cannot steal or trash Corp cards for the remainder of this run"
+   :msg "prevent the Runner from stealing or trashing Corp cards for the remainder of the run"
+   :effect (req (register-run-flag! state side card :can-steal
+                  (fn [state side card]
+                    ((constantly false)
+                     (toast state :runner "Cannot steal due to subroutine." "warning"))))
+             (register-run-flag! state side card :can-trash
+               (fn [state side card]
+                 ((constantly (not= (:side card) "Corp"))
+                  (toast state :runner "Cannot trash due to subroutine." "warning")))))})
 
 ;;; For Advanceable ICE
 (def advance-counters
@@ -411,7 +435,11 @@
 
 ;; Card definitions
 
-;(defcard "Ada 1.0")
+(defcard "Ada 1.0"
+  {:subroutines [trash-installed-sub
+                 (install-from-hq-or-archives-sub false)
+                 cannot-steal-or-trash-sub]
+    :runner-abilities [(bioroid-break 1 1)]})
 
 (defcard "Afshar"
   (let [breakable-fn (req (if (= :hq (second (get-zone card)))
@@ -1088,19 +1116,10 @@
                   :prompt "Select a card from Archives to add to HQ"
                   :show-discard true
                   :choices {:card #(and (corp? %)
-                                        (in-discard? %))}
+                                     (in-discard? %))}
                   :msg (msg "add " (if (faceup? target) (:title target) "an unseen card") " to HQ")
                   :effect (effect (move target :hand))}
-                 {:async true
-                  :label "Install a card from HQ or Archives"
-                  :prompt "Select a card to install from Archives or HQ"
-                  :show-discard true
-                  :choices {:card #(and (corp? %)
-                                        (not (operation? %))
-                                        (or (in-hand? %)
-                                            (in-discard? %)))}
-                  :msg (msg (corp-install-msg target))
-                  :effect (effect (corp-install eid target nil {:ignore-all-cost true}))}]})
+                 (install-from-hq-or-archives-sub true)]})
 
 (defcard "Eli 1.0"
   {:subroutines [end-the-run
@@ -3225,16 +3244,7 @@
                                         (runner? %))}
                   :async true
                   :effect (req (trash state side eid target {:cause :subroutine}))}
-                 (trace-ability 6 {:label "The Runner cannot steal or trash Corp cards for the remainder of this run"
-                                   :msg "prevent the Runner from stealing or trashing Corp cards for the remainder of the run"
-                                   :effect (req (register-run-flag! state side card :can-steal
-                                                                    (fn [state side card]
-                                                                      ((constantly false)
-                                                                       (toast state :runner "Cannot steal due to Trebuchet." "warning"))))
-                                                (register-run-flag! state side card :can-trash
-                                                                    (fn [state side card]
-                                                                      ((constantly (not= (:side card) "Corp"))
-                                                                       (toast state :runner "Cannot trash due to Trebuchet." "warning")))))})]})
+                 (trace-ability 6 cannot-steal-or-trash-sub)]})
 
 (defcard "Tribunal"
   {:subroutines [runner-trash-installed-sub
