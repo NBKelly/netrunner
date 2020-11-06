@@ -2643,6 +2643,19 @@
                    :async true
                    :effect (effect (gain-credits :runner eid (rez-cost state side (get-card state target))))}])))})
 
+(defcard "Somnambulance"
+  {:async true
+   :makes-run true
+   :prompt "Choose a server"
+   :choices (req runnable-servers)
+   :effect (effect (register-floating-effect
+                     card
+                     {:type :rez-additional-cost
+                      :duration :end-of-run
+                      :req (req true)
+                      :value (req [:credit 3])})
+                   (make-run eid target nil card))})
+
 (defcard "Spear Phishing"
   {:async true
    :makes-run true

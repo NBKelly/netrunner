@@ -5055,6 +5055,28 @@
       (rez state :corp (get-ice state :hq 0))
       (is (= (+ credits 5) (:credit (get-runner))) "Should gain credits from correct ice rez"))))
 
+(deftest somnambulance
+  ;; Somnambulance
+  (do-game
+   (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                     :hand ["Ice Wall" "Vanilla"]
+                     :credits 100}
+              :runner {:hand ["Somnambulance"]}})
+   (play-from-hand state :corp "Vanilla" "HQ")
+   (play-from-hand state :corp "Ice Wall" "HQ")
+   (take-credits state :corp)
+   (play-from-hand state :runner "Somnambulance")
+   (click-prompt state :runner "HQ")
+   (let [vanilla (get-ice state :hq 0)
+         icewall (get-ice state :hq 1)]
+     (changes-val-macro -3 (:credit (get-corp))
+                        "Paid 3 credits to rez Vanilla"
+                        (rez state :corp vanilla))
+     (run-continue state)
+     (changes-val-macro -4 (:credit (get-corp))
+                        "Paid 4 credits to rez Ice Wall"
+                        (rez state :corp icewall)))))
+
 (deftest spear-phishing
   ;; Spear Phishing
   (do-game
