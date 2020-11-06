@@ -1457,7 +1457,7 @@
    :abilities [{:cost [:click 1]
                 :label "Gain 1 [Credits]. Take all hosted [Credits]"
                 :async true
-                :msg (msg "gain " (inc (max 0 (get-counters card :credit))) " [Credits]")
+                :msg (msg "gain " (inc (get-counters card :credit)) " [Credits]")
                 :effect (req (let [credits (inc (max 0 (get-counters card :credit)))]
                                (update! state side (assoc-in card [:counter :credit] 0))
                                (gain-credits state :runner eid credits)))}]})
