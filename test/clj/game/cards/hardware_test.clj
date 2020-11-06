@@ -2850,7 +2850,8 @@
        (is (= 2 (get-counters (refresh pennyshaver) :credit)) "2 credits after second run")
        (changes-val-macro 3 (:credit (get-runner))
                           "Gain 1 + 2 credit from Pennyshaver"
-                          (card-ability state :runner pennyshaver 0))))))
+                          (card-ability state :runner pennyshaver 0))
+       (is (= 0 (get-counters (refresh pennyshaver) :credit)) "0 credits after ability trigger")))))
 
 
 (deftest plascrete-carapace

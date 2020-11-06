@@ -1459,7 +1459,7 @@
                 :async true
                 :msg (msg "gain " (inc (get-counters card :credit)) " [Credits]")
                 :effect (req (let [credits (inc (get-counters card :credit))]
-                               (add-counter state side card :credit (dec credits))
+                               (add-counter state side card :credit (-(dec credits)))
                                (gain-credits state :runner eid credits)))}]})
 
 (defcard "Plascrete Carapace"
