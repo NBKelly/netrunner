@@ -4143,6 +4143,24 @@
       (is (not (= "Use Prey to trash Burke Bugs?" (:msg (prompt-map :runner))))
           "Runner has no prompt trash ice"))))
 
+(deftest probe
+  ;; probe - Gain 5 temporary credits
+  (do-game
+    (new-game {:corp {:deck ["Eve Campaign"]}
+               :runner {:deck ["Probe"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Probe")
+    (click-prompt state :runner "HQ")
+    (is (= [:hq] (get-in @state [:run :server])) "Run initiated on HQ")
+    (run-continue state)
+    (is (= 9 (:credit (get-runner))))
+    (is (= 5 (:run-credit (get-runner))) "Gained 5 credits for use during the run")
+    (click-prompt state :runner "Pay 5 [Credits] to trash") ; choose to trash Eve
+    (is (and (zero? (count (:hand (get-corp))))
+             (= 1 (count (:discard (get-corp)))))
+        "Corp hand empty and Eve in Archives")
+    (is (= 4 (:credit (get-runner))))))
+
 (deftest process-automation
   ;; Process Automation
   (do-game

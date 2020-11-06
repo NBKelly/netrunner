@@ -2133,6 +2133,14 @@
                         :effect (effect (trash eid ice nil))}}}))
                  card nil))}]})
 
+(defcard "Probe"
+  {:async true
+   :makes-run true
+   :prompt "Choose a server"
+   :choices (req runnable-servers)
+   :effect (effect (gain-next-run-credits 5)
+                   (make-run eid target nil card))})
+
 (defcard "Process Automation"
   {:msg "gain 2 [Credits] and draw 1 card"
    :async true
