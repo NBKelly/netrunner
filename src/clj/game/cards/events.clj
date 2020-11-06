@@ -2055,6 +2055,27 @@
    :msg "remove all tags"
    :effect (effect (lose-tags eid :all))})
 
+(defcard "Particular Purpose"
+  {:prompt "Choose an Icebreaker"
+   :choices (req (cancellable (filter #(has-subtype? % "Icebreaker") (:deck runner)) :sorted))
+   :msg (msg "add " (:title target) " to their grip and shuffle their stack")
+   :effect (req (trigger-event state side :searched-stack nil)
+                (continue-ability state side
+                                  (let [icebreaker target]
+                                    (if (and (:successful-run runner-reg)
+                                             (can-pay? state side (assoc eid :source card :source-type :runner-install) icebreaker nil
+                                                       [:credit (install-cost state side icebreaker)]))
+                                      {:optional {:prompt "Do you want to install it?"
+                                                  :yes-ability {:async true
+                                                                :msg (msg " install " (:title icebreaker))
+                                                                :effect (req (runner-install state side (assoc eid :source card :source-type :runner-install) icebreaker nil)
+                                                                             (shuffle! state side :deck))}
+                                                  :no-ability {:effect (req (move state side icebreaker :hand)
+                                                                            (shuffle! state side :deck))}}}
+                                      {:effect (req (move state side icebreaker :hand)
+                                                    (shuffle! state side :deck))}))
+                                  card nil))})
+
 (defcard "Peace in Our Time"
   {:req (req (not (:scored-agenda corp-reg-last)))
    :msg "gain 10 [Credits]. The Corp gains 5 [Credits]"

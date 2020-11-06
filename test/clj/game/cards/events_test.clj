@@ -3960,6 +3960,72 @@
     (play-from-hand state :runner "Paper Tripping")
     (is (zero? (count-tags state)) "Runner should lose all tags")))
 
+(deftest particular-purpose
+  ;; Particular Purpose
+  (testing "Basic test - no install"
+    (do-game
+     (new-game {:corp {:deck [(qty "Hedge Fund" 4)]}
+                :runner {:deck [(qty "Aumakua" 3)]
+                         :hand ["Particular Purpose"]}})
+     (take-credits state :corp)
+     (let [original-deck-count (count (:deck (get-runner)))
+           original-hand-count (count (:hand (get-runner)))]
+       (run-empty-server state :archives)
+       (play-from-hand state :runner "Particular Purpose")
+       (click-prompt state :runner "Aumakua")
+       (click-prompt state :runner "No")
+       (is (= 5 (:credit (get-runner))) "Spent 0 credits")
+       (is (= 0 (count (get-program state))) "Pulled card was not installed")
+       (is (= (+ original-deck-count -1) (count (:deck (get-runner)))) "Took card from deck...")
+       (is (= (+ original-hand-count 1 -1) (count (:hand (get-runner)))) "...into hand -one played, +one drawn"))))
+  (testing "Basic test - install"
+    (do-game
+     (new-game {:corp {:deck [(qty "Hedge Fund" 4)]}
+                :runner {:deck [(qty "Aumakua" 3)]
+                         :hand ["Particular Purpose"]}})
+     (take-credits state :corp)
+     (let [original-deck-count (count (:deck (get-runner)))
+           original-hand-count (count (:hand (get-runner)))]
+       (run-empty-server state :archives)
+       (play-from-hand state :runner "Particular Purpose")
+       (click-prompt state :runner "Aumakua")
+       (click-prompt state :runner "Yes")
+       (is (= (+ 5 -3) (:credit (get-runner))) "Spent 3 credits")
+       (is (= 1 (count (get-program state))) "Pulled card was installed")
+       (is (= (+ original-deck-count -1) (count (:deck (get-runner)))) "Took card from deck...")
+       (is (= (+ original-hand-count -1) (count (:hand (get-runner)))) "...into play -one played"))))
+  (testing "Basic test - no prompt when not enough credits to install"
+    (do-game
+     (new-game {:corp {:deck [(qty "Hedge Fund" 4)]}
+                :runner {:deck [(qty "Aumakua" 3)]
+                         :hand ["Particular Purpose"]
+                         :credits 0}})
+     (take-credits state :corp)
+     (let [original-deck-count (count (:deck (get-runner)))
+           original-hand-count (count (:hand (get-runner)))]
+       (run-empty-server state :archives)
+       (play-from-hand state :runner "Particular Purpose")
+       (click-prompt state :runner "Aumakua")
+       (is (= 0 (:credit (get-runner))) "Spent 0 credits")
+       (is (= 0 (count (get-program state))) "Pulled card was not installed")
+       (is (= (+ original-deck-count -1) (count (:deck (get-runner)))) "Took card from deck...")
+       (is (= (+ original-hand-count 1 -1) (count (:hand (get-runner)))) "...into hand -one played, +one drawn"))))
+  (testing "Basic test - no prompt when no successful run"
+    (do-game
+     (new-game {:corp {:deck [(qty "Hedge Fund" 4)]}
+                :runner {:deck [(qty "Aumakua" 3)]
+                         :hand ["Particular Purpose"]}})
+     (take-credits state :corp)
+     (let [original-deck-count (count (:deck (get-runner)))
+           original-hand-count (count (:hand (get-runner)))]
+       (play-from-hand state :runner "Particular Purpose")
+       (click-prompt state :runner "Aumakua")
+       (is (= 5 (:credit (get-runner))) "Spent 0 credits")
+       (is (= 0 (count (get-program state))) "Pulled card was not installed")
+       (is (= (+ original-deck-count -1) (count (:deck (get-runner)))) "Took card from deck...")
+       (is (= (+ original-hand-count 1 -1) (count (:hand (get-runner)))) "...into hand -one played, +one drawn")))))
+
+
 (deftest peace-in-our-time
   ;; Peace in Our Time - runner gains 10, corp gains 5. No runs allowed during turn.
   (testing "no runs allowed"
