@@ -5538,6 +5538,21 @@
     (is (= 5 (:credit (get-runner))) "Paid 8 credits")
     (is (zero? (:credit (get-corp))) "Corp lost all 8 credits")))
 
+(deftest vrcation
+  ;; VRcation
+  (testing "Basic test"
+    (do-game
+     (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                       :hand [(qty "Hedge Fund" 2)]}
+                :runner {:deck [(qty "Sure Gamble" 5)]
+                         :hand ["VRcation"]}})
+     (take-credits state :corp)
+     (let [hand (count (:hand (get-runner)))
+           clicks (:click (get-runner))]
+       (play-from-hand state :runner "VRcation")
+       (is (= (+ hand -1 4) (count (:hand (get-runner)))) "Runner plays VRcation and draws 4 cards")
+       (is (= (+ clicks -1 -1) (:click (get-runner))) "Runner plays VRcation and loses 1 click")))))
+
 (deftest wanton-destruction
   ;; Wanton Destruction
   (testing "Basic test"

@@ -2914,6 +2914,12 @@
                 :effect (req (wait-for (lose-credits state :corp target)
                                        (gain-tags state side eid 1)))}} )]})
 
+(defcard "VRcation"
+  {:msg (msg "draw 4 cards" (when (pos? (:click runner)) " and lose [Click]"))
+   :async true
+   :effect (req (when (pos? (:click runner)) (lose state :runner :click 1))
+                (draw state :runner eid 4 nil))})
+
 (defcard "Wanton Destruction"
   {:async true
    :makes-run true
