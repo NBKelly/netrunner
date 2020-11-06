@@ -1138,7 +1138,7 @@
 
 (deftest docklands-pass
   ;; Docklands Pass - run again when successful
-  (testing "Corp doesn't trash, access HQ"
+  (testing "Corp access extra card on HQ run"
     (do-game
      (new-game {:runner {:hand ["Docklands Pass"]}
                 :corp {:hand [(qty "Vanilla" 4)]
@@ -1153,6 +1153,21 @@
      (run-empty-server state "HQ")
      (click-prompt state :runner "No action")
      (is (empty? (:prompt (get-runner))) "Second run is over after 1 access")
+     (is (not (:run @state)) "1 access run over")))
+  (testing "No bonus access when playing Docklands Pass after first run"
+    (do-game
+     (new-game {:runner {:hand ["Docklands Pass"]}
+                :corp {:hand [(qty "Vanilla" 4)]
+                       :deck [(qty "Vanilla" 10)]}})
+     (take-credits state :corp)
+     (run-empty-server state "HQ")
+     (click-prompt state :runner "No action")
+     (is (empty? (:prompt (get-runner))) "Runner done with run after 1 accesses")
+     (is (not (:run @state)) "1 access run over")
+     (play-from-hand state :runner "Docklands Pass")
+     (run-empty-server state "HQ")
+     (click-prompt state :runner "No action")
+     (is (empty? (:prompt (get-runner))) "No bonus access on second run")
      (is (not (:run @state)) "1 access run over"))))
       
 (deftest doppelganger

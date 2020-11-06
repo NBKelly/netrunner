@@ -498,9 +498,8 @@
 
 (defcard "Docklands Pass"
   {:events [{:event :pre-access
-             :req (req (= :hq target))
+             :req (req (first-event? state side :pre-access #(= :hq (first %))))
              :silent (req true)
-             :once :per-turn
              :msg (msg "access 1 additional cards from HQ")
              :effect (effect (access-bonus :runner :hq 1))}]})
 
