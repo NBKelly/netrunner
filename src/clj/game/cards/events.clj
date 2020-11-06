@@ -1102,6 +1102,22 @@
    :effect (req (wait-for (draw state :runner 3 nil)
                           (draw state :corp eid 3 nil)))})
 
+(defcard "Food Bank"
+  {:msg "force Corp to choose 6 [Credits] or 4 cards for runner"
+  :async true
+  :effect (req (show-wait-prompt state :runner "Corp to choose Food Bank effect")
+               (continue-ability state side
+                                 {:player :corp
+                                  :prompt "Choose one"
+                                  :choices ["Runner gains 6 [Credits]" "Runner draws 4 cards"]
+                                  :async true
+                                  :effect (req (clear-wait-prompt state :runner)
+                                               (if (= target "Runner gains 6 [Credits]")
+                                                 (do (system-msg state :corp "chooses 6 credits for runner")
+                                                     (gain-credits state :runner eid 6))
+                                                 (do (system-msg state :corp "chooses 4 cards for runner")
+                                                     (draw state :runner eid 4 nil))))} card nil))})
+
 (defcard "Forged Activation Orders"
   {:choices {:card #(and (ice? %)
                          (not (rezzed? %)))}

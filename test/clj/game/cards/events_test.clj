@@ -2218,6 +2218,31 @@
       (is (= (+ 3 c-hand (count (:hand (get-corp))))) "Corp draws 3 cards")
       (is (= (+ 3 r-hand (count (:hand (get-runner))))) "Runner draws 3 cards"))))
 
+(deftest food-bank
+  ;; Food Bank
+  (testing "Basic test - corp selects credits"
+    (do-game
+     (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                       :hand [(qty "Hedge Fund" 5)]}
+                :runner {:deck [(qty "Sure Gamble" 5)]
+                         :hand ["Food Bank"]}})
+     (take-credits state :corp)
+     (play-from-hand state :runner "Food Bank")
+     (changes-val-macro 6 (:credit (get-runner))
+                        "gain 6 credits from Food Bank"
+                        (click-prompt state :corp "Runner gains 6 [Credits]"))))
+  (testing "Basic test - corp selects credits"
+    (do-game
+     (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                       :hand [(qty "Hedge Fund" 5)]}
+                :runner {:deck [(qty "Sure Gamble" 5)]
+                         :hand ["Food Bank"]}})
+     (take-credits state :corp)
+     (play-from-hand state :runner "Food Bank")
+     (changes-val-macro 4 (count (:hand (get-runner)))
+                        "draw 4 cards from Food Bank"
+                        (click-prompt state :corp "Runner draws 4 cards")))))
+
 (deftest forged-activation-orders
   ;; Forged Activation Orders
   (testing "Corp chooses to trash the ice"
