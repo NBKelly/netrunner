@@ -931,6 +931,7 @@
      :effect (req (wait-for (gain-credits state :corp 10)
                     (continue-ability state side trash-from-hq card nil)))}))
 
+
 (defcard "Hard-Hitting News"
   {:req (req (last-turn? state :runner :made-run))
    :trace {:base 4
