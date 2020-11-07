@@ -919,6 +919,18 @@
                                         (as-agenda :runner eid card -1))}}}
                      card targets))})
 
+(defcard "Hansei"
+  (let [trash-from-hq {:async true
+                       :prompt "Select a card in HQ to trash"
+                       :choices {:max 1
+                                 :card #(and (corp? %)
+                                          (in-hand? %))}
+                       :msg "gain 10 [Credits] and trash card from HQ"
+                       :effect (effect (trash-cards eid targets nil))}]
+    {:async true
+     :effect (req (wait-for (gain-credits state :corp 10)
+                    (continue-ability state side trash-from-hq card nil)))}))
+
 (defcard "Hard-Hitting News"
   {:req (req (last-turn? state :runner :made-run))
    :trace {:base 4

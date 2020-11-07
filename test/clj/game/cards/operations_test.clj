@@ -1707,6 +1707,17 @@
               (is (= -1 (:agenda-point (get-runner))) "Runner should add Hangeki to their score area worth -1 agenda point")
               (is (zero? (-> (get-corp) :rfg count)) "Hangeki shouldn't be removed from the game")))))))
 
+(deftest hansei
+  ;; Hansei
+  (testing "Basic Test"
+    (do-game
+      (new-game {:corp {:hand ["Hansei" "IPO"]}})
+      (is (= 5 (:credit (get-corp))) "Starting with 5 credits")
+      (play-from-hand state :corp "Hansei")
+      (click-card state :corp "IPO")
+      (is (= 10 (:credit (get-corp))) "Now at 10 credits")
+      (is (= 2 (count (:discard (get-corp))))))))
+
 (deftest hard-hitting-news
   ;; Hard-Hitting News
   (do-game
