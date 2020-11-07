@@ -3577,3 +3577,22 @@
       (click-prompt state :runner "Pay 2 [Credits] to trash") ;; trash Launch Campaign, should trigger wyvern
       (is (= "Sure Gamble" (:title (last (:discard (get-runner)))))
           "Sure Gamble still in Wyvern's discard"))))
+
+(deftest zahyaa-sadeghi-versatile-smuggler
+  ;; "Zahyaa Sadeghi: Versatile Smuggler"
+  (testing "Basic test"
+    (do-game
+     (new-game {:corp   {:hand [(qty "Hedge Fund" 3)]}
+                :runner {:id   "Zahyaa Sadeghi: Versatile Smuggler"
+                         :hand [(qty "HQ Interface" 2)]
+                         :credits 20}})
+     (take-credits state :corp)
+     (play-from-hand state :runner "HQ Interface")
+     (play-from-hand state :runner "HQ Interface")
+     (run-empty-server state :hq)
+     (click-prompt state :runner "No action")
+     (click-prompt state :runner "No action")
+     (click-prompt state :runner "No action")
+     (changes-val-macro 3 (:credit (get-runner))
+                        "Gain 3 credits from ID ability"
+                        (click-prompt state :runner "Yes")))))

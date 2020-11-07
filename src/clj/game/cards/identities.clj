@@ -1668,3 +1668,19 @@
              :effect (effect (move :runner (last (:discard runner)) :deck)
                              (shuffle! :runner :deck)
                              (trigger-event :searched-stack nil))}]})
+
+(defcard "Zahyaa Sadeghi: Versatile Smuggler"
+  {:events [{:event :run-ends
+             :req (req (and (or (= :hq (target-server target))
+                                (= :rd (target-server target)))
+                            (pos? (total-cards-accessed target))))
+             :effect (req (let [cards-accessed (total-cards-accessed target)]
+                            (continue-ability state side
+                                              {:optional {:prompt "Gain 1 [Credits] for each card you accessed?"
+                                                          :async true
+                                                          :once :per-turn
+                                                          :yes-ability {:msg (msg "gain " cards-accessed " [Credits]")
+                                                                        :once :per-turn
+                                                                        :async true
+                                                                        :effect (req (gain-credits state :runner eid cards-accessed))}}}
+                                              card nil)))}]})
