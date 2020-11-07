@@ -883,6 +883,11 @@
    :effect (req (wait-for (mill state :corp :corp 2)
                           (shuffle-into-rd-effect state side eid card 4)))})
 
+(defcard "Government Subsidy"
+  {:msg "gain 15 [Credits]"
+   :async true
+   :effect (effect (gain-credits eid 15))})
+
 (defcard "Green Level Clearance"
   {:msg "gain 3 [Credits] and draw 1 card"
    :async true
@@ -1393,6 +1398,19 @@
    :msg (msg "remove 1 Runner tag and trash " (card-str state target))
    :effect (effect (trash eid target nil))})
 
+(defcard "OCEAN Source"
+  {:req (req (last-turn? state :runner :successful-run))
+   :player :runner
+   :async true
+   :msg (msg "force the Runner to " (decapitalize target))
+   :prompt "Pick one"
+   :choices ["Pay 8[Credits]" "Take 1 tag"]
+   :effect (req (if (= target "Pay 8[Credits]")
+                  (wait-for (pay state :runner card :credit 8)
+                    (system-msg state :runner (:msg async-result))
+                    (effect-completed state side eid))
+                  (gain-tags state :corp eid 1 nil)))})
+
 (defcard "Oversight AI"
   {:choices {:card #(and (ice? %)
                          (not (rezzed? %))
@@ -1747,6 +1765,19 @@
   {:msg "gain 15 [Credits]"
    :async true
    :effect (effect (gain-credits eid 15))})
+
+(defcard "Retribution"
+  {:async true
+   :req (req (and tagged
+               (not-empty (all-installed state :runner))))
+   :prompt (msg "Choose a program or hardware to trash.")
+   :choices {:req (req (and (runner? target)
+                         (installed? target)
+                         (not (facedown? target))
+                         (or (program? target)
+                           (hardware? target))))}
+   :msg (msg "trash " (:title target))
+   :effect (effect (trash eid target nil))})
 
 (defcard "Reuse"
   {:async true

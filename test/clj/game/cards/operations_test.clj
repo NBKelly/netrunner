@@ -1665,6 +1665,16 @@
         "All four chosen cards should be shuffled back into R&D")
     (is (= ["Genotyping"] (->> (get-corp) :rfg (map :title))) "Genotyping should be rfg'd")))
 
+(deftest government-subsidy
+  ;; Government Subsidy
+  (testing "Basic Test"
+    (do-game
+      (new-game {:corp {:hand ["Hedge Fund" "Government Subsidy"]}})
+      (play-from-hand state :corp "Hedge Fund")
+      (click-credit state :corp)
+      (play-from-hand state :corp "Government Subsidy"))))
+
+
 (deftest green-level-clearance
   ;; Green Level Clearance
   (do-game
@@ -2454,6 +2464,27 @@
       (click-prompt state :runner "No")
       (is (= (+ 2 clicks) (:click (get-corp))) "Corp should gain 2 clicks"))))
 
+(deftest ocean-source
+  ;; OCEAN Source
+  (testing "Basic Test"
+  (do-game
+    (new-game {:corp {:hand [(qty "OCEAN Source" 2)]}})
+    (play-from-hand state :corp "OCEAN Source")
+    (is (nil? (get-prompt state :corp)))
+    (is (not (is-tagged? state)))
+    (take-credits state :corp)
+    (run-empty-server state :hq)
+    (click-prompt state :runner "No action")
+    (take-credits state :runner)
+    (play-from-hand state :corp "OCEAN Source")
+    (is (= 8 (:credit (get-runner))))
+    (click-prompt state :runner "Pay 8[Credits]")
+    (is (= 0 (:credit (get-runner))))
+    (is (not (is-tagged? state)))
+    (play-from-hand state :corp "OCEAN Source")
+    (click-prompt state :runner "Take 1 tag")
+    (is(is-tagged? state)))))
+
 (deftest observe-and-destroy
   ;; Observe and Destroy
   (do-game
@@ -2901,6 +2932,24 @@
       (is (= "Marilyn Campaign" (:title (get-content state :remote1 0))) "Marilyn Campaign should be installed")
       (is (rezzed? (get-content state :remote1 0)) "Marilyn Campaign was rezzed")
       (is (= 2 (:credit (get-corp))) "Rezzed Marilyn Campaign 2 credit + 1 credit for Restore"))))
+
+(deftest retribution
+  ;; Retribution
+  (testing "Basic Test"
+    (do-game
+      (new-game {:corp {:hand [(qty "Retribution" 2)]}
+                 :runner {:hand ["Corroder" "Zer0" "Paparazzi"]
+                          :tags 1}})
+      (take-credits state :corp)
+      (play-from-hand state :runner "Corroder")
+      (play-from-hand state :runner "Zer0")
+      (take-credits state :runner)
+      (play-from-hand state :corp "Retribution")
+      (click-card state :corp "Corroder")
+      (is (find-card "Corroder" (:discard (get-runner))))
+      (play-from-hand state :corp "Retribution")
+      (click-card state :corp "Zer0")
+      (is (find-card "Zer0" (:discard (get-runner)))))))
 
 (deftest reuse
   ;; Reuse - Gain 2 credits for each card trashed from HQ
