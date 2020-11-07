@@ -1737,6 +1737,25 @@
           (click-card state :corp pad)
           (is (= (+ credits 8) (:credit (get-corp))) "Gain 8 credits from trashing PAD Campaign"))))))
 
+(deftest jean-loup-arcemont-party-animal
+  ;; "Jean \"Loup\" Arcemont: Party Animal"
+  (do-game
+   (new-game {:corp {:hand ["NGO Front"]}
+              :runner {:id "Jean \"Loup\" Arcemont: Party Animal"
+                       :hand ["Sure Gamble"]
+                       :deck [(qty "Sure Gamble" 3)]}})
+   (play-from-hand state :corp "NGO Front" "New remote")
+
+   (take-credits state :corp)
+   (run-empty-server state "Server 1")
+   (click-prompt state :runner "Pay 1 [Credits] to trash")
+   (let [credits (:credit (get-runner))]
+     (changes-val-macro
+      1 (count (:hand (get-runner)))
+      "Jean draws one card"
+      (click-prompt state :runner "Yes"))
+     (is (= (+ credits 1) (:credit (get-runner))) "Gain 1 credits from trashing accessed card"))))
+
 (deftest jemison-astronautics-sacrifice-audacity-success
   ;; Jemison Astronautics - Place advancements when forfeiting agendas
   (testing "Basic test"
