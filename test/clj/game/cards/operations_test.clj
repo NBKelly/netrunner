@@ -3553,14 +3553,10 @@
       (play-from-hand state :corp "Sprint")
       (is (= 1 (count (:deck (get-corp)))) "corp should draw 3 cards")
       (is (= 7 (count (:hand (get-corp)))) "corp should draw 3 cards")
-      ;(click-card state :corp (first (:hand (get-corp))))
-      ;(click-card state :corp (last (:hand (get-corp))))
       (click-card state :corp "Ice Wall")
       (click-card state :corp "NGO Front")
-      (click-prompt state :corp "Done")
       (is (= 5 (count (:hand (get-corp)))) "2 cards shuffled into deck")
-      (is (= 3 (count (:deck (get-corp)))) "2 cards shuffled into deck")
-      )))
+      (is (= 3 (count (:deck (get-corp)))) "2 cards shuffled into deck"))))
 
 (deftest standard-procedure
   ;; Standard Procedure

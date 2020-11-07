@@ -2072,11 +2072,14 @@
 (defcard "Sprint"
   (let [pick-two-and-shuffle {:async true
                               :prompt "Select 2 cards in HQ to shuffle"
-                              :choices {:qty 2
+                              :choices {:max 2
                                         :card #(and (corp? %)
                                                  (in-hand? %))}
                               :msg "shuffles 2 cards from HQ into R&D"
-                              :effect (effect (shuffle-into-rd-effect eid card 2))}]
+                              :effect (req (doseq [c targets]
+                              :effect (req (doseq [c targets]
+                                             (move state side c :deck))
+                                        (shuffle! state side :deck))}]
     {:async true
      :effect (req (wait-for
                     (draw state side 3 nil)
