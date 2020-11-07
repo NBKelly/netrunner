@@ -2069,6 +2069,22 @@
                 (shuffle! state side :deck)
                 (draw state side eid (count targets) nil))})
 
+(defcard "Sprint"
+  (let [pick-two-and-shuffle {:async true
+                              :prompt "Select 2 cards in HQ to shuffle"
+                              :choices {:qty 2
+                                        :card #(and (corp? %)
+                                                 (in-hand? %))}
+                              :msg "shuffles 2 cards from HQ into R&D"
+                              :effect (effect (shuffle-into-rd-effect eid card 2))}]
+    {:async true
+     :effect (req (wait-for
+                    (draw state side 3 nil)
+                    (continue-ability
+                      state side
+                      pick-two-and-shuffle
+                      card nil)))}))
+
 (defcard "Standard Procedure"
   {:req (req (last-turn? state :runner :successful-run))
    :prompt "Choose a card type"

@@ -3534,7 +3534,7 @@
     (is (= 1 (-> (get-runner) :discard count)) "Scrubber should be in Runner's heap after losing Snatch and Grab trace")))
 
 (deftest special-report
-  ;; NGO Front
+  ;; Special Report
   (do-game
     (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
                       :hand ["Special Report" "Ice Wall" "IPO" "NGO Front"]}})
@@ -3543,6 +3543,24 @@
     (click-card state :corp "IPO")
     (click-card state :corp "NGO Front")
     (is (= 3 (count (:hand (get-corp)))) "corp should draw 3 cards")))
+
+(deftest sprint
+  ;; Sprint
+  (testing "Basic Testing"
+    (do-game
+      (new-game {:corp {:deck [(qty "Hedge Fund" 3) "NGO Front"]
+                        :hand ["Sprint" (qty "IPO" 3) "Ice Wall"]}})
+      (play-from-hand state :corp "Sprint")
+      (is (= 1 (count (:deck (get-corp)))) "corp should draw 3 cards")
+      (is (= 7 (count (:hand (get-corp)))) "corp should draw 3 cards")
+      ;(click-card state :corp (first (:hand (get-corp))))
+      ;(click-card state :corp (last (:hand (get-corp))))
+      (click-card state :corp "Ice Wall")
+      (click-card state :corp "NGO Front")
+      (click-prompt state :corp "Done")
+      (is (= 5 (count (:hand (get-corp)))) "2 cards shuffled into deck")
+      (is (= 3 (count (:deck (get-corp)))) "2 cards shuffled into deck")
+      )))
 
 (deftest standard-procedure
   ;; Standard Procedure
