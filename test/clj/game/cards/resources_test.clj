@@ -3845,7 +3845,20 @@
      (click-prompt state :runner "HQ")
      (run-continue state)
      (is (= 3 (:credit (get-runner))) "Runner has 3 credits")
-     (is (= 9 (get-counters (get-resource state 0) :credit)) "Red team has 9 credits remaining"))))
+     (is (= 9 (get-counters (get-resource state 0) :credit)) "Red team has 9 credits remaining")
+     (click-prompt state :runner "No action")
+     (card-ability state :runner (get-resource state 0) 0)
+     (is (= 2 (count (:choices (prompt-map :runner)))) "Only 2 choices in promp. HQ no longer shown")
+     (click-prompt state :runner "R&D")
+     (run-continue state)
+     (is (= 6 (:credit (get-runner))) "Runner has 6 credits")
+     (is (= 6 (get-counters (get-resource state 0) :credit)) "Red team has 6 credits remaining")
+     (card-ability state :runner (get-resource state 0) 0)
+     (is (= 1 (count (:choices (prompt-map :runner)))) "Only 1 choice in promp. HQ and R&D no longer shown")
+     (click-prompt state :runner "Archives")
+     (run-continue state)
+     (is (= 9 (:credit (get-runner))) "Runner has 9 credits")
+     (is (= 3 (get-counters (get-resource state 0) :credit)) "Red team has 3 credits remaining"))))
 
 (deftest rolodex
   ;; Rolodex - Full test

@@ -2148,24 +2148,32 @@
          card nil))}]})
 
 (defcard "Red Team"
-  {:data {:counter {:credit 12}}
-   :events [(trash-on-empty :credit)
-            {:event :successful-run
-             :req (req this-card-run)
-             :msg (msg "gain " (min 3 (get-counters card :credit)) " [Credits]")
-             :silent (req true)
-             :async true
-             :effect (req (let [credits (min 3 (get-counters card :credit))]
-                            (add-counter state side card :credit (- credits))
-                            (gain-credits state side eid credits)))}]
-   :abilities [{:cost [:click 1]
-                :prompt "Choose a server"
-                ;;TODO: filter also servers that were run this turn
-                :choices (req (filter is-central? runnable-servers))
-                :msg "make a run on central server"
-                :makes-run true
-                :async true
-                :effect (req (make-run state side eid target nil card))}]})
+  (letfn [(to-central-server-keyword [server]
+            (case server
+              "HQ" :hq
+              "R&D" :rd
+              "Archives" :archives
+              nil))]
+    {:data {:counter {:credit 12}}
+     :events [(trash-on-empty :credit)
+              {:event :successful-run
+               :req (req this-card-run)
+               :msg (msg "gain " (min 3 (get-counters card :credit)) " [Credits]")
+               :silent (req true)
+               :async true
+               :effect (req (let [credits (min 3 (get-counters card :credit))]
+                              (add-counter state side card :credit (- credits))
+                              (gain-credits state side eid credits)))}]
+     :abilities [{:cost [:click 1]
+                  :prompt "Choose a server"
+                  :choices (req (filter (fn [server]
+                                          (and (to-central-server-keyword server)
+                                               (not (some #{(to-central-server-keyword server)} (:made-run runner-reg)))))
+                                        runnable-servers))
+                  :msg "make a run on central server"
+                  :makes-run true
+                  :async true
+                  :effect (req (make-run state side eid target nil card))}]}))
 
 (defcard "Rogue Trading"
   {:data {:counter {:credit 18}}
