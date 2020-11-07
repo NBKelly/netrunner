@@ -3326,6 +3326,29 @@
                        (click-card state :corp (get-resource state 0)))
     (is (= ["Fan Site"] (map :title (:discard (get-runner)))) "Trashed Fan Site")))
 
+(deftest tao-salonga-telepresence-magician
+  ;;Tāo Salonga: Telepresence Magician
+  (testing "Basic test"
+    (do-game
+     (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                       :hand ["Ice Wall" "Enigma" "House of Knives"]}
+                :runner {:id "Tāo Salonga: Telepresence Magician"}})
+     (play-from-hand state :corp "Ice Wall" "HQ")
+     (play-from-hand state :corp "Enigma" "HQ")
+     (play-from-hand state :corp "House of Knives" "New remote")
+     (take-credits state :corp)
+     (run-empty-server state "Server 1")
+     (let [iw (get-ice state :hq 0)
+           enig (get-ice state :hq 1)]
+       (click-prompt state :runner "Steal")
+       (click-prompt state :runner "Yes")
+       (click-card state :runner (refresh enig))
+       (click-card state :runner (refresh iw)))
+     (let [iw (get-ice state :hq 1)
+           enig (get-ice state :hq 0)]
+       (is (= "Ice Wall" (:title iw)) "Ice Wall now outermost ice")
+       (is (= "Enigma" (:title enig)) "Enigma now outermost ice")))))
+
 (deftest the-foundry-refining-the-process
   ;; The Foundry
   (testing "interaction with Accelerated Beta Test"

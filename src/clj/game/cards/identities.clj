@@ -1545,6 +1545,32 @@
                 :msg (msg "swap the positions of " (card-str state (first targets))
                           " and " (card-str state (second targets)))}]})
 
+(defcard "Tāo Salonga: Telepresence Magician"
+  (let [swap-ability {:optional
+                      {:req (req (<= 2 (count (filter ice? (all-installed state :corp)))))
+                       :prompt "Swap ice with Tāo Salonga ability?"
+                       :yes-ability
+                       {:prompt "Select ice"
+                        :choices {:req (req (and (installed? target)
+                                                 (ice? target)))}
+                        :async true
+                        :msg " swap ICE"
+                        :effect (req (continue-ability state side
+                                                       (let [first-ice target]
+                                                         {:prompt "Select ice to swap with"
+                                                          :choices {:req (req (and (installed? target)
+                                                                                   (ice? target)
+                                                                                   (not= first-ice target)))}
+                                                          :msg (msg "swap the positions of " (card-str state first-ice)
+                                                                    " and " (card-str state target))
+                                                          :async true
+                                                          :effect (req (swap-ice state side first-ice target)
+                                                                       (effect-completed state side eid))}) card nil))}}}]
+    {:events [(assoc swap-ability :event :agenda-scored
+                     :interactive (req true))
+              (assoc swap-ability :event :agenda-stolen
+                     :interactive (req true))]}))
+
 (defcard "Tennin Institute: The Secrets Within"
   {:flags {:corp-phase-12 (req (and (not (:disabled (get-card state card)))
                                     (not-last-turn? state :runner :successful-run)))}
