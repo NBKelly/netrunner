@@ -2077,7 +2077,6 @@
                                                  (in-hand? %))}
                               :msg "shuffles 2 cards from HQ into R&D"
                               :effect (req (doseq [c targets]
-                              :effect (req (doseq [c targets]
                                              (move state side c :deck))
                                         (shuffle! state side :deck))}]
     {:async true
