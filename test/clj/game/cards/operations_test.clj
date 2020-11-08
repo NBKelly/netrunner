@@ -1072,6 +1072,20 @@
     (play-from-hand state :corp "Economic Warfare")
     (is (= 3 (:credit (get-runner))) "Runner has 3 credits")))
 
+(deftest efflorescence
+  ;; Efflorescence
+  (testing "Basic Test"
+    (do-game
+      (new-game {:corp {:hand ["Braintrust" "Efflorescence"]
+                        :credits 20}
+                 :runner {:hand [(qty "Sure Gamble" 2)]}})
+      (core/gain state :corp :click 2)
+      (core/gain state :corp :credit 20)
+      (play-and-score state "Braintrust")
+      (is (= 0 (count (:discard (get-runner)))) "Nothing in heap")
+      (play-from-hand state :corp "Efflorescence")
+      (is (= 2 (count (:discard (get-runner)))) "Runner took 2 net"))))
+
 (deftest election-day
   (do-game
     (new-game {:corp {:deck [(qty "Election Day" 7)]}})
