@@ -608,6 +608,12 @@
    :async true
    :effect (effect (lose-credits :runner eid 4))})
 
+(defcard "Efflorescence"
+  {:req (req (:scored-agenda corp-reg))
+   :msg "does 1 net damage for each agenda point scored this turn"
+   ; TODO :effect
+   })
+
 (defcard "Election Day"
   {:req (req (->> (get-in @state [:corp :hand])
                   (filter #(not (same-card? % card)))
