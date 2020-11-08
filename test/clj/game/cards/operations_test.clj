@@ -755,9 +755,9 @@
       (click-prompt state :corp "Gain 3 [Credits]")
       (is (= 8 (:credit (get-corp))))
       (play-from-hand state :corp "Crash Report")
-      (is (= 5 (:credit (get-corp))))
+      (is (= 1 (count (:hand (get-corp)))) "1 card left in hq")
       (click-prompt state :corp "Draw 3")
-      (is (= 8 (:credit (get-corp))))
+      (is (= 5 (count (:hand (get-corp)))) "Corp should draw up to 4 cards")
       ))
   )
 
