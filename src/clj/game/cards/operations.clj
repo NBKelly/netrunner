@@ -1966,9 +1966,7 @@
                       ;(not= :this-turn (installed? %))
                       )}
    :msg (msg "place 2 advancement tokens on " (card-str state target))
-   :effect (effect (continue-ability
-                     (add-prop state side target :advance-counter 2 {:placed true})
-                     card target))})
+   :effect (effect (add-prop target :advance-counter 2 {:placed true}))})
 
 (defcard "Secure and Protect"
   {:interactive (req true)
