@@ -743,6 +743,24 @@
     (is (= 5 (count (:hand (get-corp)))) "Corp should draw up to 5 cards")
     (is (= 1 (count (:discard (get-corp)))) "Corp should have 1 card in discard from playing")))
 
+(deftest crash-report
+  ;; Crash Report
+  (testing "Basic Test"
+    (do-game
+      (new-game {:corp {:deck [(qty "Hedge Fund" 20)]
+                        :hand [(qty "Crash Report" 3)]}})
+      (play-from-hand state :corp "Crash Report")
+      (is (= 5 (:credit (get-corp))))
+      (is (= ["Gain 3 [Credits]" "Draw 3"] (get-prompt state :corp)))
+      (click-prompt state :corp "Gain 3 [Credits]")
+      (is (= 8 (:credit (get-corp))))
+      (play-from-hand state :corp "Crash Report")
+      (is (= 5 (:credit (get-corp))))
+      (click-prompt state :corp "Draw 3")
+      (is (= 8 (:credit (get-corp))))
+      ))
+  )
+
 (deftest cyberdex-trial
   ;; Cyberdex Trial
   (do-game
@@ -3253,6 +3271,30 @@
     (click-prompt state :corp "0")
     (click-prompt state :runner "0")
     (is (= 1 (count-tags state)) "Runner should get 1 tag from losing SEA Source trace")))
+
+(deftest seamless-launch
+  ;; Seamless Launch
+  (testing "Basic test"
+    (do-game
+      (new-game {:corp {:hand ["Seamless Launch" "Project Vitruvius"]}})
+      (play-from-hand state :corp "Project Vitruvius" "New remote")
+      (let [pv (get-content state :remote1 0)]
+        (take-credits state :corp)
+        (take-credits state :runner)
+        (play-from-hand state :corp "Seamless Launch")
+        (click-card state :corp pv)
+        (is (= 2 (get-counters pv :advancement)) "Vitruvius should be advanced")
+        (println (prompt-fmt :corp))
+        (println (clojure.string/join "\n" (map :text (:log @state))))
+        )))
+  (testing "Can't Fast Advance"
+    (do-game
+      (new-game {:corp {:hand ["Seamless Launch" "Project Vitruvius"]}})
+      (play-from-hand state :corp "Project Vitruvius" "New remote")
+      (let [pv (get-content state :remote1 0)]
+        (play-from-hand state :corp "Seamless Launch")
+        (click-card state :corp pv)
+        (is (= 0 (get-counters pv :advancement)) "Vitruvius should not be advanced")))))
 
 (deftest secure-and-protect
   ;; Secure and Protect
