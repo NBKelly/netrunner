@@ -428,6 +428,21 @@
    :effect (effect (shuffle-into-deck :hand)
                    (draw eid 5 nil))})
 
+(defcard "Crash Report"
+  {:async true
+   :prompt "Choose one"
+   :choices (req (if tagged
+                   ["Gain 3 [Credits]" "Draw 3 Cards" "Gain 3 [Credits] and Draw 3 Cards"]
+                   ["Gain 3 [Credits]" "Draw 3 Cards"]))
+   :msg (msg (string/lower-case target))
+   :effect (req
+             (case target
+               "Gain 3 [Credits]" (gain-credits state :corp eid 3)
+               "Draw 3 Cards" (draw state :corp 3 nil)
+               "Gain 3 [Credits] and Draw 3 Cards" (wait-for
+                                                     (gain-credits state :corp 3)
+                                                     (draw state :corp 3 nil))))})
+
 (defcard "Cyberdex Trial"
   {:msg "purge virus counters"
    :effect (effect (purge))})
