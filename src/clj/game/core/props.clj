@@ -44,7 +44,7 @@
      (if (= type :advancement)
        ;; if advancement counter use existing system
        (add-prop state side eid card :advance-counter n args)
-       (trigger-event-sync state side eid :counter-added (get-card state updated-card))))))
+       (trigger-event-sync state side eid :counter-added (get-card state updated-card) {:counter-type key :amount n :placed placed})))))
 
 (defn add-icon
   "Adds an icon to a card. E.g. a Femme Fatale token.
