@@ -2641,6 +2641,33 @@
         (take-credits state :runner)
         (is (= 2 (get-counters (refresh nbn-mn) :recurring)) "Recurring credits refill once MN isn't disabled anymore")))))
 
+(deftest nbn-virtual-frontiers
+  ;; NBN: Virtual Frontiers
+  (testing "Basic test - gain credits"
+    (do-game
+     (new-game {:corp {:id "NBN: Virtual Frontiers"
+                       :credits 40
+                       :hand [(qty "Data Raven" 3)]}})
+     (play-from-hand state :corp "Data Raven" "HQ")
+     (play-from-hand state :corp "Data Raven" "HQ")
+     (take-credits state :corp)
+     (let [dr (get-ice state :hq 0)
+           dr2 (get-ice state :hq 1)]
+       (run-on state :hq)
+       (rez state :corp (refresh dr2))
+       (run-continue state)
+       (click-prompt state :runner "Take 1 tag")
+       (click-prompt state :corp "Yes")
+       (changes-val-macro 2 (:credit (get-corp))
+                          "Gain 2 credit from NBN: Virtual Frontiers"
+                          (click-prompt state :corp "Gain 2 [Credits]"))
+       (run-continue state)
+       (rez state :corp (refresh dr))
+       (run-continue state)
+       (click-prompt state :runner "Take 1 tag")
+       (is (empty? (:prompt (get-corp))) "No prompt for the Corp for second tag")
+       ))))
+
 (deftest nero-severn-information-broker
   ;; Nero Severn: Information Broker
   (testing "Basic test"

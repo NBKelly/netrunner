@@ -1153,6 +1153,25 @@
                        :req (req (= :corp side))
                        :value 1}]})
 
+(defcard "NBN: Virtual Frontiers"
+  {:events [{:event :runner-gain-tag
+             :optional {:req (req (first-event? state :runner :runner-gain-tag))
+                        :player :corp
+                        :prompt "Do you want to gain 2 [Credits] or draw 2 cards"
+                        :autoresolve (get-autoresolve :auto-virtual-frontiers)
+                        :yes-ability {:effect (req (show-wait-prompt state :runner "Corp to use NBN: Virtual Frontiers")
+                                                   (continue-ability
+                                                    state side
+                                                    {:prompt "Select option"
+                                                     :player :corp
+                                                     :choices ["Gain 2 [Credits]" "Draw 2 cards"]
+                                                     :effect (req (clear-wait-prompt state :runner)
+                                                                  (if (= target "Gain 2 [Credits]")
+                                                                    (gain-credits state :corp eid 2)
+                                                                    (draw state :corp eid 2 nil)))}
+                                                    card nil))}}}]
+   :abilities [(set-autoresolve :auto-virtual-frontiers "Virtual Frontiers")]})
+
 (defcard "Near-Earth Hub: Broadcast Center"
   {:events [{:event :server-created
              :req (req (first-event? state :corp :server-created))
