@@ -1930,6 +1930,20 @@
     (play-from-hand state :corp "Neural EMP")
     (is (= 5 (count (:discard (get-runner)))))))
 
+(deftest jinteki-restoring-humanity
+  ;; Jinteki: Restoring Humanity
+  (do-game
+   (new-game {:corp {:id "Jinteki: Restoring Humanity"
+                     :discard ["Neural EMP"]}})
+   (take-credits state :corp)
+   (changes-val-macro 1 (:credit (get-corp))
+                      "Gain 1 credit from ability"
+                      (click-prompt state :corp "Yes"))
+   (run-empty-server state "Archives")
+   (take-credits state :runner)
+   (take-credits state :corp)
+   (is (empty? (:prompt (get-corp))) "Not prompted when no facedown card in archives")))
+
 (deftest jinteki-replicating-perfection
   ;; Replicating Perfection - Prevent runner from running on remotes unless they first run on a central
   (testing "Basic test"

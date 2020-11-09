@@ -585,8 +585,7 @@
                             :show-discard true
                             :choices {:card #(and (corp? %)
                                                   (in-discard? %))}
-                            :effect (req
-                                     (move state :corp target :hand))
+                            :effect (req (move state :corp target :hand))
                             :msg (msg "add " (if (:seen target) (:title target) "a card") " to HQ")}
                            card nil))}]})
 
@@ -848,6 +847,20 @@
                        (filter is-central? (map :server successes)))))
    :effect (req (apply prevent-run-on-server state card (map first (get-remotes state))))
    :leave-play (req (apply enable-run-on-server state card (map first (get-remotes state))))})
+
+(defcard "Jinteki: Restoring Humanity"
+  {:events [{:event :corp-turn-ends
+             :async true
+             :interactive (get-autoresolve :auto-restoring (complement never?))
+             :silent (get-autoresolve :auto-restoring never?)
+             :optional
+             {:req (req (pos? (count (remove :seen (:discard corp)))))
+              :autoresolve (get-autoresolve :auto-restoring)
+              :prompt "Gain 1 [Credits]?"
+              :yes-ability {:msg "gain 1 [Credits]"
+                            :async true
+                            :effect (req (gain-credits state :corp eid 1))}}}]
+   :abilities [(set-autoresolve :auto-restoring "Restoring Humanity")]})
 
 (defcard "Kabonesa Wu: Netspace Thrillseeker"
   {:abilities [{:label "Install a non-virus program from your stack, lowering the cost by 1 [Credit]"
