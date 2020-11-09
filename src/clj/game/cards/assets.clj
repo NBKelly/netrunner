@@ -1459,6 +1459,26 @@
      :abilities [(builder 1 5)
                  (builder 2 8)]}))
 
+(defcard "Nico Campaign"
+  (let [ability {:async true
+                 :once :per-turn
+                 :label "Take 3 [Credits] (start of turn)"
+                 :msg "gain 3 [Credits]"
+                 :req (req (:corp-phase-12 @state))
+                 :effect (req (add-counter state side card :credit -3)
+                              (wait-for (gain-credits state :corp 3)
+                                        (if (not (pos? (get-counters (get-card state card) :credit)))
+                                          (wait-for (trash state :corp card {:unpreventable true})
+                                                    (system-msg state :corp (str "trashes Nico Campaign"
+                                                                                 (when (not (empty? (:deck corp)))
+                                                                                   " and draws 1 card")))
+                                                    (draw state :corp eid 1 nil))
+                                          (effect-completed state side eid))))}]
+    {:data {:counter {:credit 9}}
+     :derezzed-events [corp-rez-toast]
+     :abilities [ability]
+     :events [(assoc ability :event :corp-turn-begins)]}))
+
 (defcard "Open Forum"
   {:events [{:event :corp-mandatory-draw
              :interactive (req true)
