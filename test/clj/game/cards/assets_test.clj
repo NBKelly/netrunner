@@ -3499,6 +3499,20 @@
       (is (= (dec credits) (:credit (get-corp))) "Corp should pay 1 for Project Junebug ability")
       (is (= 4 (-> (get-runner) :discard count)) "Project Junebug should do 4 net damage"))))
 
+(deftest project-kabuki
+  ;; Project Kabuki
+  (do-game
+   (new-game {:corp {:deck ["Project Kabuki"]}
+              :runner {:deck [(qty "Sure Gamble" 100)]}})
+   (play-from-hand state :corp "Project Kabuki" "New remote")
+   (advance state (get-content state :remote1 0) 2)
+   (take-credits state :corp)
+   (run-empty-server state "Server 1")
+   (let [credits (:credit (get-corp))]
+     (click-prompt state :corp "Yes")
+     (is (= 4 (-> (get-runner) :discard count)) "Project Kabuki should do 4 net damage"))))
+
+
 (deftest psychic-field
   ;; Psychic Field - Do 1 net damage for every card in Runner's hand when accessed/exposed
   (testing "Basic test"

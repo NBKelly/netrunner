@@ -1629,6 +1629,13 @@
                      :effect (effect (damage eid :net (* 2 (get-counters (get-card state card) :advancement))
                                              {:card card}))}))
 
+(defcard "Project Kabuki" 
+  (advance-ambush 0 {:req (req true)
+                     :msg (msg "do " (+ 2 (get-counters (get-card state card) :advancement)) " net damage")
+                     :async true
+                     :effect (effect (damage eid :net (+ 2 (get-counters (get-card state card) :advancement))
+                                             {:card card}))}))
+
 (defcard "Psychic Field"
   (let [ab {:async true
             :req (req installed)
