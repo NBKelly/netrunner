@@ -1740,12 +1740,12 @@
 (deftest jean-loup-arcemont-party-animal
   ;; "Jean \"Loup\" Arcemont: Party Animal"
   (do-game
-   (new-game {:corp {:hand ["NGO Front"]}
+   (new-game {:corp {:hand [(qty "NGO Front" 2)]}
               :runner {:id "Jean \"Loup\" Arcemont: Party Animal"
                        :hand ["Sure Gamble"]
                        :deck [(qty "Sure Gamble" 3)]}})
    (play-from-hand state :corp "NGO Front" "New remote")
-
+   (play-from-hand state :corp "NGO Front" "New remote")
    (take-credits state :corp)
    (run-empty-server state "Server 1")
    (click-prompt state :runner "Pay 1 [Credits] to trash")
@@ -1754,7 +1754,10 @@
       1 (count (:hand (get-runner)))
       "Jean draws one card"
       (click-prompt state :runner "Yes"))
-     (is (= (+ credits 1) (:credit (get-runner))) "Gain 1 credits from trashing accessed card"))))
+     (is (= (+ credits 1) (:credit (get-runner))) "Gain 1 credit from trashing accessed card")
+     (run-empty-server state "Server 2")
+     (click-prompt state :runner "Pay 1 [Credits] to trash")
+     (is (empty? (:prompt (get-runner))) "No prompt on second trash"))))
 
 (deftest jemison-astronautics-sacrifice-audacity-success
   ;; Jemison Astronautics - Place advancements when forfeiting agendas

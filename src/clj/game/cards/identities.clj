@@ -731,25 +731,20 @@
              :effect (effect (draw eid 1 nil))}]})
 
 (defcard "Jean \"Loup\" Arcemont: Party Animal"
-  {:events [{:event :access
-             :effect (req (register-events state side
-                                           card
-                                           [{:event :runner-trash
-                                             :duration :end-of-run
-                                             :unregister-once-resolved true
-                                             :req (req (and (corp? (:card target))
-                                                            (first-event? state side :runner-trash
-                                                                          (fn [targets]
-                                                                            (some #(corp? (:card %)) targets)))))
-                                             :effect (req (continue-ability state side
-                                                                            {:optional
-                                                                             {:prompt "Gain 1 [Credits] and draw 1 card?"
-                                                                              :autoresolve (get-autoresolve :auto-jean)
-                                                                              :yes-ability {:async true
-                                                                                            :msg "gain 1 [Credits] and draw 1 card"
-                                                                                            :effect (req (wait-for (draw state :runner 1 nil)
-                                                                                                                   (gain-credits state :runner eid 1)))}}}
-                                                                            card nil))}]))}]
+  {:events [{:event :runner-trash
+             :req (req (and (:accessed target)
+                            (first-event? state side :runner-trash
+                                          (fn [targets]
+                                            (some #(:accessed %) targets)))))
+             :effect (req (continue-ability state side
+                                            {:optional
+                                             {:prompt "Gain 1 [Credits] and draw 1 card?"
+                                              :autoresolve (get-autoresolve :auto-jean)
+                                              :yes-ability {:async true
+                                                            :msg "gain 1 [Credits] and draw 1 card"
+                                                            :effect (req (wait-for (draw state :runner 1 nil)
+                                                                                   (gain-credits state :runner eid 1)))}}}
+                                            card nil))}]
    :abilities [(set-autoresolve :auto-jean "Jean")]})
 
 (defcard "Jemison Astronautics: Sacrifice. Audacity. Success."
