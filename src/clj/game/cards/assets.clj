@@ -387,6 +387,29 @@
                             (do (system-msg state :runner "takes 1 tag")
                                 (gain-tags state :corp eid 1))))}]})
 
+(defcard "Clearing House"
+  (let [ability {:once :per-turn
+                 :async true
+                 :label "Trash this asset to do 1 meat damage for each hosted advancement counter (start of turn)"
+                 :req (req (:corp-phase-12 @state))
+                 :effect
+                 (effect
+                  (continue-ability
+                   {:optional
+                    {:prompt (msg "Trash Clearing House to do " (get-counters card :advancement) " meat damage?")
+                     :yes-ability
+                     {:async true
+                      :msg "do 1 meat damage for each hosted advancement counter"
+                      :effect (req (wait-for
+                                    (trash state side card nil)
+                                    (damage state side eid :meat (get-counters card :advancement) {:card card})))}}}
+                   card nil))}]
+    {:derezzed-events [corp-rez-toast]
+     :flags {:corp-phase-12 (req true)}
+     :events [(assoc ability :event :corp-turn-begins)]
+     :advanceable :always
+     :abilities [ability]}))
+
 (defcard "Clone Suffrage Movement"
   {:derezzed-events [corp-rez-toast]
    :flags {:corp-phase-12 (req (and (some operation? (:discard corp))

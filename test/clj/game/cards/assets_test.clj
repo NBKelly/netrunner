@@ -671,6 +671,23 @@
       (is (= 1 (count-tags state)) "Runner took 1 tag"))
       (is (empty? (:prompt (get-runner))) "City Surveillance only fired once")))
 
+(deftest clearing-house
+  ;; Clearing House
+  (do-game
+   (new-game {:corp {:hand ["Clearing House"]}
+              :runner {:hand [(qty "Sure Gamble" 5)]}})
+   (core/gain state :corp :click 5)
+   (play-from-hand state :corp "Clearing House" "New remote")
+   (advance state (get-content state :remote1 0) 4)
+   (take-credits state :corp)
+   (take-credits state :runner)
+   (is (:corp-phase-12 @state) "Corp has opportunity to use Clearing House")
+   (rez state :corp (get-content state :remote1 0))
+   (card-ability state :corp (get-content state :remote1 0) 0)
+   (changes-val-macro -4 (count (:hand (get-runner)))
+                      "Runner received 4 damage"
+                      (click-prompt state :corp "Yes"))))
+
 (deftest clone-suffrage-movement
   ;; Clone Suffrage Movement
   (do-game
