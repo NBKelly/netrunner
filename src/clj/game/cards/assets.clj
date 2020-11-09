@@ -2057,6 +2057,15 @@
                                                           (effect-completed state side eid))}}}
                               card nil))}})
 
+(defcard "Spin Doctor"
+  {:async true
+   :effect (req (draw state side eid 2 nil))
+   :msg (msg "draw 2 cards")
+   :abilities [{:label "Shuffle up to 2 cards from Archives into R&D"
+                :cost [:remove-from-game]
+                :async true
+                :effect (effect (shuffle-into-rd-effect card eid 2))}]})
+
 (defcard "Storgotic Resonator"
   {:abilities [{:cost [:click 1 :power 1]
                 :label "Do 1 net damage"

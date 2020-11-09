@@ -4278,6 +4278,46 @@
       (is (= 2 (count-tags state)) "Runner has 2 tags")
       (is (not (:run @state)) "Run completed"))))
 
+(deftest spin-doctor
+  ;; Spin Doctor - Draw 2 cards
+  (testing "Basic test"
+    (do-game
+     (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                       :hand ["Spin Doctor"]
+                       :discard ["Ice Wall" "Enigma"]}})
+     (play-from-hand state :corp "Spin Doctor" "New remote")
+     (let [spin (get-content state :remote1 0)]
+       (is (zero? (count (:hand (get-corp)))))
+       (rez state :corp spin)
+       (is (= 2 (count (:hand (get-corp)))) "Drew 2 cards")
+       (card-ability state :corp spin 0)
+       (click-card state :corp "Ice Wall")
+       (click-card state :corp "Enigma")
+       (is (find-card "Spin Doctor" (:rfg (get-corp))) "Spin Doctor is rfg'd")
+       (is (find-card "Ice Wall" (:deck (get-corp))) "Ice Wall is shuffled back into the deck")
+       (is (find-card "Enigma" (:deck (get-corp))) "Enigma is shuffled back into the deck"))))
+  (testing "Mid-run usage does not allow successful run effects to trigger"
+    (do-game
+     (new-game {:corp {:deck ["Spin Doctor"]
+                       :discard ["Enigma" "Ice Wall"]}
+                :runner {:deck ["Desperado"]}})
+     (play-from-hand state :corp "Spin Doctor" "New remote")
+     (let [spin (get-content state :remote1 0)]
+       (rez state :corp spin)
+       (take-credits state :corp)
+       (play-from-hand state :runner "Desperado")
+       (run-on state :remote1)
+       (changes-val-macro
+        0 (:credit (get-runner))
+        "A server vanishing by mid-run does not trigger Desperado even if players proceed to access"
+        (card-ability state :corp spin 0)
+        (click-card state :corp "Enigma")
+        (click-prompt state :corp "Done")
+        (is (find-card "Spin Doctor" (:rfg (get-corp))) "Spin Doctor is rfg'd")
+        (is (find-card "Enigma" (:deck (get-corp))) "Enigma is shuffled back into the deck")
+        (is (nil? (refresh spin)))
+        (is (nil? (:run @state))))))))
+
 (deftest storgotic-resonator
   ;; Storgotic Resonator - Gains power counters on Corp trashing card with same faction as runner ID.
   ;; Click+counter is 1 net damage
