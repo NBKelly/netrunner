@@ -2665,8 +2665,7 @@
        (rez state :corp (refresh dr))
        (run-continue state)
        (click-prompt state :runner "Take 1 tag")
-       (is (empty? (:prompt (get-corp))) "No prompt for the Corp for second tag")
-       ))))
+       (is (empty? (:prompt (get-corp))) "No prompt for the Corp for second tag")))))
 
 (deftest nero-severn-information-broker
   ;; Nero Severn: Information Broker
