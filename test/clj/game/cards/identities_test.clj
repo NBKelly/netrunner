@@ -1443,7 +1443,7 @@
      (click-card state :corp (find-card "Hedge Fund" (:discard (get-corp)))) ; Ability target
      (is (= 0 (count (:discard (get-corp)))) "0 card in archives"))))
 
-  (deftest haas-bioroid-stronger-together
+(deftest haas-bioroid-stronger-together
   ;; Stronger Together - +1 strength for Bioroid ice
     (do-game
      (new-game {:corp {:id "Haas-Bioroid: Stronger Together"
