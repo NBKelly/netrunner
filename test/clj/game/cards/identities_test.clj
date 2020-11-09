@@ -1430,15 +1430,28 @@
       (play-from-hand state :corp "Eli 1.0" "New remote")
       (is (= 9 (:credit (get-corp))) "Corp gained 1cr from EtF"))))
 
-(deftest haas-bioroid-stronger-together
+(deftest haas-bioroid-precision-design
+  ;; Haas-Bioroid: Precision Design
+  (testing "Basic test"
+    (do-game
+     (new-game {:corp {:id "Haas-Bioroid: Precision Design"
+                       :hand ["Project Vitruvius"]
+                       :discard ["Hedge Fund"]}})
+     (is (= 6 (hand-size :corp)) "Max hand size is 6")
+     (play-and-score state "Project Vitruvius")
+     (is (= 1 (count (:discard (get-corp)))) "1 card in archives")
+     (click-card state :corp (find-card "Hedge Fund" (:discard (get-corp)))) ; Ability target
+     (is (= 0 (count (:discard (get-corp)))) "0 card in archives"))))
+
+  (deftest haas-bioroid-stronger-together
   ;; Stronger Together - +1 strength for Bioroid ice
-  (do-game
-    (new-game {:corp {:id "Haas-Bioroid: Stronger Together"
-                      :deck ["Eli 1.0"]}})
-    (play-from-hand state :corp "Eli 1.0" "Archives")
-    (let [eli (get-ice state :archives 0)]
-      (rez state :corp eli)
-      (is (= 5 (get-strength (refresh eli))) "Eli 1.0 at 5 strength"))))
+    (do-game
+     (new-game {:corp {:id "Haas-Bioroid: Stronger Together"
+                       :deck ["Eli 1.0"]}})
+     (play-from-hand state :corp "Eli 1.0" "Archives")
+     (let [eli (get-ice state :archives 0)]
+       (rez state :corp eli)
+       (is (= 5 (get-strength (refresh eli))) "Eli 1.0 at 5 strength"))))
 
 (deftest hayley-kaplan-universal-scholar
   (testing "Basic test"

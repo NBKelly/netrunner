@@ -573,6 +573,23 @@
              :async true
              :effect (effect (gain-credits eid 1))}]})
 
+(defcard "Haas-Bioroid: Precision Design"
+  {:constant-effects [{:type :hand-size
+                       :req (req (= :corp side))
+                       :value 1}]
+   :events [{:event :agenda-scored
+             :effect (req (continue-ability
+                           state side
+                           {:label "add card from Archives to HQ"
+                            :prompt "Select a card to add to HQ"
+                            :show-discard true
+                            :choices {:card #(and (corp? %)
+                                                  (in-discard? %))}
+                            :effect (req
+                                     (move state :corp target :hand))
+                            :msg (msg "add " (if (:seen target) (:title target) "a card") " to HQ")}
+                           card nil))}]})
+
 (defcard "Haas-Bioroid: Stronger Together"
   {:constant-effects [{:type :ice-strength
                        :req (req (has-subtype? target "Bioroid"))
@@ -1120,7 +1137,7 @@
 
 (defcard "NBN: The World is Yours*"
   {:constant-effects [{:type :hand-size
-                       :req (req (= :corp value))
+                       :req (req (= :corp side))
                        :value 1}]})
 
 (defcard "Near-Earth Hub: Broadcast Center"
