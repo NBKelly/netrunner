@@ -1791,13 +1791,25 @@
                                                (effect-completed eid))})
                             card nil))}]})
 
-(defcard "Reversed Accounts"
-  {:advanceable :always
-   :abilities [{:cost [:click 1 :trash]
-                :label "Force the Runner to lose 4 [Credits] per advancement"
-                :msg (msg "force the Runner to lose " (min (* 4 (get-counters card :advancement)) (:credit runner)) " [Credits]")
+(defcard "Regolith Mining Licence"
+  {:data {:counter {:credit 15}}
+   :events [(trash-on-empty :credit)]
+   :abilities [{:label "Take 3 [Credits] from this asset"
+                :cost [:click 1]
+                :once :per-turn
+                :msg (msg "gain 3 [Credits]")
                 :async true
-                :effect (effect (lose-credits :runner eid (* 4 (get-counters card :advancement))))}]})
+                :effect (req (let [credits (min 3 (get-counters card :credit))]
+                               (add-counter state side card :credit (- credits))
+                               (gain-credits state :runner eid credits)))}]})
+
+  (defcard "Reversed Accounts"
+    {:advanceable :always
+     :abilities [{:cost [:click 1 :trash]
+                  :label "Force the Runner to lose 4 [Credits] per advancement"
+                  :msg (msg "force the Runner to lose " (min (* 4 (get-counters card :advancement)) (:credit runner)) " [Credits]")
+                  :async true
+                  :effect (effect (lose-credits :runner eid (* 4 (get-counters card :advancement))))}]})
 
 (defcard "Rex Campaign"
   (let [payout-ab {:prompt "Remove 1 bad publicity or gain 5 [Credits]?"

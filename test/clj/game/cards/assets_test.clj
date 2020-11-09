@@ -3781,6 +3781,19 @@
       (is (= 2 (count (:discard (get-runner)))))
       (is (= 1 (get-counters (refresh rc) :advancement)) "Reconstruction Contract doesn't get advancement token for net damage"))))
 
+(deftest regolith-mining-licence
+  ;; Regolith Mining Licence
+  (do-game
+   (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                     :hand ["Regolith Mining Licence"]}})
+   (play-from-hand state :corp "Regolith Mining Licence" "New remote")
+   (let [rml (get-content state :remote1 0)]
+     (rez state :corp (refresh rml))
+     (changes-val-macro
+      3 (:credit (get-runner))
+      "A server vanishing by mid-run does not trigger Desperado even if players proceed to access"
+      (card-ability state :corp rml 0)))))
+
 (deftest reversed-accounts
   ;; Reversed Accounts - Trash to make Runner lose 4 credits per advancement
   (do-game
