@@ -22,9 +22,9 @@
                       (rezzed? updated-card))
              (update-ice-strength state side updated-card))
            (if-not placed
-             (trigger-event-sync state side eid :advance (get-card state updated-card))
-             (trigger-event-sync state side eid :advancement-placed (get-card state updated-card))))
-       (trigger-event-sync state side eid :counter-added (get-card state updated-card))))))
+             (trigger-event-sync state side eid :advance (get-card state updated-card) {:counter-type key :amount n :placed placed})
+             (trigger-event-sync state side eid :advancement-placed (get-card state updated-card {:counter-type key :amount n :placed placed}))))
+       (trigger-event-sync state side eid :counter-added (get-card state updated-card {:counter-type key :amount n :placed placed}))))))
 
 (defn set-prop
   "Like add-prop, but sets multiple keys to corresponding values without triggering events.

@@ -1650,6 +1650,15 @@
              :async true
              :effect (effect (gain-credits eid 1))}]})
 
+(defcard "Weyland Consortium: Built to Last"
+  {:events [{:event :advance
+             :req (req (zero? (- (:advance-counter target) (:amount (second targets)))))
+             :optional {:prompt "Gain 2 [Credits]?"
+                        :autoresolve (get-autoresolve :auto-build-to-last)
+                        :yes-ability {:msg "gain 2 [Credits]"
+                                      :effect (req (gain-credits state :corp eid 2))}}}]
+   :abilities [(set-autoresolve :auto-build-to-last "Built to Last")]})
+
 (defcard "Whizzard: Master Gamer"
   {:recurring 3
    :interactions {:pay-credits {:req (req (and (= :runner-trash-corp-cards (:source-type eid))

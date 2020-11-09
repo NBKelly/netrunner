@@ -3527,6 +3527,28 @@
       (is (nil? (:run @state)) "Ice Wall is trashed, so run has been ended")
       (is (= 1 (count (:discard (get-runner))))))))
 
+(deftest weyland-consortium-built-to-last
+  ;; Weyland Consortium: Built to Last
+  (testing "Basic test"
+    (do-game
+     (new-game {:corp {:id "Weyland Consortium: Built to Last"
+                       :hand [(qty "NGO Front" 2)]}})
+     (core/gain state :corp :click 5)
+     (play-from-hand state :corp "NGO Front" "Server 1")
+     (play-from-hand state :corp "NGO Front" "Server 2")
+     (let [ngo1 (get-content state :remote1 0)
+           ngo2 (get-content state :remote2 0)]
+       (advance state (refresh ngo1) 1)
+       (changes-val-macro 2 (:credit (get-corp))
+                          "Gain 2 credits from Weyland Built to Last ability"
+                          (click-prompt state :corp "Yes"))
+       (advance state (refresh ngo1) 1)
+       (is (empty? (:prompt (get-corp))) "No prompt for second advance counter")
+       (advance state (refresh ngo2) 1)
+       (changes-val-macro 2 (:credit (get-corp))
+                          "Gain 2 credits from Weyland Built to Last ability"
+                          (click-prompt state :corp "Yes"))))))
+       
 (deftest whizzard-master-gamer
   ;; Whizzard
   (do-game
