@@ -1473,6 +1473,19 @@
                        :req (req (= :runner side))
                        :value -1}]})
 
+(defcard "Send A Message"
+  {:interactive (req true)
+   :choices {:card #(and (ice? %)
+                         (not (rezzed? %))
+                         (installed? %))}
+   :effect (effect (rez target {:ignore-cost :all-costs}))
+   :stolen {:interactive (req true)
+            :choices {:card #(and (ice? %)
+                                  (not (rezzed? %))
+                                  (installed? %))}
+            :effect (effect (rez target {:ignore-cost :all-costs}))}})
+
+
 (defcard "Sensor Net Activation"
   {:effect (effect (add-counter card :agenda 1))
    :silent (req true)

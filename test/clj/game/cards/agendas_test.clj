@@ -3028,6 +3028,28 @@
     (play-and-score state "Self-Destruct Chips")
     (is (= 4 (hand-size :runner)) "By scoring Self-Destruct Chips, Runner's hand size is reduced by 1")))
 
+(deftest send-a-message
+  ;; Send A Message
+  (testing "Basic test - score"
+    (do-game
+     (new-game {:corp {:deck ["Send A Message" "Archer"]}})
+     (play-from-hand state :corp "Archer" "HQ")
+     (let [archer (get-ice state :hq 0)]
+       (play-and-score state "Send A Message")
+       (click-card state :corp archer)
+       (is (rezzed? (refresh archer))))))
+  (testing "Basic test - steal"
+    (do-game
+     (new-game {:corp {:deck ["Send A Message" "Archer"]}})
+     (play-from-hand state :corp "Archer" "HQ")
+     (play-from-hand state :corp "Send A Message" "New remote")
+     (let [archer (get-ice state :hq 0)]
+       (take-credits state :corp)
+       (run-empty-server state "Server 1")
+       (click-prompt state :runner "Steal")
+       (click-card state :corp archer)
+       (is (rezzed? (refresh archer)))))))
+
 (deftest sensor-net-activation
   ;; Sensor Net Activation
   (do-game
