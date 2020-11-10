@@ -1591,6 +1591,14 @@
      :effect (req (let [max-ops (count (filter (complement operation?) (:hand corp)))]
                     (continue-ability state side (sft 1 max-ops) card nil)))}))
 
+(defcard "Superconducting Hub"
+  {:constant-effects [{:type :hand-size
+                       :req (req (= :corp side))
+                       :value 2}]
+   :msg "draw 2 cards"
+   :async true
+   :effect (req (draw state :corp eid 2 nil))})
+
 (defcard "Superior Cyberwalls"
   (ice-boost-agenda "Barrier"))
 

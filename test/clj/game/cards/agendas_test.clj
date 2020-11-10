@@ -3298,6 +3298,16 @@
     (is (= 5 (:credit (get-corp))) "Should still have 5 credits")
     (is (some? (get-ice state :hq 9)))))
 
+(deftest superconducting-hub
+  ;; Superconducting Hub
+  (do-game
+   (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                     :hand ["Superconducting Hub"]}})
+   (changes-val-macro 1 (count (:hand (get-corp)))
+                      "Superconducting Hub draws 2 cards (and -1 because played from hand)"
+                      (play-and-score state "Superconducting Hub"))
+   (is (= 7 (hand-size :corp)))))
+
 (deftest superior-cyberwalls
   ;; Superior Cyberwalls
   (do-game
