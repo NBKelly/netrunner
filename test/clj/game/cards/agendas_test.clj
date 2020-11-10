@@ -2168,6 +2168,16 @@
     (is (= :runner (:winner @state)) "Runner wins")
     (is (= "Agenda" (:reason @state)) "Win condition reports agenda points")))
 
+(deftest offworld-office
+  ;; Offworld Office
+  (testing "Basic test"
+    (do-game
+     (new-game {:corp {:hand [(qty "Offworld Office" 2)]}})
+     (changes-val-macro 7 (:credit (get-corp))
+                        "Corp gains 7 tag from Offworld Office"
+                        (play-and-score state "Offworld Office")))))
+
+
 (deftest paper-trail
   ;; Paper Trail
   (do-game

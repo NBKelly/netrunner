@@ -1047,6 +1047,10 @@
 (defcard "Obokata Protocol"
   {:steal-cost-bonus (req [:net 4])})
 
+(defcard "Offworld Office"
+  {:effect (req (system-msg state :corp (str "uses Offworld Office to gain 7 [Credits]"))
+                (gain-credits state :corp eid 7))})
+
 (defcard "Paper Trail"
   {:trace {:base 6
            :successful {:msg "trash all connection and job resources"
