@@ -104,7 +104,7 @@
         (is (= (inc credits) (:credit (get-corp))) (str "Corp should have " (inc credits) " credits"))
         (run-continue state)
         (run-on state :archives)
-         (is (empty (:prompt (get-corp))) "No prompt as it's once per turn")))))
+        (is (empty (:prompt (get-corp))) "No prompt as it's once per turn")))))
 
 (deftest ancestral-imager
   ;; Ancestral Imager

@@ -84,10 +84,11 @@
                      card nil)))}}}))
 
 (defcard "Accelerated Pipeline"
-  {:effect (req (if (is-tagged? state)
-                  (do (system-msg state :corp (str "uses Offworld Office to do 4 meat damage"))
+  {:async true
+   :effect (req (if (is-tagged? state)
+                  (do (system-msg state :corp (str "uses Accelerated Pipeline to do 4 meat damage"))
                       (damage state :corp eid :meat 4 {:card card}))
-                  (do (system-msg state :corp (str "uses Offworld Office to do give runner 1 tag"))
+                  (do (system-msg state :corp (str "uses Accelerated Pipeline to do give runner 1 tag"))
                       (gain-tags state :corp eid 1))))})
 
 (defcard "Advanced Concept Hopper"
@@ -386,8 +387,9 @@
 (defcard "Caelus Observatory"
   {:interactive (req true)
    :prompt "Select resource"
-   :choices {:card #(resource? %)}
-   :msg "trash resource"
+   :choices {:card #(and (installed? %) (resource? %))}
+   :msg (msg "trash " (card-str state target))
+   :async true
    :effect (req (trash state side eid target nil))})
 
 (defcard "CFC Excavation Contract"
@@ -869,7 +871,7 @@
             :choices {:max (req (count (:hand corp)))
                       :card #(and (corp? %)
                                   (in-hand? %))}
-            :msg (msg "trash " (count targets) " cards in HQ")
+            :msg (msg "trash " (quantify (count targets) "card") " in HQ")
             :async true
             :effect (req (wait-for (trash-cards state side targets {:unpreventable true})
                                    (shuffle-into-rd-effect state side eid card 3)))})
@@ -1050,7 +1052,8 @@
   {:steal-cost-bonus (req [:net 4])})
 
 (defcard "Offworld Office"
-  {:effect (req (system-msg state :corp (str "uses Offworld Office to gain 7 [Credits]"))
+  {:async true
+   :effect (req (system-msg state :corp (str "uses Offworld Office to gain 7 [Credits]"))
                 (gain-credits state :corp eid 7))})
 
 (defcard "Paper Trail"
@@ -1657,8 +1660,10 @@
 (defcard "Tomorrow's Headline"
   {:interactive (req true)
    :msg "give Runner 1 tag"
+   :async true
    :effect (req (gain-tags state :corp eid 1))
    :stolen {:msg "give Runner 1 tag"
+            :async true
             :effect (req (gain-tags state :corp eid 1))}})
 
 (defcard "Transport Monopoly"
