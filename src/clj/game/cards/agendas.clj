@@ -85,8 +85,10 @@
 
 (defcard "Accelerated Pipeline"
   {:effect (req (if (is-tagged? state)
-                  (damage state :corp eid :meat 4 {:card card})
-                  (gain-tags state :corp eid 1)))})
+                  (do (system-msg state :corp (str "uses Offworld Office to do 4 meat damage"))
+                      (damage state :corp eid :meat 4 {:card card}))
+                  (do (system-msg state :corp (str "uses Offworld Office to do give runner 1 tag"))
+                      (gain-tags state :corp eid 1))))})
 
 (defcard "Advanced Concept Hopper"
   {:events
