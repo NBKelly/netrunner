@@ -1675,6 +1675,7 @@
 
 (deftest kongquan
   ;; Kōngquán
+  ;; Kongquan
   (do-game
    (new-game {:corp {:hand ["Kōngquán" "Hedge Fund" "IPO" "Afshar"]
                      :discard ["Ice Wall" "Fire Wall" "Hostile Takeover" "Prisec"]}})
@@ -1686,9 +1687,9 @@
    (is (= 4 (count (:discard (get-corp)))))
    (click-prompt state :corp "Done")
    (is (= 6 (count (:discard (get-corp)))) "Corp trashes two cards from HQ")
-   (click-card state :corp (find-card "Ice Wall" (:discard (get-corp))))
-   (click-card state :corp (find-card "Fire Wall" (:discard (get-corp))))
-   (click-card state :corp (find-card "Prisec" (:discard (get-corp))))
+   (click-card state :corp "Ice Wall")
+   (click-card state :corp "Fire Wall")
+   (click-card state :corp "Prisec")
    (is (= ["Fire Wall" "Ice Wall" "Prisec"]
           (->> (get-corp) :deck (map :title) sort))
        "All chosen cards should be shuffled back into R&D")))

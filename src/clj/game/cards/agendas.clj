@@ -858,16 +858,14 @@
      :effect (effect (add-prop :corp target :advance-counter 2 {:placed true}))}]})
 
 (defcard "Kōngquán"
-  {:effect (req (continue-ability
-                 state side
-                 {:prompt "Select any number of cards in HQ to trash"
-                  :choices {:max (req (count (:hand corp)))
-                            :card #(and (corp? %)
-                                        (in-hand? %))}
-                  :msg (msg "trash " (count targets) " cards in HQ")
-                  :async true
-                  :effect (req (wait-for (trash-cards state side targets {:unpreventable true})
-                                         (shuffle-into-rd-effect state side eid card 3)))} card nil))})
+   {:prompt "Select any number of cards in HQ to trash"
+            :choices {:max (req (count (:hand corp)))
+                      :card #(and (corp? %)
+                                  (in-hand? %))}
+            :msg (msg "trash " (count targets) " cards in HQ")
+            :async true
+            :effect (req (wait-for (trash-cards state side targets {:unpreventable true})
+                                   (shuffle-into-rd-effect state side eid card 3)))})
 
 (defcard "Labyrinthine Servers"
   {:interactions {:prevent [{:type #{:jack-out}
