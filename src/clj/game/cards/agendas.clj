@@ -1478,8 +1478,10 @@
    :choices {:card #(and (ice? %)
                          (not (rezzed? %))
                          (installed? %))}
+   :async true
    :effect (effect (rez target {:ignore-cost :all-costs}))
    :stolen {:interactive (req true)
+            :async true
             :choices {:card #(and (ice? %)
                                   (not (rezzed? %))
                                   (installed? %))}
