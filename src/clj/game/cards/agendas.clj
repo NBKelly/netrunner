@@ -1638,6 +1638,13 @@
                                            card nil))})
                             card nil))}]})
 
+(defcard "Tomorrow's Headline"
+  {:interactive (req true)
+   :msg "give Runner 1 tag"
+   :effect (req (gain-tags state :corp eid 1))
+   :stolen {:msg "give Runner 1 tag"
+            :effect (req (gain-tags state :corp eid 1))}})
+
 (defcard "Transport Monopoly"
   {:silent (req true)
    :effect (effect (add-counter card :agenda 2))

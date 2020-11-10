@@ -3423,6 +3423,25 @@
           (run-continue state)
           (is (= "Vanilla" (:title (core/get-current-ice state))) "Now approaching Vanilla"))))))
 
+(deftest tomorrows-headline
+  ;;Tomorrow's Headline
+  (testing "Basic test - scored"
+    (do-game
+     (new-game {:corp {:deck ["Tomorrow's Headline"]}})
+     (changes-val-macro 1 (count-tags state)
+                        "Runner takes 1 tag on Tomorrow's Headline score"
+                        (play-and-score state "Tomorrow's Headline"))))
+  (testing "Basic test - stolen"
+    (do-game
+     (new-game {:corp {:deck ["Tomorrow's Headline"]}})
+     (play-from-hand state :corp "Tomorrow's Headline" "New remote")
+     (take-credits state :corp)
+     (run-empty-server state "Server 1")
+     (changes-val-macro 1 (count-tags state)
+                        "Runner takes 1 tag on Tomorrow's Headline steal"
+                        (click-prompt state :runner "Steal")))))
+
+
 (deftest transport-monopoly
   ;; Transport Monopoly
   (testing "Basic functionality"
