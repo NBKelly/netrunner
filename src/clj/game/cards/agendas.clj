@@ -376,6 +376,13 @@
                   :msg "do 2 meat damage"
                   :effect (effect (damage eid :meat 2 {:card card}))}]}))
 
+(defcard "Caelus Observatory"
+  {:interactive (req true)
+   :prompt "Select resource"
+   :choices {:card #(resource? %)}
+   :msg "trash resource"
+   :effect (req (trash state side eid target nil))})
+
 (defcard "CFC Excavation Contract"
   {:async true
    :effect (req (let [bucks (->> (all-active-installed state :corp)

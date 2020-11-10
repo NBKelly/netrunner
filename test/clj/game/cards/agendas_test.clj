@@ -573,6 +573,20 @@
       (is (= 2 (count (:discard (get-runner)))) "Runner took 2 damage")
       (is (= 1 (get-counters (get-content state :remote1 0) :power))))))
 
+
+(deftest caelus-observatory
+  ;; Caelus Observatory
+  (testing "Basic test"
+    (do-game
+     (new-game {:corp {:hand ["Caelus Observatory"]}
+                :runner {:hand ["Armitage Codebusting"]}})
+     (take-credits state :corp)
+     (play-from-hand state :runner "Armitage Codebusting")
+     (take-credits state :runner)
+     (play-and-score state "Caelus Observatory")
+     (click-card state :corp "Armitage Codebusting")
+     (is (= 1 (count (:discard (get-runner)))) "Armitage Codebusting is trashed"))))
+
 (deftest cfc-excavation-contract
   ;; CFC Excavation Contract
   (dotimes [n 5]
