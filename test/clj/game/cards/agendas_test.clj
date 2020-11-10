@@ -1736,6 +1736,19 @@
       (click-prompt state :corp "New remote")
       (is (some? (get-content state :remote8 0))))))
 
+(deftest luminal-transubstantiation
+  ;; Luminal Transubstantiation
+  (do-game
+   (new-game {:corp {:deck ["Luminal Transubstantiation" "Project Vitruvius"]}})
+   (play-from-hand state :corp "Luminal Transubstantiation" "New remote")
+   (play-from-hand state :corp "Project Vitruvius" "New remote")
+   (core/add-prop state :corp (get-content state :remote1 0) :advance-counter 3)
+   (core/score state :corp {:card (get-content state :remote1 0)})
+   (is (= 1 (count (:scored (get-corp)))))
+   (core/add-prop state :corp (get-content state :remote2 0) :advance-counter 3)
+   (core/score state :corp {:card (get-content state :remote2 0)})
+   (is (= 1 (count (:scored (get-corp)))) "Cannot be scored because Luminal Transubstantiation")))
+
 (deftest mandatory-seed-replacement
   ;; Mandatory Seed Replacement
   (do-game

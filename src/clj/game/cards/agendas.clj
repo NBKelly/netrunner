@@ -871,6 +871,15 @@
    :async true
    :effect (effect (corp-install eid target nil {:install-state :rezzed-no-cost}))})
 
+(defcard "Luminal Transubstantiation"
+  {:silent (req true)
+   :effect (req (gain state :corp :click 3)
+                 (register-turn-flag! 
+                  state side card :can-score
+                  (fn [state side card]
+                    ((constantly false)
+                     (toast state :corp "Cannot score cards this turn due to Luminal Transubstantiation." "warning")))))})
+
 (defcard "Mandatory Seed Replacement"
   (letfn [(msr [] {:prompt "Select two pieces of ICE to swap positions"
                    :choices {:card #(and (installed? %)
