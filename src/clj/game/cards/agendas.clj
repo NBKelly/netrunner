@@ -85,11 +85,10 @@
 
 (defcard "Accelerated Pipeline"
   {:async true
+   :msg (msg (if (is-tagged? state) "do 4 meat damage" "give the Runner 1 tag"))
    :effect (req (if (is-tagged? state)
-                  (do (system-msg state :corp (str "uses Accelerated Pipeline to do 4 meat damage"))
-                      (damage state :corp eid :meat 4 {:card card}))
-                  (do (system-msg state :corp (str "uses Accelerated Pipeline to do give runner 1 tag"))
-                      (gain-tags state :corp eid 1))))})
+                  (damage state :corp eid :meat 4 {:card card})
+                  (gain-tags state :corp eid 1)))})
 
 (defcard "Advanced Concept Hopper"
   {:events
@@ -387,6 +386,7 @@
 (defcard "Caelus Observatory"
   {:interactive (req true)
    :prompt "Select resource"
+   :req (req (some #(and (installed? %) (resource? %)) (all-active-installed state :runner)))
    :choices {:card #(and (installed? %) (resource? %))}
    :msg (msg "trash " (card-str state target))
    :async true
@@ -867,14 +867,14 @@
      :effect (effect (add-prop :corp target :advance-counter 2 {:placed true}))}]})
 
 (defcard "Kōngquán"
-   {:prompt "Select any number of cards in HQ to trash"
-            :choices {:max (req (count (:hand corp)))
-                      :card #(and (corp? %)
-                                  (in-hand? %))}
-            :msg (msg "trash " (quantify (count targets) "card") " in HQ")
-            :async true
-            :effect (req (wait-for (trash-cards state side targets {:unpreventable true})
-                                   (shuffle-into-rd-effect state side eid card 3)))})
+  {:prompt "Select any number of cards in HQ to trash"
+   :choices {:max (req (count (:hand corp)))
+             :card #(and (corp? %)
+                         (in-hand? %))}
+   :msg (msg "trash " (quantify (count targets) "card") " in HQ")
+   :async true
+   :effect (req (wait-for (trash-cards state side targets {:unpreventable true})
+                          (shuffle-into-rd-effect state side eid card 3)))})
 
 (defcard "Labyrinthine Servers"
   {:interactions {:prevent [{:type #{:jack-out}
@@ -1053,8 +1053,8 @@
 
 (defcard "Offworld Office"
   {:async true
-   :effect (req (system-msg state :corp (str "uses Offworld Office to gain 7 [Credits]"))
-                (gain-credits state :corp eid 7))})
+   :msg "gain 7 [Credits]"
+   :effect (req (gain-credits state :corp eid 7))})
 
 (defcard "Paper Trail"
   {:trace {:base 6
