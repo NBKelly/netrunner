@@ -850,6 +850,18 @@
      :msg (msg "place 2 advancement token on " (card-str state target))
      :effect (effect (add-prop :corp target :advance-counter 2 {:placed true}))}]})
 
+(defcard "Kōngquán"
+  {:effect (req (continue-ability
+                 state side
+                 {:prompt "Select any number of cards in HQ to trash"
+                  :choices {:max (req (count (:hand corp)))
+                            :card #(and (corp? %)
+                                        (in-hand? %))}
+                  :msg (msg "trash " (count targets) " cards in HQ")
+                  :async true
+                  :effect (req (wait-for (trash-cards state side targets {:unpreventable true})
+                                         (shuffle-into-rd-effect state side eid card 3)))} card nil))})
+
 (defcard "Labyrinthine Servers"
   {:interactions {:prevent [{:type #{:jack-out}
                              :req (req (pos? (get-counters card :power)))}]}
@@ -874,11 +886,11 @@
 (defcard "Luminal Transubstantiation"
   {:silent (req true)
    :effect (req (gain state :corp :click 3)
-                 (register-turn-flag! 
-                  state side card :can-score
-                  (fn [state side card]
-                    ((constantly false)
-                     (toast state :corp "Cannot score cards this turn due to Luminal Transubstantiation." "warning")))))})
+                (register-turn-flag!
+                 state side card :can-score
+                 (fn [state side card]
+                   ((constantly false)
+                    (toast state :corp "Cannot score cards this turn due to Luminal Transubstantiation." "warning")))))})
 
 (defcard "Mandatory Seed Replacement"
   (letfn [(msr [] {:prompt "Select two pieces of ICE to swap positions"

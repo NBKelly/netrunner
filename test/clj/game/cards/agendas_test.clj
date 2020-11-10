@@ -1659,6 +1659,26 @@
         (click-card state :corp cg)
         (is (= 2 (get-counters (refresh cg) :advancement)) "Crisium Grid gains 2 counters")))))
 
+(deftest kongquan
+  ;; Kōngquán
+  (do-game
+   (new-game {:corp {:hand ["Kōngquán" "Hedge Fund" "IPO" "Afshar"]
+                     :discard ["Ice Wall" "Fire Wall" "Hostile Takeover" "Prisec"]}})
+   (play-from-hand state :corp "Kōngquán" "New remote")
+   (core/add-prop state :corp (get-content state :remote1 0) :advance-counter 3)
+   (core/score state :corp {:card (get-content state :remote1 0)})
+   (click-card state :corp (find-card "Hedge Fund" (:hand (get-corp))))
+   (click-card state :corp (find-card "IPO" (:hand (get-corp))))
+   (is (= 4 (count (:discard (get-corp)))))
+   (click-prompt state :corp "Done")
+   (is (= 6 (count (:discard (get-corp)))) "Corp trashes two cards from HQ")
+   (click-card state :corp (find-card "Ice Wall" (:discard (get-corp))))
+   (click-card state :corp (find-card "Fire Wall" (:discard (get-corp))))
+   (click-card state :corp (find-card "Prisec" (:discard (get-corp))))
+   (is (= ["Fire Wall" "Ice Wall" "Prisec"]
+          (->> (get-corp) :deck (map :title) sort))
+       "All chosen cards should be shuffled back into R&D")))
+
 (deftest labyrinthine-servers
   ;; Labyrinthine Servers
   (do-game
