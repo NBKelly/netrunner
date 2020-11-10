@@ -83,6 +83,11 @@
                        (suffer titles choices))
                      card nil)))}}}))
 
+(defcard "Accelerated Pipeline"
+  {:effect (req (if (is-tagged? state)
+                  (damage state :corp eid :meat 4 {:card card})
+                  (gain-tags state :corp eid 1)))})
+
 (defcard "Advanced Concept Hopper"
   {:events
    [{:event :run

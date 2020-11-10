@@ -64,6 +64,19 @@
     (click-prompt state :corp "I have no regrets")
     (is (= 2 (count (:discard (get-corp)))))))
 
+(deftest accelerated-pipeline
+  ;; Accelerated Pipeline
+  (testing "Basic test"
+    (do-game
+     (new-game {:corp {:hand [(qty "Accelerated Pipeline" 2)]}
+                :runner {:hand [(qty "Sure Gamble" 10)]}})
+     (changes-val-macro 1 (count-tags state)
+                        "Runner takes 1 tag from Accelerated Pipeline"
+                        (play-and-score state "Accelerated Pipeline"))
+     (changes-val-macro -4 (count (:hand (get-runner)))
+                        "Runner takes 1 tag from Accelerated Pipeline"
+                        (play-and-score state "Accelerated Pipeline")))))
+
 (deftest advanced-concept-hopper
   ;; Advanced Concept Hopper
   (do-game
@@ -91,7 +104,7 @@
         (is (= (inc credits) (:credit (get-corp))) (str "Corp should have " (inc credits) " credits"))
         (run-continue state)
         (run-on state :archives)
-        (is (empty (:prompt (get-corp))) "No prompt as it's once per turn")))))
+         (is (empty (:prompt (get-corp))) "No prompt as it's once per turn")))))
 
 (deftest ancestral-imager
   ;; Ancestral Imager
