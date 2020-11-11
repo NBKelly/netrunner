@@ -323,6 +323,21 @@
                           " strength to " (:title target))
                 :effect (effect (pump-ice target (cost-value eid :x-credits) :end-of-turn))}]})
 
+(defcard "Crenellation"
+  {:events [{:event :agenda-scored
+             :req (req (= (:previous-zone target) (get-zone card)))
+             :optional {:prompt "Search R&D for non-agenda card?"
+                        :yes-ability {:prompt "Select card"
+                                      :choices (req (cancellable (filter #(not (agenda? %)) (:deck corp))
+                                                                :sorted))
+                                      :msg (msg "reveal " (:title target) " and add it to HQ")
+                                      :async true
+                                      :effect (req (wait-for
+                                                    (reveal state side target)
+                                                    (shuffle! state side :deck)
+                                                    (move state side target :hand)
+                                                    (effect-completed state side eid)))}}}]})
+           
 (defcard "Crisium Grid"
   {:constant-effects [{:type :block-successful-run
                        :req (req this-server)

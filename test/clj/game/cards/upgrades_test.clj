@@ -846,6 +846,24 @@
       (is (zero? (get-strength (refresh q1)))
           "Inner Quandary back to default 0 strength after turn ends"))))
 
+(deftest crenellation
+  ;; Crenellation
+  (do-game
+   (new-game {:corp {:deck ["Quandary" "Project Atlas" "Government Takeover" "Hostile Takeover"]
+                     :hand ["Project Atlas" "Crenellation"]
+                     :click 10}})
+   (play-from-hand state :corp "Crenellation" "New remote")
+   (rez state :corp (get-content state :remote1 0))
+   (play-from-hand state :corp "Project Atlas" "Server 1")
+   (let [atlas (get-content state :remote1 1)]
+     (score-agenda state :corp (refresh atlas))
+     (click-prompt state :corp "Yes")
+     (is (= 2 (count (prompt-buttons :corp))) "Corp should have prompt back with 2 options (Quandry and Cancel)")
+     (changes-val-macro 1 (count (:hand (get-corp)))
+                        "Clicking prompt causes Quandary to move to HQ"
+                        (click-prompt state :corp "Quandary")))))
+
+
 (deftest crisium-grid
   ;; Crisium Grid
   (testing "Basic test"
