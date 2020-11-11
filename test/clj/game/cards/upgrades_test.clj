@@ -1321,6 +1321,43 @@
         (click-prompt state :runner "End the run")
         (is (zero? (count-tags state)) "Don't gain a tag from John Masanori")))))
 
+(deftest glial-map-encryption
+  ;; Glial-Map Encryption
+  (testing "Basic test - clicks"
+    (do-game
+     (new-game {:corp {:hand ["Glial-Map Encryption"]}})
+     (play-from-hand state :corp "Glial-Map Encryption" "New remote")
+     (let [encryption (get-content state :remote1 0)]
+       (rez state :corp encryption)
+       (take-credits state :corp)
+       (run-empty-server state "Server 1")
+       (changes-val-macro -2 (:click (get-runner))
+                          "Spend 2 clicks"
+                          (click-prompt state :runner "Spend [Click][Click]"))
+       (is (:run @state) "Run not ended by Glial-Map Encryption"))))
+  (testing "Basic test - credits"
+    (do-game
+     (new-game {:corp {:hand ["Glial-Map Encryption"]}})
+     (play-from-hand state :corp "Glial-Map Encryption" "New remote")
+     (let [encryption (get-content state :remote1 0)]
+       (rez state :corp encryption)
+       (take-credits state :corp)
+       (run-empty-server state "Server 1")
+       (changes-val-macro -5 (:credit (get-runner))
+                          "Pay 5 credits"
+                          (click-prompt state :runner "Pay 5 [Credits]"))
+       (is (:run @state) "Run not ended by Glial-Map Encryption"))))
+  (testing "Basic test - ETR"
+    (do-game
+     (new-game {:corp {:hand ["Glial-Map Encryption"]}})
+     (play-from-hand state :corp "Glial-Map Encryption" "New remote")
+     (let [encryption (get-content state :remote1 0)]
+       (rez state :corp encryption)
+       (take-credits state :corp)
+       (run-empty-server state "Server 1")
+       (click-prompt state :runner "End the run")
+       (is (not (:run @state)) "Run ended by Glial-Map Encryption")))))
+
 (deftest helheim-servers
   ;; Helheim Servers - Full test
   (do-game
