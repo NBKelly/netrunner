@@ -1122,6 +1122,39 @@
       (is (and (not (:run @state)) (zero? (get-counters (refresh em) :power)))
           "Embolus spent a counter to ETR"))))
 
+(deftest equivalent-exchange
+  ;; Equivalent Exchange
+  (testing "Basic test - no trash"
+    (do-game
+     (new-game {:corp {:deck ["Equivalent Exchange" "Project Atlas"]}})
+     (play-from-hand state :corp "Equivalent Exchange" "New remote")
+     (rez state :corp (get-content state :remote1 0))
+     (play-from-hand state :corp "Project Atlas" "Server 1")
+     (take-credits state :corp)
+     (run-empty-server state :remote1)
+     (let [exchange (get-content state :remote1 0)
+           atlas (get-content state :remote1 1)]
+       (click-card state :runner atlas)
+       (click-prompt state :runner "Steal")
+       (click-card state :runner exchange)
+       (click-prompt state :runner "No action")
+       (is (= 2 (count-tags state)) "Runner has 2 tags"))))
+  (testing "Basic test - trash"
+    (do-game
+     (new-game {:corp {:deck ["Equivalent Exchange" "Project Atlas"]}})
+     (play-from-hand state :corp "Equivalent Exchange" "New remote")
+     (rez state :corp (get-content state :remote1 0))
+     (play-from-hand state :corp "Project Atlas" "Server 1")
+     (take-credits state :corp)
+     (run-empty-server state :remote1)
+     (let [exchange (get-content state :remote1 0)
+           atlas (get-content state :remote1 1)]
+       (click-card state :runner exchange)
+       (click-prompt state :runner "Pay 3 [Credits] to trash")
+       (click-card state :runner atlas)
+       (click-prompt state :runner "Steal")
+       (is (= 2 (count-tags state)) "Runner has 2 tags")))))
+
 (deftest forced-connection
   ;; Forced Connection - ambush, trace(3) give the runner 2 tags
   (do-game

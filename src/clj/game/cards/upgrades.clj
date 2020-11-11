@@ -325,8 +325,8 @@
 
 (defcard "Crenellation"
   {:events [{:event :agenda-scored
-             :req (req (= (:previous-zone target) (get-zone card)))
              :optional {:prompt "Search R&D for non-agenda card?"
+                        :req (req (= (:previous-zone target) (get-zone card)))
                         :yes-ability {:prompt "Select card"
                                       :choices (req (cancellable (filter #(not (agenda? %)) (:deck corp))
                                                                 :sorted))
@@ -478,6 +478,25 @@
                :effect (effect (add-counter card :power -1))}]
      :abilities [maybe-gain-counter
                  etr]}))
+
+(defcard "Equivalent Exchange"
+  {:on-trash
+   {:req (req (and (= :runner side)
+                   (:run @state)))
+    :effect (effect (register-events
+                     card
+                     [{:event :run-ends
+                       :duration :end-of-run
+                       :req (req (or (= (first (:server target)) (second (:previous-zone card)))
+                                     (= (central->zone (first (:server target)))
+                                        (butlast (:previous-zone card)))))
+                       :async true
+                       :effect (req (when (:did-steal target) (gain-tags state :corp eid 2)))}]))}
+   :events [{:event :run-ends
+             :req (req   
+                   (= (second (get-zone card)) (first (:server target))))
+             :async true
+             :effect (req (when (:did-steal target) (gain-tags state :corp eid 2)))}]})
 
 (defcard "Experiential Data"
   {:constant-effects [{:type :ice-strength
