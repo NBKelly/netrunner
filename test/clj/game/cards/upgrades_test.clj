@@ -1040,6 +1040,21 @@
                            (play-from-hand state :corp "Enigma" "Server 1")
                            (click-card state :corp dtt))))))
 
+(deftest directory-wipe
+  ;; Directory Wipe
+  (testing "Basic test"
+    (do-game
+     (new-game {:corp {:hand ["Directory Wipe" "Ice Wall" "Fire Wall"]}})
+     (play-from-hand state :corp "Directory Wipe" "New remote")
+     (let [directory (get-content state :remote1 0)]
+     (rez state :corp directory)
+     (take-credits state :corp)
+     (run-empty-server state "Server 1")
+       (click-prompt state :corp "Yes")
+       (click-card state :corp "Ice Wall")
+       (click-card state :corp "Fire Wall")
+       (is (not (:run @state)) "Run ended by Directory Wipe")))))
+
 (deftest disposable-hq
   ;; Disposable HQ
   (testing "Basic test"

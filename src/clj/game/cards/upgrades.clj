@@ -414,6 +414,17 @@
                 :effect (req (doseq [c targets]
                                (move state side c :hand)))}]})
 
+(defcard "Directory Wipe"
+  {:events [{:event :successful-run
+             :optional {:prompt "Pay 2 [Credits] and trash 2 cards from HQ to end the run?"
+                        :req (req (and (can-pay? state side eid card nil [:credit 2 :trash-from-hand 2])
+                                       this-server))
+                        :async true
+                        :yes-ability {:async true
+                                      :msg "pay 2 [Credits] and trash 2 cards from HQ to end the run"
+                                      :effect (req (wait-for (pay state :corp card [:credit 2 :trash-from-hand 2])
+                                                             (end-run state side eid card)))}}}]})                                          
+                                                         
 (defcard "Disposable HQ"
   (letfn [(dhq [i n]
             {:req (req (pos? n))
