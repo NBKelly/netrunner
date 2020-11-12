@@ -1049,7 +1049,26 @@
     (play-from-hand state :corp "Economic Warfare")
     (is (= 3 (:credit (get-runner))) "Runner has 3 credits")))
 
+
+(deftest efflorescence
+  ;; Efflorescence
+  (do-game
+   (new-game {:runner {:hand [(qty "Sure Gamble" 5)]}
+              :corp {:deck [(qty "Hedge Fund" 5)]
+                     :hand [(qty "Efflorescence" 2) "Obokata Protocol"]
+                     :credits 50
+                     :click 8}})
+   (play-and-score state "Obokata Protocol")
+   (changes-val-macro -3 (count (:hand (get-runner)))
+                      "Runner took 3 net damage"
+                      (play-from-hand state :corp "Efflorescence"))
+   (play-from-hand state :corp "Efflorescence")
+   (is (zero? (count (:hand (get-runner)))) "Runner has 0 cards in hand")
+   (is (= :corp (:winner @state)) "Corp wins")
+   (is (= "Flatline" (:reason @state)) "Win condition reports flatline")))
+
 (deftest election-day
+  ;; Election Day
   (do-game
     (new-game {:corp {:deck [(qty "Election Day" 7)]}})
     (is (= 6 (count (:hand (get-corp)))) "Corp starts with 5 + 1 cards")
@@ -1067,7 +1086,7 @@
     (is (= 5 (count (:hand (get-corp)))) "Corp has now 5 cards due to Election Day")))
 
 (deftest enforced-curfew
-  ;; Hostile Takeover
+  ;; Enforced Curfew
   (do-game
     (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
                       :hand ["Enforced Curfew" "Hostile Takeover"]}})
