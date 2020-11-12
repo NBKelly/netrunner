@@ -3213,6 +3213,20 @@
     (click-prompt state :runner "0")
     (is (= 1 (count-tags state)) "Runner should get 1 tag from losing SEA Source trace")))
 
+(deftest seamless-launch
+  ;; Seamless Launch
+  (testing "Basic test"
+    (do-game
+     (new-game {:corp {:hand ["Seamless Launch" "Project Atlas"]}})
+     (play-from-hand state :corp "Project Atlas" "New remote")
+     (play-from-hand state :corp "Seamless Launch")
+     (is (nil? (seq (:prompt (get-corp)))) "No valid target for Seamless Launch")
+     (take-credits state :corp)
+     (take-credits state :runner)
+     (play-from-hand state :corp "Seamless Launch")
+     (click-card state :corp (get-content state :remote1 0))
+     (is (= 2 (get-counters (get-content state :remote1 0) :advancement)) "2 counters on Project Atlas"))))
+
 (deftest secure-and-protect
   ;; Secure and Protect
   (testing "With ice in deck"
