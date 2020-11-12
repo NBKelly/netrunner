@@ -504,8 +504,7 @@
                        :async true
                        :effect (req (when (:did-steal target) (gain-tags state :corp eid 2)))}]))}
    :events [{:event :run-ends
-             :req (req   
-                   (= (second (get-zone card)) (first (:server target))))
+             :req (req (= (second (get-zone card)) (first (:server target))))
              :async true
              :effect (req (when (:did-steal target) (gain-tags state :corp eid 2)))}]})
 
@@ -637,18 +636,18 @@
              :prompt "Choose one"
              :choices ["Spend [Click][Click]" "Pay 5 [Credits]" "End the run"]
              :async true
-             :effect (req (if (and (= target "Spend [Click][Click]")
-                                   (can-pay? state :runner (assoc eid :source card :source-type :subroutine) card nil [:click 2]))
-                            (do (wait-for (pay state side card :click 2)
-                                          (system-msg state side (:msg async-result))
-                                          (effect-completed state :runner eid)))
-                            (if (and (= target "Pay 5 [Credits]")
+             :effect (req (cond (and (= target "Spend [Click][Click]")
+                                     (can-pay? state :runner (assoc eid :source card :source-type :subroutine) card nil [:click 2]))
+                                (do (wait-for (pay state side card :click 2)
+                                              (system-msg state side (:msg async-result))
+                                              (effect-completed state :runner eid)))
+                                (and (= target "Pay 5 [Credits]")
                                      (can-pay? state :runner (assoc eid :source card :source-type :subroutine) card nil [:credit 5]))
-                              (do (wait-for (pay state side card :credit 5)
-                                            (system-msg state side (:msg async-result))
-                                            (effect-completed state :runner eid)))
-                              (do (system-msg state :corp "ends the run")
-                                  (end-run state :corp eid card)))))}]})       
+                                (do (wait-for (pay state side card :credit 5)
+                                              (system-msg state side (:msg async-result))
+                                              (effect-completed state :runner eid)))
+                                :else (do (system-msg state :corp "ends the run")
+                                          (end-run state :corp eid card))))}]})   
 
 (defcard "Heinlein Grid"
   {:abilities [{:req (req this-server)
