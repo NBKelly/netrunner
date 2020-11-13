@@ -3291,30 +3291,6 @@
     (click-prompt state :runner "0")
     (is (= 1 (count-tags state)) "Runner should get 1 tag from losing SEA Source trace")))
 
-(deftest seamless-launch
-  ;; Seamless Launch
-  (testing "Basic test"
-    (do-game
-      (new-game {:corp {:hand ["Seamless Launch" "Project Vitruvius"]}})
-      (play-from-hand state :corp "Project Vitruvius" "New remote")
-      (let [pv (get-content state :remote1 0)]
-        (take-credits state :corp)
-        (take-credits state :runner)
-        (play-from-hand state :corp "Seamless Launch")
-        (click-card state :corp pv)
-        (is (= 2 (get-counters pv :advancement)) "Vitruvius should be advanced")
-        (println (prompt-fmt :corp))
-        (println (clojure.string/join "\n" (map :text (:log @state))))
-        )))
-  (testing "Can't Fast Advance"
-    (do-game
-      (new-game {:corp {:hand ["Seamless Launch" "Project Vitruvius"]}})
-      (play-from-hand state :corp "Project Vitruvius" "New remote")
-      (let [pv (get-content state :remote1 0)]
-        (play-from-hand state :corp "Seamless Launch")
-        (click-card state :corp pv)
-        (is (= 0 (get-counters pv :advancement)) "Vitruvius should not be advanced")))))
-
 (deftest secure-and-protect
   ;; Secure and Protect
   (testing "With ice in deck"

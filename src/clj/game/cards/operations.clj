@@ -1964,16 +1964,6 @@
                         :async true
                         :effect (effect (gain-tags :corp eid 1))}}})
 
-(defcard "Seamless Launch"
-  {:async true
-   :prompt "Select target"
-   :choices {:card #(and (corp? %)
-                      (installed? %)
-                      ;(not= :this-turn (installed? %))
-                      )}
-   :msg (msg "place 2 advancement tokens on " (card-str state target))
-   :effect (effect (add-prop target :advance-counter 2 {:placed true}))})
-
 (defcard "Secure and Protect"
   {:interactive (req true)
    :async true
