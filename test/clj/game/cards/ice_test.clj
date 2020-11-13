@@ -611,35 +611,6 @@
         (click-prompt state :runner "No action")
         (is (zero? (count (:subroutines (refresh bs)))))))))
 
-(deftest bran-1-0
-  ;Brân 1.0
-  (testing "Basic Test"
-    (do-game
-      (new-game {:corp {:hand ["Brân 1.0" "Vanilla" ]
-                        :discard ["Gatekeeper"]}})
-      (play-from-hand state :corp "Brân 1.0" "HQ")
-      (take-credits state :corp)
-      (run-on state :hq)
-      (let [bran (get-ice state :hq 0)]
-        (rez state :corp bran)
-        (run-continue state)
-        (fire-subs state bran)
-        (click-card state :corp "Vanilla")
-        (is (not (:run @state)) "Run has ended")
-        (is (= "Vanilla" (:title (get-ice state :hq 0))))
-        (is (= "Brân 1.0" (:title (get-ice state :hq 1))))
-        (run-on state :hq)
-        (run-continue state)
-        (fire-subs state bran)
-        (click-card state :corp "Gatekeeper")
-        (is (not (:run @state)) "Run has ended")
-        (is (= "Gatekeeper" (:title (get-ice state :hq 0))))
-        (is (= "Vanilla" (:title (get-ice state :hq 1))))
-        (is (= "Brân 1.0" (:title (get-ice state :hq 2))))
-        )
-
-      )))
-
 (deftest bullfrog
   ;; Bullfrog - Win psi to move to outermost position of another server and continue run there
   (do-game
