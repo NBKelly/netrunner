@@ -589,9 +589,9 @@
                          (can-host? %))}
    :events [{:event :runner-turn-begins
              :effect (req (add-counter state side card :virus 1))}]
-    :abilities [(break-sub
-                  [:virus 1] 1 "All" 
-                  {:req (req (same-card? current-ice (:host card)))})]})
+   :abilities [(break-sub
+                 [:virus 1] 1 "All"
+                 {:req (req (same-card? current-ice (:host card)))})]})
 
 (defcard "Bug"
   {:implementation "Can only pay to see last card drawn after multiple draws"
@@ -700,23 +700,24 @@
 
 (defcard "Conduit"
   {:events [{:event :run-ends
-             :req (req (and (:successful target)
+             :req (req (and (:successful context)
                             (= :rd (target-server context))))
              :effect (req (show-wait-prompt state :corp "Runner to decide if they will use Conduit")
-                          (continue-ability state side
-                                            {:optional
-                                             {:player :runner
-                                              :autoresolve (get-autoresolve :auto-conduit)
-                                              :prompt "Use Conduit?"
-                                              :end-effect (req (clear-wait-prompt state :corp))
-                                              :yes-ability
-                                              {:msg "add 1 virus counter to Conduit"
-                                               :effect (req (add-counter state side card :virus 1))}
-                                              :no-ability
-                                              {:effect (req (system-msg state side "does not add counter to Conduit"))}}} card nil))}
+                          (continue-ability
+                            state side
+                            {:optional
+                             {:player :runner
+                              :autoresolve (get-autoresolve :auto-conduit)
+                              :prompt "Use Conduit?"
+                              :end-effect (req (clear-wait-prompt state :corp))
+                              :yes-ability
+                              {:msg "add 1 virus counter to Conduit"
+                               :effect (req (add-counter state side card :virus 1))}
+                              :no-ability
+                              {:effect (req (system-msg state side "does not add counter to Conduit"))}}}
+                            card nil))}
             {:event :successful-run
              :silent (req true)
-          
              :req (req (and (= :rd (target-server context))
                             this-card-run))
              :effect (req (access-bonus state side :rd (max 0 (get-virus-counters state card))))}]
@@ -1297,8 +1298,7 @@
                 :cost [:click 1 :trash]
                 :label "Gain 2 [Credits] for each hosted virus counter"
                 :async true
-                :effect (req (wait-for (gain-credits state side (* 2 (get-virus-counters state card)))
-                                       (effect-completed state side eid)))
+                :effect (req (gain-credits state side eid (* 2 (get-virus-counters state card))))
                 :msg (msg (str "gain " (* 2 (get-virus-counters state card)) " [Credits]"))}]})
 
 
@@ -1386,8 +1386,8 @@
                   :async true
                   :effect (req (let [subroutines (:subroutines current-ice)
                                      available (filter #(and (not (:broken %))
-                                                            (= target (make-label (:sub-effect %))))
-                                                      subroutines)
+                                                             (= target (make-label (:sub-effect %))))
+                                                       subroutines)
                                      selected (nth available (:idx (first targets)))]
                                  (let [subs-to-break (remove #(= (:index %) (:index selected)) subroutines)]
                                    (break-subs state current-ice subs-to-break)
@@ -1626,17 +1626,17 @@
              :interactive (get-autoresolve :autofire (complement never?))
              :silent (get-autoresolve :autofire never?)
              :effect (req (show-wait-prompt state :corp "Runner to decide if they will use Leech")
-                          (continue-ability state side
-                                            {:optional
-                                             {:player :runner
-                                              :autoresolve (get-autoresolve :auto-fire)
-                                              :prompt "Use Leech?"
-                                              :end-effect (req (clear-wait-prompt state :corp))
-                                              :yes-ability
-                                              {:msg "add 1 virus counter to Leech"
-                                               :effect (req (add-counter state side card :virus 1))}
-                                              :no-ability
-                                              {:effect (req (system-msg state side "does not add counter to Leech"))}}} card nil))}]
+                          (continue-ability
+                            state side
+                            {:optional
+                             {:player :runner
+                              :autoresolve (get-autoresolve :auto-fire)
+                              :prompt "Use Leech?"
+                              :end-effect (req (clear-wait-prompt state :corp))
+                              :yes-ability {:msg "add 1 virus counter to Leech"
+                                            :effect (req (add-counter state side card :virus 1))}
+                              :no-ability {:effect (req (system-msg state side "does not add counter to Leech"))}}}
+                            card nil))}]
    :autoresolve (get-autoresolve :auto-fire)
    :abilities [{:cost [:virus 1]
                 :label "Give -1 strength to current ICE"
@@ -1644,7 +1644,7 @@
                                (= :encounter-ice (:phase run))))
                 :msg (msg "give -1 strength to " (:title current-ice))
                 :effect (effect (pump-ice current-ice -1))}
-                (set-autoresolve :auto-fire "Leech")]})
+               (set-autoresolve :auto-fire "Leech")]})
 
 (defcard "Legba.6"
   (auto-icebreaker {:abilities [(break-sub 1 2 "Code Gate")
@@ -1758,7 +1758,7 @@
                                            {:label "Break 1 Barrier subroutine (Successful run restriction)"
                                             :req (req (:successful-run runner-reg))})
                                 (strength-pump 1 1)]}))
-                  
+
 (defcard "Mass-Driver"
   (auto-icebreaker {:abilities [(break-sub 2 1 "Code Gate")
                                 (strength-pump 1 1)]
@@ -1781,15 +1781,17 @@
    :strength-bonus (req (count (filter program? (all-active-installed state :runner))))})
 
 (defcard "Mayfly"
-  (auto-icebreaker {:abilities [(break-sub 1 1 "All"
-                                           {:additional-ability {:msg "will trash itself when this run ends"
-                                                                 :effect (req (register-events state side
-                                                                                               card
-                                                                                               [{:event :run-ends
-                                                                                                 :duration :end-of-run
-                                                                                                 :unregister-once-resolved true
-                                                                                                 :effect (req (trash state side eid card nil))}]))}})
-                                (strength-pump 1 1)]}))
+  (auto-icebreaker
+    {:abilities [(break-sub 1 1 "All"
+                            {:additional-ability
+                             {:msg "will trash itself when this run ends"
+                              :effect (effect (register-events
+                                                card
+                                                [{:event :run-ends
+                                                  :duration :end-of-run
+                                                  :unregister-once-resolved true
+                                                  :effect (effect (trash eid card nil))}]))}})
+                 (strength-pump 1 1)]}))
 
 (defcard "Medium"
   {:events [{:event :successful-run
@@ -2371,8 +2373,8 @@
                 :cost [:click 1]
                 :prompt "Choose a program to install on Scheherazade from your grip"
                 :choices {:req (req (and (program? target)
-                                      (runner-can-install? state side target false)
-                                      (in-hand? target)))}
+                                         (runner-can-install? state side target false)
+                                         (in-hand? target)))}
                 :msg (msg "host " (:title target) " and gain 1 [Credits]")
                 :effect (req (wait-for (gain-credits state side 1)
                                        (runner-install state side
@@ -2661,11 +2663,13 @@
   {:abilities [(break-sub 1 1 "Code Gate")
                {:label "1 [Credits]: Add 1 strength for each installed icebreaker"
                 :async true
-                :effect (req (continue-ability state side
-                                               (strength-pump 1 (count (filter #(and (program? %)
-                                                                                     (has-subtype? % "Icebreak"))
-                                                                               (all-active-installed state :runner))))
-                                               card nil))}]})
+                :effect (effect (continue-ability
+                                  (strength-pump
+                                    1
+                                    (count (filter #(and (program? %)
+                                                         (has-subtype? % "Icebreak"))
+                                                   (all-active-installed state :runner))))
+                                  card nil))}]})
 
 (defcard "Upya"
   {:implementation "Power counters added automatically"
