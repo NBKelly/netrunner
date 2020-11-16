@@ -283,15 +283,14 @@
   (letfn [(az-type? [card] (or (hardware? card)
                                (and (resource? card)
                                     (or (has-subtype? card "Job")
-                                        (has-subtype? card "Connection")))))
-          (not-triggered? [state card] (no-event? state :runner :runner-install #(az-type? (first %))))]
+                                        (has-subtype? card "Connection")))))]
     {:constant-effects [{:type :install-cost
                          :req (req (and (az-type? target)
-                                        (not-triggered? state card)))
+                                        (no-event? state :runner :runner-install #(az-type? (first %)))))
                          :value -1}]
      :events [{:event :runner-install
                :req (req (and (az-type? target)
-                              (not-triggered? state card)))
+                              (first-event? state :runner :runner-install #(az-type? (first %)))))
                :silent (req true)
                :msg (msg "reduce the install cost of " (:title target) " by 1 [Credits]")}]}))
 
