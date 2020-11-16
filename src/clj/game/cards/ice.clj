@@ -198,13 +198,12 @@
    :effect (effect (lose :runner :click 1))})
 
 (defn runner-loses-credits
+  "Runner loses credits effect"
   [credits]
-  ; Runner loses credits effect
-  {:label (str "Runner loses " credits "[Credits]")
-   :msg (str "force the Runner to lose " credits "[Credits]")
+  {:label (str "Runner loses " credits " [Credits]")
+   :msg (str "force the Runner to lose " credits " [Credits]")
    :async true
-   :effect (effect (lose-credits :runner eid credits))}
-  )
+   :effect (effect (lose-credits :runner eid credits))})
 
 (def add-runner-card-to-grip
   "Add 1 installed Runner card to the grip"
@@ -274,23 +273,25 @@
    :prompt "Select a card to install from Archives or HQ"
    :show-discard true
    :choices {:card #(and (corp? %)
-                      (not (operation? %))
-                      (or (in-hand? %)
-                        (in-discard? %)))}
+                         (not (operation? %))
+                         (or (in-hand? %)
+                             (in-discard? %)))}
    :msg (msg (corp-install-msg target))
    :effect (effect (corp-install eid target nil {:ignore-all-cost ignoring-all-cost}))})
 
 (def cannot-steal-or-trash-sub
   {:label "The Runner cannot steal or trash Corp cards for the remainder of this run"
    :msg "prevent the Runner from stealing or trashing Corp cards for the remainder of the run"
-   :effect (req (register-run-flag! state side card :can-steal
-                  (fn [state side card]
-                    ((constantly false)
-                     (toast state :runner "Cannot steal due to subroutine." "warning"))))
-             (register-run-flag! state side card :can-trash
-               (fn [state side card]
-                 ((constantly (not= (:side card) "Corp"))
-                  (toast state :runner "Cannot trash due to subroutine." "warning")))))})
+   :effect (effect (register-run-flag!
+                     card :can-steal
+                     (fn [state side card]
+                       ((constantly false)
+                        (toast state :runner "Cannot steal due to subroutine." "warning"))))
+                   (register-run-flag!
+                     card :can-trash
+                     (fn [state side card]
+                       ((constantly (not (corp? card)))
+                        (toast state :runner "Cannot trash due to subroutine." "warning")))))})
 
 ;;; For Advanceable ICE
 (def advance-counters
@@ -439,7 +440,7 @@
   {:subroutines [trash-installed-sub
                  (install-from-hq-or-archives-sub false)
                  cannot-steal-or-trash-sub]
-    :runner-abilities [(bioroid-break 1 1)]})
+   :runner-abilities [(bioroid-break 1 1)]})
 
 (defcard "Afshar"
   (let [breakable-fn (req (if (= :hq (second (get-zone card)))
@@ -627,13 +628,16 @@
 (defcard "Ballista"
   {:subroutines [{:label "Trash 1 program or end the run"
                   :prompt "Choose one"
-                  :choices (req (if (empty? (filter program? (all-active-installed state :runner)))
-                                  ["End the run"]
-                                  ["Trash a program" "End the run"]))
+                  :choices (req ["Trash a program"
+                                 (when (seq (filter program? (all-active-installed state :runner)))
+                                   "End the run")])
                   :async true
-                  :effect (req (if (= target "Trash a program")
-                                 (continue-ability state side trash-program-sub card nil)
-                                 (continue-ability state side end-the-run card nil)))}]})
+                  :effect (effect
+                            (continue-ability
+                              (if (= target "Trash a program")
+                                trash-program-sub
+                                end-the-run)
+                              card nil))}]})
 
 (defcard "Bandwidth"
   {:subroutines [{:msg "give the Runner 1 tag"
@@ -1114,7 +1118,7 @@
                   :prompt "Select a card from Archives to add to HQ"
                   :show-discard true
                   :choices {:card #(and (corp? %)
-                                     (in-discard? %))}
+                                        (in-discard? %))}
                   :msg (msg "add " (if (faceup? target) (:title target) "an unseen card") " to HQ")
                   :effect (effect (move target :hand))}
                  (install-from-hq-or-archives-sub true)]})
@@ -1912,23 +1916,24 @@
      :runner-abilities [(bioroid-break 1 1)]}))
 
 (defcard "Karunā"
-  (let [offer-jack-out {:async true
-                        :effect (req (show-wait-prompt state :corp "Runner to decide on jack out")
-                                  (continue-ability
-                                    state side
-                                    {:optional
-                                     {:async true
-                                      :player :runner
-                                      :prompt "Jack out?"
-                                      :yes-ability {:async true
-                                                    :effect (effect (clear-wait-prompt :corp)
-                                                              (jack-out eid))}
-                                      :no-ability {:effect (effect (system-msg :runner "chooses to continue")
-                                                             (clear-wait-prompt :corp))}}} card nil))}]
+  (let [offer-jack-out
+        {:async true
+         :effect (req (show-wait-prompt state :corp "Runner to decide on jack out")
+                      (continue-ability
+                        state side
+                        {:optional
+                         {:player :runner
+                          :prompt "Jack out?"
+                          :yes-ability {:async true
+                                        :effect (effect (clear-wait-prompt :corp)
+                                                        (jack-out eid))}
+                          :no-ability {:effect (effect (system-msg :runner "chooses to continue")
+                                                       (clear-wait-prompt :corp))}}}
+                        card nil))}]
     {:subroutines [{:label "Do 2 net damage"
                     :async true
                     :effect (req (wait-for (resolve-ability state side (do-net-damage 2) card nil)
-                                   (continue-ability state side offer-jack-out card nil)))}
+                                           (continue-ability state side offer-jack-out card nil)))}
                    (do-net-damage 2)]}))
 
 (defcard "Kitsune"
@@ -2619,9 +2624,9 @@
 
 (defcard "Ping"
   {:async true
-   :req (req (:run @state))
-   :effect (req (gain-tags state :corp eid 1))
+   :req (req run)
    :msg "give the Runner 1 tag"
+   :effect (req (gain-tags state :corp eid 1))
    :subroutines [end-the-run]})
 
 (defcard "Pop-up Window"
@@ -3222,13 +3227,15 @@
    :subroutines [{:player :runner
                   :async true
                   :label "Give the Runner 1 tag unless they pay 4[Credits]"
-                  :prompt "Take 1 tag or pay 4[Credits]"
-                  :choices (req (if (can-pay? state :runner eid card "Topsy-Turvy" :credit 4)
-                                  ["Take 1 tag" "Pay 4[Credits]"]
-                                  ["Take 1 tag"]))
-                  :effect (req (if (= "Take 1 tag" target)
-                                 (continue-ability state side (give-tags 1) card nil)
-                                 (continue-ability state side (runner-pays [:credit 4]) card nil)))}]})
+                  :prompt "Take 1 tag or pay 4 [Credits]"
+                  :choices (req ["Take 1 tag"
+                                 (when (can-pay? state :runner eid card "Topsy-Turvy" :credit 4)
+                                   "Pay 4 [Credits]")])
+                  :effect (effect (continue-ability
+                                    (if (= "Take 1 tag" target)
+                                      (give-tags 1)
+                                      (runner-pays [:credit 4]))
+                                    card nil))}]})
 
 (defcard "Tour Guide"
   (let [ef (effect (reset-variable-subs card (count (filter asset? (all-active-installed state :corp))) end-the-run))
@@ -3315,7 +3322,7 @@
     {:subroutines [{:label "Do 1 net damage"
                     :async true
                     :effect (req (wait-for (resolve-ability state side (do-net-damage 1) card nil)
-                                   (continue-ability state side etr-if-damage-odd card nil)))}]}))
+                                           (continue-ability state side etr-if-damage-odd card nil)))}]}))
 
 
 
@@ -3444,8 +3451,8 @@
 
 (defcard "Whitespace"
   {:subroutines [(runner-loses-credits 3)
-                 {:label "End the run if the Runner has fewer than 7[Credits]"
-                  :req (req (> 7 (:credit runner)))
+                 {:label "End the run if the Runner has fewer than 7 [Credits]"
+                  :req (req (< (:credit runner) 7))
                   :msg "end the run"
                   :async true
                   :effect (effect (end-run :corp eid card))}]})
