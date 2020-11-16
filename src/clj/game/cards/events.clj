@@ -475,9 +475,12 @@
 
 
 (defcard "Creative Commission"
-  {:msg (msg "gain 5 [Credits]" (when (pos? (:click runner)) " and lose [Click]"))
+  {:msg (msg "gain 5 [Credits]"
+             (when (pos? (:click runner))
+               " and lose [Click]"))
    :async true
-   :effect (req (when (pos? (:click runner)) (lose state :runner :click 1))
+   :effect (req (when (pos? (:click runner))
+                  (lose state :runner :click 1))
                 (gain-credits state :runner eid 5))})
 
 (defcard "Credit Crash"
@@ -1113,19 +1116,21 @@
 
 (defcard "Food Bank"
   {:msg "force Corp to choose 6 [Credits] or 4 cards for runner"
-  :async true
-  :effect (req (show-wait-prompt state :runner "Corp to choose Food Bank effect")
-               (continue-ability state side
-                                 {:player :corp
-                                  :prompt "Choose one"
-                                  :choices ["Runner gains 6 [Credits]" "Runner draws 4 cards"]
-                                  :async true
-                                  :effect (req (clear-wait-prompt state :runner)
-                                               (if (= target "Runner gains 6 [Credits]")
-                                                 (do (system-msg state :corp "chooses 6 credits for runner")
-                                                     (gain-credits state :runner eid 6))
-                                                 (do (system-msg state :corp "chooses 4 cards for runner")
-                                                     (draw state :runner eid 4 nil))))} card nil))})
+   :async true
+   :effect (req (show-wait-prompt state :runner "Corp to choose Food Bank effect")
+                (continue-ability
+                  state side
+                  {:player :corp
+                   :prompt "Choose one"
+                   :choices ["Runner gains 6 [Credits]" "Runner draws 4 cards"]
+                   :async true
+                   :effect (req (clear-wait-prompt state :runner)
+                                (if (= target "Runner gains 6 [Credits]")
+                                  (do (system-msg state :corp "chooses 6 credits for runner")
+                                      (gain-credits state :runner eid 6))
+                                  (do (system-msg state :corp "chooses 4 cards for runner")
+                                      (draw state :runner eid 4 nil))))}
+                  card nil))})
 
 (defcard "Forged Activation Orders"
   {:choices {:card #(and (ice? %)
@@ -1624,9 +1629,11 @@
              :req (req (and (or (= :hq (target-server context))
                                 (= :rd (target-server context)))
                             this-card-run))
-             :effect (req (if (= :hq (target-server context)) (access-bonus state :runner :hq 1) (access-bonus state :runner :rd 1))
+             :effect (req (if (= :hq (target-server context))
+                            (access-bonus state :runner :hq 1)
+                            (access-bonus state :runner :rd 1))
                           (draw state side eid 1 nil))}]})
-  
+
 (defcard "Khusyuk"
   (let [access-revealed (fn [revealed]
                           {:async true
@@ -2088,22 +2095,27 @@
   {:prompt "Choose an Icebreaker"
    :choices (req (cancellable (filter #(has-subtype? % "Icebreaker") (:deck runner)) :sorted))
    :msg (msg "add " (:title target) " to their grip and shuffle their stack")
+   :async true
    :effect (req (trigger-event state side :searched-stack nil)
-                (continue-ability state side
-                                  (let [icebreaker target]
-                                    (if (and (:successful-run runner-reg)
-                                             (can-pay? state side (assoc eid :source card :source-type :runner-install) icebreaker nil
-                                                       [:credit (install-cost state side icebreaker)]))
-                                      {:optional {:prompt "Do you want to install it?"
-                                                  :yes-ability {:async true
-                                                                :msg (msg " install " (:title icebreaker))
-                                                                :effect (req (runner-install state side (assoc eid :source card :source-type :runner-install) icebreaker nil)
-                                                                             (shuffle! state side :deck))}
-                                                  :no-ability {:effect (req (move state side icebreaker :hand)
-                                                                            (shuffle! state side :deck))}}}
-                                      {:effect (req (move state side icebreaker :hand)
-                                                    (shuffle! state side :deck))}))
-                                  card nil))})
+                (continue-ability
+                  state side
+                  (let [icebreaker target]
+                    (when (and (:successful-run runner-reg)
+                               (can-pay? state side (assoc eid :source card :source-type :runner-install) icebreaker nil
+                                         [:credit (install-cost state side icebreaker)]))
+                      {:optional
+                       {:prompt "Do you want to install it?"
+                        :yes-ability
+                        {:async true
+                         :msg (msg " install " (:title icebreaker))
+                         :effect (req (runner-install state side (assoc eid :source card :source-type :runner-install) icebreaker nil)
+                                      (shuffle! state side :deck))}
+                        :no-ability
+                        {:effect (req (move state side icebreaker :hand)
+                                      (shuffle! state side :deck))}}}
+                      {:effect (req (move state side icebreaker :hand)
+                                    (shuffle! state side :deck))}))
+                  card nil))})
 
 (defcard "Peace in Our Time"
   {:req (req (not (:scored-agenda corp-reg-last)))
@@ -2209,10 +2221,11 @@
 (defcard "Probe"
   {:async true
    :makes-run true
+   :data {:counter {:credit 5}}
+   :interactions {:pay-credits {:type :credit}}
    :prompt "Choose a server"
    :choices (req runnable-servers)
-   :effect (effect (gain-next-run-credits 5)
-                   (make-run eid target nil card))})
+   :effect (effect (make-run eid target nil card))})
 
 (defcard "Process Automation"
   {:msg "gain 2 [Credits] and draw 1 card"
@@ -2991,9 +3004,12 @@
                                        (gain-tags state side eid 1)))}} )]})
 
 (defcard "VRcation"
-  {:msg (msg "draw 4 cards" (when (pos? (:click runner)) " and lose [Click]"))
+  {:msg (msg "draw 4 cards"
+             (when (pos? (:click runner))
+               " and lose [Click]"))
    :async true
-   :effect (req (when (pos? (:click runner)) (lose state :runner :click 1))
+   :effect (req (when (pos? (:click runner))
+                  (lose state :runner :click 1))
                 (draw state :runner eid 4 nil))})
 
 (defcard "Wanton Destruction"
