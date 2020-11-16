@@ -356,6 +356,18 @@
                                      :req (req (same-card? target ice))
                                      :value [:credit 2]})))}]})
 
+(defcard "Creuset"
+  {:in-play [:memory 1]
+   :interactions {:access-ability
+                  {:label "Trash card"
+                   :req (req (and (not (get-in @state [:per-turn (:cid card)]))
+                                  (<= 2 (count (:hand runner)))))
+                   :cost [:trash-from-hand 2]
+                   :msg (msg "trash " (:title target) " at no cost")
+                   :once :per-turn
+                   :async true
+                   :effect (effect (trash eid (assoc target :seen true) {:accessed true}))}}})
+
 (defcard "Cyberdelia"
   {:in-play [:memory 1]
    :events [{:event :subroutines-broken
@@ -495,6 +507,14 @@
              :req (req (= (:cid target) (get-in (get-card state card) [:special :dino-breaker])))
              :effect (effect (update! (dissoc-in card [:special :dino-breaker]))
                              (use-mu (:memoryunits target)))}]})
+
+(defcard "Docklands Pass"
+  {:events [{:event :pre-access
+             :req (req (and (= :hq target)
+                            (first-event? state side :pre-access #(= :hq (first %)))))
+             :silent (req true)
+             :msg (msg "access 1 additional cards from HQ")
+             :effect (effect (access-bonus :runner :hq 1))}]})
 
 (defcard "Doppelgänger"
   {:in-play [:memory 1]
@@ -1105,6 +1125,18 @@
                                    (gain-tags state :runner eid 1))}}})
                  card nil))}]})
 
+(defcard "MD-2Z Optimizer"
+  {:in-play [:memory 1]
+   :constant-effects [{:type :install-cost
+                       :req (req (and (program? target)
+                                      (no-event? state :runner :runner-install #(program? (first %)))))
+                       :value -1}]
+   :events [{:event :runner-install
+             :req (req (and (program? target)
+                            (first-event? state :runner :runner-install #(program? (first %)))))
+             :silent (req true)
+             :msg (msg "reduce the install cost of " (:title target) " by 1 [Credits]")}]})
+
 (defcard "MemStrips"
   {:implementation "MU usage restriction not enforced"
    :in-play [:memory 3]})
@@ -1304,6 +1336,47 @@
                                                (same-card? card (:host target))))
                                 :type :recurring}}})
 
+(defcard "Pantograph"
+  (let [install-ability
+        {:optional
+         {:prompt "Install card with Pantograph ability?"
+          :yes-ability
+          {:async true
+           :msg "wants to install card with Pantgraph"
+           :effect (effect (continue-ability
+                             {:async true
+                              :prompt "Select a card to install with Pantograph"
+                              :choices
+                              {:req (req (and (runner? target)
+                                              (in-hand? target)
+                                              (not (event? target))
+                                              (can-pay? state side (assoc eid :source card :source-type :runner-install)
+                                                        target nil
+                                                        [:credit (install-cost state side target nil)])))}
+                              :msg (msg "install " (:title target))
+                              :effect (effect (runner-install
+                                                (assoc eid :source card :source-type :runner-install)
+                                                target nil))
+                              :cancel-effect (effect (effect-completed eid))}
+                             card nil))}}}
+        gain-credit-ability
+        {:interactive (req true)
+         :async true
+         :effect (req (wait-for (resolve-ability
+                                  state side
+                                  {:optional
+                                   {:prompt "Gain 1 [Credits] with Pantograph ability?"
+                                    :yes-ability
+                                    {:async true
+                                     :msg "gain 1 [Credits]"
+                                     :effect (req (gain-credits state :runner eid 1))}}}
+                                  card nil)
+                                (continue-ability state side install-ability card nil)))}]
+    {:in-play [:memory 1]
+     :events [(assoc gain-credit-ability :event :agenda-scored)
+              (assoc gain-credit-ability :event :agenda-stolen)]}))
+
+
 (defcard "Paragon"
   {:in-play [:memory 1]
    :events [{:event :successful-run
@@ -1379,6 +1452,21 @@
                          :cancel-effect (effect (effect-completed (make-result eid 0)))}
                         nil nil)))
        :type :custom}}}))
+
+(defcard "Pennyshaver"
+  {:in-play [:memory 1]
+   :events [{:event :successful-run
+             :silent (req true)
+             :async true
+             :msg "place 1 [Credits]"
+             :effect (req (add-counter state :runner eid card :credit 1 nil))}]
+   :abilities [{:cost [:click 1]
+                :label "Gain 1 [Credits]. Take all hosted [Credits]"
+                :async true
+                :msg (msg "gain " (inc (get-counters card :credit)) " [Credits]")
+                :effect (req (let [credits (inc (get-counters card :credit))]
+                               (add-counter state side card :credit (-(dec credits)))
+                               (gain-credits state :runner eid credits)))}]})
 
 (defcard "Plascrete Carapace"
   {:data [:counter {:power 4}]
@@ -1884,6 +1972,12 @@
                             (first-event? state side :play-event #(has-subtype? (first %) "Run"))))
              :msg "gain a [click]"
              :effect (effect (gain :click 1))}]})
+
+(defcard "T400 Memory Diamond"
+  {:in-play [:memory 1]
+   :constant-effects [{:type :hand-size
+                       :req (req (= :runner side))
+                       :value 1}]})
 
 (defcard "The Gauntlet"
   {:in-play [:memory 2]
