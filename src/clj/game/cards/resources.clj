@@ -231,6 +231,24 @@
                                (do (flip-faceup state side target)
                                    (effect-completed state side eid))))}]})
 
+(defcard "Auntie Anjelica"
+  {:data {:counter {:credit 9}}
+   :events [(trash-on-empty :credit)]
+   :abilities [{:label "Take 3 [Credits] from this resource"
+                :cost [:click 1]
+                :once :per-turn
+                :msg "gain 3 [Credits]"
+                :async true
+                :effect (req (let [credits (min 3 (get-counters card :credit))]
+                               (add-counter state side card :credit (- credits))
+                               (gain-credits state :runner eid credits)))}]})
+
+(defcard "Avulsion"
+  {:events [{:event :runner-install
+             :silent (req true)
+             :req (req (has-subtype? target "Virus"))
+             :effect (effect (add-counter target :virus 1))}]})
+
 (defcard "\"Baklan\" Bochkin"
   {:events [{:event :encounter-ice
              :req (req (first-run-event? state side :encounter-ice))
@@ -1290,6 +1308,13 @@
                                                (hardware? target)))
                                 :type :recurring}}})
 
+(defcard "Intuitive Fluency"
+  {:events [{:event :runner-click-draw
+             :async true
+             :req (req (genetics-trigger? state side :runner-click-draw))
+             :msg "draw 1 additional card"
+             :effect (effect (draw-bonus 1))}]})
+
 (defcard "Investigative Journalism"
   {:req (req (has-bad-pub? state))
    :abilities [{:cost [:click 4 :trash]
@@ -2123,6 +2148,41 @@
                          (effect-completed state side eid)))}
          card nil))}]})
 
+(defcard "Red Team"
+  (letfn [(to-central-server-keyword [server]
+            (case server
+              "HQ" :hq
+              "R&D" :rd
+              "Archives" :archives
+              nil))]
+    {:data {:counter {:credit 12}}
+     :events [(trash-on-empty :credit)
+              {:event :successful-run
+               :req (req this-card-run)
+               :msg (msg "gain " (min 3 (get-counters card :credit)) " [Credits]")
+               :silent (req true)
+               :async true
+               :effect (req (let [credits (min 3 (get-counters card :credit))]
+                              (add-counter state side card :credit (- credits))
+                              (gain-credits state side eid credits)))}]
+     :abilities [{:cost [:click 1]
+                  :prompt "Choose a server"
+                  :req (req (->> runnable-servers
+                                     (map unknown->kw)
+                                     (filter is-central?)
+                                     (remove (into #{} (:made-run runner-reg)))
+                                     (map central->name)
+                                     not-empty))
+                  :choices (req (->> runnable-servers
+                                     (map unknown->kw)
+                                     (filter is-central?)
+                                     (remove (into #{} (:made-run runner-reg)))
+                                     (map central->name)))
+                  :msg "make a run on central server"
+                  :makes-run true
+                  :async true
+                  :effect (req (make-run state side eid target nil card))}]}))
+
 (defcard "Rogue Trading"
   {:data {:counter {:credit 18}}
    :events [(trash-on-empty :credit)]
@@ -2359,6 +2419,27 @@
                                                (update-all-icebreakers state side)
                                                (effect-completed state side eid))))})
                    card nil))}}}]})
+
+(defcard "Smartware Distributor"
+  {:abilities [{:cost [:click 1]
+                :msg "place 3 [Credits]"
+                :effect (req (add-counter state side card :credit 3))}
+               (set-autoresolve :auto-distributor "take credit from Smartware Distributor")]
+   :events [{:event :runner-turn-begins
+             :once :per-turn
+             :async true
+             :label "Take 1 [Credits] (start of turn)"
+             :req (req (pos? (get-counters card :credit)))
+             :effect (effect (continue-ability
+                               {:optional
+                                {:prompt "Use Smartware Distributor to gain 1 [Credits]?"
+                                 :autoresolve (get-autoresolve :auto-distributor)
+                                 :yes-ability
+                                 {:async true
+                                  :msg "take 1 [Credits]"
+                                  :effect (req (add-counter state side card :credit -1)
+                                               (gain-credits state side eid 1))}}}
+                               card nil))}]})
 
 (defcard "Spoilers"
   {:events [{:event :agenda-scored
