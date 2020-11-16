@@ -408,6 +408,7 @@
                 :effect (effect (make-run eid :rd nil card))}]
    :events [(successful-run-replace-access
               {:target-server :rd
+               :this-card-run true
                :ability
                {:prompt "Choose a card to shuffle into R&D"
                 :choices {:card #(and (not (ice? %))
@@ -634,13 +635,13 @@
   (power-counter-break "Code Gate"))
 
 (defcard "Chakana"
-  {::events [{:event :successful-run
+  {:constant-effects [{:type :advancement-requirement
+                       :req (req (<= 3 (get-virus-counters state card)))
+                       :value 1}]
+   :events [{:event :successful-run
              :silent (req true)
              :req (req (= :rd (target-server context)))
-             :effect (effect (add-counter card :virus 1))}
-            {:event :pre-advancement-cost
-             :req (req (>= (get-virus-counters state card) 3))
-             :effect (effect (advancement-cost-bonus 1))}]})
+             :effect (effect (add-counter card :virus 1))}]})
 
 (defcard "Chameleon"
   {:prompt "Choose one subtype"
@@ -1204,6 +1205,7 @@
                 :effect (effect (make-run eid :hq nil card))}]
    :events [(successful-run-replace-access
               {:target-server :hq
+               :this-card-run true
                :ability
                {:msg (msg "reveal all of the cards cards in HQ: "
                           (string/join ", " (map :title (:hand corp))))
@@ -1552,6 +1554,7 @@
                 :effect (effect (make-run eid :rd nil card))}]
    :events [(successful-run-replace-access
               {:target-server :rd
+               :this-card-run true
                :mandatory true
                :ability
                {:prompt "Choose a card to trash"
@@ -2253,7 +2256,7 @@
                               state side
                               (let [guess (get-in card [:special :rng-guess])]
                                 (when (or (= guess (:cost target))
-                                          (= guess (:advancementcost target)))
+                                          (= guess (get-advancement-requirement target)))
                                   {:prompt "Choose RNG Key reward"
                                    :choices ["Gain 3 [Credits]" "Draw 2 cards"]
                                    :async true
@@ -2470,6 +2473,7 @@
                 :effect (effect (make-run eid :rd nil card))}]
    :events [(successful-run-replace-access
               {:target-server :rd
+               :this-card-run true
                :mandatory true
                :ability
                {:async true
