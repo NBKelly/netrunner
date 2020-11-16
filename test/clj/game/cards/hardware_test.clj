@@ -948,22 +948,21 @@
       (rez state :corp quan)
       (is (= 4 (:credit (get-corp))) "Paid 3c instead of 1c to rez Quandary"))))
 
-
 (deftest creuset
   ;; Creuset
   (testing "Basic test"
     (do-game
-     (new-game {:corp {:hand ["Anansi"]}
-                :runner {:hand ["Creuset" "Sure Gamble" "Aumakua"]}})
-     (take-credits state :corp)
-     (play-from-hand state :runner "Creuset")
-     (is (= 5 (core/available-mu state)) "Gain 1 memory")
-     (run-empty-server state "HQ")
-     (click-prompt state :runner "[Creuset] Trash 2 cards from your hand: Trash card")
-     (click-card state :runner (find-card "Sure Gamble" (:hand (get-runner))))
-     (click-card state :runner (find-card "Aumakua" (:hand (get-runner))))
-     (is (= 1 (count (:discard (get-corp)))))
-     (is (zero? (count (:hand (get-runner))))))))
+      (new-game {:corp {:hand ["Anansi"]}
+                 :runner {:hand ["Creuset" "Sure Gamble" "Aumakua"]}})
+      (take-credits state :corp)
+      (play-from-hand state :runner "Creuset")
+      (is (= 5 (core/available-mu state)) "Gain 1 memory")
+      (run-empty-server state "HQ")
+      (click-prompt state :runner "[Creuset] Trash 2 cards from your hand: Trash card")
+      (click-card state :runner (find-card "Sure Gamble" (:hand (get-runner))))
+      (click-card state :runner (find-card "Aumakua" (:hand (get-runner))))
+      (is (= 1 (count (:discard (get-corp)))))
+      (is (zero? (count (:hand (get-runner))))))))
 
 (deftest cyberdelia
   ;; Cyberdelia
@@ -1157,36 +1156,36 @@
   ;; Docklands Pass - run again when successful
   (testing "Corp access extra card on HQ run"
     (do-game
-     (new-game {:runner {:hand ["Docklands Pass"]}
-                :corp {:hand [(qty "Vanilla" 4)]
-                       :deck [(qty "Vanilla" 10)]}})
-     (take-credits state :corp)
-     (play-from-hand state :runner "Docklands Pass")
-     (run-empty-server state "HQ")
-     (click-prompt state :runner "No action")
-     (click-prompt state :runner "No action")
-     (is (empty? (:prompt (get-runner))) "Runner done with run after 2 accesses")
-     (is (not (:run @state)) "2 access run over")
-     (run-empty-server state "HQ")
-     (click-prompt state :runner "No action")
-     (is (empty? (:prompt (get-runner))) "Second run is over after 1 access")
-     (is (not (:run @state)) "1 access run over")))
+      (new-game {:runner {:hand ["Docklands Pass"]}
+                 :corp {:hand [(qty "Vanilla" 4)]
+                        :deck [(qty "Vanilla" 10)]}})
+      (take-credits state :corp)
+      (play-from-hand state :runner "Docklands Pass")
+      (run-empty-server state "HQ")
+      (click-prompt state :runner "No action")
+      (click-prompt state :runner "No action")
+      (is (empty? (:prompt (get-runner))) "Runner done with run after 2 accesses")
+      (is (not (:run @state)) "2 access run over")
+      (run-empty-server state "HQ")
+      (click-prompt state :runner "No action")
+      (is (empty? (:prompt (get-runner))) "Second run is over after 1 access")
+      (is (not (:run @state)) "1 access run over")))
   (testing "No bonus access when playing Docklands Pass after first run"
     (do-game
-     (new-game {:runner {:hand ["Docklands Pass"]}
-                :corp {:hand [(qty "Vanilla" 4)]
-                       :deck [(qty "Vanilla" 10)]}})
-     (take-credits state :corp)
-     (run-empty-server state "HQ")
-     (click-prompt state :runner "No action")
-     (is (empty? (:prompt (get-runner))) "Runner done with run after 1 accesses")
-     (is (not (:run @state)) "1 access run over")
-     (play-from-hand state :runner "Docklands Pass")
-     (run-empty-server state "HQ")
-     (click-prompt state :runner "No action")
-     (is (empty? (:prompt (get-runner))) "No bonus access on second run")
-     (is (not (:run @state)) "1 access run over"))))
-      
+      (new-game {:runner {:hand ["Docklands Pass"]}
+                 :corp {:hand [(qty "Vanilla" 4)]
+                        :deck [(qty "Vanilla" 10)]}})
+      (take-credits state :corp)
+      (run-empty-server state "HQ")
+      (click-prompt state :runner "No action")
+      (is (empty? (:prompt (get-runner))) "Runner done with run after 1 accesses")
+      (is (not (:run @state)) "1 access run over")
+      (play-from-hand state :runner "Docklands Pass")
+      (run-empty-server state "HQ")
+      (click-prompt state :runner "No action")
+      (is (empty? (:prompt (get-runner))) "No bonus access on second run")
+      (is (not (:run @state)) "1 access run over"))))
+
 (deftest doppelganger
   ;; Doppelgänger - run again when successful
   (testing "Basic test"
@@ -2435,18 +2434,20 @@
   ;; MD-2Z Optimizer
   (testing "Basic test"
     (do-game
-     (new-game {:corp {:hand ["Hedge Fund"]}
-                :runner {:hand ["MD-2Z Optimizer" (qty "Aumakua" 2)]
-                         :credits 20}})
-     (take-credits state :corp)
-     (play-from-hand state :runner "MD-2Z Optimizer")
-     (is (= 5 (core/available-mu state)) "Gain 1 memory")
-     (changes-val-macro -2 (:credit (get-runner))
-                        "Pays 2 credit for first install"
-                        (play-from-hand state :runner "Aumakua"))
-     (changes-val-macro -3 (:credit (get-runner))
-                        "Pays 3 credit for second install"
-                        (play-from-hand state :runner "Aumakua")))))
+      (new-game {:corp {:hand ["Hedge Fund"]}
+                 :runner {:hand ["MD-2Z Optimizer" (qty "Aumakua" 2)]
+                          :credits 20}})
+      (take-credits state :corp)
+      (play-from-hand state :runner "MD-2Z Optimizer")
+      (is (= 5 (core/available-mu state)) "Gain 1 memory")
+      (changes-val-macro
+        -2 (:credit (get-runner))
+        "Pays 2 credit for first install"
+        (play-from-hand state :runner "Aumakua"))
+      (changes-val-macro
+        -3 (:credit (get-runner))
+        "Pays 3 credit for second install"
+        (play-from-hand state :runner "Aumakua")))))
 
 (deftest mind-s-eye
   ;; Mind's Eye - Gain power tokens on R&D runs, and for 3 tokens and a click, access the top card of R&D
@@ -2696,39 +2697,43 @@
   ;; Pantograph - Gain 1 credit and may look at and move top card of Stack to bottom
   (testing "Basic test - triggered on steal"
     (do-game
-     (new-game {:corp {:hand ["House of Knives"]}
-                :runner {:hand ["Pantograph" "Bankroll"]}})
-     (take-credits state :corp)
-     (play-from-hand state :runner "Pantograph")
-     (is (= 5 (core/available-mu state)) "Gain 1 memory")
-     (run-empty-server state :hq)
-     (click-prompt state :runner "Steal")
-     (changes-val-macro 1 (:credit (get-runner))
-                        "Gain 1 credit from Pantograph"
-                        (click-prompt state :runner "Yes"))
-     (changes-val-macro -1 (:credit (get-runner))
-                        "Gain 1 credit from Pantograph"
-                        (click-prompt state :runner "Yes")
-                        (click-card state :runner (find-card "Bankroll" (:hand (get-runner)))))
-     (is (get-program state 0) "Bankroll is installed")))
+      (new-game {:corp {:hand ["House of Knives"]}
+                 :runner {:hand ["Pantograph" "Bankroll"]}})
+      (take-credits state :corp)
+      (play-from-hand state :runner "Pantograph")
+      (is (= 5 (core/available-mu state)) "Gain 1 memory")
+      (run-empty-server state :hq)
+      (click-prompt state :runner "Steal")
+      (changes-val-macro
+        1 (:credit (get-runner))
+        "Gain 1 credit from Pantograph"
+        (click-prompt state :runner "Yes"))
+      (changes-val-macro
+        -1 (:credit (get-runner))
+        "Gain 1 credit from Pantograph"
+        (click-prompt state :runner "Yes")
+        (click-card state :runner (find-card "Bankroll" (:hand (get-runner)))))
+      (is (get-program state 0) "Bankroll is installed")))
   (testing "Basic test - trigger on score"
     (do-game
-     (new-game {:corp {:deck [(qty "Hedge Fund" 10)]
-                       :hand ["House of Knives"]}
-                :runner {:hand ["Pantograph" "Bankroll"]}})
-     (play-from-hand state :corp "House of Knives" "New remote")
-     (take-credits state :corp)
-     (play-from-hand state :runner "Pantograph")
-     (take-credits state :runner)
-     (score-agenda state :corp (get-content state :remote1 0))
-     (changes-val-macro 1 (:credit (get-runner))
-                        "Gain 1 credit from Pantograph"
-                        (click-prompt state :runner "Yes"))
-     (changes-val-macro -1 (:credit (get-runner))
-                        "Gain 1 credit from Pantograph"
-                        (click-prompt state :runner "Yes")
-                        (click-card state :runner (find-card "Bankroll" (:hand (get-runner)))))
-     (is (get-program state 0) "Bankroll is installed"))))
+      (new-game {:corp {:deck [(qty "Hedge Fund" 10)]
+                        :hand ["House of Knives"]}
+                 :runner {:hand ["Pantograph" "Bankroll"]}})
+      (play-from-hand state :corp "House of Knives" "New remote")
+      (take-credits state :corp)
+      (play-from-hand state :runner "Pantograph")
+      (take-credits state :runner)
+      (score-agenda state :corp (get-content state :remote1 0))
+      (changes-val-macro
+        1 (:credit (get-runner))
+        "Gain 1 credit from Pantograph"
+        (click-prompt state :runner "Yes"))
+      (changes-val-macro
+        -1 (:credit (get-runner))
+        "Gain 1 credit from Pantograph"
+        (click-prompt state :runner "Yes")
+        (click-card state :runner (find-card "Bankroll" (:hand (get-runner)))))
+      (is (get-program state 0) "Bankroll is installed"))))
 
 (deftest paragon
   ;; Paragon - Gain 1 credit and may look at and move top card of Stack to bottom
@@ -2852,23 +2857,24 @@
   ;; Pennyshaver - Prevent meat damage
   (testing "Basic test"
     (do-game
-     (new-game {:corp {:deck ["Hedge Fund"]}
-                :runner {:deck ["Pennyshaver"]}})
-     (take-credits state :corp)
-     (play-from-hand state :runner "Pennyshaver")
-     (is (= 5 (core/available-mu state)) "Gain 1 memory")
-     (let [pennyshaver (get-hardware state 0)]
-       (is (= 0 (get-counters (refresh pennyshaver) :credit)) "0 credits on install")
-       (run-empty-server state :hq)
-       (click-prompt state :runner "No action")
-       (is (= 1 (get-counters (refresh pennyshaver) :credit)) "1 credits after one run")
-       (run-empty-server state :hq)
-       (click-prompt state :runner "No action")
-       (is (= 2 (get-counters (refresh pennyshaver) :credit)) "2 credits after second run")
-       (changes-val-macro 3 (:credit (get-runner))
-                          "Gain 1 + 2 credit from Pennyshaver"
-                          (card-ability state :runner pennyshaver 0))
-       (is (= 0 (get-counters (refresh pennyshaver) :credit)) "0 credits after ability trigger")))))
+      (new-game {:corp {:deck ["Hedge Fund"]}
+                 :runner {:deck ["Pennyshaver"]}})
+      (take-credits state :corp)
+      (play-from-hand state :runner "Pennyshaver")
+      (is (= 5 (core/available-mu state)) "Gain 1 memory")
+      (let [pennyshaver (get-hardware state 0)]
+        (is (= 0 (get-counters (refresh pennyshaver) :credit)) "0 credits on install")
+        (run-empty-server state :hq)
+        (click-prompt state :runner "No action")
+        (is (= 1 (get-counters (refresh pennyshaver) :credit)) "1 credits after one run")
+        (run-empty-server state :hq)
+        (click-prompt state :runner "No action")
+        (is (= 2 (get-counters (refresh pennyshaver) :credit)) "2 credits after second run")
+        (changes-val-macro
+          3 (:credit (get-runner))
+          "Gain 1 + 2 credit from Pennyshaver"
+          (card-ability state :runner pennyshaver 0))
+        (is (= 0 (get-counters (refresh pennyshaver) :credit)) "0 credits after ability trigger")))))
 
 
 (deftest plascrete-carapace
@@ -3810,11 +3816,11 @@
   ;; T400 Memory Diamond
   (testing "Basic test"
     (do-game
-     (new-game {:runner {:hand ["T400 Memory Diamond"]}})
-     (take-credits state :corp)
-     (play-from-hand state :runner "T400 Memory Diamond")
-     (is (= 6 (hand-size :runner)) "Increased hand size")
-     (is (= 5 (core/available-mu state)) "Gain 1 memory"))))
+      (new-game {:runner {:hand ["T400 Memory Diamond"]}})
+      (take-credits state :corp)
+      (play-from-hand state :runner "T400 Memory Diamond")
+      (is (= 6 (hand-size :runner)) "Increased hand size")
+      (is (= 5 (core/available-mu state)) "Gain 1 memory"))))
 
 (deftest the-gauntlet
   (testing "Doesn't give additional accesses when no ice are broken"
