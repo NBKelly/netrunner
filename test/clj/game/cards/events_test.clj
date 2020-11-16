@@ -1136,6 +1136,21 @@
       (take-credits state :corp)
       (is (zero? (get-in (get-corp) [:bad-publicity :base])) "Corp has BP, didn't take 1 from Activist Support"))))
 
+(deftest creative-commision
+  ;; Creative Commission
+  (testing "Basic test"
+    (do-game
+      (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                        :hand [(qty "Hedge Fund" 2)]}
+                 :runner {:hand ["Creative Commission"]}})
+      (take-credits state :corp)
+      (let [clicks (:click (get-runner))]
+        (changes-val-macro
+          4 (:credit (get-runner))
+          "gain 4 credits from Creative Commission"
+          (play-from-hand state :runner "Creative Commission"))
+        (is (= (+ clicks -1 -1) (:click (get-runner))) "Runner plays Creative Commission and loses 1 click")))))
+
 (deftest credit-crash
   ;; Credit Crash
   (testing "Corp pays to keep"
@@ -2204,6 +2219,33 @@
       (is (= (+ 3 c-hand (count (:hand (get-corp))))) "Corp draws 3 cards")
       (is (= (+ 3 r-hand (count (:hand (get-runner))))) "Runner draws 3 cards"))))
 
+(deftest food-bank
+  ;; Food Bank
+  (testing "Basic test - corp selects credits"
+    (do-game
+      (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                        :hand [(qty "Hedge Fund" 5)]}
+                 :runner {:deck [(qty "Sure Gamble" 5)]
+                          :hand ["Food Bank"]}})
+      (take-credits state :corp)
+      (play-from-hand state :runner "Food Bank")
+      (changes-val-macro
+        6 (:credit (get-runner))
+        "gain 6 credits from Food Bank"
+        (click-prompt state :corp "Runner gains 6 [Credits]"))))
+  (testing "Basic test - corp selects credits"
+    (do-game
+      (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                        :hand [(qty "Hedge Fund" 5)]}
+                 :runner {:deck [(qty "Sure Gamble" 5)]
+                          :hand ["Food Bank"]}})
+      (take-credits state :corp)
+      (play-from-hand state :runner "Food Bank")
+      (changes-val-macro
+        4 (count (:hand (get-runner)))
+        "draw 4 cards from Food Bank"
+        (click-prompt state :corp "Runner draws 4 cards")))))
+
 (deftest forged-activation-orders
   ;; Forged Activation Orders
   (testing "Corp chooses to trash the ice"
@@ -2960,6 +3002,29 @@
     (is (= 4 (hand-size :corp)) "Corp's handsize is lowered by 1 for a bad publicity")
     (change state :corp :bad-publicity 3)
     (is (= 1 (hand-size :corp)))))
+
+(deftest jailbreak
+  ;; Jailbreak
+  (do-game
+    (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                      :hand [(qty "Vanilla" 2)]}
+               :runner {:deck [(qty "Sure Gamble" 2)]
+                        :hand [(qty "Jailbreak" 2)]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Jailbreak")
+    (click-prompt state :runner "R&D")
+    (run-continue state)
+    (click-prompt state :runner "No action")
+    (click-prompt state :runner "No action")
+    (is (not (:run @state)) "Run ended")
+    (is (= 2 (count (:hand (get-runner)))) "One played, one drawn")
+    (play-from-hand state :runner "Jailbreak")
+    (click-prompt state :runner "HQ")
+    (run-continue state)
+    (click-prompt state :runner "No action")
+    (click-prompt state :runner "No action")
+    (is (not (:run @state)) "Run ended")
+    (is (= 2 (count (:hand (get-runner)))) "One played, one drawn")))
 
 (deftest khusyuk
   ;; Khusyuk
@@ -3923,6 +3988,72 @@
     (play-from-hand state :runner "Paper Tripping")
     (is (zero? (count-tags state)) "Runner should lose all tags")))
 
+(deftest particular-purpose
+  ;; Particular Purpose
+  (testing "Basic test - no install"
+    (do-game
+      (new-game {:corp {:deck [(qty "Hedge Fund" 4)]}
+                 :runner {:deck [(qty "Aumakua" 3)]
+                          :hand ["Particular Purpose"]}})
+      (take-credits state :corp)
+      (let [original-deck-count (count (:deck (get-runner)))
+            original-hand-count (count (:hand (get-runner)))]
+        (run-empty-server state :archives)
+        (play-from-hand state :runner "Particular Purpose")
+        (click-prompt state :runner "Aumakua")
+        (click-prompt state :runner "No")
+        (is (= 5 (:credit (get-runner))) "Spent 0 credits")
+        (is (= 0 (count (get-program state))) "Pulled card was not installed")
+        (is (= (+ original-deck-count -1) (count (:deck (get-runner)))) "Took card from deck...")
+        (is (= (+ original-hand-count 1 -1) (count (:hand (get-runner)))) "...into hand -one played, +one drawn"))))
+  (testing "Basic test - install"
+    (do-game
+      (new-game {:corp {:deck [(qty "Hedge Fund" 4)]}
+                 :runner {:deck [(qty "Aumakua" 3)]
+                          :hand ["Particular Purpose"]}})
+      (take-credits state :corp)
+      (let [original-deck-count (count (:deck (get-runner)))
+            original-hand-count (count (:hand (get-runner)))]
+        (run-empty-server state :archives)
+        (play-from-hand state :runner "Particular Purpose")
+        (click-prompt state :runner "Aumakua")
+        (click-prompt state :runner "Yes")
+        (is (= (+ 5 -3) (:credit (get-runner))) "Spent 3 credits")
+        (is (= 1 (count (get-program state))) "Pulled card was installed")
+        (is (= (+ original-deck-count -1) (count (:deck (get-runner)))) "Took card from deck...")
+        (is (= (+ original-hand-count -1) (count (:hand (get-runner)))) "...into play -one played"))))
+  (testing "Basic test - no prompt when not enough credits to install"
+    (do-game
+      (new-game {:corp {:deck [(qty "Hedge Fund" 4)]}
+                 :runner {:deck [(qty "Aumakua" 3)]
+                          :hand ["Particular Purpose"]
+                          :credits 0}})
+      (take-credits state :corp)
+      (let [original-deck-count (count (:deck (get-runner)))
+            original-hand-count (count (:hand (get-runner)))]
+        (run-empty-server state :archives)
+        (play-from-hand state :runner "Particular Purpose")
+        (click-prompt state :runner "Aumakua")
+        (is (= 0 (:credit (get-runner))) "Spent 0 credits")
+        (is (= 0 (count (get-program state))) "Pulled card was not installed")
+        (is (= (+ original-deck-count -1) (count (:deck (get-runner)))) "Took card from deck...")
+        (is (= (+ original-hand-count 1 -1) (count (:hand (get-runner)))) "...into hand -one played, +one drawn"))))
+  (testing "Basic test - no prompt when no successful run"
+    (do-game
+      (new-game {:corp {:deck [(qty "Hedge Fund" 4)]}
+                 :runner {:deck [(qty "Aumakua" 3)]
+                          :hand ["Particular Purpose"]}})
+      (take-credits state :corp)
+      (let [original-deck-count (count (:deck (get-runner)))
+            original-hand-count (count (:hand (get-runner)))]
+        (play-from-hand state :runner "Particular Purpose")
+        (click-prompt state :runner "Aumakua")
+        (is (= 5 (:credit (get-runner))) "Spent 0 credits")
+        (is (= 0 (count (get-program state))) "Pulled card was not installed")
+        (is (= (+ original-deck-count -1) (count (:deck (get-runner)))) "Took card from deck...")
+        (is (= (+ original-hand-count 1 -1) (count (:hand (get-runner)))) "...into hand -one played, +one drawn")))))
+
+
 (deftest peace-in-our-time
   ;; Peace in Our Time - runner gains 10, corp gains 5. No runs allowed during turn.
   (testing "no runs allowed"
@@ -4142,6 +4273,25 @@
       (run-continue state)
       (is (not (= "Use Prey to trash Burke Bugs?" (:msg (prompt-map :runner))))
           "Runner has no prompt trash ice"))))
+
+(deftest probe
+  ;; Probe - Gain 5 temporary credits
+  (do-game
+    (new-game {:corp {:deck ["Eve Campaign"]}
+               :runner {:deck ["Probe"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Probe")
+    (click-prompt state :runner "HQ")
+    (is (= [:hq] (get-in @state [:run :server])) "Run initiated on HQ")
+    (run-continue state)
+    (is (= 4 (:credit (get-runner))))
+    (click-prompt state :runner "Pay 5 [Credits] to trash") ; choose to trash Eve
+    (dotimes [_ 5]
+      (click-card state :runner "Probe"))
+    (is (and (zero? (count (:hand (get-corp))))
+             (= 1 (count (:discard (get-corp)))))
+        "Corp hand empty and Eve in Archives")
+    (is (= 4 (:credit (get-runner))))))
 
 (deftest process-automation
   ;; Process Automation
@@ -4934,6 +5084,30 @@
       (rez state :corp (get-ice state :hq 0))
       (is (= (+ credits 5) (:credit (get-runner))) "Should gain credits from correct ice rez"))))
 
+(deftest somnambulance
+  ;; Somnambulance
+  (do-game
+    (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                      :hand ["Ice Wall" "Vanilla"]
+                      :credits 100}
+               :runner {:hand ["Somnambulance"]}})
+    (play-from-hand state :corp "Vanilla" "HQ")
+    (play-from-hand state :corp "Ice Wall" "HQ")
+    (take-credits state :corp)
+    (play-from-hand state :runner "Somnambulance")
+    (click-prompt state :runner "HQ")
+    (let [vanilla (get-ice state :hq 0)
+          icewall (get-ice state :hq 1)]
+      (changes-val-macro
+        -3 (:credit (get-corp))
+        "Paid 3 credits to rez Vanilla"
+        (rez state :corp vanilla))
+      (run-continue state)
+      (changes-val-macro
+        -4 (:credit (get-corp))
+        "Paid 4 credits to rez Ice Wall"
+        (rez state :corp icewall)))))
+
 (deftest spear-phishing
   ;; Spear Phishing
   (do-game
@@ -5496,6 +5670,21 @@
     (is (= 1 (count-tags state)) "Took 1 tag")
     (is (= 5 (:credit (get-runner))) "Paid 8 credits")
     (is (zero? (:credit (get-corp))) "Corp lost all 8 credits")))
+
+(deftest vrcation
+  ;; VRcation
+  (testing "Basic test"
+    (do-game
+      (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                        :hand [(qty "Hedge Fund" 2)]}
+                 :runner {:deck [(qty "Sure Gamble" 5)]
+                          :hand ["VRcation"]}})
+      (take-credits state :corp)
+      (let [hand (count (:hand (get-runner)))
+            clicks (:click (get-runner))]
+        (play-from-hand state :runner "VRcation")
+        (is (= (+ hand -1 4) (count (:hand (get-runner)))) "Runner plays VRcation and draws 4 cards")
+        (is (= (+ clicks -1 -1) (:click (get-runner))) "Runner plays VRcation and loses 1 click")))))
 
 (deftest wanton-destruction
   ;; Wanton Destruction
