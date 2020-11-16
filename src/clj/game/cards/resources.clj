@@ -636,7 +636,7 @@
                                      (continue-ability
                                        state :runner
                                        {:cost [:credit tags]
-                                        :msg (str "access up to " tags " cards")
+                                        :msg (str "access up to " (quantify tags "card"))
                                         :effect (effect (access-bonus (target-server run) (dec tags)))}
                                        card targets)
                                      ;; Can't pay, don't access cards
@@ -650,8 +650,9 @@
                   :prompt "Choose a server"
                   :msg (msg "make a run on " target)
                   :choices (req runnable-servers)
-                  :effect (effect (make-run target nil card)
-                                  (register-events card [(assoc ability :duration :end-of-run)]))}]}))
+                  :async true
+                  :effect (effect (register-events card [(assoc ability :duration :end-of-run)])
+                                  (make-run eid target nil card))}]}))
 
 (defcard "Crash Space"
   {:interactions {:prevent [{:type #{:meat}
@@ -1104,9 +1105,9 @@
                   :async true
                   :msg (msg (let [c (get-agenda card)]
                               (str "add " (:title c) " to their score area and gain "
-                                   (quantify (get-agenda-points state :runner c) "agenda point"))))
+                                   (quantify (get-agenda-points c) "agenda point"))))
                   :effect (req (let [c (get-agenda card)
-                                     points (get-agenda-points state :runner c)
+                                     points (get-agenda-points c)
                                      args {:register-events (card-flag? c :has-events-when-stolen true)}]
                                  (as-agenda state :runner eid c points args)))}]}))
 
@@ -1237,13 +1238,13 @@
 
 (defcard "Human First"
   {:events [{:event :agenda-scored
-             :msg (msg "gain " (get-agenda-points state :corp target) " [Credits]")
+             :msg (msg "gain " (get-agenda-points target) " [Credits]")
              :async true
-             :effect (effect (gain-credits :runner eid (get-agenda-points state :corp target)))}
+             :effect (effect (gain-credits :runner eid (get-agenda-points target)))}
             {:event :agenda-stolen
-             :msg (msg "gain " (get-agenda-points state :runner target) " [Credits]")
+             :msg (msg "gain " (get-agenda-points target) " [Credits]")
              :async true
-             :effect (effect (gain-credits :runner eid (get-agenda-points state :runner target)))}]})
+             :effect (effect (gain-credits :runner eid (get-agenda-points target)))}]})
 
 (defcard "Hunting Grounds"
   {:implementation "Use prevention ability during approach, after ice is rezzed"
@@ -1836,14 +1837,14 @@
                                        (mill state side eid :runner 1))))))}]})
 
 (defcard "Order of Sol"
-  (let [ability {:event :runner-credit-loss
-                 :msg "gain 1 [Credits]"
+  (let [ability {:msg "gain 1 [Credits]"
                  :req (req (zero? (:credit runner)))
                  :once :per-turn
                  :async true
                  :effect (effect (gain-credits eid 1))}]
     {:effect (effect (continue-ability ability card nil))
-     :events [ability]}))
+     :events [(assoc ability :event :runner-credit-loss)
+              (assoc ability :event :runner-spent-credits)]}))
 
 (defcard "PAD Tap"
   {:events [{:event :corp-credit-gain
@@ -2774,16 +2775,14 @@
                   :effect (effect (play-instant eid target {:ignore-cost true}))}]}))
 
 (defcard "The Source"
-  {:effect (effect (update-all-advancement-costs))
-   :leave-play (effect (update-all-advancement-costs))
+  {:constant-effects [{:type :advancement-requirement
+                       :value 1}]
    :events [{:event :agenda-scored
              :async true
              :effect (effect (trash eid card nil))}
             {:event :agenda-stolen
              :async true
              :effect (effect (trash eid card nil))}
-            {:event :pre-advancement-cost
-             :effect (effect (advancement-cost-bonus 1))}
             {:event :pre-steal-cost
              :effect (effect (steal-cost-bonus [:credit 3]))}]})
 
