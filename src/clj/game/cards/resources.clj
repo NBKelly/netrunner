@@ -237,7 +237,7 @@
    :abilities [{:label "Take 3 [Credits] from this resource"
                 :cost [:click 1]
                 :once :per-turn
-                :msg (msg "gain 3 [Credits]")
+                :msg "gain 3 [Credits]"
                 :async true
                 :effect (req (let [credits (min 3 (get-counters card :credit))]
                                (add-counter state side card :credit (- credits))
@@ -2167,10 +2167,17 @@
                               (gain-credits state side eid credits)))}]
      :abilities [{:cost [:click 1]
                   :prompt "Choose a server"
-                  :choices (req (filter (fn [server]
-                                          (and (to-central-server-keyword server)
-                                               (not (some #{(to-central-server-keyword server)} (:made-run runner-reg)))))
-                                        runnable-servers))
+                  :req (req (->> runnable-servers
+                                     (map unknown->kw)
+                                     (filter is-central?)
+                                     (remove (into #{} (:made-run runner-reg)))
+                                     (map central->name)
+                                     not-empty))
+                  :choices (req (->> runnable-servers
+                                     (map unknown->kw)
+                                     (filter is-central?)
+                                     (remove (into #{} (:made-run runner-reg)))
+                                     (map central->name)))
                   :msg "make a run on central server"
                   :makes-run true
                   :async true
@@ -2414,24 +2421,25 @@
                    card nil))}}}]})
 
 (defcard "Smartware Distributor"
-  (let [ability {:once :per-turn
-                 :async true
-                 :label "Take 1 [Credits] (start of turn)"
-                 :req (req (pos? (get-counters card :credit)))         
-                 :effect (req (continue-ability state side
-                                                {:optional
-                                                 {:prompt "Use Smartware Distributor to gain 1 [Credits]?"
-                                                  :autoresolve (get-autoresolve :auto-distributor)
-                                                  :yes-ability {:async true
-                                                                :msg "take 1 [Credits]"
-                                                                :effect (req (add-counter state side card :credit -1)
-                                                                             (gain-credits state side eid 1))}}}
-                                                card nil))}]
-    {:abilities [{:cost [:click 1]
-                  :msg "place 3 [Credits]"
-                  :effect (req (add-counter state side card :credit 3))}
-                 (set-autoresolve :auto-distributor "take credit from Smartware Distributor")]
-     :events [(assoc ability :event :runner-turn-begins)]}))
+  {:abilities [{:cost [:click 1]
+                :msg "place 3 [Credits]"
+                :effect (req (add-counter state side card :credit 3))}
+               (set-autoresolve :auto-distributor "take credit from Smartware Distributor")]
+   :events [{:event :runner-turn-begins
+             :once :per-turn
+             :async true
+             :label "Take 1 [Credits] (start of turn)"
+             :req (req (pos? (get-counters card :credit)))
+             :effect (effect (continue-ability
+                               {:optional
+                                {:prompt "Use Smartware Distributor to gain 1 [Credits]?"
+                                 :autoresolve (get-autoresolve :auto-distributor)
+                                 :yes-ability
+                                 {:async true
+                                  :msg "take 1 [Credits]"
+                                  :effect (req (add-counter state side card :credit -1)
+                                               (gain-credits state side eid 1))}}}
+                               card nil))}]})
 
 (defcard "Spoilers"
   {:events [{:event :agenda-scored
