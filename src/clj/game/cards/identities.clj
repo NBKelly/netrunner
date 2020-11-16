@@ -730,19 +730,20 @@
 
 (defcard "Jean \"Loup\" Arcemont: Party Animal"
   {:events [{:event :runner-trash
-             :req (req (and (:accessed target)
+             :req (req (and (:accessed context)
                             (first-event? state side :runner-trash
                                           (fn [targets]
                                             (some #(:accessed %) targets)))))
-             :effect (req (continue-ability state side
-                                            {:optional
-                                             {:prompt "Gain 1 [Credits] and draw 1 card?"
-                                              :autoresolve (get-autoresolve :auto-jean)
-                                              :yes-ability {:async true
-                                                            :msg "gain 1 [Credits] and draw 1 card"
-                                                            :effect (req (wait-for (draw state :runner 1 nil)
-                                                                                   (gain-credits state :runner eid 1)))}}}
-                                            card nil))}]
+             :effect (effect (continue-ability
+                               {:optional
+                                {:prompt "Gain 1 [Credits] and draw 1 card?"
+                                 :autoresolve (get-autoresolve :auto-jean)
+                                 :yes-ability
+                                 {:async true
+                                  :msg "gain 1 [Credits] and draw 1 card"
+                                  :effect (req (wait-for (draw state :runner 1 nil)
+                                                         (gain-credits state :runner eid 1)))}}}
+                               card nil))}]
    :abilities [(set-autoresolve :auto-jean "Jean")]})
 
 (defcard "Jemison Astronautics: Sacrifice. Audacity. Success."
@@ -1542,30 +1543,22 @@
                           " and " (card-str state (second targets)))}]})
 
 (defcard "Tāo Salonga: Telepresence Magician"
-  (let [swap-ability {:optional
-                      {:req (req (<= 2 (count (filter ice? (all-installed state :corp)))))
-                       :prompt "Swap ice with Tāo Salonga ability?"
-                       :yes-ability
-                       {:prompt "Select ice"
-                        :choices {:req (req (and (installed? target)
-                                                 (ice? target)))}
-                        :async true
-                        :msg " swap ICE"
-                        :effect (req (continue-ability state side
-                                                       (let [first-ice target]
-                                                         {:prompt "Select ice to swap with"
-                                                          :choices {:req (req (and (installed? target)
-                                                                                   (ice? target)
-                                                                                   (not= first-ice target)))}
-                                                          :msg (msg "swap the positions of " (card-str state first-ice)
-                                                                    " and " (card-str state target))
-                                                          :async true
-                                                          :effect (req (swap-ice state side first-ice target)
-                                                                       (effect-completed state side eid))}) card nil))}}}]
-    {:events [(assoc swap-ability :event :agenda-scored
-                     :interactive (req true))
-              (assoc swap-ability :event :agenda-stolen
-                     :interactive (req true))]}))
+  (let [swap-ability
+        {:interactive (req true)
+         :optional
+         {:req (req (<= 2 (count (filter ice? (all-installed state :corp)))))
+          :prompt "Swap ice with Tāo Salonga ability?"
+          :yes-ability
+          {:prompt "Select 2 ice"
+           :choices {:req (req (and (installed? target)
+                                    (ice? target)))
+                     :max 2
+                     :all true}
+           :msg (msg "swap the positions of " (card-str state (first targets))
+                     " and " (card-str state (second targets)))
+           :effect (req (swap-ice state side (first targets) (second targets)))}}}]
+    {:events [(assoc swap-ability :event :agenda-scored)
+              (assoc swap-ability :event :agenda-stolen)]}))
 
 (defcard "Tennin Institute: The Secrets Within"
   {:flags {:corp-phase-12 (req (and (not (:disabled (get-card state card)))
@@ -1667,16 +1660,18 @@
 
 (defcard "Zahyaa Sadeghi: Versatile Smuggler"
   {:events [{:event :run-ends
-             :req (req (and (or (= :hq (target-server target))
-                                (= :rd (target-server target)))
-                            (pos? (total-cards-accessed target))))
-             :effect (req (let [cards-accessed (total-cards-accessed target)]
-                            (continue-ability state side
-                                              {:optional {:prompt "Gain 1 [Credits] for each card you accessed?"
-                                                          :async true
-                                                          :once :per-turn
-                                                          :yes-ability {:msg (msg "gain " cards-accessed " [Credits]")
-                                                                        :once :per-turn
-                                                                        :async true
-                                                                        :effect (req (gain-credits state :runner eid cards-accessed))}}}
-                                              card nil)))}]})
+             :req (req (and (or (= :hq (target-server context))
+                                (= :rd (target-server context)))
+                            (pos? (total-cards-accessed context))))
+             :effect (effect (continue-ability
+                               (let [cards-accessed (total-cards-accessed context)]
+                                 {:optional
+                                  {:prompt "Gain 1 [Credits] for each card you accessed?"
+                                   :async true
+                                   :once :per-turn
+                                   :yes-ability
+                                   {:msg (msg "gain " cards-accessed " [Credits]")
+                                    :once :per-turn
+                                    :async true
+                                    :effect (req (gain-credits state :runner eid cards-accessed))}}})
+                               card nil))}]})

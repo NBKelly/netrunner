@@ -628,9 +628,9 @@
 (defcard "Ballista"
   {:subroutines [{:label "Trash 1 program or end the run"
                   :prompt "Choose one"
-                  :choices (req ["Trash a program"
-                                 (when (seq (filter program? (all-active-installed state :runner)))
-                                   "End the run")])
+                  :choices (req [(when (not-empty (filter program? (all-active-installed state :runner)))
+                                   "Trash a program")
+                                 "End the run"])
                   :async true
                   :effect (effect
                             (continue-ability
@@ -3226,7 +3226,7 @@
                                      (end-run state :runner eid card))))}
    :subroutines [{:player :runner
                   :async true
-                  :label "Give the Runner 1 tag unless they pay 4[Credits]"
+                  :label "Give the Runner 1 tag unless they pay 4 [Credits]"
                   :prompt "Take 1 tag or pay 4 [Credits]"
                   :choices (req ["Take 1 tag"
                                  (when (can-pay? state :runner eid card "Topsy-Turvy" :credit 4)
