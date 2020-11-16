@@ -750,7 +750,7 @@
                 :label "Gain 2 [Credits] for each hosted virus counter, then remove all virus counters."
                 :async true
                 :effect (req (wait-for (gain-credits state side (* 2 (get-virus-counters state card)))
-                                       (update! state side (assoc-in card [:counter :virus] 0))
+                                       (add-counter state side card :virus (-(get-counters card :virus)))
                                        (doseq [h (filter #(= "Hivemind" (:title %)) (all-active-installed state :runner))]
                                          (update! state side (assoc-in h [:counter :virus] 0)))
                                        (effect-completed state side eid)))
