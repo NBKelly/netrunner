@@ -29,6 +29,7 @@
    :effect (effect (make-run eid :hq nil card))
    :events [(successful-run-replace-access
               {:target-server :hq
+               :this-card-run true
                :ability
                {:async true
                 :msg (msg "force the Corp to lose " (min 5 (:credit corp))
@@ -127,6 +128,7 @@
    :effect (effect (make-run eid target nil card))
    :events [(successful-run-replace-access
               {:target-server :remote
+               :this-card-run true
                :ability
                {:msg "shuffle all cards in the server into R&D"
                 :effect (req (doseq [c (:content run-server)]
@@ -358,6 +360,7 @@
      :events [(successful-run-replace-access
                 {:target-server :hq
                  :mandatory true
+                 :this-card-run true
                  :ability
                  {:msg "force the Corp to add all cards in HQ to the top of R&D"
                   :async true
@@ -377,6 +380,7 @@
      :effect (effect (make-run eid :rd nil card))
      :events [(successful-run-replace-access
                 {:target-server :rd
+                 :this-card-run true
                  :ability
                  {:async true
                   :prompt "Choose a program to install"
@@ -468,6 +472,16 @@
    :implementation "No enforcement that this Bad Pub cannot be removed"
    :effect (req (swap! state update-in [:corp :bad-publicity :additional] inc))
    :leave-play (req (swap! state update-in [:corp :bad-publicity :additional] dec))})
+
+
+(defcard "Creative Commission"
+  {:msg (msg "gain 5 [Credits]"
+             (when (pos? (:click runner))
+               " and lose [Click]"))
+   :async true
+   :effect (req (when (pos? (:click runner))
+                  (lose state :runner :click 1))
+                (gain-credits state :runner eid 5))})
 
 (defcard "Credit Crash"
   {:async true
@@ -764,6 +778,7 @@
      :effect (effect (make-run eid :hq nil card))
      :events [(successful-run-replace-access
                 {:target-server :hq
+                 :this-card-run true
                  :ability
                  {:msg (msg "force the Corp to lose " (five-or-all corp)
                             " [Credits], and gain " (five-or-all corp)
@@ -820,6 +835,7 @@
    :effect (effect (make-run eid :hq nil card))
    :events [(successful-run-replace-access
               {:target-server :hq
+               :this-card-run true
                :mandatory true
                :ability
                {:prompt "Choose a card type"
@@ -932,6 +948,7 @@
      :effect (effect (make-run eid :hq nil card))
      :events [(successful-run-replace-access
                 {:target-server :hq
+                 :this-card-run true
                  :mandatory true
                  :ability
                  {:async true
@@ -997,6 +1014,7 @@
    :effect (effect (make-run eid target nil card))
    :events [(successful-run-replace-access
               {:mandatory true
+               :this-card-run true
                :ability
                {:req (req (some #(and (pos? (get-counters % :advancement))
                                       (= (first (:server run)) (second (get-zone %))))
@@ -1054,6 +1072,7 @@
    :effect (effect (make-run eid :hq nil card))
    :events [(successful-run-replace-access
               {:target-server :hq
+               :this-card-run true
                :mandatory true
                :ability
                {:async true
@@ -1094,6 +1113,24 @@
    :async true
    :effect (req (wait-for (draw state :runner 3 nil)
                           (draw state :corp eid 3 nil)))})
+
+(defcard "Food Bank"
+  {:msg "force Corp to choose 6 [Credits] or 4 cards for runner"
+   :async true
+   :effect (req (show-wait-prompt state :runner "Corp to choose Food Bank effect")
+                (continue-ability
+                  state side
+                  {:player :corp
+                   :prompt "Choose one"
+                   :choices ["Runner gains 6 [Credits]" "Runner draws 4 cards"]
+                   :async true
+                   :effect (req (clear-wait-prompt state :runner)
+                                (if (= target "Runner gains 6 [Credits]")
+                                  (do (system-msg state :corp "chooses 6 credits for runner")
+                                      (gain-credits state :runner eid 6))
+                                  (do (system-msg state :corp "chooses 4 cards for runner")
+                                      (draw state :runner eid 4 nil))))}
+                  card nil))})
 
 (defcard "Forged Activation Orders"
   {:choices {:card #(and (ice? %)
@@ -1223,6 +1260,7 @@
      :effect (effect (make-run eid :archives nil card))
      :events [(successful-run-replace-access
                 {:target-server :archives
+                 :this-card-run true
                  :mandatory true
                  :ability access-effect})]}))
 
@@ -1410,6 +1448,7 @@
    :effect (effect (make-run eid :rd nil card))
    :events [(successful-run-replace-access
               {:target-server :rd
+               :this-card-run true
                :ability
                {:msg "rearrange the top 5 cards of R&D"
                 :async true
@@ -1487,6 +1526,7 @@
        :effect (effect (make-run eid :hq nil card))
        :events [(successful-run-replace-access
                   {:target-server :hq
+                   :this-card-run true
                    :mandatory true
                    :ability access-effect})]})))
 
@@ -1577,6 +1617,23 @@
                        :req (req (= :corp side))
                        :value (req (- (count-bad-pub state)))}]})
 
+(defcard "Jailbreak"
+  {:req (req (or rd-runnable hq-runnable))
+   :prompt "Choose a server"
+   :choices ["HQ" "R&D"]
+   :makes-run true
+   :async true
+   :effect (req (make-run state side eid target nil card nil))
+   :events [{:event :successful-run
+             :silent (req true)
+             :req (req (and (or (= :hq (target-server context))
+                                (= :rd (target-server context)))
+                            this-card-run))
+             :effect (req (if (= :hq (target-server context))
+                            (access-bonus state :runner :hq 1)
+                            (access-bonus state :runner :rd 1))
+                          (draw state side eid 1 nil))}]})
+
 (defcard "Khusyuk"
   (let [access-revealed (fn [revealed]
                           {:async true
@@ -1634,6 +1691,7 @@
      :effect (effect (make-run eid :rd nil card))
      :events [(successful-run-replace-access
                 {:target-server :rd
+                 :this-card-run true
                  :mandatory true
                  :ability access-effect})]}))
 
@@ -2033,6 +2091,31 @@
    :msg "remove all tags"
    :effect (effect (lose-tags eid :all))})
 
+(defcard "Particular Purpose"
+  {:prompt "Choose an Icebreaker"
+   :choices (req (cancellable (filter #(has-subtype? % "Icebreaker") (:deck runner)) :sorted))
+   :msg (msg "add " (:title target) " to their grip and shuffle their stack")
+   :async true
+   :effect (effect (trigger-event :searched-stack nil)
+                   (continue-ability
+                     (let [icebreaker target]
+                       (if (and (:successful-run runner-reg)
+                                  (can-pay? state side (assoc eid :source card :source-type :runner-install) icebreaker nil
+                                            [:credit (install-cost state side icebreaker)]))
+                         {:optional
+                          {:prompt "Do you want to install it?"
+                           :yes-ability
+                           {:async true
+                            :msg (msg " install " (:title icebreaker))
+                            :effect (req (runner-install state side (assoc eid :source card :source-type :runner-install) icebreaker nil)
+                                         (shuffle! state side :deck))}
+                           :no-ability
+                           {:effect (req (move state side icebreaker :hand)
+                                         (shuffle! state side :deck))}}}
+                         {:effect (req (move state side icebreaker :hand)
+                                       (shuffle! state side :deck))}))
+                     card nil))})
+
 (defcard "Peace in Our Time"
   {:req (req (not (:scored-agenda corp-reg-last)))
    :msg "gain 10 [Credits]. The Corp gains 5 [Credits]"
@@ -2069,6 +2152,7 @@
                                     (effect-completed state side eid)))}
             (successful-run-replace-access
               {:target-server :archives
+               :this-card-run true
                :mandatory true
                :ability
                {:prompt "Select an agenda to host Political Graffiti"
@@ -2132,6 +2216,15 @@
                         :msg (msg "trash " (card-str state ice))
                         :effect (effect (trash eid ice nil))}}}))
                  card nil))}]})
+
+(defcard "Probe"
+  {:async true
+   :makes-run true
+   :data {:counter {:credit 5}}
+   :interactions {:pay-credits {:type :credit}}
+   :prompt "Choose a server"
+   :choices (req runnable-servers)
+   :effect (effect (make-run eid target nil card))})
 
 (defcard "Process Automation"
   {:msg "gain 2 [Credits] and draw 1 card"
@@ -2265,6 +2358,7 @@
      :effect (effect (make-run eid :archives nil card))
      :events [(successful-run-replace-access
                 {:target-server :archives
+                 :this-card-run true
                  :mandatory true
                  :ability
                  {:req (req (not (zone-locked? state :runner :discard)))
@@ -2334,6 +2428,7 @@
    :effect (effect (make-run eid :archives nil card))
    :events [(successful-run-replace-access
               {:target-server :archives
+               :this-card-run true
                :ability
                {:async true
                :req (req (not (zone-locked? state :runner :discard)))
@@ -2393,6 +2488,7 @@
    :effect (effect (make-run eid :hq nil card))
    :events [(successful-run-replace-access
               {:target-server :hq
+               :this-card-run true
                :mandatory true
                :ability
                {:async true
@@ -2550,6 +2646,7 @@
    :effect (effect (make-run eid :rd nil card))
    :events [(successful-run-replace-access
               {:target-server :rd
+               :this-card-run true
                :can-access true
                :mandatory true
                :ability {:msg "access cards from the bottom of R&D"
@@ -2569,6 +2666,7 @@
    :effect (effect (make-run eid target nil card))
    :events [(successful-run-replace-access
               {:target-server :remote
+               :this-card-run true
                :mandatory true
                :ability
                {:async true
@@ -2591,6 +2689,19 @@
                    :msg (msg "gain " (rez-cost state side (get-card state target)) " [Credits]")
                    :async true
                    :effect (effect (gain-credits :runner eid (rez-cost state side (get-card state target))))}])))})
+
+(defcard "Somnambulance"
+  {:async true
+   :makes-run true
+   :prompt "Choose a server"
+   :choices (req runnable-servers)
+   :effect (effect (register-floating-effect
+                     card
+                     {:type :rez-additional-cost
+                      :duration :end-of-run
+                      :req (req true)
+                      :value (req [:credit 3])})
+                   (make-run eid target nil card))})
 
 (defcard "Spear Phishing"
   {:async true
@@ -2847,11 +2958,10 @@
                                 card nil))))}))
 
 (defcard "Traffic Jam"
-  {:effect (effect (update-all-advancement-costs))
-   :leave-play (effect (update-all-advancement-costs))
-   :events [{:event :pre-advancement-cost
-             :effect (req (advancement-cost-bonus
-                            state side (count (filter #(= (:title %) (:title target)) (:scored corp)))))}]})
+  {:constant-effects [{:type :advancement-requirement
+                       :value (req (->> (:scored corp)
+                                        (filter #(= (:title %) (:title target)))
+                                        (count)))}]})
 
 (defcard "Uninstall"
   {:req (req (some #(or (hardware? %)
@@ -2883,6 +2993,7 @@
    :effect (effect (make-run eid :hq nil card))
    :events [(successful-run-replace-access
               {:target-server :hq
+               :this-card-run true
                :ability
                {:async true
                 :prompt "How many [Credits]?"
@@ -2891,6 +3002,15 @@
                 :effect (req (wait-for (lose-credits state :corp target)
                                        (gain-tags state side eid 1)))}} )]})
 
+(defcard "VRcation"
+  {:msg (msg "draw 4 cards"
+             (when (pos? (:click runner))
+               " and lose [Click]"))
+   :async true
+   :effect (req (when (pos? (:click runner))
+                  (lose state :runner :click 1))
+                (draw state :runner eid 4 nil))})
+
 (defcard "Wanton Destruction"
   {:async true
    :makes-run true
@@ -2898,6 +3018,7 @@
    :effect (effect (make-run eid :hq nil card))
    :events [(successful-run-replace-access
               {:target-server :hq
+               :this-card-run true
                :ability
                {:msg (msg "force the Corp to discard " target " cards from HQ at random")
                 :prompt "How many [Click] do you want to spend?"
