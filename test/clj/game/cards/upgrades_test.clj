@@ -849,20 +849,21 @@
 (deftest crenellation
   ;; Crenellation
   (do-game
-   (new-game {:corp {:deck ["Quandary" "Project Atlas" "Government Takeover" "Hostile Takeover"]
-                     :hand ["Project Atlas" "Crenellation"]
-                     :click 10}})
-   (play-from-hand state :corp "Crenellation" "New remote")
-   (rez state :corp (get-content state :remote1 0))
-   (play-from-hand state :corp "Project Atlas" "Server 1")
-   (let [atlas (get-content state :remote1 1)]
-     (score-agenda state :corp (refresh atlas))
-     (click-prompt state :corp "Yes")
-     (is (= 2 (count (prompt-buttons :corp))) "Corp should have prompt back with 2 options (Quandry and Cancel)")
-     (changes-val-macro 1 (count (:hand (get-corp)))
-                        "Clicking prompt causes Quandary to move to HQ"
-                        (click-prompt state :corp "Quandary")))))
-
+    (new-game {:corp {:deck ["Quandary" "Project Atlas" "Government Takeover" "Hostile Takeover"]
+                      :hand ["Project Atlas" "Crenellation"]
+                      :click 10}})
+    (play-from-hand state :corp "Crenellation" "New remote")
+    (rez state :corp (get-content state :remote1 0))
+    (play-from-hand state :corp "Project Atlas" "Server 1")
+    (let [atlas (get-content state :remote1 1)]
+      (score-agenda state :corp (refresh atlas))
+      (click-prompt state :corp "Yes")
+      (is (= 2 (count (prompt-buttons :corp))) "Corp should have prompt back with 2 options (Quandry and Cancel)")
+      (is (= ["Quandary" "Cancel"] (map #(or (:title %) %) (prompt-buttons :corp))))
+      (changes-val-macro
+        1 (count (:hand (get-corp)))
+        "Clicking prompt causes Quandary to move to HQ"
+        (click-prompt state :corp "Quandary")))))
 
 (deftest crisium-grid
   ;; Crisium Grid
@@ -1325,38 +1326,40 @@
   ;; Glial-Map Encryption
   (testing "Basic test - clicks"
     (do-game
-     (new-game {:corp {:hand ["Glial-Map Encryption"]}})
-     (play-from-hand state :corp "Glial-Map Encryption" "New remote")
-     (let [encryption (get-content state :remote1 0)]
-       (rez state :corp encryption)
-       (take-credits state :corp)
-       (run-empty-server state "Server 1")
-       (changes-val-macro -2 (:click (get-runner))
-                          "Spend 2 clicks"
-                          (click-prompt state :runner "Spend [Click][Click]"))
-       (is (:run @state) "Run not ended by Glial-Map Encryption"))))
+      (new-game {:corp {:hand ["Glial-Map Encryption"]}})
+      (play-from-hand state :corp "Glial-Map Encryption" "New remote")
+      (let [encryption (get-content state :remote1 0)]
+        (rez state :corp encryption)
+        (take-credits state :corp)
+        (run-empty-server state "Server 1")
+        (changes-val-macro
+          -2 (:click (get-runner))
+          "Spend 2 clicks"
+          (click-prompt state :runner "Spend [Click][Click]"))
+        (is (:run @state) "Run not ended by Glial-Map Encryption"))))
   (testing "Basic test - credits"
     (do-game
-     (new-game {:corp {:hand ["Glial-Map Encryption"]}})
-     (play-from-hand state :corp "Glial-Map Encryption" "New remote")
-     (let [encryption (get-content state :remote1 0)]
-       (rez state :corp encryption)
-       (take-credits state :corp)
-       (run-empty-server state "Server 1")
-       (changes-val-macro -5 (:credit (get-runner))
-                          "Pay 5 credits"
-                          (click-prompt state :runner "Pay 5 [Credits]"))
-       (is (:run @state) "Run not ended by Glial-Map Encryption"))))
+      (new-game {:corp {:hand ["Glial-Map Encryption"]}})
+      (play-from-hand state :corp "Glial-Map Encryption" "New remote")
+      (let [encryption (get-content state :remote1 0)]
+        (rez state :corp encryption)
+        (take-credits state :corp)
+        (run-empty-server state "Server 1")
+        (changes-val-macro
+          -5 (:credit (get-runner))
+          "Pay 5 credits"
+          (click-prompt state :runner "Pay 5 [Credits]"))
+        (is (:run @state) "Run not ended by Glial-Map Encryption"))))
   (testing "Basic test - ETR"
     (do-game
-     (new-game {:corp {:hand ["Glial-Map Encryption"]}})
-     (play-from-hand state :corp "Glial-Map Encryption" "New remote")
-     (let [encryption (get-content state :remote1 0)]
-       (rez state :corp encryption)
-       (take-credits state :corp)
-       (run-empty-server state "Server 1")
-       (click-prompt state :runner "End the run")
-       (is (not (:run @state)) "Run ended by Glial-Map Encryption")))))
+      (new-game {:corp {:hand ["Glial-Map Encryption"]}})
+      (play-from-hand state :corp "Glial-Map Encryption" "New remote")
+      (let [encryption (get-content state :remote1 0)]
+        (rez state :corp encryption)
+        (take-credits state :corp)
+        (run-empty-server state "Server 1")
+        (click-prompt state :runner "End the run")
+        (is (not (:run @state)) "Run ended by Glial-Map Encryption")))))
 
 (deftest helheim-servers
   ;; Helheim Servers - Full test

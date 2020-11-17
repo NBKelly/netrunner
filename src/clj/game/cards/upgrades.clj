@@ -325,19 +325,21 @@
 
 (defcard "Crenellation"
   {:events [{:event :agenda-scored
-             :optional {:prompt "Search R&D for non-agenda card?"
-                        :req (req (= (:previous-zone target) (get-zone card)))
-                        :yes-ability {:prompt "Select card"
-                                      :choices (req (cancellable (filter #(not (agenda? %)) (:deck corp))
-                                                                :sorted))
-                                      :msg (msg "reveal " (:title target) " and add it to HQ")
-                                      :async true
-                                      :effect (req (wait-for
-                                                    (reveal state side target)
-                                                    (shuffle! state side :deck)
-                                                    (move state side target :hand)
-                                                    (effect-completed state side eid)))}}}]})
-           
+             :optional
+             {:prompt "Search R&D for non-agenda card?"
+              :req (req (= (:previous-zone target) (get-zone card)))
+              :yes-ability
+              {:prompt "Select card"
+               :choices (req (cancellable (filter #(not (agenda? %)) (:deck corp))
+                                          :sorted))
+               :msg (msg "reveal " (:title target) " and add it to HQ")
+               :async true
+               :effect (req (wait-for
+                              (reveal state side target)
+                              (shuffle! state side :deck)
+                              (move state side target :hand)
+                              (effect-completed state side eid)))}}}]})
+
 (defcard "Crisium Grid"
   {:constant-effects [{:type :block-successful-run
                        :req (req this-server)
@@ -416,15 +418,16 @@
 
 (defcard "Directory Wipe"
   {:events [{:event :successful-run
-             :optional {:prompt "Pay 2 [Credits] and trash 2 cards from HQ to end the run?"
-                        :req (req (and (can-pay? state side eid card nil [:credit 2 :trash-from-hand 2])
-                                       this-server))
-                        :async true
-                        :yes-ability {:async true
-                                      :msg "pay 2 [Credits] and trash 2 cards from HQ to end the run"
-                                      :effect (req (wait-for (pay state :corp card [:credit 2 :trash-from-hand 2])
-                                                             (end-run state side eid card)))}}}]})                                     
-                                                         
+             :optional
+             {:prompt "Pay 2 [Credits] and trash 2 cards from HQ to end the run?"
+              :req (req (and (can-pay? state side eid card nil [:credit 2 :trash-from-hand 2])
+                             this-server))
+              :yes-ability
+              {:async true
+               :msg "pay 2 [Credits] and trash 2 cards from HQ to end the run"
+               :effect (req (wait-for (pay state :corp card [:credit 2 :trash-from-hand 2])
+                                      (end-run state side eid card)))}}}]})
+
 (defcard "Disposable HQ"
   (letfn [(dhq [i n]
             {:req (req (pos? n))
@@ -491,22 +494,21 @@
                  etr]}))
 
 (defcard "Equivalent Exchange"
-  {:on-trash
-   {:req (req (and (= :runner side)
-                   (:run @state)))
+  (let [ability
+        {:event :run-ends
+         :req (req (= (second (get-zone card)) (first (:server context))))
+         :async true
+         :effect (req (if (:did-steal context)
+                        (gain-tags state :corp eid 2)
+                        (effect-completed state side eid)))}]
+  {:events [ability]
+   :on-trash
+   {:req (req (and run (= :runner side)))
     :effect (effect (register-events
-                     card
-                     [{:event :run-ends
-                       :duration :end-of-run
-                       :req (req (or (= (first (:server target)) (second (:previous-zone card)))
-                                     (= (central->zone (first (:server target)))
-                                        (butlast (:previous-zone card)))))
-                       :async true
-                       :effect (req (when (:did-steal target) (gain-tags state :corp eid 2)))}]))}
-   :events [{:event :run-ends
-             :req (req (= (second (get-zone card)) (first (:server target))))
-             :async true
-             :effect (req (when (:did-steal target) (gain-tags state :corp eid 2)))}]})
+                      card
+                      [(assoc ability
+                              :req (req (= (second (:previous-zone card)) (first (:server context))))
+                              :duration :end-of-run)]))}}))
 
 (defcard "Experiential Data"
   {:constant-effects [{:type :ice-strength
@@ -634,20 +636,25 @@
   {:events [{:event :successful-run
              :player :runner
              :prompt "Choose one"
-             :choices ["Spend [Click][Click]" "Pay 5 [Credits]" "End the run"]
+             :choices (req [(when (can-pay? state :runner (assoc eid :source card :source-type :subroutine) card nil [:click 2])
+                              "Spend [Click][Click]")
+                            (when (can-pay? state :runner (assoc eid :source card :source-type :subroutine) card nil [:credit 5])
+                              "Pay 5 [Credits]")
+                            "End the run"])
              :async true
              :effect (req (cond (and (= target "Spend [Click][Click]")
                                      (can-pay? state :runner (assoc eid :source card :source-type :subroutine) card nil [:click 2]))
-                                (do (wait-for (pay state side card :click 2)
-                                              (system-msg state side (:msg async-result))
-                                              (effect-completed state :runner eid)))
+                                (wait-for (pay state side card :click 2)
+                                          (system-msg state side (:msg async-result))
+                                          (effect-completed state :runner eid))
                                 (and (= target "Pay 5 [Credits]")
                                      (can-pay? state :runner (assoc eid :source card :source-type :subroutine) card nil [:credit 5]))
-                                (do (wait-for (pay state side card :credit 5)
-                                              (system-msg state side (:msg async-result))
-                                              (effect-completed state :runner eid)))
-                                :else (do (system-msg state :corp "ends the run")
-                                          (end-run state :corp eid card))))}]})   
+                                (wait-for (pay state side card :credit 5)
+                                          (system-msg state side (:msg async-result))
+                                          (effect-completed state :runner eid))
+                                :else
+                                (do (system-msg state :corp "ends the run")
+                                    (end-run state :corp eid card))))}]})
 
 (defcard "Heinlein Grid"
   {:abilities [{:req (req this-server)
