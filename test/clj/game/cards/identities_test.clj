@@ -1445,13 +1445,13 @@
 
 (deftest haas-bioroid-stronger-together
   ;; Stronger Together - +1 strength for Bioroid ice
-    (do-game
-     (new-game {:corp {:id "Haas-Bioroid: Stronger Together"
-                       :deck ["Eli 1.0"]}})
-     (play-from-hand state :corp "Eli 1.0" "Archives")
-     (let [eli (get-ice state :archives 0)]
-       (rez state :corp eli)
-       (is (= 5 (get-strength (refresh eli))) "Eli 1.0 at 5 strength"))))
+  (do-game
+    (new-game {:corp {:id "Haas-Bioroid: Stronger Together"
+                      :deck ["Eli 1.0"]}})
+    (play-from-hand state :corp "Eli 1.0" "Archives")
+    (let [eli (get-ice state :archives 0)]
+      (rez state :corp eli)
+      (is (= 5 (get-strength (refresh eli))) "Eli 1.0 at 5 strength"))))
 
 (deftest hayley-kaplan-universal-scholar
   (testing "Basic test"
@@ -1958,9 +1958,10 @@
    (new-game {:corp {:id "Jinteki: Restoring Humanity"
                      :discard ["Neural EMP"]}})
    (take-credits state :corp)
-   (changes-val-macro 1 (:credit (get-corp))
-                      "Gain 1 credit from ability"
-                      (click-prompt state :corp "Yes"))
+   (changes-val-macro
+     1 (:credit (get-corp))
+     "Gain 1 credit from ability"
+     (click-prompt state :corp "Yes"))
    (run-empty-server state "Archives")
    (take-credits state :runner)
    (take-credits state :corp)
@@ -2680,9 +2681,35 @@
        (run-continue state)
        (click-prompt state :runner "Take 1 tag")
        (click-prompt state :corp "Yes")
-       (changes-val-macro 2 (:credit (get-corp))
-                          "Gain 2 credit from NBN: Virtual Frontiers"
-                          (click-prompt state :corp "Gain 2 [Credits]"))
+       (changes-val-macro
+         2 (:credit (get-corp))
+         "Gain 2 credit from NBN: Virtual Frontiers"
+         (click-prompt state :corp "Gain 2 [Credits]"))
+       (run-continue state)
+       (rez state :corp (refresh dr))
+       (run-continue state)
+       (click-prompt state :runner "Take 1 tag")
+       (is (empty? (:prompt (get-corp))) "No prompt for the Corp for second tag"))))
+  (testing "Basic test - gain credits"
+    (do-game
+     (new-game {:corp {:id "NBN: Virtual Frontiers"
+                       :credits 40
+                       :deck [(qty "Hedge Fund" 10)]
+                       :hand [(qty "Data Raven" 3)]}})
+     (play-from-hand state :corp "Data Raven" "HQ")
+     (play-from-hand state :corp "Data Raven" "HQ")
+     (take-credits state :corp)
+     (let [dr (get-ice state :hq 0)
+           dr2 (get-ice state :hq 1)]
+       (run-on state :hq)
+       (rez state :corp (refresh dr2))
+       (run-continue state)
+       (click-prompt state :runner "Take 1 tag")
+       (click-prompt state :corp "Yes")
+       (changes-val-macro
+         2 (count (:hand (get-corp)))
+         "Draw 2 cards from NBN: Virtual Frontiers"
+         (click-prompt state :corp "Draw 2 cards"))
        (run-continue state)
        (rez state :corp (refresh dr))
        (run-continue state)
@@ -3609,24 +3636,26 @@
   ;; Weyland Consortium: Built to Last
   (testing "Basic test"
     (do-game
-     (new-game {:corp {:id "Weyland Consortium: Built to Last"
-                       :hand [(qty "NGO Front" 2)]}})
-     (core/gain state :corp :click 5)
-     (play-from-hand state :corp "NGO Front" "Server 1")
-     (play-from-hand state :corp "NGO Front" "Server 2")
-     (let [ngo1 (get-content state :remote1 0)
-           ngo2 (get-content state :remote2 0)]
-       (advance state (refresh ngo1) 1)
-       (changes-val-macro 2 (:credit (get-corp))
-                          "Gain 2 credits from Weyland Built to Last ability"
-                          (click-prompt state :corp "Yes"))
-       (advance state (refresh ngo1) 1)
-       (is (empty? (:prompt (get-corp))) "No prompt for second advance counter")
-       (advance state (refresh ngo2) 1)
-       (changes-val-macro 2 (:credit (get-corp))
-                          "Gain 2 credits from Weyland Built to Last ability"
-                          (click-prompt state :corp "Yes"))))))
-       
+      (new-game {:corp {:id "Weyland Consortium: Built to Last"
+                        :hand [(qty "NGO Front" 2)]}})
+      (core/gain state :corp :click 5)
+      (play-from-hand state :corp "NGO Front" "New remote")
+      (play-from-hand state :corp "NGO Front" "New remote")
+      (let [ngo1 (get-content state :remote1 0)
+            ngo2 (get-content state :remote2 0)]
+        (advance state (refresh ngo1) 1)
+        (changes-val-macro
+          2 (:credit (get-corp))
+          "Gain 2 credits from Weyland Built to Last ability"
+          (click-prompt state :corp "Yes"))
+        (advance state (refresh ngo1) 1)
+        (is (empty? (:prompt (get-corp))) "No prompt for second advance counter")
+        (advance state (refresh ngo2) 1)
+        (changes-val-macro
+          2 (:credit (get-corp))
+          "Gain 2 credits from Weyland Built to Last ability"
+          (click-prompt state :corp "Yes"))))))
+
 (deftest whizzard-master-gamer
   ;; Whizzard
   (do-game

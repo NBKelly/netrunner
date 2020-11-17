@@ -576,16 +576,13 @@
                        :req (req (= :corp side))
                        :value 1}]
    :events [{:event :agenda-scored
-             :effect (req (continue-ability
-                           state side
-                           {:label "add card from Archives to HQ"
-                            :prompt "Select a card to add to HQ"
-                            :show-discard true
-                            :choices {:card #(and (corp? %)
-                                                  (in-discard? %))}
-                            :effect (req (move state :corp target :hand))
-                            :msg (msg "add " (if (:seen target) (:title target) "a card") " to HQ")}
-                           card nil))}]})
+             :label "add card from Archives to HQ"
+             :prompt "Select a card to add to HQ"
+             :show-discard true
+             :choices {:card #(and (corp? %)
+                                   (in-discard? %))}
+             :msg (msg "add " (card-str state target) " to HQ")
+             :effect (effect (move :corp target :hand))}]})
 
 (defcard "Haas-Bioroid: Stronger Together"
   {:constant-effects [{:type :ice-strength
@@ -867,16 +864,16 @@
 
 (defcard "Jinteki: Restoring Humanity"
   {:events [{:event :corp-turn-ends
-             :async true
              :interactive (get-autoresolve :auto-restoring (complement never?))
              :silent (get-autoresolve :auto-restoring never?)
              :optional
              {:req (req (pos? (count (remove :seen (:discard corp)))))
               :autoresolve (get-autoresolve :auto-restoring)
               :prompt "Gain 1 [Credits]?"
-              :yes-ability {:msg "gain 1 [Credits]"
-                            :async true
-                            :effect (req (gain-credits state :corp eid 1))}}}]
+              :yes-ability
+              {:msg "gain 1 [Credits]"
+               :async true
+               :effect (effect (gain-credits :corp eid 1))}}}]
    :abilities [(set-autoresolve :auto-restoring "Restoring Humanity")]})
 
 (defcard "Kabonesa Wu: Netspace Thrillseeker"
@@ -1172,21 +1169,23 @@
 
 (defcard "NBN: Virtual Frontiers"
   {:events [{:event :runner-gain-tag
-             :optional {:req (req (first-event? state :runner :runner-gain-tag))
-                        :player :corp
-                        :prompt "Do you want to gain 2 [Credits] or draw 2 cards"
-                        :autoresolve (get-autoresolve :auto-virtual-frontiers)
-                        :yes-ability {:effect (req (show-wait-prompt state :runner "Corp to use NBN: Virtual Frontiers")
-                                                   (continue-ability
-                                                    state side
-                                                    {:prompt "Select option"
-                                                     :player :corp
-                                                     :choices ["Gain 2 [Credits]" "Draw 2 cards"]
-                                                     :effect (req (clear-wait-prompt state :runner)
-                                                                  (if (= target "Gain 2 [Credits]")
-                                                                    (gain-credits state :corp eid 2)
-                                                                    (draw state :corp eid 2 nil)))}
-                                                    card nil))}}}]
+             :optional
+             {:req (req (first-event? state :runner :runner-gain-tag))
+              :player :corp
+              :prompt "Do you want to gain 2 [Credits] or draw 2 cards"
+              :autoresolve (get-autoresolve :auto-virtual-frontiers)
+              :yes-ability
+              {:async true
+               :effect (effect (show-wait-prompt :runner "Corp to use NBN: Virtual Frontiers")
+                               (continue-ability
+                                 {:prompt "Select option"
+                                  :player :corp
+                                  :choices ["Gain 2 [Credits]" "Draw 2 cards"]
+                                  :effect (req (clear-wait-prompt state :runner)
+                                               (if (= target "Gain 2 [Credits]")
+                                                 (gain-credits state :corp eid 2)
+                                                 (draw state :corp eid 2 nil)))}
+                                 card nil))}}}]
    :abilities [(set-autoresolve :auto-virtual-frontiers "Virtual Frontiers")]})
 
 (defcard "Near-Earth Hub: Broadcast Center"
@@ -1689,11 +1688,14 @@
 
 (defcard "Weyland Consortium: Built to Last"
   {:events [{:event :advance
-             :req (req (zero? (- (:advance-counter target) (:amount (second targets)))))
-             :optional {:prompt "Gain 2 [Credits]?"
-                        :autoresolve (get-autoresolve :auto-build-to-last)
-                        :yes-ability {:msg "gain 2 [Credits]"
-                                      :effect (req (gain-credits state :corp eid 2))}}}]
+             :optional
+             {:req (req (not (pos? (- (get-counters target :advancement) (:amount (second targets))))))
+              :prompt "Gain 2 [Credits]?"
+              :autoresolve (get-autoresolve :auto-build-to-last)
+              :yes-ability
+              {:async true
+               :msg "gain 2 [Credits]"
+               :effect (req (gain-credits state :corp eid 2))}}}]
    :abilities [(set-autoresolve :auto-build-to-last "Built to Last")]})
 
 (defcard "Whizzard: Master Gamer"
