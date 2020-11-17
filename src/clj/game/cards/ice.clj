@@ -754,13 +754,15 @@
                   :label "Install an ice from HQ or Archives"
                   :prompt "Select an ice to install from Archives or HQ"
                   :show-discard true
-                  :choices {:card #(and (corp? %)
-                                        (ice? %)
+                  :choices {:card #(and (ice? %)
                                         (or (in-hand? %)
                                             (in-discard? %)))}
                   :msg (msg (corp-install-msg target))
-                  :effect (req (wait-for (corp-install state :corp target (zone->name (second (get-zone card))) {:ignore-install-cost true :index (:index card)})
-                                         (when (:run @state) (swap! state update-in [:run :position] inc))
+                  :effect (req (wait-for (corp-install state :corp target (zone->name (second (get-zone card))) {:ignore-install-cost true
+                                                                                                                 :index (:index card)})
+                                         (when (:run @state)
+                                           (swap! state update-in [:run :position] inc)
+                                           (set-current-ice state))
                                          (effect-completed state side eid)))}
                  end-the-run
                  end-the-run]
