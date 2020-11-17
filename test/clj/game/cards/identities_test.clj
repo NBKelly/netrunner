@@ -1750,6 +1750,28 @@
           (click-card state :corp pad)
           (is (= (+ credits 8) (:credit (get-corp))) "Gain 8 credits from trashing PAD Campaign"))))))
 
+(deftest jean-loup-arcemont-party-animal
+  ;; "Jean \"Loup\" Arcemont: Party Animal"
+  (do-game
+   (new-game {:corp {:hand [(qty "NGO Front" 2)]}
+              :runner {:id "Jean \"Loup\" Arcemont: Party Animal"
+                       :hand ["Sure Gamble"]
+                       :deck [(qty "Sure Gamble" 3)]}})
+   (play-from-hand state :corp "NGO Front" "New remote")
+   (play-from-hand state :corp "NGO Front" "New remote")
+   (take-credits state :corp)
+   (run-empty-server state "Server 1")
+   (click-prompt state :runner "Pay 1 [Credits] to trash")
+   (let [credits (:credit (get-runner))]
+     (changes-val-macro
+      1 (count (:hand (get-runner)))
+      "Jean draws one card"
+      (click-prompt state :runner "Yes"))
+     (is (= (+ credits 1) (:credit (get-runner))) "Gain 1 credit from trashing accessed card")
+     (run-empty-server state "Server 2")
+     (click-prompt state :runner "Pay 1 [Credits] to trash")
+     (is (empty? (:prompt (get-runner))) "No prompt on second trash"))))
+
 (deftest jemison-astronautics-sacrifice-audacity-success
   ;; Jemison Astronautics - Place advancements when forfeiting agendas
   (testing "Basic test"
@@ -3094,6 +3116,39 @@
         (core/score state :corp (refresh house))
         (is (= 1 (:agenda-point (get-corp))) "House of Knives was able to be scored")))))
 
+(deftest seidr-laboratories-destiny-defined
+  ;; Seidr Laboratories: Destiny Defined
+  (testing "Basic test"
+    (do-game
+      (new-game {:corp {:id "Seidr Laboratories: Destiny Defined"
+                        :discard ["IPO"]
+                        :hand ["Hedge Fund"]}})
+      (take-credits state :corp)
+      (run-on state :hq)
+      (card-ability state :corp (get-in @state [:corp :identity]) 0)
+      (is (prompt-map :corp))
+      (is (= "Select a card to add to the top of R&D" (:msg (prompt-map :corp))))
+      (click-card state :corp "IPO")
+      (is (find-card "IPO" (:deck (get-corp))))))
+  (testing "Must be used during a run"
+    (do-game
+      (new-game {:corp {:id "Seidr Laboratories: Destiny Defined"
+                        :discard ["Hedge Fund"]}})
+      (card-ability state :corp (get-in @state [:corp :identity]) 0)
+      (is (empty? (prompt-map :corp)))
+      (take-credits state :corp)
+      (run-on state :hq)
+      (card-ability state :corp (get-in @state [:corp :identity]) 0)
+      (is (prompt-map :corp))))
+  (testing "Must have at least 1 card in archives"
+    (do-game
+      (new-game {:corp {:id "Seidr Laboratories: Destiny Defined"
+                        :hand ["Hedge Fund"]}})
+      (take-credits state :corp)
+      (run-on state :hq)
+      (card-ability state :corp (get-in @state [:corp :identity]) 0)
+      (is (empty? (prompt-map :corp))))))
+
 (deftest silhouette-stealth-operative
   ;; Silhouette
   (testing "Expose trigger ability resolves completely before access. Issue #2173"
@@ -3360,6 +3415,29 @@
                        (click-card state :corp (get-resource state 0)))
     (is (= ["Fan Site"] (map :title (:discard (get-runner)))) "Trashed Fan Site")))
 
+(deftest tao-salonga-telepresence-magician
+  ;;Tāo Salonga: Telepresence Magician
+  (testing "Basic test"
+    (do-game
+     (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                       :hand ["Ice Wall" "Enigma" "House of Knives"]}
+                :runner {:id "Tāo Salonga: Telepresence Magician"}})
+     (play-from-hand state :corp "Ice Wall" "HQ")
+     (play-from-hand state :corp "Enigma" "HQ")
+     (play-from-hand state :corp "House of Knives" "New remote")
+     (take-credits state :corp)
+     (run-empty-server state "Server 1")
+     (let [iw (get-ice state :hq 0)
+           enig (get-ice state :hq 1)]
+       (click-prompt state :runner "Steal")
+       (click-prompt state :runner "Yes")
+       (click-card state :runner (refresh enig))
+       (click-card state :runner (refresh iw)))
+     (let [iw (get-ice state :hq 1)
+           enig (get-ice state :hq 0)]
+       (is (= "Ice Wall" (:title iw)) "Ice Wall now outermost ice")
+       (is (= "Enigma" (:title enig)) "Enigma now outermost ice")))))
+
 (deftest the-foundry-refining-the-process
   ;; The Foundry
   (testing "interaction with Accelerated Beta Test"
@@ -3610,3 +3688,22 @@
       (click-prompt state :runner "Pay 2 [Credits] to trash") ;; trash Launch Campaign, should trigger wyvern
       (is (= "Sure Gamble" (:title (last (:discard (get-runner)))))
           "Sure Gamble still in Wyvern's discard"))))
+
+(deftest zahyaa-sadeghi-versatile-smuggler
+  ;; "Zahyaa Sadeghi: Versatile Smuggler"
+  (testing "Basic test"
+    (do-game
+     (new-game {:corp   {:hand [(qty "Hedge Fund" 3)]}
+                :runner {:id   "Zahyaa Sadeghi: Versatile Smuggler"
+                         :hand [(qty "HQ Interface" 2)]
+                         :credits 20}})
+     (take-credits state :corp)
+     (play-from-hand state :runner "HQ Interface")
+     (play-from-hand state :runner "HQ Interface")
+     (run-empty-server state :hq)
+     (click-prompt state :runner "No action")
+     (click-prompt state :runner "No action")
+     (click-prompt state :runner "No action")
+     (changes-val-macro 3 (:credit (get-runner))
+                        "Gain 3 credits from ID ability"
+                        (click-prompt state :runner "Yes")))))
