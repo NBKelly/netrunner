@@ -428,6 +428,24 @@
    :effect (effect (shuffle-into-deck :hand)
                    (draw eid 5 nil))})
 
+(defcard "Crash Report"
+  {:async true
+   :prompt "Choose one"
+   :choices (req ["Gain 3 [Credits]" "Draw 3 cards"
+                  (when tagged
+                    "Gain 3 [Credits] and draw 3 cards")])
+   :msg (msg (string/lower-case target))
+   :effect (req (case target
+                  "Gain 3 [Credits]"
+                  (gain-credits state :corp eid 3)
+                  "Draw 3 cards"
+                  (draw state :corp eid 3 nil)
+                  "Gain 3 [Credits] and draw 3 cards"
+                  (wait-for (gain-credits state :corp 3)
+                            (draw state :corp eid 3 nil))
+                  ; else
+                  (effect-completed state side eid)))})
+
 (defcard "Cyberdex Trial"
   {:msg "purge virus counters"
    :effect (effect (purge))})
@@ -888,6 +906,11 @@
    :effect (req (wait-for (mill state :corp :corp 2)
                           (shuffle-into-rd-effect state side eid card 4)))})
 
+(defcard "Government Subsidy"
+  {:msg "gain 15 [Credits]"
+   :async true
+   :effect (effect (gain-credits eid 15))})
+
 (defcard "Green Level Clearance"
   {:msg "gain 3 [Credits] and draw 1 card"
    :async true
@@ -918,6 +941,22 @@
                         :effect (effect (clear-wait-prompt :corp)
                                         (as-agenda :runner eid card -1))}}}
                      card targets))})
+
+(defcard "Hansei"
+  (let [trash-from-hq {:async true
+                       :req (req (pos? (count (:hand corp))))
+                       :prompt "Select a card in HQ to trash"
+                       :choices {:max 1
+                                 :all true
+                                 :card #(and (corp? %)
+                                             (in-hand? %))}
+                       :msg "trash a card from HQ"
+                       :effect (effect (trash-cards eid targets nil))}]
+    {:async true
+     :msg "gain 10 [Credits]"
+     :effect (req (wait-for (gain-credits state :corp 10)
+                            (continue-ability state side trash-from-hq card nil)))}))
+
 
 (defcard "Hard-Hitting News"
   {:req (req (last-turn? state :runner :made-run))
@@ -1398,6 +1437,21 @@
    :msg (msg "remove 1 Runner tag and trash " (card-str state target))
    :effect (effect (trash eid target nil))})
 
+(defcard "OCEAN Source"
+  {:req (req (last-turn? state :runner :successful-run))
+   :player :runner
+   :async true
+   :msg (msg "force the Runner to " (decapitalize target))
+   :prompt "Pick one"
+   :choices (req ["Take 1 tag"
+                  (when (can-pay? state :runner (assoc eid :source card :source-type :ability) card (:title card) :credit 8)
+                    "Pay 8 [Credits]")])
+   :effect (req (if (= target "Pay 8 [Credits]")
+                  (wait-for (pay state :runner card :credit 8)
+                            (system-msg state :runner (:msg async-result))
+                            (effect-completed state side eid))
+                  (gain-tags state :corp eid 1 nil)))})
+
 (defcard "Oversight AI"
   {:choices {:card #(and (ice? %)
                          (not (rezzed? %))
@@ -1753,6 +1807,20 @@
    :async true
    :effect (effect (gain-credits eid 15))})
 
+(defcard "Retribution"
+  {:async true
+   :req (req (and tagged
+                  (->> (all-installed state :runner)
+                       (filter #(or (hardware? %)
+                                    (program? %)))
+                       not-empty)))
+   :prompt "Choose a program or hardware to trash"
+   :choices {:req (req (and (installed? target)
+                            (or (program? target)
+                                (hardware? target))))}
+   :msg (msg "trash " (card-str state target))
+   :effect (effect (trash eid target nil))})
+
 (defcard "Reuse"
   {:async true
    :prompt (msg "Select up to " (quantify (count (:hand corp)) "card") " in HQ to trash")
@@ -2055,6 +2123,23 @@
                 (shuffle! state side :deck)
                 (draw state side eid (count targets) nil))})
 
+(defcard "Sprint"
+  {:async true
+   :effect (req (wait-for (draw state side 3 nil)
+                          (system-msg state side (str "uses Sprint to draw "
+                                                      (quantify (count async-result) "card")))
+                          (continue-ability
+                            state side
+                            {:prompt "Select 2 cards in HQ to shuffle"
+                             :choices {:max 2
+                                       :card #(and (corp? %)
+                                                   (in-hand? %))}
+                             :msg "shuffles 2 cards from HQ into R&D"
+                             :effect (req (doseq [c targets]
+                                            (move state side c :deck))
+                                          (shuffle! state side :deck))}
+                            card nil)))})
+
 (defcard "Standard Procedure"
   {:req (req (last-turn? state :runner :successful-run))
    :prompt "Choose a card type"
@@ -2133,14 +2218,11 @@
                         (advance-n-times state side eid card target (dec n)))
               (effect-completed state side eid)))]
     {:additional-cost [:forfeit]
+     :choices {:card can-be-advanced?}
+     :msg (msg "advance " (card-str state target)
+            " " (quantify (get-advancement-requirement (cost-target eid :forfeit)) "time"))
      :async true
-     :effect (effect (continue-ability
-                       {:choices {:card can-be-advanced?}
-                        :msg (msg "advance " (card-str state target) " "
-                                  (advancement-cost state side (last (:rfg corp))) " times")
-                        :async true
-                        :effect (effect (advance-n-times eid card target (advancement-cost state side (last (:rfg corp)))))}
-                       card nil))}))
+     :effect (effect (advance-n-times eid card target (get-advancement-requirement (cost-target eid :forfeit))))}))
 
 (defcard "Successful Demonstration"
   {:req (req (last-turn? state :runner :unsuccessful-run))

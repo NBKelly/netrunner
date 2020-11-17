@@ -59,7 +59,8 @@
 (deftest trash-icon
   (doseq [card (->> @all-cards
                     vals
-                    (filter #(re-find #"(?i)\[trash\].*:" (:text % ""))))]
+                    (filter #(re-find #"(?i)\[trash\].*:" (:text % ""))))
+          :when (not-empty (core/card-def card))]
     (is (core/has-trash-ability? card) (str (:title card) " needs either :cost [:trash] or :trash-icon true"))))
 
 (deftest label
