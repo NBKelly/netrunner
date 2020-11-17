@@ -749,6 +749,25 @@
    :events [{:event :run-ends
              :effect (effect (reset-variable-subs card 0 nil))}]})
 
+(defcard "Brân 1.0"
+  {:subroutines [{:async true
+                  :label "Install an ice from HQ or Archives"
+                  :prompt "Select an ice to install from Archives or HQ"
+                  :show-discard true
+                  :choices {:card #(and (ice? %)
+                                        (or (in-hand? %)
+                                            (in-discard? %)))}
+                  :msg (msg (corp-install-msg target))
+                  :effect (req (wait-for (corp-install state :corp target (zone->name (second (get-zone card))) {:ignore-install-cost true
+                                                                                                                 :index (:index card)})
+                                         (when (:run @state)
+                                           (swap! state update-in [:run :position] inc)
+                                           (set-current-ice state))
+                                         (effect-completed state side eid)))}
+                 end-the-run
+                 end-the-run]
+   :runner-abilities [(bioroid-break 1 1)]})
+
 (defcard "Builder"
   (let [sub {:label "Place 1 advancement token on an ICE that can be advanced protecting this server"
              :msg (msg "place 1 advancement token on " (card-str state target))

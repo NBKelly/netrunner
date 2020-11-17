@@ -611,6 +611,11 @@
    :async true
    :effect (effect (lose-credits :runner eid 4))})
 
+(defcard "Efflorescence"
+  {:async true
+   :msg (msg "do " (:scored-agenda corp-reg 0) " net damage")
+   :effect (effect (damage eid :net (:scored-agenda corp-reg 0) {:card card}))})
+
 (defcard "Election Day"
   {:req (req (->> (get-in @state [:corp :hand])
                   (filter #(not (same-card? % card)))
@@ -1966,6 +1971,19 @@
            :successful {:msg "give the Runner 1 tag"
                         :async true
                         :effect (effect (gain-tags :corp eid 1))}}})
+
+(defcard "Seamless Launch"
+  {:async true
+   :prompt "Select target"
+   :req (req (some #(and (corp? %)
+                         (installed? %)
+                         (not (= :this-turn (installed? %))))
+                   (all-installed state :corp)))
+   :choices {:card #(and (corp? %)
+                         (installed? %)
+                         (not (= :this-turn (installed? %))))}
+   :msg (msg "place 2 advancement tokens on " (card-str state target))
+   :effect (effect (add-prop eid target :advance-counter 2 {:placed true}))})
 
 (defcard "Secure and Protect"
   {:interactive (req true)

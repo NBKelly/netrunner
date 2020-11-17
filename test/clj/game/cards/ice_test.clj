@@ -584,6 +584,27 @@
         (click-prompt state :runner "No action")
         (is (zero? (count (:subroutines (refresh bs)))))))))
 
+(deftest bran-1-0
+  ;; Bran 1.0
+  ;; Brân 1.0
+  (do-game
+    (new-game {:corp {:hand ["Brân 1.0" "Mausolus"]}})
+    (play-from-hand state :corp "Brân 1.0" "HQ")
+    (take-credits state :corp)
+    (run-on state :hq)
+    (let [bran (get-ice state :hq 0)]
+      (rez state :corp bran)
+      (run-continue state)
+      (card-subroutine state :corp bran 0)
+      (changes-val-macro
+        0 (:credit (get-corp))
+        "Mausolus installed for free"
+        (click-card state :corp "Mausolus"))
+      (is (= 2 (count (get-in @state [:corp :servers :hq :ices]))) "2 ICE protecting HQ")
+      (is (= 2 (:position (get-run))) "Runner position moved along Bran position")
+      (card-subroutine state :corp (get-ice state :hq 1) 1)
+      (is (not (:run @state)) "Run ended"))))
+
 (deftest bullfrog
   ;; Bullfrog - Win psi to move to outermost position of another server and continue run there
   (do-game
