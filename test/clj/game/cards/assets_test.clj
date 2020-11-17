@@ -683,6 +683,24 @@
       (is (= 1 (count-tags state)) "Runner took 1 tag"))
       (is (empty? (:prompt (get-runner))) "City Surveillance only fired once")))
 
+(deftest clearing-house
+  ;; Clearing House
+  (do-game
+    (new-game {:corp {:hand ["Clearing House"]}
+               :runner {:hand [(qty "Sure Gamble" 5)]}})
+    (core/gain state :corp :click 5)
+    (play-from-hand state :corp "Clearing House" "New remote")
+    (advance state (get-content state :remote1 0) 4)
+    (take-credits state :corp)
+    (take-credits state :runner)
+    (is (:corp-phase-12 @state) "Corp has opportunity to use Clearing House")
+    (rez state :corp (get-content state :remote1 0))
+    (card-ability state :corp (get-content state :remote1 0) 0)
+    (changes-val-macro
+      -4 (count (:hand (get-runner)))
+      "Runner received 4 damage"
+      (click-prompt state :corp "Yes"))))
+
 (deftest clone-suffrage-movement
   ;; Clone Suffrage Movement
   (do-game
@@ -3146,6 +3164,28 @@
         (is (nil? (refresh ngo)))
         (is (nil? (:run @state)))))))
 
+(deftest nico-campaign
+  ;; Nico Campaign
+  (testing "Basic test"
+    (do-game
+      (new-game {:corp {:deck [(qty "Hedge Fund" 10)]
+                        :hand ["Nico Campaign"]}})
+      (play-from-hand state :corp "Nico Campaign" "New remote")
+      (let [nico (get-content state :remote1 0)]
+        (rez state :corp nico)
+        (is (= 9 (get-counters (refresh nico) :credit)) "Nico Campaign should start with 9 credits")
+        (take-credits state :corp)
+        (take-credits state :runner)
+        (is (= 6 (get-counters (refresh nico) :credit)) "Nico Campaign should lose 3 credits start of turn")
+        (take-credits state :corp)
+        (take-credits state :runner)
+        (is (= 3 (get-counters (refresh nico) :credit)) "Nico Campaign should lose 3 credits start of turn")
+        (take-credits state :corp)
+        (changes-val-macro
+          2 (count (:hand (get-corp)))
+          "Drew 2 cards -> mandatory + nico trash effect"
+          (take-credits state :runner))))))
+
 (deftest open-forum
   ;; Open Forum
   (do-game
@@ -3527,6 +3567,20 @@
       (is (= (dec credits) (:credit (get-corp))) "Corp should pay 1 for Project Junebug ability")
       (is (= 4 (-> (get-runner) :discard count)) "Project Junebug should do 4 net damage"))))
 
+(deftest project-kabuki
+  ;; Project Kabuki
+  (do-game
+   (new-game {:corp {:deck ["Project Kabuki"]}
+              :runner {:deck [(qty "Sure Gamble" 100)]}})
+   (play-from-hand state :corp "Project Kabuki" "New remote")
+   (advance state (get-content state :remote1 0) 2)
+   (take-credits state :corp)
+   (run-empty-server state "Server 1")
+   (let [credits (:credit (get-corp))]
+     (click-prompt state :corp "Yes")
+     (is (= 4 (-> (get-runner) :discard count)) "Project Kabuki should do 4 net damage"))))
+
+
 (deftest psychic-field
   ;; Psychic Field - Do 1 net damage for every card in Runner's hand when accessed/exposed
   (testing "Basic test"
@@ -3794,6 +3848,19 @@
       (damage state :corp :net 1)
       (is (= 2 (count (:discard (get-runner)))))
       (is (= 1 (get-counters (refresh rc) :advancement)) "Reconstruction Contract doesn't get advancement token for net damage"))))
+
+(deftest regolith-mining-licence
+  ;; Regolith Mining Licence
+  (do-game
+   (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                     :hand ["Regolith Mining Licence"]}})
+   (play-from-hand state :corp "Regolith Mining Licence" "New remote")
+   (let [rml (get-content state :remote1 0)]
+     (rez state :corp (refresh rml))
+     (changes-val-macro
+      3 (:credit (get-corp))
+      "Corp gains 3 credits"
+      (card-ability state :corp rml 0)))))
 
 (deftest reversed-accounts
   ;; Reversed Accounts - Trash to make Runner lose 4 credits per advancement
@@ -4291,6 +4358,46 @@
       (is (= 1 (get-counters (get-content state :remote1 0) :advancement)) "Agenda advanced once from Space Camp")
       (is (= 2 (count-tags state)) "Runner has 2 tags")
       (is (not (:run @state)) "Run completed"))))
+
+(deftest spin-doctor
+  ;; Spin Doctor - Draw 2 cards
+  (testing "Basic test"
+    (do-game
+      (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                        :hand ["Spin Doctor"]
+                        :discard ["Ice Wall" "Enigma"]}})
+      (play-from-hand state :corp "Spin Doctor" "New remote")
+      (let [spin (get-content state :remote1 0)]
+        (is (zero? (count (:hand (get-corp)))))
+        (rez state :corp spin)
+        (is (= 2 (count (:hand (get-corp)))) "Drew 2 cards")
+        (card-ability state :corp spin 0)
+        (click-card state :corp "Ice Wall")
+        (click-card state :corp "Enigma")
+        (is (find-card "Spin Doctor" (:rfg (get-corp))) "Spin Doctor is rfg'd")
+        (is (find-card "Ice Wall" (:deck (get-corp))) "Ice Wall is shuffled back into the deck")
+        (is (find-card "Enigma" (:deck (get-corp))) "Enigma is shuffled back into the deck"))))
+  (testing "Mid-run usage does not allow successful run effects to trigger"
+    (do-game
+      (new-game {:corp {:deck ["Spin Doctor"]
+                        :discard ["Enigma" "Ice Wall"]}
+                 :runner {:deck ["Desperado"]}})
+      (play-from-hand state :corp "Spin Doctor" "New remote")
+      (let [spin (get-content state :remote1 0)]
+        (rez state :corp spin)
+        (take-credits state :corp)
+        (play-from-hand state :runner "Desperado")
+        (run-on state :remote1)
+        (changes-val-macro
+          0 (:credit (get-runner))
+          "A server vanishing by mid-run does not trigger Desperado even if players proceed to access"
+          (card-ability state :corp spin 0)
+          (click-card state :corp "Enigma")
+          (click-prompt state :corp "Done"))
+        (is (find-card "Spin Doctor" (:rfg (get-corp))) "Spin Doctor is rfg'd")
+        (is (find-card "Enigma" (:deck (get-corp))) "Enigma is shuffled back into the deck")
+        (is (nil? (refresh spin)))
+        (is (nil? (:run @state)))))))
 
 (deftest storgotic-resonator
   ;; Storgotic Resonator - Gains power counters on Corp trashing card with same faction as runner ID.

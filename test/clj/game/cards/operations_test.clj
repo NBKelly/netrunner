@@ -3583,16 +3583,16 @@
   ;; Sprint
   (testing "Basic Testing"
     (do-game
-      (new-game {:corp {:deck [(qty "Hedge Fund" 3) "NGO Front"]
+      (new-game {:corp {:deck ["Hedge Fund" "Restructure" "NGO Front"]
                         :hand ["Sprint" (qty "IPO" 3) "Ice Wall"]}})
       (play-from-hand state :corp "Sprint")
-      (is (= 1 (count (:deck (get-corp)))) "Corp should draw 3 cards")
+      (is (zero? (count (:deck (get-corp)))) "Corp should draw 3 cards")
       (is (= 7 (count (:hand (get-corp)))) "Corp should draw 3 cards")
       (is (last-log-contains? state "Corp uses Sprint to draw 3 cards"))
       (click-card state :corp "Ice Wall")
       (click-card state :corp "NGO Front")
-      (is (= 5 (count (:hand (get-corp)))) "2 cards shuffled into deck")
-      (is (= 3 (count (:deck (get-corp)))) "2 cards shuffled into deck"))))
+      (is (= 2 (count (:deck (get-corp)))) "2 cards shuffled into deck")
+      (is (= 5 (count (:hand (get-corp)))) "2 cards shuffled into deck"))))
 
 (deftest standard-procedure
   ;; Standard Procedure
