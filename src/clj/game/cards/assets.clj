@@ -1461,19 +1461,21 @@
 
 (defcard "Nico Campaign"
   (let [ability {:async true
+                 :interactive (req true)
                  :once :per-turn
                  :label "Take 3 [Credits] (start of turn)"
-                 :msg "gain 3 [Credits]"
+                 :msg (msg "gain " (min 3 (get-counters card :credit)) " [Credits]")
                  :req (req (:corp-phase-12 @state))
-                 :effect (req (add-counter state side card :credit -3)
-                              (wait-for (gain-credits state :corp 3)
-                                        (if (not (pos? (get-counters (get-card state card) :credit)))
-                                          (wait-for (trash state :corp card {:unpreventable true})
-                                                    (system-msg state :corp (str "trashes Nico Campaign"
-                                                                                 (when (not (empty? (:deck corp)))
-                                                                                   " and draws 1 card")))
-                                                    (draw state :corp eid 1 nil))
-                                          (effect-completed state side eid))))}]
+                 :effect (req (let [credits (min 3 (get-counters card :credit))]
+                                (add-counter state side card :credit (- credits))
+                                (wait-for (gain-credits state :corp credits)
+                                          (if (not (pos? (get-counters (get-card state card) :credit)))
+                                            (wait-for (trash state :corp card {:unpreventable true})
+                                                      (system-msg state :corp (str "trashes Nico Campaign"
+                                                                                   (when (not (empty? (:deck corp)))
+                                                                                     " and draws 1 card")))
+                                                      (draw state :corp eid 1 nil))
+                                            (effect-completed state side eid)))))}]
     {:data {:counter {:credit 9}}
      :derezzed-events [corp-rez-toast]
      :abilities [ability]
@@ -1673,9 +1675,8 @@
                      :effect (effect (damage eid :net (* 2 (get-counters (get-card state card) :advancement))
                                              {:card card}))}))
 
-(defcard "Project Kabuki" 
-  (advance-ambush 0 {:req (req true)
-                     :msg (msg "do " (+ 2 (get-counters (get-card state card) :advancement)) " net damage")
+(defcard "Project Kabuki"
+  (advance-ambush 0 {:msg (msg "do " (+ 2 (get-counters (get-card state card) :advancement)) " net damage")
                      :async true
                      :effect (effect (damage eid :net (+ 2 (get-counters (get-card state card) :advancement))
                                              {:card card}))}))
@@ -1841,19 +1842,11 @@
    :abilities [{:label "Take 3 [Credits] from this asset"
                 :cost [:click 1]
                 :once :per-turn
-                :msg (msg "gain 3 [Credits]")
+                :msg (msg "gain " (min 3 (get-counters card :credit)) " [Credits]")
                 :async true
                 :effect (req (let [credits (min 3 (get-counters card :credit))]
-                               (add-counter state side card :credit (- credits))
-                               (gain-credits state :runner eid credits)))}]})
-
-  (defcard "Reversed Accounts"
-    {:advanceable :always
-     :abilities [{:cost [:click 1 :trash]
-                  :label "Force the Runner to lose 4 [Credits] per advancement"
-                  :msg (msg "force the Runner to lose " (min (* 4 (get-counters card :advancement)) (:credit runner)) " [Credits]")
-                  :async true
-                  :effect (effect (lose-credits :runner eid (* 4 (get-counters card :advancement))))}]})
+                               (wait-for (gain-credits state :corp (make-eid state eid) credits)
+                                         (add-counter state side eid card :credit (- credits) nil))))}]})
 
 (defcard "Rex Campaign"
   (let [payout-ab {:prompt "Remove 1 bad publicity or gain 5 [Credits]?"
@@ -2115,8 +2108,8 @@
 
 (defcard "Spin Doctor"
   {:async true
-   :effect (req (draw state side eid 2 nil))
-   :msg (msg "draw 2 cards")
+   :msg "draw 2 cards"
+   :effect (effect (draw eid 2 nil))
    :abilities [{:label "Shuffle up to 2 cards from Archives into R&D"
                 :cost [:remove-from-game]
                 :async true
