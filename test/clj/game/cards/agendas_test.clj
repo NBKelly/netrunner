@@ -68,14 +68,16 @@
   ;; Accelerated Pipeline
   (testing "Basic test"
     (do-game
-     (new-game {:corp {:hand [(qty "Accelerated Pipeline" 2)]}
-                :runner {:hand [(qty "Sure Gamble" 10)]}})
-     (changes-val-macro 1 (count-tags state)
-                        "Runner takes 1 tag from Accelerated Pipeline"
-                        (play-and-score state "Accelerated Pipeline"))
-     (changes-val-macro -4 (count (:hand (get-runner)))
-                        "Runner takes 1 tag from Accelerated Pipeline"
-                        (play-and-score state "Accelerated Pipeline")))))
+      (new-game {:corp {:hand [(qty "Accelerated Pipeline" 2)]}
+                 :runner {:hand [(qty "Sure Gamble" 10)]}})
+      (changes-val-macro
+        1 (count-tags state)
+        "Runner takes 1 tag from Accelerated Pipeline"
+        (play-and-score state "Accelerated Pipeline"))
+      (changes-val-macro
+        -4 (count (:hand (get-runner)))
+        "Runner takes 1 tag from Accelerated Pipeline"
+        (play-and-score state "Accelerated Pipeline")))))
 
 (deftest advanced-concept-hopper
   ;; Advanced Concept Hopper
@@ -598,7 +600,7 @@
      (take-credits state :runner)
      (play-and-score state "Caelus Observatory")
      (click-card state :corp "Armitage Codebusting")
-     (is (= 1 (count (:discard (get-runner)))) "Armitage Codebusting is trashed"))))
+     (is (find-card "Armitage Codebusting" (:discard (get-runner))) "Armitage Codebusting is trashed"))))
 
 (deftest cfc-excavation-contract
   ;; CFC Excavation Contract
@@ -1690,22 +1692,20 @@
   ;; Kōngquán
   ;; Kongquan
   (do-game
-   (new-game {:corp {:hand ["Kōngquán" "Hedge Fund" "IPO" "Afshar"]
-                     :discard ["Ice Wall" "Fire Wall" "Hostile Takeover" "Prisec"]}})
-   (play-from-hand state :corp "Kōngquán" "New remote")
-   (core/add-prop state :corp (get-content state :remote1 0) :advance-counter 3)
-   (core/score state :corp {:card (get-content state :remote1 0)})
-   (click-card state :corp (find-card "Hedge Fund" (:hand (get-corp))))
-   (click-card state :corp (find-card "IPO" (:hand (get-corp))))
-   (is (= 4 (count (:discard (get-corp)))))
-   (click-prompt state :corp "Done")
-   (is (= 6 (count (:discard (get-corp)))) "Corp trashes two cards from HQ")
-   (click-card state :corp "Ice Wall")
-   (click-card state :corp "Fire Wall")
-   (click-card state :corp "Prisec")
-   (is (= ["Fire Wall" "Ice Wall" "Prisec"]
-          (->> (get-corp) :deck (map :title) sort))
-       "All chosen cards should be shuffled back into R&D")))
+    (new-game {:corp {:hand ["Kōngquán" "Hedge Fund" "IPO" "Afshar"]
+                      :discard ["Ice Wall" "Fire Wall" "Hostile Takeover" "Prisec"]}})
+    (play-and-score state "Kōngquán" )
+    (click-card state :corp (find-card "Hedge Fund" (:hand (get-corp))))
+    (click-card state :corp (find-card "IPO" (:hand (get-corp))))
+    (is (= 4 (count (:discard (get-corp)))))
+    (click-prompt state :corp "Done")
+    (is (= 6 (count (:discard (get-corp)))) "Corp trashes two cards from HQ")
+    (click-card state :corp "Ice Wall")
+    (click-card state :corp "Fire Wall")
+    (click-card state :corp "Prisec")
+    (is (find-card "Fire Wall" (:deck (get-corp))))
+    (is (find-card "Ice Wall" (:deck (get-corp))))
+    (is (find-card "Prisec" (:deck (get-corp))))))
 
 (deftest labyrinthine-servers
   ;; Labyrinthine Servers
@@ -1789,10 +1789,14 @@
   (do-game
    (new-game {:corp {:deck ["Luminal Transubstantiation" "Project Vitruvius"]}})
    (play-from-hand state :corp "Luminal Transubstantiation" "New remote")
-   (play-from-hand state :corp "Project Vitruvius" "New remote")
    (core/add-prop state :corp (get-content state :remote1 0) :advance-counter 3)
-   (core/score state :corp {:card (get-content state :remote1 0)})
+   (changes-val-macro
+     3 (:click (get-corp))
+     "Corp gains 3 clicks from Luminal Transubstantiation"
+     (core/score state :corp {:card (get-content state :remote1 0)}))
+   (is (find-card "Luminal Transubstantiation" (:scored (get-corp))))
    (is (= 1 (count (:scored (get-corp)))))
+   (play-from-hand state :corp "Project Vitruvius" "New remote")
    (core/add-prop state :corp (get-content state :remote2 0) :advance-counter 3)
    (core/score state :corp {:card (get-content state :remote2 0)})
    (is (= 1 (count (:scored (get-corp)))) "Cannot be scored because Luminal Transubstantiation")))
@@ -2172,11 +2176,11 @@
   ;; Offworld Office
   (testing "Basic test"
     (do-game
-     (new-game {:corp {:hand [(qty "Offworld Office" 2)]}})
-     (changes-val-macro 7 (:credit (get-corp))
-                        "Corp gains 7 tag from Offworld Office"
-                        (play-and-score state "Offworld Office")))))
-
+      (new-game {:corp {:hand [(qty "Offworld Office" 2)]}})
+      (changes-val-macro
+        7 (:credit (get-corp))
+        "Corp gains 7 tag from Offworld Office"
+        (play-and-score state "Offworld Office")))))
 
 (deftest paper-trail
   ;; Paper Trail
@@ -3301,12 +3305,17 @@
 (deftest superconducting-hub
   ;; Superconducting Hub
   (do-game
-   (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
-                     :hand ["Superconducting Hub"]}})
-   (changes-val-macro 1 (count (:hand (get-corp)))
-                      "Superconducting Hub draws 2 cards (and -1 because played from hand)"
-                      (play-and-score state "Superconducting Hub"))
-   (is (= 7 (hand-size :corp)))))
+    (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                      :hand ["Superconducting Hub"]
+                      :credits 10}})
+    (core/gain state :corp :click 10)
+    (play-from-hand state :corp "Superconducting Hub" "New remote")
+    (changes-val-macro
+      2 (count (:hand (get-corp)))
+      "Superconducting Hub draws 2 cards"
+      (score-agenda state :corp (get-content state :remote1 0))
+      (click-prompt state :corp "Yes"))
+    (is (= 7 (hand-size :corp)))))
 
 (deftest superior-cyberwalls
   ;; Superior Cyberwalls
@@ -3497,20 +3506,21 @@
   ;;Tomorrow's Headline
   (testing "Basic test - scored"
     (do-game
-     (new-game {:corp {:deck ["Tomorrow's Headline"]}})
-     (changes-val-macro 1 (count-tags state)
-                        "Runner takes 1 tag on Tomorrow's Headline score"
-                        (play-and-score state "Tomorrow's Headline"))))
+      (new-game {:corp {:deck ["Tomorrow's Headline"]}})
+      (changes-val-macro
+        1 (count-tags state)
+        "Runner takes 1 tag on Tomorrow's Headline score"
+        (play-and-score state "Tomorrow's Headline"))))
   (testing "Basic test - stolen"
     (do-game
-     (new-game {:corp {:deck ["Tomorrow's Headline"]}})
-     (play-from-hand state :corp "Tomorrow's Headline" "New remote")
-     (take-credits state :corp)
-     (run-empty-server state "Server 1")
-     (changes-val-macro 1 (count-tags state)
-                        "Runner takes 1 tag on Tomorrow's Headline steal"
-                        (click-prompt state :runner "Steal")))))
-
+      (new-game {:corp {:deck ["Tomorrow's Headline"]}})
+      (play-from-hand state :corp "Tomorrow's Headline" "New remote")
+      (take-credits state :corp)
+      (run-empty-server state "Server 1")
+      (changes-val-macro
+        1 (count-tags state)
+        "Runner takes 1 tag on Tomorrow's Headline steal"
+        (click-prompt state :runner "Steal")))))
 
 (deftest transport-monopoly
   ;; Transport Monopoly

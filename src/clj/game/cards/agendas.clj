@@ -386,11 +386,14 @@
 (defcard "Caelus Observatory"
   {:interactive (req true)
    :prompt "Select resource"
-   :req (req (some #(and (installed? %) (resource? %)) (all-active-installed state :runner)))
-   :choices {:card #(and (installed? %) (resource? %))}
+   :req (req (some #(and (installed? %)
+                         (resource? %))
+                   (all-active-installed state :runner)))
+   :choices {:card #(and (installed? %)
+                         (resource? %))}
    :msg (msg "trash " (card-str state target))
    :async true
-   :effect (req (trash state side eid target nil))})
+   :effect (effect (trash eid target nil))})
 
 (defcard "CFC Excavation Contract"
   {:async true
@@ -1053,7 +1056,7 @@
 (defcard "Offworld Office"
   {:async true
    :msg "gain 7 [Credits]"
-   :effect (req (gain-credits state :corp eid 7))})
+   :effect (effect (gain-credits :corp eid 7))})
 
 (defcard "Paper Trail"
   {:trace {:base 6
@@ -1473,18 +1476,14 @@
                        :value -1}]})
 
 (defcard "Send A Message"
-  {:interactive (req true)
-   :choices {:card #(and (ice? %)
-                         (not (rezzed? %))
-                         (installed? %))}
-   :async true
-   :effect (effect (rez target {:ignore-cost :all-costs}))
-   :stolen {:interactive (req true)
-            :async true
-            :choices {:card #(and (ice? %)
-                                  (not (rezzed? %))
-                                  (installed? %))}
-            :effect (effect (rez target {:ignore-cost :all-costs}))}})
+  (let [ability
+        {:interactive (req true)
+         :choices {:card #(and (ice? %)
+                               (not (rezzed? %))
+                               (installed? %))}
+         :async true
+         :effect (effect (rez target {:ignore-cost :all-costs}))}]
+    (assoc ability :stolen ability)))
 
 
 (defcard "Sensor Net Activation"
@@ -1594,9 +1593,11 @@
   {:constant-effects [{:type :hand-size
                        :req (req (= :corp side))
                        :value 2}]
-   :msg "draw 2 cards"
-   :async true
-   :effect (req (draw state :corp eid 2 nil))})
+   :optional
+   {:prompt "Draw 2 cards?"
+    :yes-ability {:msg "draw 2 cards"
+                  :async true
+                  :effect (effect (draw :corp eid 2 nil))}}})
 
 (defcard "Superior Cyberwalls"
   (ice-boost-agenda "Barrier"))
@@ -1680,13 +1681,12 @@
                             card nil))}]})
 
 (defcard "Tomorrow's Headline"
-  {:interactive (req true)
-   :msg "give Runner 1 tag"
-   :async true
-   :effect (req (gain-tags state :corp eid 1))
-   :stolen {:msg "give Runner 1 tag"
-            :async true
-            :effect (req (gain-tags state :corp eid 1))}})
+  (let [ability
+        {:interactive (req true)
+         :msg "give Runner 1 tag"
+         :async true
+         :effect (req (gain-tags state :corp eid 1))}]
+    (assoc ability :stolen ability)))
 
 (defcard "Transport Monopoly"
   {:silent (req true)
