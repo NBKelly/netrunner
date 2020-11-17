@@ -49,7 +49,7 @@
       game-lobby-updates (atom {})
       send-ready (atom true)]
 
-  (def lobby-only-keys [:messages :spectators :mute-spectators :password :spectatorhands])
+  (def lobby-only-keys [:messages :spectators :mute-spectators :spectatorhands])
 
   (defn game-public-view
     "Strips private server information from a game map, preparing to send the game to clients."
@@ -81,18 +81,21 @@
     [gameid targets func]
     (let [[old] (swap-vals! all-games update-in (concat [gameid] targets) func)
           old-key-diff (select-keys (get old gameid) [(first targets)])
-          key-diff (select-keys (game-for-id gameid) [(first targets)])]
-      
-      (if (seq (game-lobby-view gameid key-diff))
+          key-diff (select-keys (game-for-id gameid) [(first targets)])
+          lobby-updates (game-lobby-view gameid key-diff)
+          public-updates (game-public-view gameid key-diff)]
+
+      (when (seq lobby-updates)
         (swap! game-lobby-updates update-in [:update gameid]
           (fn [v]
-            (conj v (differ/diff (game-lobby-view gameid old-key-diff) (game-lobby-view gameid key-diff)))))
+            (conj v (differ/diff (game-lobby-view gameid old-key-diff) lobby-updates)))))
+      (when (seq public-updates)
         (swap! public-lobby-updates assoc-in (concat [:update gameid] [(first targets)]) ((first targets) (game-public-view gameid key-diff))))
       (send-lobby)))
 
   (defn refresh-lobby-assoc-in
     [gameid targets val]
-    (refresh-lobby-update-in gameid targets (fn [n] val)))
+    (refresh-lobby-update-in gameid targets (fn [_] val)))
 
   (defn refresh-lobby-dissoc
     [gameid]
@@ -109,32 +112,29 @@
   (defn reset-send-lobby
     []
     (let [[old] (reset-vals! send-ready true)]
-      (if-not old (send-lobby)))))
+      (when-not old (send-lobby)))))
 
 (defn player?
-  "True if the given client-id is a player in the given gameid"
-  [client-id gameid]
-  (when-let [game (game-for-id gameid)]
-    (some #(when (= client-id (:ws-id %)) %) (:players game))))
+  "True if the given client-id is a player in the given game"
+  [client-id game]
+  (some #(when (= client-id (:ws-id %)) %) (:players game)))
 
 (defn first-player?
-  "True if the given client-id is the first player in the given gameid"
-  [client-id gameid]
-  (when-let [game (game-for-id gameid)]
-    (= client-id (-> game :players first :ws-id))))
+  "True if the given client-id is the first player in the given game"
+  [client-id game]
+  (= client-id (-> game :players first :ws-id)))
 
 (defn spectator?
-  "True if the given client-id is a spectator in the given gameid"
-  [client-id gameid]
-  (when-let [game (game-for-id gameid)]
-    (not (some #(when (= client-id (:ws-id %)) %) (:players game))))) ; Faster to check players than to check spectators
+  "True if the given client-id is a spectator in the given game"
+  [client-id game]
+  (some #(when (= client-id (:ws-id %)) %) (:spectators game)))
 
 (defn player-or-spectator
-  "True if the given client-id is a player or spectator in the given gameid"
+  "True if the given client-id is a player or spectator in the given game"
   [client-id gameid]
   (when-let [game (game-for-id gameid)]
-    (or (player? client-id gameid)
-        (spectator? client-id gameid))))
+    (or (player? client-id game)
+        (spectator? client-id game))))
 
 (defn close-lobby
   "Closes the given game lobby, booting all players and updating stats."
@@ -170,10 +170,9 @@
   Deletes the game from the lobby if all players have left."
   [client-id gameid]
   (when-let [{:keys [players started state] :as game} (game-for-id gameid)]
-    (cond (player? client-id gameid)
+    (cond (player? client-id game)
           (swap! all-games update-in [gameid :players] #(remove-once (fn [p] (= client-id (:ws-id p))) %))
-
-          (spectator? client-id gameid)
+          (spectator? client-id game)
           (do 
             (refresh-lobby-update-in gameid [:spectator-count] dec)
             (refresh-lobby-update-in gameid [:spectators] #(remove-once (fn [p] (= client-id (:ws-id p))) %))))
@@ -376,7 +375,7 @@
                    (update-in d [:identity] #(@all-cards (:title %)))
                    (assoc d :status (calculate-deck-status d)))]
     (when (and (:identity deck)
-               (player? client-id gameid))
+               (player? client-id game))
       (refresh-lobby-assoc-in gameid [:players first-player :deck] deck))))
 
 (defn handle-rename-game
