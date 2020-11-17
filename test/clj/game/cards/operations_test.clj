@@ -751,18 +751,18 @@
                         :hand [(qty "Crash Report" 3)]}})
       (play-from-hand state :corp "Crash Report")
       (is (= 5 (:credit (get-corp))))
-      (is (= ["Gain 3 [Credits]" "Draw 3 Cards"] (prompt-buttons :corp)))
+      (is (= ["Gain 3 [Credits]" "Draw 3 cards"] (prompt-buttons :corp)))
       (click-prompt state :corp "Gain 3 [Credits]")
       (is (= 8 (:credit (get-corp))))
       (play-from-hand state :corp "Crash Report")
       (is (= 1 (count (:hand (get-corp)))) "1 card left in hq")
-      (is (= ["Gain 3 [Credits]" "Draw 3 Cards"] (prompt-buttons :corp)))
-      (click-prompt state :corp "Draw 3 Cards")
+      (is (= ["Gain 3 [Credits]" "Draw 3 cards"] (prompt-buttons :corp)))
+      (click-prompt state :corp "Draw 3 cards")
       (is (= 4 (count (:hand (get-corp)))) "Corp should draw up to 4 cards")
       (gain-tags state :runner 1)
       (play-from-hand state :corp "Crash Report")
-      (is (= ["Gain 3 [Credits]" "Draw 3 Cards" "Gain 3 [Credits] and Draw 3 Cards"] (prompt-buttons :corp)))
-      (click-prompt state :corp "Gain 3 [Credits] and Draw 3 Cards")
+      (is (= ["Gain 3 [Credits]" "Draw 3 cards" "Gain 3 [Credits] and draw 3 cards"] (prompt-buttons :corp)))
+      (click-prompt state :corp "Gain 3 [Credits] and draw 3 cards")
       (is (= 6 (count (:hand (get-corp)))) "Corp should draw up to 6 cards")
       (is (= 11 (:credit (get-corp)))))))
 
@@ -1071,20 +1071,6 @@
     (take-credits state :runner)
     (play-from-hand state :corp "Economic Warfare")
     (is (= 3 (:credit (get-runner))) "Runner has 3 credits")))
-
-(deftest efflorescence
-  ;; Efflorescence
-  (testing "Basic Test"
-    (do-game
-      (new-game {:corp {:hand ["Braintrust" "Efflorescence"]
-                        :credits 20}
-                 :runner {:hand [(qty "Sure Gamble" 2)]}})
-      (core/gain state :corp :click 2)
-      (core/gain state :corp :credit 20)
-      (play-and-score state "Braintrust")
-      (is (= 0 (count (:discard (get-runner)))) "Nothing in heap")
-      (play-from-hand state :corp "Efflorescence")
-      (is (= 2 (count (:discard (get-runner)))) "Runner took 2 net"))))
 
 (deftest election-day
   (do-game
@@ -1706,11 +1692,11 @@
   ;; Government Subsidy
   (testing "Basic Test"
     (do-game
-      (new-game {:corp {:hand ["Hedge Fund" "Government Subsidy"]}})
-      (play-from-hand state :corp "Hedge Fund")
-      (click-credit state :corp)
-      (play-from-hand state :corp "Government Subsidy"))))
-
+      (new-game {:corp {:hand ["Hedge Fund" "Government Subsidy"]
+                        :credits 100}})
+      (changes-val-macro
+        5 (:credit (get-corp)) "Corp gains 15 credits"
+        (play-from-hand state :corp "Government Subsidy")))))
 
 (deftest green-level-clearance
   ;; Green Level Clearance
@@ -2526,12 +2512,13 @@
     (take-credits state :runner)
     (play-from-hand state :corp "OCEAN Source")
     (is (= 8 (:credit (get-runner))))
-    (click-prompt state :runner "Pay 8[Credits]")
-    (is (= 0 (:credit (get-runner))))
+    (is (= ["Take 1 tag" "Pay 8 [Credits]"] (prompt-buttons :runner)))
+    (click-prompt state :runner "Pay 8 [Credits]")
+    (is (zero? (:credit (get-runner))))
     (is (not (is-tagged? state)))
     (play-from-hand state :corp "OCEAN Source")
     (click-prompt state :runner "Take 1 tag")
-    (is(is-tagged? state)))))
+    (is (is-tagged? state)))))
 
 (deftest observe-and-destroy
   ;; Observe and Destroy
@@ -3599,8 +3586,9 @@
       (new-game {:corp {:deck [(qty "Hedge Fund" 3) "NGO Front"]
                         :hand ["Sprint" (qty "IPO" 3) "Ice Wall"]}})
       (play-from-hand state :corp "Sprint")
-      (is (= 1 (count (:deck (get-corp)))) "corp should draw 3 cards")
-      (is (= 7 (count (:hand (get-corp)))) "corp should draw 3 cards")
+      (is (= 1 (count (:deck (get-corp)))) "Corp should draw 3 cards")
+      (is (= 7 (count (:hand (get-corp)))) "Corp should draw 3 cards")
+      (is (last-log-contains? state "Corp uses Sprint to draw 3 cards"))
       (click-card state :corp "Ice Wall")
       (click-card state :corp "NGO Front")
       (is (= 5 (count (:hand (get-corp)))) "2 cards shuffled into deck")

@@ -431,17 +431,20 @@
 (defcard "Crash Report"
   {:async true
    :prompt "Choose one"
-   :choices (req (if tagged
-                   ["Gain 3 [Credits]" "Draw 3 Cards" "Gain 3 [Credits] and Draw 3 Cards"]
-                   ["Gain 3 [Credits]" "Draw 3 Cards"]))
+   :choices (req ["Gain 3 [Credits]" "Draw 3 cards"
+                  (when tagged
+                    "Gain 3 [Credits] and draw 3 cards")])
    :msg (msg (string/lower-case target))
-   :effect (req
-             (case target
-               "Gain 3 [Credits]" (gain-credits state :corp eid 3)
-               "Draw 3 Cards" (draw state :corp 3 nil)
-               "Gain 3 [Credits] and Draw 3 Cards" (wait-for
-                                                     (gain-credits state :corp 3)
-                                                     (draw state :corp 3 nil))))})
+   :effect (req (case target
+                  "Gain 3 [Credits]"
+                  (gain-credits state :corp eid 3)
+                  "Draw 3 cards"
+                  (draw state :corp eid 3 nil)
+                  "Gain 3 [Credits] and draw 3 cards"
+                  (wait-for (gain-credits state :corp 3)
+                            (draw state :corp eid 3 nil))
+                  ; else
+                  (effect-completed state side eid)))})
 
 (defcard "Cyberdex Trial"
   {:msg "purge virus counters"
@@ -607,12 +610,6 @@
    :msg "make the runner lose 4 [Credits]"
    :async true
    :effect (effect (lose-credits :runner eid 4))})
-
-(defcard "Efflorescence"
-  {:req (req (:scored-agenda corp-reg))
-   :msg "does 1 net damage for each agenda point scored this turn"
-   ; TODO :effect
-   })
 
 (defcard "Election Day"
   {:req (req (->> (get-in @state [:corp :hand])
@@ -942,15 +939,18 @@
 
 (defcard "Hansei"
   (let [trash-from-hq {:async true
+                       :req (req (pos? (count (:hand corp))))
                        :prompt "Select a card in HQ to trash"
                        :choices {:max 1
+                                 :all true
                                  :card #(and (corp? %)
-                                          (in-hand? %))}
-                       :msg "gain 10 [Credits] and trash card from HQ"
+                                             (in-hand? %))}
+                       :msg "trash a card from HQ"
                        :effect (effect (trash-cards eid targets nil))}]
     {:async true
+     :msg "gain 10 [Credits]"
      :effect (req (wait-for (gain-credits state :corp 10)
-                    (continue-ability state side trash-from-hq card nil)))}))
+                            (continue-ability state side trash-from-hq card nil)))}))
 
 
 (defcard "Hard-Hitting News"
@@ -1438,11 +1438,13 @@
    :async true
    :msg (msg "force the Runner to " (decapitalize target))
    :prompt "Pick one"
-   :choices ["Pay 8[Credits]" "Take 1 tag"]
-   :effect (req (if (= target "Pay 8[Credits]")
+   :choices (req ["Take 1 tag"
+                  (when (can-pay? state :runner (assoc eid :source card :source-type :ability) card (:title card) :credit 8)
+                    "Pay 8 [Credits]")])
+   :effect (req (if (= target "Pay 8 [Credits]")
                   (wait-for (pay state :runner card :credit 8)
-                    (system-msg state :runner (:msg async-result))
-                    (effect-completed state side eid))
+                            (system-msg state :runner (:msg async-result))
+                            (effect-completed state side eid))
                   (gain-tags state :corp eid 1 nil)))})
 
 (defcard "Oversight AI"
@@ -1803,14 +1805,15 @@
 (defcard "Retribution"
   {:async true
    :req (req (and tagged
-               (not-empty (all-installed state :runner))))
-   :prompt (msg "Choose a program or hardware to trash.")
-   :choices {:req (req (and (runner? target)
-                         (installed? target)
-                         (not (facedown? target))
-                         (or (program? target)
-                           (hardware? target))))}
-   :msg (msg "trash " (:title target))
+                  (->> (all-installed state :runner)
+                       (filter #(or (hardware? %)
+                                    (program? %)))
+                       not-empty)))
+   :prompt "Choose a program or hardware to trash"
+   :choices {:req (req (and (installed? target)
+                            (or (program? target)
+                                (hardware? target))))}
+   :msg (msg "trash " (card-str state target))
    :effect (effect (trash eid target nil))})
 
 (defcard "Reuse"
@@ -2104,22 +2107,21 @@
                 (draw state side eid (count targets) nil))})
 
 (defcard "Sprint"
-  (let [pick-two-and-shuffle {:async true
-                              :prompt "Select 2 cards in HQ to shuffle"
-                              :choices {:max 2
-                                        :card #(and (corp? %)
-                                                 (in-hand? %))}
-                              :msg "shuffles 2 cards from HQ into R&D"
-                              :effect (req (doseq [c targets]
-                                             (move state side c :deck))
-                                        (shuffle! state side :deck))}]
-    {:async true
-     :effect (req (wait-for
-                    (draw state side 3 nil)
-                    (continue-ability
-                      state side
-                      pick-two-and-shuffle
-                      card nil)))}))
+  {:async true
+   :effect (req (wait-for (draw state side 3 nil)
+                          (system-msg state side (str "uses Sprint to draw "
+                                                      (quantify (count async-result) "card")))
+                          (continue-ability
+                            state side
+                            {:prompt "Select 2 cards in HQ to shuffle"
+                             :choices {:max 2
+                                       :card #(and (corp? %)
+                                                   (in-hand? %))}
+                             :msg "shuffles 2 cards from HQ into R&D"
+                             :effect (req (doseq [c targets]
+                                            (move state side c :deck))
+                                          (shuffle! state side :deck))}
+                            card nil)))})
 
 (defcard "Standard Procedure"
   {:req (req (last-turn? state :runner :successful-run))
