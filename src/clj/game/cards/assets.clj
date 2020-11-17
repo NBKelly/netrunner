@@ -1848,6 +1848,14 @@
                                (wait-for (gain-credits state :corp (make-eid state eid) credits)
                                          (add-counter state side eid card :credit (- credits) nil))))}]})
 
+(defcard "Reversed Accounts"
+  {:advanceable :always
+   :abilities [{:cost [:click 1 :trash]
+                :label "Force the Runner to lose 4 [Credits] per advancement"
+                :msg (msg "force the Runner to lose " (min (* 4 (get-counters card :advancement)) (:credit runner)) " [Credits]")
+                :async true
+                :effect (effect (lose-credits :runner eid (* 4 (get-counters card :advancement))))}]})
+
 (defcard "Rex Campaign"
   (let [payout-ab {:prompt "Remove 1 bad publicity or gain 5 [Credits]?"
                    :choices ["Remove 1 bad publicity" "Gain 5 [Credits]"]
