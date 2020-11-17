@@ -83,6 +83,13 @@
                        (suffer titles choices))
                      card nil)))}}}))
 
+(defcard "Accelerated Pipeline"
+  {:async true
+   :msg (msg (if (is-tagged? state) "do 4 meat damage" "give the Runner 1 tag"))
+   :effect (req (if (is-tagged? state)
+                  (damage state :corp eid :meat 4 {:card card})
+                  (gain-tags state :corp eid 1)))})
+
 (defcard "Advanced Concept Hopper"
   {:events
    [{:event :run
@@ -375,6 +382,18 @@
                   :once :per-turn
                   :msg "do 2 meat damage"
                   :effect (effect (damage eid :meat 2 {:card card}))}]}))
+
+(defcard "Caelus Observatory"
+  {:interactive (req true)
+   :prompt "Select resource"
+   :req (req (some #(and (installed? %)
+                         (resource? %))
+                   (all-active-installed state :runner)))
+   :choices {:card #(and (installed? %)
+                         (resource? %))}
+   :msg (msg "trash " (card-str state target))
+   :async true
+   :effect (effect (trash eid target nil))})
 
 (defcard "CFC Excavation Contract"
   {:async true
@@ -850,6 +869,16 @@
      :msg (msg "place 2 advancement token on " (card-str state target))
      :effect (effect (add-prop :corp target :advance-counter 2 {:placed true}))}]})
 
+(defcard "Kōngquán"
+  {:prompt "Select any number of cards in HQ to trash"
+   :choices {:max (req (count (:hand corp)))
+             :card #(and (corp? %)
+                         (in-hand? %))}
+   :msg (msg "trash " (quantify (count targets) "card") " in HQ")
+   :async true
+   :effect (req (wait-for (trash-cards state side targets {:unpreventable true})
+                          (shuffle-into-rd-effect state side eid card 3)))})
+
 (defcard "Labyrinthine Servers"
   {:interactions {:prevent [{:type #{:jack-out}
                              :req (req (pos? (get-counters card :power)))}]}
@@ -870,6 +899,15 @@
    :msg (msg "install and rez " (:title target) ", ignoring all costs")
    :async true
    :effect (effect (corp-install eid target nil {:install-state :rezzed-no-cost}))})
+
+(defcard "Luminal Transubstantiation"
+  {:silent (req true)
+   :effect (req (gain state :corp :click 3)
+                (register-turn-flag!
+                 state side card :can-score
+                 (fn [state side card]
+                   ((constantly false)
+                    (toast state :corp "Cannot score cards this turn due to Luminal Transubstantiation." "warning")))))})
 
 (defcard "Mandatory Seed Replacement"
   (letfn [(msr [] {:prompt "Select two pieces of ICE to swap positions"
@@ -913,11 +951,10 @@
    :agendapoints-corp (req (if (zero? (get-counters card :agenda)) 2 3))})
 
 (defcard "Medical Breakthrough"
-  {:silent (req true)
-   :effect (effect (update-all-advancement-costs))
-   :stolen {:effect (effect (update-all-advancement-costs))}
-   :advancement-cost-bonus (req (- (count (filter #(= (:title %) "Medical Breakthrough")
-                                                  (concat (:scored corp) (:scored runner))))))})
+  {:flags {:has-events-when-stolen true}
+   :constant-effects [{:type :advancement-requirement
+                       :req (req (= (:title target) "Medical Breakthrough"))
+                       :value -1}]})
 
 (defcard "Megaprix Qualifier"
   {:silent (req true)
@@ -949,7 +986,7 @@
 
 (defcard "NAPD Contract"
   {:steal-cost-bonus (req [:credit 4])
-   :advancement-cost-bonus (req (count-bad-pub state))})
+   :advancement-requirement (req (count-bad-pub state))})
 
 (defcard "Net Quarantine"
   (let [nq {:async true
@@ -1015,6 +1052,11 @@
 
 (defcard "Obokata Protocol"
   {:steal-cost-bonus (req [:net 4])})
+
+(defcard "Offworld Office"
+  {:async true
+   :msg "gain 7 [Credits]"
+   :effect (effect (gain-credits :corp eid 7))})
 
 (defcard "Paper Trail"
   {:trace {:base 6
@@ -1163,12 +1205,12 @@
                :msg (msg "remove 1 agenda token from " (:title card))
                :effect (req (when (pos? (get-counters card :agenda))
                               (add-counter state side card :agenda -1))
-                            (when (= 0 (get-counters (get-card state card) :agenda))
-                              (let [points (get-agenda-points state :runner (assoc-in card [:counter :agenda] 0))]
+                            (update-all-agenda-points state side)
+                            (when (zero? (get-counters (get-card state card) :agenda))
+                              (let [points (get-agenda-points (get-card state card))]
                                 (system-msg state :runner
                                             (str "gains " (quantify points "agenda point")
                                                  " from " (:title card)))))
-                            (update-all-agenda-points state side)
                             (check-winner state side))}]
      :flags {:has-events-when-stolen true}}))
 
@@ -1433,6 +1475,17 @@
                        :req (req (= :runner side))
                        :value -1}]})
 
+(defcard "Send A Message"
+  (let [ability
+        {:interactive (req true)
+         :choices {:card #(and (ice? %)
+                               (not (rezzed? %))
+                               (installed? %))}
+         :async true
+         :effect (effect (rez target {:ignore-cost :all-costs}))}]
+    (assoc ability :stolen ability)))
+
+
 (defcard "Sensor Net Activation"
   {:effect (effect (add-counter card :agenda 1))
    :silent (req true)
@@ -1536,6 +1589,16 @@
      :effect (req (let [max-ops (count (filter (complement operation?) (:hand corp)))]
                     (continue-ability state side (sft 1 max-ops) card nil)))}))
 
+(defcard "Superconducting Hub"
+  {:constant-effects [{:type :hand-size
+                       :req (req (= :corp side))
+                       :value 2}]
+   :optional
+   {:prompt "Draw 2 cards?"
+    :yes-ability {:msg "draw 2 cards"
+                  :async true
+                  :effect (effect (draw :corp eid 2 nil))}}})
+
 (defcard "Superior Cyberwalls"
   (ice-boost-agenda "Barrier"))
 
@@ -1616,6 +1679,14 @@
                                                                        (effect-completed state side eid))))})
                                            card nil))})
                             card nil))}]})
+
+(defcard "Tomorrow's Headline"
+  (let [ability
+        {:interactive (req true)
+         :msg "give Runner 1 tag"
+         :async true
+         :effect (req (gain-tags state :corp eid 1))}]
+    (assoc ability :stolen ability)))
 
 (defcard "Transport Monopoly"
   {:silent (req true)

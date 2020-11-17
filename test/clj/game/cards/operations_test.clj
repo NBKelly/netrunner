@@ -743,6 +743,29 @@
     (is (= 5 (count (:hand (get-corp)))) "Corp should draw up to 5 cards")
     (is (= 1 (count (:discard (get-corp)))) "Corp should have 1 card in discard from playing")))
 
+(deftest crash-report
+  ;; Crash Report
+  (testing "Basic Test"
+    (do-game
+      (new-game {:corp {:deck [(qty "Hedge Fund" 20)]
+                        :hand [(qty "Crash Report" 3)]}})
+      (play-from-hand state :corp "Crash Report")
+      (is (= 5 (:credit (get-corp))))
+      (is (= ["Gain 3 [Credits]" "Draw 3 cards"] (prompt-buttons :corp)))
+      (click-prompt state :corp "Gain 3 [Credits]")
+      (is (= 8 (:credit (get-corp))))
+      (play-from-hand state :corp "Crash Report")
+      (is (= 1 (count (:hand (get-corp)))) "1 card left in hq")
+      (is (= ["Gain 3 [Credits]" "Draw 3 cards"] (prompt-buttons :corp)))
+      (click-prompt state :corp "Draw 3 cards")
+      (is (= 4 (count (:hand (get-corp)))) "Corp should draw up to 4 cards")
+      (gain-tags state :runner 1)
+      (play-from-hand state :corp "Crash Report")
+      (is (= ["Gain 3 [Credits]" "Draw 3 cards" "Gain 3 [Credits] and draw 3 cards"] (prompt-buttons :corp)))
+      (click-prompt state :corp "Gain 3 [Credits] and draw 3 cards")
+      (is (= 6 (count (:hand (get-corp)))) "Corp should draw up to 6 cards")
+      (is (= 11 (:credit (get-corp)))))))
+
 (deftest cyberdex-trial
   ;; Cyberdex Trial
   (do-game
@@ -1665,6 +1688,16 @@
         "All four chosen cards should be shuffled back into R&D")
     (is (= ["Genotyping"] (->> (get-corp) :rfg (map :title))) "Genotyping should be rfg'd")))
 
+(deftest government-subsidy
+  ;; Government Subsidy
+  (testing "Basic Test"
+    (do-game
+      (new-game {:corp {:hand ["Hedge Fund" "Government Subsidy"]
+                        :credits 100}})
+      (changes-val-macro
+        5 (:credit (get-corp)) "Corp gains 15 credits"
+        (play-from-hand state :corp "Government Subsidy")))))
+
 (deftest green-level-clearance
   ;; Green Level Clearance
   (do-game
@@ -1696,6 +1729,17 @@
           (do (is (empty? (:prompt (get-runner))) "Runner should have no more prompts as access ended")
               (is (= -1 (:agenda-point (get-runner))) "Runner should add Hangeki to their score area worth -1 agenda point")
               (is (zero? (-> (get-corp) :rfg count)) "Hangeki shouldn't be removed from the game")))))))
+
+(deftest hansei
+  ;; Hansei
+  (testing "Basic Test"
+    (do-game
+      (new-game {:corp {:hand ["Hansei" "IPO"]}})
+      (is (= 5 (:credit (get-corp))) "Starting with 5 credits")
+      (play-from-hand state :corp "Hansei")
+      (click-card state :corp "IPO")
+      (is (= 10 (:credit (get-corp))) "Now at 10 credits")
+      (is (= 2 (count (:discard (get-corp))))))))
 
 (deftest hard-hitting-news
   ;; Hard-Hitting News
@@ -2454,6 +2498,28 @@
       (click-prompt state :runner "No")
       (is (= (+ 2 clicks) (:click (get-corp))) "Corp should gain 2 clicks"))))
 
+(deftest ocean-source
+  ;; OCEAN Source
+  (testing "Basic Test"
+  (do-game
+    (new-game {:corp {:hand [(qty "OCEAN Source" 2)]}})
+    (play-from-hand state :corp "OCEAN Source")
+    (is (nil? (get-prompt state :corp)))
+    (is (not (is-tagged? state)))
+    (take-credits state :corp)
+    (run-empty-server state :hq)
+    (click-prompt state :runner "No action")
+    (take-credits state :runner)
+    (play-from-hand state :corp "OCEAN Source")
+    (is (= 8 (:credit (get-runner))))
+    (is (= ["Take 1 tag" "Pay 8 [Credits]"] (prompt-buttons :runner)))
+    (click-prompt state :runner "Pay 8 [Credits]")
+    (is (zero? (:credit (get-runner))))
+    (is (not (is-tagged? state)))
+    (play-from-hand state :corp "OCEAN Source")
+    (click-prompt state :runner "Take 1 tag")
+    (is (is-tagged? state)))))
+
 (deftest observe-and-destroy
   ;; Observe and Destroy
   (do-game
@@ -2901,6 +2967,24 @@
       (is (= "Marilyn Campaign" (:title (get-content state :remote1 0))) "Marilyn Campaign should be installed")
       (is (rezzed? (get-content state :remote1 0)) "Marilyn Campaign was rezzed")
       (is (= 2 (:credit (get-corp))) "Rezzed Marilyn Campaign 2 credit + 1 credit for Restore"))))
+
+(deftest retribution
+  ;; Retribution
+  (testing "Basic Test"
+    (do-game
+      (new-game {:corp {:hand [(qty "Retribution" 2)]}
+                 :runner {:hand ["Corroder" "Zer0" "Paparazzi"]
+                          :tags 1}})
+      (take-credits state :corp)
+      (play-from-hand state :runner "Corroder")
+      (play-from-hand state :runner "Zer0")
+      (take-credits state :runner)
+      (play-from-hand state :corp "Retribution")
+      (click-card state :corp "Corroder")
+      (is (find-card "Corroder" (:discard (get-runner))))
+      (play-from-hand state :corp "Retribution")
+      (click-card state :corp "Zer0")
+      (is (find-card "Zer0" (:discard (get-runner)))))))
 
 (deftest reuse
   ;; Reuse - Gain 2 credits for each card trashed from HQ
@@ -3485,7 +3569,7 @@
     (is (= 1 (-> (get-runner) :discard count)) "Scrubber should be in Runner's heap after losing Snatch and Grab trace")))
 
 (deftest special-report
-  ;; NGO Front
+  ;; Special Report
   (do-game
     (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
                       :hand ["Special Report" "Ice Wall" "IPO" "NGO Front"]}})
@@ -3494,6 +3578,21 @@
     (click-card state :corp "IPO")
     (click-card state :corp "NGO Front")
     (is (= 3 (count (:hand (get-corp)))) "corp should draw 3 cards")))
+
+(deftest sprint
+  ;; Sprint
+  (testing "Basic Testing"
+    (do-game
+      (new-game {:corp {:deck ["Hedge Fund" "Restructure" "NGO Front"]
+                        :hand ["Sprint" (qty "IPO" 3) "Ice Wall"]}})
+      (play-from-hand state :corp "Sprint")
+      (is (zero? (count (:deck (get-corp)))) "Corp should draw 3 cards")
+      (is (= 7 (count (:hand (get-corp)))) "Corp should draw 3 cards")
+      (is (last-log-contains? state "Corp uses Sprint to draw 3 cards"))
+      (click-card state :corp "Ice Wall")
+      (click-card state :corp "NGO Front")
+      (is (= 2 (count (:deck (get-corp)))) "2 cards shuffled into deck")
+      (is (= 5 (count (:hand (get-corp)))) "2 cards shuffled into deck"))))
 
 (deftest standard-procedure
   ;; Standard Procedure

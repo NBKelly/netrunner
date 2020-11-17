@@ -172,7 +172,6 @@
         (run-empty-server state "Server 2")
         (click-prompt state :runner "Steal")
         (is (zero? (count (get-content state :remote2))) "Agenda was stolen")
-        (click-prompt state :corp "Medical Breakthrough") ; simult. effect resolution
         (click-prompt state :corp "Yes")
         (click-prompt state :corp "0")
         (is (= 3 (:strength (prompt-map :runner))) "Trace base strength is 3 after stealing first Breakthrough")
@@ -184,7 +183,6 @@
           (is (= (inc grip) (-> (get-runner) :hand count)) "Analog Dreamers was added to hand"))
         (take-credits state :runner)
         (score-agenda state :corp breakthrough)
-        ;; (click-prompt state :corp "Medical Breakthrough") ; there is no simult. effect resolution on score for some reason
         (click-prompt state :corp "Yes") ; corp should get to trigger trace even when no runner cards are installed
         (click-prompt state :corp "0")
         (is (= 2 (:strength (prompt-map :runner))) "Trace base strength is 2 after scoring second Breakthrough"))))
@@ -238,7 +236,21 @@
       (click-prompt state :runner "0")
       (click-card state :corp "Gang Sign")
       (click-prompt state :runner "Done") ; Leela trigger, no Gang Sign prompt
-      (is (empty? (:prompt (get-runner))) "Runner doesn't get an access prompt"))))
+      (is (empty? (:prompt (get-runner))) "Runner doesn't get an access prompt")))
+  (testing "with SanSan City Grid #5344"
+    (do-game
+      (new-game {:corp {:deck ["Amani Senai" "Merger" "SanSan City Grid"]
+                        :credits 100}})
+      (core/gain state :corp :click 100)
+      (play-from-hand state :corp "Amani Senai" "New remote")
+      (rez state :corp (get-content state :remote1 0))
+      (play-from-hand state :corp "SanSan City Grid" "New remote")
+      (rez state :corp (get-content state :remote2 0))
+      (play-from-hand state :corp "Merger" "Server 2")
+      (is (= 2 (core/get-advancement-requirement (get-content state :remote2 1))))
+      (score-agenda state :corp (get-content state :remote2 1))
+      (click-prompt state :corp "Yes")
+      (is (= 3 (:base (prompt-map :corp))) "Merger's advancement requirement is back to 3"))))
 
 (deftest anson-rose
   ;; Anson Rose
@@ -670,6 +682,24 @@
       (is (zero? (:credit (get-runner))) "Runner paid no credits")
       (is (= 1 (count-tags state)) "Runner took 1 tag"))
       (is (empty? (:prompt (get-runner))) "City Surveillance only fired once")))
+
+(deftest clearing-house
+  ;; Clearing House
+  (do-game
+    (new-game {:corp {:hand ["Clearing House"]}
+               :runner {:hand [(qty "Sure Gamble" 5)]}})
+    (core/gain state :corp :click 5)
+    (play-from-hand state :corp "Clearing House" "New remote")
+    (advance state (get-content state :remote1 0) 4)
+    (take-credits state :corp)
+    (take-credits state :runner)
+    (is (:corp-phase-12 @state) "Corp has opportunity to use Clearing House")
+    (rez state :corp (get-content state :remote1 0))
+    (card-ability state :corp (get-content state :remote1 0) 0)
+    (changes-val-macro
+      -4 (count (:hand (get-runner)))
+      "Runner received 4 damage"
+      (click-prompt state :corp "Yes"))))
 
 (deftest clone-suffrage-movement
   ;; Clone Suffrage Movement
@@ -2629,7 +2659,23 @@
     (take-credits state :runner)
     (let [N (:credit (get-runner))]
       (take-credits state :corp)
-      (is (= (+ N 2) (:credit (get-runner)))))))
+      (is (= (+ N 2) (:credit (get-runner))))))
+  (testing "Malia and Miss Bones"
+    ;; Malia Z0L0K4 - Malia blanking Miss Bones still gives a prompt on option to use the credits #5350
+    (do-game
+      (new-game {:corp {:deck [(qty "Malia Z0L0K4" 2)]}
+                 :runner {:deck ["Miss Bones"]}})
+      (play-from-hand state :corp "Malia Z0L0K4" "New remote")
+      (take-credits state :corp)
+      (play-from-hand state :runner "Miss Bones")
+      (let [malia1 (get-content state :remote1 0)
+            missbones (get-resource state 0)]
+        (run-empty-server state :remote1)
+        (rez state :corp malia1)
+        (click-card state :corp (get-resource state 0))
+        (click-prompt state :runner "Pay 3 [Credits] to trash")
+        (is (empty? (:prompt (get-runner))) "Select credit source prompt did not come up")
+        (is (nil? (refresh malia1)) "Malia has been trashed")))))
 
 (deftest marilyn-campaign
   ;; Marilyn Campaign
@@ -3118,6 +3164,28 @@
         (is (nil? (refresh ngo)))
         (is (nil? (:run @state)))))))
 
+(deftest nico-campaign
+  ;; Nico Campaign
+  (testing "Basic test"
+    (do-game
+      (new-game {:corp {:deck [(qty "Hedge Fund" 10)]
+                        :hand ["Nico Campaign"]}})
+      (play-from-hand state :corp "Nico Campaign" "New remote")
+      (let [nico (get-content state :remote1 0)]
+        (rez state :corp nico)
+        (is (= 9 (get-counters (refresh nico) :credit)) "Nico Campaign should start with 9 credits")
+        (take-credits state :corp)
+        (take-credits state :runner)
+        (is (= 6 (get-counters (refresh nico) :credit)) "Nico Campaign should lose 3 credits start of turn")
+        (take-credits state :corp)
+        (take-credits state :runner)
+        (is (= 3 (get-counters (refresh nico) :credit)) "Nico Campaign should lose 3 credits start of turn")
+        (take-credits state :corp)
+        (changes-val-macro
+          2 (count (:hand (get-corp)))
+          "Drew 2 cards -> mandatory + nico trash effect"
+          (take-credits state :runner))))))
+
 (deftest open-forum
   ;; Open Forum
   (do-game
@@ -3499,6 +3567,20 @@
       (is (= (dec credits) (:credit (get-corp))) "Corp should pay 1 for Project Junebug ability")
       (is (= 4 (-> (get-runner) :discard count)) "Project Junebug should do 4 net damage"))))
 
+(deftest project-kabuki
+  ;; Project Kabuki
+  (do-game
+   (new-game {:corp {:deck ["Project Kabuki"]}
+              :runner {:deck [(qty "Sure Gamble" 100)]}})
+   (play-from-hand state :corp "Project Kabuki" "New remote")
+   (advance state (get-content state :remote1 0) 2)
+   (take-credits state :corp)
+   (run-empty-server state "Server 1")
+   (let [credits (:credit (get-corp))]
+     (click-prompt state :corp "Yes")
+     (is (= 4 (-> (get-runner) :discard count)) "Project Kabuki should do 4 net damage"))))
+
+
 (deftest psychic-field
   ;; Psychic Field - Do 1 net damage for every card in Runner's hand when accessed/exposed
   (testing "Basic test"
@@ -3766,6 +3848,19 @@
       (damage state :corp :net 1)
       (is (= 2 (count (:discard (get-runner)))))
       (is (= 1 (get-counters (refresh rc) :advancement)) "Reconstruction Contract doesn't get advancement token for net damage"))))
+
+(deftest regolith-mining-licence
+  ;; Regolith Mining Licence
+  (do-game
+   (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                     :hand ["Regolith Mining Licence"]}})
+   (play-from-hand state :corp "Regolith Mining Licence" "New remote")
+   (let [rml (get-content state :remote1 0)]
+     (rez state :corp (refresh rml))
+     (changes-val-macro
+      3 (:credit (get-corp))
+      "Corp gains 3 credits"
+      (card-ability state :corp rml 0)))))
 
 (deftest reversed-accounts
   ;; Reversed Accounts - Trash to make Runner lose 4 credits per advancement
@@ -4263,6 +4358,46 @@
       (is (= 1 (get-counters (get-content state :remote1 0) :advancement)) "Agenda advanced once from Space Camp")
       (is (= 2 (count-tags state)) "Runner has 2 tags")
       (is (not (:run @state)) "Run completed"))))
+
+(deftest spin-doctor
+  ;; Spin Doctor - Draw 2 cards
+  (testing "Basic test"
+    (do-game
+      (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                        :hand ["Spin Doctor"]
+                        :discard ["Ice Wall" "Enigma"]}})
+      (play-from-hand state :corp "Spin Doctor" "New remote")
+      (let [spin (get-content state :remote1 0)]
+        (is (zero? (count (:hand (get-corp)))))
+        (rez state :corp spin)
+        (is (= 2 (count (:hand (get-corp)))) "Drew 2 cards")
+        (card-ability state :corp spin 0)
+        (click-card state :corp "Ice Wall")
+        (click-card state :corp "Enigma")
+        (is (find-card "Spin Doctor" (:rfg (get-corp))) "Spin Doctor is rfg'd")
+        (is (find-card "Ice Wall" (:deck (get-corp))) "Ice Wall is shuffled back into the deck")
+        (is (find-card "Enigma" (:deck (get-corp))) "Enigma is shuffled back into the deck"))))
+  (testing "Mid-run usage does not allow successful run effects to trigger"
+    (do-game
+      (new-game {:corp {:deck ["Spin Doctor"]
+                        :discard ["Enigma" "Ice Wall"]}
+                 :runner {:deck ["Desperado"]}})
+      (play-from-hand state :corp "Spin Doctor" "New remote")
+      (let [spin (get-content state :remote1 0)]
+        (rez state :corp spin)
+        (take-credits state :corp)
+        (play-from-hand state :runner "Desperado")
+        (run-on state :remote1)
+        (changes-val-macro
+          0 (:credit (get-runner))
+          "A server vanishing by mid-run does not trigger Desperado even if players proceed to access"
+          (card-ability state :corp spin 0)
+          (click-card state :corp "Enigma")
+          (click-prompt state :corp "Done"))
+        (is (find-card "Spin Doctor" (:rfg (get-corp))) "Spin Doctor is rfg'd")
+        (is (find-card "Enigma" (:deck (get-corp))) "Enigma is shuffled back into the deck")
+        (is (nil? (refresh spin)))
+        (is (nil? (:run @state)))))))
 
 (deftest storgotic-resonator
   ;; Storgotic Resonator - Gains power counters on Corp trashing card with same faction as runner ID.
