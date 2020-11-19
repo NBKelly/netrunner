@@ -2363,6 +2363,23 @@
         (card-ability state :runner gh2 0)
         (is (empty? (:prompt (get-runner))) "No break prompt as Little Engine has more than 1 broken sub")
         (is (refresh gh2) "Grappling Hook isn't trashed"))))
+  (testing "Interaction with Fairchild 3.0"
+    (do-game
+      (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                        :hand ["Fairchild 3.0"]
+                        :credits 6}
+                 :runner {:hand ["Grappling Hook"] }})
+      (play-from-hand state :corp "Fairchild 3.0" "HQ")
+      (rez state :corp (get-ice state :hq 0))
+      (take-credits state :corp)
+      (play-from-hand state :runner "Grappling Hook")
+      (run-on state "HQ")
+      (run-continue state)
+      (card-ability state :runner (get-program state 0) 0)
+      (click-prompt state :runner "Do 1 brain damage or end the run")
+      (is (= 1 (count (remove :broken (:subroutines (get-ice state :hq 0))))) "Broke all but one subroutine")
+      (is (= "Do 1 brain damage or end the run" (:label (first (remove :broken (:subroutines (get-ice state :hq 0)))))) "Broke all but selected sub")
+      (is (nil? (refresh (get-program state 0))) "Grappling Hook is now trashed")))
   (testing "interaction with News Hound #4988"
     (do-game
       (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
@@ -3278,6 +3295,7 @@
     (take-credits state :runner)
     (take-credits state :corp)
     (let [mam (get-program state 0)]
+      (is (= 5 (:credit (get-runner))) "Starts with 5 credits")
       (card-ability state :runner mam 0)
       (click-prompt state :runner "3")
       (is (= 2 (:credit (get-runner))) "Spent 3 credits")
@@ -3501,7 +3519,22 @@
               "Runner has pay-credit prompt")
           (click-card state :runner multi)
           (click-card state :runner multi))
-        (is (zero? (count-tags state)) "Runner has lost both tags")))))
+        (is (zero? (count-tags state)) "Runner has lost both tags"))))
+  (testing "Basic behavior"
+    (do-game
+      (new-game {:runner {:hand ["Misdirection"]
+                          :credits 5
+                          :tags 2}})
+      (take-credits state :corp)
+      (play-from-hand state :runner "Misdirection")
+      (let [mis (get-program state 0)]
+        (is (= 5 (:credit (get-runner))) "Runner starts with 5 credits")
+        (is (= 3 (:click (get-runner))) "Runner starts with 3 clicks")
+        (card-ability state :runner mis 0)
+        (click-prompt state :runner "2")
+        (is (zero? (count-tags state)) "Runner has lost both tags")
+        (is (= 1 (:click (get-runner))) "Runner spent 2 clicks (1 remaining)")
+        (is (= 3 (:credit (get-runner))) "Runner spent 2 credits (3 remaining)")))))
 
 (deftest mkultra
   ;; MKUltra
@@ -5417,13 +5450,13 @@
       (run-continue state)
       (let [credits (:credit (get-runner))]
         (card-ability state :runner utae 2)
-        (is (= (dec credits) (:credit (get-runner)))))
+        (is (= (dec credits) (:credit (get-runner))) "Spent 1 credit"))
       (let [credits (:credit (get-runner))]
         (card-ability state :runner utae 0)
         (click-prompt state :runner "2")
         (click-prompt state :runner "Force the Runner to lose 1 [Click]")
         (click-prompt state :runner "End the run")
-        (is (= (- credits 2) (:credit (get-runner)))))
+        (is (= (- credits 2) (:credit (get-runner))) "Spent 2 credits"))
       (let [credits (:credit (get-runner))]
         (card-ability state :runner utae 0)
         (is (empty? (:prompt (get-runner))) "Can only use ability once per run")

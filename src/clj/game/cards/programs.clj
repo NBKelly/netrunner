@@ -56,7 +56,7 @@
                            :player :runner
                            :prompt (str "Install " title "?")
                            :yes-ability {:async true
-                                         :effect (effect (runner-install :runner eid card nil))}
+                                         :effect (effect (runner-install :runner (assoc eid :source card :source-type :runner-install) card nil))}
                            ;; Add a register to note that the player was already asked about installing,
                            ;; to prevent multiple copies from prompting multiple times.
                            :no-ability {:effect (req (swap! state assoc-in [:run :register (keyword (str "conspiracy-" title)) (:cid current-ice)] true))}}}
@@ -1384,18 +1384,14 @@
                                                    (remove #(= (:index %) (:index target))))]
                               (break-subroutines-msg current-ice broken-subs card)))
                   :async true
-                  :effect (req (let [subroutines (:subroutines current-ice)
-                                     available (filter #(and (not (:broken %))
-                                                             (= target (make-label (:sub-effect %))))
-                                                       subroutines)
-                                     selected (nth available (:idx (first targets)))]
-                                 (let [subs-to-break (remove #(= (:index %) (:index selected)) subroutines)]
-                                   (break-subs state current-ice subs-to-break)
-                                   (let [ice (get-card state current-ice)
-                                         on-break-subs (when ice (:on-break-subs (card-def ice)))
-                                         event-args (when on-break-subs {:card-abilities (ability-as-handler ice on-break-subs)})]
-                                     (wait-for (trigger-event-simult state side :subroutines-broken event-args ice subs-to-break)
-                                               (effect-completed state side eid))))))}]}))
+                  :effect (req (let [selected (:idx (first targets))
+                                     subs-to-break (remove #(= (:index %) selected) (:subroutines current-ice))]
+                                 (break-subs state current-ice subs-to-break)
+                                 (let [ice (get-card state current-ice)
+                                       on-break-subs (when ice (:on-break-subs (card-def ice)))
+                                       event-args (when on-break-subs {:card-abilities (ability-as-handler ice on-break-subs)})]
+                                   (wait-for (trigger-event-simult state side :subroutines-broken event-args ice subs-to-break)
+                                             (effect-completed state side eid)))))}]}))
 
 (defcard "Gravedigger"
   (let [e {:req (req (and (installed? (:card target))
@@ -1735,8 +1731,7 @@
                                  :cost [:x-credits]
                                  :req (req (:runner-phase-12 @state))
                                  :async true
-                                 :effect (effect (add-counter card :power (cost-value eid :x-credits))
-                                                 (lose-credits eid (cost-value eid :x-credits)))
+                                 :effect (effect (add-counter card :power (cost-value eid :x-credits)))
                                  :msg (msg "place " (cost-value eid :x-credits) " power counters on it")}
                                 (break-sub [:power 1] 1)
                                 (strength-pump 2 2)]
@@ -2690,10 +2685,12 @@
                                    :req (req (and (break-req state side eid card targets)
                                                   (<= (get-strength current-ice) (get-strength card))))
                                    ; no break-req to not enable auto-pumping
+                                   :msg (msg "break " (quantify (cost-value eid :x-credits) "subroutine")
+                                             " on " (card-str state current-ice))
                                    :effect (effect
                                              (continue-ability
                                                (when (pos? (cost-value eid :x-credits))
-                                                 (break-sub (cost-value eid :x-credits) (cost-value eid :x-credits) "Code Gate"))
+                                                 (break-sub nil (cost-value eid :x-credits) "Code Gate"))
                                                card nil))}
                                   (break-sub 1 1 "Code Gate" {:label "Break 1 Code Gate subroutine (Virtual restriction)"
                                                               :req (req (<= 3 (count (filter #(has-subtype? % "Virtual")
