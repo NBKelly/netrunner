@@ -2121,7 +2121,7 @@
    :abilities [{:label "Shuffle up to 2 cards from Archives into R&D"
                 :cost [:remove-from-game]
                 :async true
-                :effect (effect (shuffle-into-rd-effect card eid 2))}]})
+                :effect (effect (shuffle-into-rd-effect eid card 2))}]})
 
 (defcard "Storgotic Resonator"
   {:abilities [{:cost [:click 1 :power 1]
