@@ -6,6 +6,8 @@
             [monger.collection :as mc]
             [monger.operators :refer :all]
             [monger.result :refer [acknowledged?]]
+            [ring.middleware.anti-forgery :as anti-forgery]
+            [ring.util.anti-forgery :refer [anti-forgery-field]]
             [web.db :refer [db object-id]]
             [web.config :refer [server-config]]
             [web.utils :refer [response]]))
@@ -32,16 +34,10 @@
      (hiccup/include-js "/lib/toastr/toastr.min.js")
      (hiccup/include-js "/lib/howler/dist/howler.min.js")
      (hiccup/include-js "https://browser.sentry-cdn.com/4.1.1/bundle.min.js")
+     (when user
+      [:div#sente-csrf-token {:data-csrf-token anti-forgery/*anti-forgery-token*}])
      [:script {:type "text/javascript"}
       (str "var user=" (json/generate-string user) ";")]
-
-     (when-let [sentry-dsn (:sentry-dsn server-config)]
-       [:script {:type "text/javascript"}
-        (str "Sentry.init({ dsn: '" sentry-dsn "' });"
-             (when user
-               (str "Sentry.configureScope((scope) => {scope.setUser({\"username\": \""
-                    (:username user)
-                    "\"});});")))])
 
      (if (= "dev" @web.config/server-mode)
        (list (hiccup/include-js "/cljs/goog/base.js")
@@ -57,6 +53,11 @@
                 (str "ga('set', '&uid', '" (:username user) "');"))
               "ga('send', 'pageview');"]))]))
 
+
+(defn- version-string []
+  (if-let [config (mc/find-one-as-map db "config" nil)]
+      (:version config "0.0")
+      "0.0"))
 
 (defn index-page [req]
   (layout
@@ -74,7 +75,8 @@
         [:div.container
          [:h1 "Play Android: Netrunner in your browser"]
          [:div#news]
-         [:div#chat]]]
+         [:div#chat]]
+        [:div#version [:span (str "Version " (version-string))]]]
        [:div.item
         [:div.cardbrowser-bg]
         [:div#cardbrowser]]
@@ -112,6 +114,7 @@
     [:body
      [:div.reset-bg]
      [:form.panel.blue-shade.reset-form {:method "POST"}
+      (anti-forgery-field)
       [:h3 "Announcement"]
       [:p
        [:textarea.form-control {:rows 5 :style "height: 80px; width: 250px"
@@ -127,6 +130,7 @@
     [:body
      [:div.reset-bg]
      [:form.panel.blue-shade.reset-form {:method "POST"}
+      (anti-forgery-field)
       [:h3 "App Version"]
       [:p
        [:input {:type "text" :name "version" :value version}]]
@@ -141,6 +145,7 @@
     [:body
      [:div.reset-bg]
      [:form.panel.blue-shade.reset-form {:method "POST"}
+      (anti-forgery-field)
       (when-let [card-info (mc/find-one-as-map db "config" {})]
         [:div.admin
          [:div

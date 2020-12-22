@@ -36,7 +36,8 @@
 
 (defn make-salt
   [deck-name]
-  (byte-array (map byte (slugify deck-name))))
+  (let [salt (byte-array (map byte (slugify deck-name)))]
+    (if (empty? salt) (byte-array (map byte "default-salt")) salt)))
 
 (defn hash-deck
   [deck]
@@ -101,7 +102,5 @@
         (response 403 {:message "Forbidden"}))
       (response 401 {:message "Unauthorized"}))
     (catch Exception ex
-      (.printStackTrace ex)
-      (println "Deck delete failure: User:" username ", Deck ID:", id)
-      (println "Known decks:" (map #(select-keys % [:_id :date :name]) (mc/find-maps db "decks" {:username username})))
+      ;; Deleting a deck that was never saved throws an exception
       (response 409 {:message "Unknown deck id"}))))

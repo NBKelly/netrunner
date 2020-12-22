@@ -7,7 +7,7 @@
     [game.core.card-defs :refer [card-def]]
     [game.core.effects :refer [register-constant-effects unregister-constant-effects]]
     [game.core.eid :refer [complete-with-result effect-completed make-eid make-result]]
-    [game.core.engine :refer [checkpoint make-pending-event queue-event register-events resolve-ability should-trigger? trigger-event trigger-event-sync unregister-events]]
+    [game.core.engine :refer [checkpoint dissoc-req make-pending-event queue-event register-events resolve-ability should-trigger? trigger-event trigger-event-sync unregister-events]]
     [game.core.finding :refer [find-cid get-scoring-owner]]
     [game.core.flags :refer [can-trash? card-flag? cards-can-prevent? get-prevent-list untrashable-while-resources? untrashable-while-rezzed?]]
     [game.core.hosting :refer [remove-from-host]]
@@ -226,10 +226,11 @@
   (swap! state update-in [:trash :trash-prevent type] (fnil #(+ % n) 0)))
 
 (defn- prevent-trash-impl
-  [state side eid {:keys [zone type] :as card} oid {:keys [unpreventable cause] :as args}]
+  [state side eid {:keys [zone type] :as card} oid {:keys [unpreventable cause game-trash] :as args}]
   (if (and card (not-any? #{:discard} zone))
     (cond
-      (untrashable-while-rezzed? card)
+      (and (not game-trash)
+           (untrashable-while-rezzed? card))
       (do (enforce-msg state card "cannot be trashed while installed")
           (effect-completed state side eid))
       (and (= side :runner)
@@ -321,7 +322,7 @@
                                           (let [once-per (:once-per-instance trash-effect)]
                                             (-> trash-effect
                                                 (assoc :once-per-instance (if (some? once-per) once-per true))
-                                                (dissoc trash-effect :req))))))
+                                                dissoc-req)))))
                    ;; No card should end up in the opponent's discard pile, so instead
                    ;; of using `side`, we use the card's `:side`.
                    move-card (fn [card]
