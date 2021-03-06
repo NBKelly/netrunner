@@ -3041,7 +3041,8 @@
      (let [archer (get-ice state :hq 0)]
        (play-and-score state "Send A Message")
        (click-card state :corp archer)
-       (is (rezzed? (refresh archer))))))
+       (is (rezzed? (refresh archer)))
+       (is (empty? (:prompt (get-runner))) "Ability finished resolving"))))
   (testing "Basic test - steal"
     (do-game
      (new-game {:corp {:deck ["Send A Message" "Archer"]}})
@@ -3052,7 +3053,9 @@
        (run-empty-server state "Server 1")
        (click-prompt state :runner "Steal")
        (click-card state :corp archer)
-       (is (rezzed? (refresh archer)))))))
+       (is (rezzed? (refresh archer)))
+       (is (empty? (:prompt (get-runner))) "Ability finished resolving")
+       (is (empty? (:prompt (get-corp))) "Ability finished resolving")))))
 
 (deftest sensor-net-activation
   ;; Sensor Net Activation

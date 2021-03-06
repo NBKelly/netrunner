@@ -1423,7 +1423,7 @@
                                (not (rezzed? %))
                                (installed? %))}
          :async true
-         :effect (effect (rez target {:ignore-cost :all-costs}))}]
+         :effect (effect (rez eid target {:ignore-cost :all-costs}))}]
     (assoc ability :stolen ability)))
 
 
