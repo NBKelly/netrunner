@@ -1799,7 +1799,6 @@
    :events [(trash-on-empty :credit)]
    :abilities [{:label "Take 3 [Credits] from this asset"
                 :cost [:click 1]
-                :once :per-turn
                 :msg (msg "gain " (min 3 (get-counters card :credit)) " [Credits]")
                 :async true
                 :effect (req (let [credits (min 3 (get-counters card :credit))]
