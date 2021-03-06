@@ -1334,7 +1334,6 @@
         (rez state :corp encryption)
         (take-credits state :corp)
         (run-empty-server state "Server 1")
-        (println (prompt-fmt :runner))
         (changes-val-macro
           -2 (:click (get-runner))
           "Spend 2 clicks"
@@ -1371,7 +1370,7 @@
         (rez state :corp encryption)
         (take-credits state :corp)
         (run-empty-server state "HQ")
-      (is (empty? (:prompt (get-runner))) "Glial-Map Encryption didn't trigger")))))
+        (is (empty? (:prompt (get-runner))) "Glial-Map Encryption didn't trigger")))))
 
 (deftest helheim-servers
   ;; Helheim Servers - Full test
