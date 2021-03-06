@@ -1361,7 +1361,16 @@
         (take-credits state :corp)
         (run-empty-server state "Server 1")
         (click-prompt state :runner "End the run")
-        (is (not (:run @state)) "Run ended by Glial-Map Encryption")))))
+        (is (not (:run @state)) "Run ended by Glial-Map Encryption"))))
+  (testing "No prompt for runs on other servers"
+    (do-game
+      (new-game {:corp {:hand ["Glial-Map Encryption"]}})
+      (play-from-hand state :corp "Glial-Map Encryption" "New remote")
+      (let [encryption (get-content state :remote1 0)]
+        (rez state :corp encryption)
+        (take-credits state :corp)
+        (run-empty-server state "HQ")
+        (is (empty? (:prompt (get-runner))) "Glial-Map Encryption didn't trigger")))))
 
 (deftest helheim-servers
   ;; Helheim Servers - Full test

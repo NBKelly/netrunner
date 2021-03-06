@@ -609,6 +609,7 @@
   {:events [{:event :successful-run
              :player :runner
              :prompt "Choose one"
+             :req (req this-server)
              :choices (req [(when (can-pay? state :runner (assoc eid :source card :source-type :subroutine) card nil [:click 2])
                               "Spend [Click][Click]")
                             (when (can-pay? state :runner (assoc eid :source card :source-type :subroutine) card nil [:credit 5])
