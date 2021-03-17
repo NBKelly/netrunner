@@ -718,7 +718,7 @@
              :async true
              :effect (effect (draw eid 1 nil))}]})
 
-(defcard "Jean \"Loup\" Arcemont: Party Animal"
+(defcard "René \"Loup\" Arcemont: Party Animal"
   {:events [{:event :runner-trash
              :req (req (and (:accessed context)
                             (first-event? state side :runner-trash
@@ -1139,16 +1139,16 @@
                        :req (req (= :corp side))
                        :value 1}]})
 
-(defcard "NBN: Virtual Frontiers"
+(defcard "NBN: Reality Plus"
   {:events [{:event :runner-gain-tag
              :optional
              {:req (req (first-event? state :runner :runner-gain-tag))
               :player :corp
               :prompt "Do you want to gain 2 [Credits] or draw 2 cards"
-              :autoresolve (get-autoresolve :auto-virtual-frontiers)
+              :autoresolve (get-autoresolve :auto-reality-plus)
               :yes-ability
               {:async true
-               :effect (effect (show-wait-prompt :runner "Corp to use NBN: Virtual Frontiers")
+               :effect (effect (show-wait-prompt :runner "Corp to use NBN: Reality Plus")
                                (continue-ability
                                  {:prompt "Select option"
                                   :player :corp
@@ -1158,7 +1158,7 @@
                                                  (gain-credits state :corp eid 2)
                                                  (draw state :corp eid 2 nil)))}
                                  card nil))}}}]
-   :abilities [(set-autoresolve :auto-virtual-frontiers "Virtual Frontiers")]})
+   :abilities [(set-autoresolve :auto-reality-plus "Reality Plus")]})
 
 (defcard "Near-Earth Hub: Broadcast Center"
   {:events [{:event :server-created
@@ -1672,7 +1672,7 @@
                              (shuffle! :runner :deck)
                              (trigger-event :searched-stack nil))}]})
 
-(defcard "Zahyaa Sadeghi: Versatile Smuggler"
+(defcard "Zahya Sadeghi: Versatile Smuggler"
   {:events [{:event :run-ends
              :req (req (and (or (= :hq (target-server context))
                                 (= :rd (target-server context)))

@@ -430,7 +430,7 @@
 
 ;; Card definitions
 
-(defcard "Ada 1.0"
+(defcard "Ansel 1.0"
   {:subroutines [trash-installed-sub
                  (install-from-hq-or-archives-sub false)
                  cannot-steal-or-trash-sub]
@@ -3169,7 +3169,7 @@
                                                (end-run state :corp eid card)))))}
    :subroutines [end-the-run]})
 
-(defcard "Topsy-Turvy"
+(defcard "Funhouse"
   {:on-encounter {:msg "force the Runner to take 1 tag or end the run"
                   :player :runner
                   :prompt "Choose one"
@@ -3185,7 +3185,7 @@
                   :label "Give the Runner 1 tag unless they pay 4 [Credits]"
                   :prompt "Take 1 tag or pay 4 [Credits]"
                   :choices (req ["Take 1 tag"
-                                 (when (can-pay? state :runner eid card "Topsy-Turvy" :credit 4)
+                                 (when (can-pay? state :runner eid card "Funhouse" :credit 4)
                                    "Pay 4 [Credits]")])
                   :effect (effect (continue-ability
                                     (if (= "Take 1 tag" target)
@@ -3270,7 +3270,7 @@
                  end-the-run]
    :runner-abilities [(bioroid-break 1 1 {:additional-ability {:effect (req (swap! state update-in [:corp :extra-click-temp] (fnil inc 0)))}})]})
 
-(defcard "Ukemi"
+(defcard "Diviner"
   (let [etr-if-damage-odd {:async true
                            :req (req (odd? (:cost (first (:discard (:runner @state))))))
                            :msg "end the run"

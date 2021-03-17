@@ -233,7 +233,7 @@
                                (do (flip-faceup state side target)
                                    (effect-completed state side eid))))}]})
 
-(defcard "Auntie Anjelica"
+(defcard "Telework Contract"
   {:data {:counter {:credit 9}}
    :events [(trash-on-empty :credit)]
    :abilities [{:label "Take 3 [Credits] from this resource"
@@ -245,7 +245,7 @@
                                (add-counter state side card :credit (- credits))
                                (gain-credits state :runner eid credits)))}]})
 
-(defcard "Avulsion"
+(defcard "Cookbook"
   {:events [{:event :runner-install
              :silent (req true)
              :req (req (has-subtype? target "Virus"))
@@ -1302,7 +1302,7 @@
                                                (hardware? target)))
                                 :type :recurring}}})
 
-(defcard "Intuitive Fluency"
+(defcard "Verbal Plasticity"
   {:events [{:event :runner-click-draw
              :async true
              :req (req (genetics-trigger? state side :runner-click-draw))

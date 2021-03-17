@@ -430,7 +430,7 @@
    :effect (effect (shuffle-into-deck :hand)
                    (draw eid 5 nil))})
 
-(defcard "Crash Report"
+(defcard "Predictive Planogram"
   {:async true
    :prompt "Choose one"
    :choices (req ["Gain 3 [Credits]" "Draw 3 cards"
@@ -613,7 +613,7 @@
    :async true
    :effect (effect (lose-credits :runner eid 4))})
 
-(defcard "Efflorescence"
+(defcard "Neurospike"
   {:async true
    :msg (msg "do " (:scored-agenda corp-reg 0) " net damage")
    :effect (effect (damage eid :net (:scored-agenda corp-reg 0) {:card card}))})
@@ -932,7 +932,7 @@
                 :effect (effect (as-agenda :runner eid card -1))}}}
              card targets))})
 
-(defcard "Hansei"
+(defcard "Hansei Review"
   (let [trash-from-hq {:async true
                        :req (req (pos? (count (:hand corp))))
                        :prompt "Select a card in HQ to trash"
@@ -1426,7 +1426,7 @@
    :msg (msg "remove 1 Runner tag and trash " (card-str state target))
    :effect (effect (trash eid target nil))})
 
-(defcard "OCEAN Source"
+(defcard "Public Trail"
   {:req (req (last-turn? state :runner :successful-run))
    :player :runner
    :async true

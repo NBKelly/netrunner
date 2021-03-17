@@ -1115,10 +1115,10 @@
    :effect (req (wait-for (draw state :runner 3 nil)
                           (draw state :corp eid 3 nil)))})
 
-(defcard "Food Bank"
+(defcard "Wildcat Strike"
   {:msg "force Corp to choose 6 [Credits] or 4 cards for runner"
    :async true
-   :effect (req (show-wait-prompt state :runner "Corp to choose Food Bank effect")
+   :effect (req (show-wait-prompt state :runner "Corp to choose Wildcat Strike effect")
                 (continue-ability
                   state side
                   {:player :corp
@@ -2069,7 +2069,7 @@
    :msg "remove all tags"
    :effect (effect (lose-tags eid :all))})
 
-(defcard "Particular Purpose"
+(defcard "Mutual Favor"
   {:prompt "Choose an Icebreaker"
    :choices (req (cancellable (filter #(has-subtype? % "Icebreaker") (:deck runner)) :sorted))
    :msg (msg "add " (:title target) " to their grip and shuffle their stack")
@@ -2195,7 +2195,7 @@
                         :effect (effect (trash eid ice nil))}}}))
                  card nil))}]})
 
-(defcard "Probe"
+(defcard "Overclock"
   {:async true
    :makes-run true
    :data {:counter {:credit 5}}
@@ -2673,7 +2673,7 @@
                    :async true
                    :effect (effect (gain-credits :runner eid (rez-cost state side (get-card state target))))}])))})
 
-(defcard "Somnambulance"
+(defcard "Tread Lightly"
   {:async true
    :makes-run true
    :prompt "Choose a server"

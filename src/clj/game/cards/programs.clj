@@ -1524,7 +1524,7 @@
              :async true
              :effect (effect (trash eid card {:cause :purge}))}]})
 
-(defcard "Ketamine"
+(defcard "Tranquilizer"
   {:data {:counter {:virus 1}}
    :hosting {:card #(and (ice? %)
                          (can-host? %))}
@@ -1634,7 +1634,7 @@
                 :effect (effect (pump-ice current-ice -1))}
                (set-autoresolve :auto-fire "Leech")]})
 
-(defcard "Legba.6"
+(defcard "Buzzsaw"
   (auto-icebreaker {:abilities [(break-sub 1 2 "Code Gate")
                                 (strength-pump 3 1)]}))
 
@@ -1832,7 +1832,7 @@
 (defcard "Musaazi"
   (virus-breaker "Sentry"))
 
-(defcard "Mustang"
+(defcard "Cleaver"
   (auto-icebreaker {:abilities [(break-sub 1 2 "Barrier")
                                 (strength-pump 2 1)]}))
 
