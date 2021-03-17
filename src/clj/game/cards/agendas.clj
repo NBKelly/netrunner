@@ -83,7 +83,7 @@
                        (suffer titles choices))
                      card nil)))}}}))
 
-(defcard "Accelerated Pipeline"
+(defcard "Orbital Superiority"
   {:async true
    :msg (msg (if (is-tagged? state) "do 4 meat damage" "give the Runner 1 tag"))
    :effect (req (if (is-tagged? state)
@@ -355,7 +355,7 @@
                   :msg "do 2 meat damage"
                   :effect (effect (damage eid :meat 2 {:card card}))}]}))
 
-(defcard "Caelus Observatory"
+(defcard "Above the Law"
   {:interactive (req true)
    :prompt "Select resource"
    :req (req (some #(and (installed? %)
@@ -836,7 +836,7 @@
      :msg (msg "place 2 advancement token on " (card-str state target))
      :effect (effect (add-prop :corp target :advance-counter 2 {:placed true}))}]})
 
-(defcard "Kōngquán"
+(defcard "Longevity Serum"
   {:prompt "Select any number of cards in HQ to trash"
    :choices {:max (req (count (:hand corp)))
              :card #(and (corp? %)
@@ -1416,7 +1416,7 @@
                        :req (req (= :runner side))
                        :value -1}]})
 
-(defcard "Send A Message"
+(defcard "Send a Message"
   (let [ability
         {:interactive (req true)
          :choices {:card #(and (ice? %)

@@ -350,7 +350,7 @@
                                      :req (req (same-card? target ice))
                                      :value [:credit 2]})))}]})
 
-(defcard "Creuset"
+(defcard "Carnivore"
   {:in-play [:memory 1]
    :interactions {:access-ability
                   {:label "Trash card"
@@ -1103,7 +1103,7 @@
                :effect (req (move state :corp target :deck)
                             (gain-tags state :runner eid 1))}}}]})
 
-(defcard "MD-2Z Optimizer"
+(defcard "DZMZ Optimizer"
   {:in-play [:memory 1]
    :constant-effects [{:type :install-cost
                        :req (req (and (program? target)

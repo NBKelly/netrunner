@@ -378,7 +378,7 @@
                             (do (system-msg state :runner "takes 1 tag")
                                 (gain-tags state :corp eid 1))))}]})
 
-(defcard "Clearing House"
+(defcard "Clearinghouse"
   (let [ability {:once :per-turn
                  :async true
                  :label "Trash this asset to do 1 meat damage for each hosted advancement counter (start of turn)"
@@ -387,7 +387,7 @@
                  (effect
                   (continue-ability
                    {:optional
-                    {:prompt (msg "Trash Clearing House to do " (get-counters card :advancement) " meat damage?")
+                    {:prompt (msg "Trash Clearinghouse to do " (get-counters card :advancement) " meat damage?")
                      :yes-ability
                      {:async true
                       :msg "do 1 meat damage for each hosted advancement counter"
@@ -1633,7 +1633,7 @@
                      :effect (effect (damage eid :net (* 2 (get-counters (get-card state card) :advancement))
                                              {:card card}))}))
 
-(defcard "Project Kabuki"
+(defcard "Urtica Cipher"
   (advance-ambush 0 {:msg (msg "do " (+ 2 (get-counters (get-card state card) :advancement)) " net damage")
                      :async true
                      :effect (effect (damage eid :net (+ 2 (get-counters (get-card state card) :advancement))
@@ -1794,7 +1794,7 @@
                                                (effect-completed eid))})
                             card nil))}]})
 
-(defcard "Regolith Mining Licence"
+(defcard "Regolith Mining License"
   {:data {:counter {:credit 15}}
    :events [(trash-on-empty :credit)]
    :abilities [{:label "Take 3 [Credits] from this asset"

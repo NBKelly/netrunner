@@ -317,7 +317,7 @@
                           " strength to " (:title target))
                 :effect (effect (pump-ice target (cost-value eid :x-credits) :end-of-turn))}]})
 
-(defcard "Crenellation"
+(defcard "Malapert Data Vault"
   {:events [{:event :agenda-scored
              :optional
              {:prompt "Search R&D for non-agenda card?"
@@ -404,7 +404,7 @@
                 :effect (req (doseq [c targets]
                                (move state side c :hand)))}]})
 
-(defcard "Directory Wipe"
+(defcard "Anoetic Void"
   {:events [{:event :successful-run
              :optional
              {:prompt "Pay 2 [Credits] and trash 2 cards from HQ to end the run?"
@@ -476,7 +476,7 @@
      :abilities [maybe-gain-counter
                  etr]}))
 
-(defcard "Equivalent Exchange"
+(defcard "AMAZE Amusements"
   (let [ability
         {:event :run-ends
          :req (req (= (second (get-zone card)) (first (:server context))))
@@ -605,7 +605,7 @@
                                                (end-run state :corp eid card))))})
                          card nil))}]})
 
-(defcard "Glial-Map Encryption"
+(defcard "Manegarm Skunkworks"
   {:events [{:event :successful-run
              :player :runner
              :prompt "Choose one"
