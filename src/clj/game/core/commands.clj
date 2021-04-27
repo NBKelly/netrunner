@@ -1,7 +1,7 @@
 (ns game.core.commands
   (:require
     [game.core.board :refer [all-installed get-zones server->zone]]
-    [game.core.card :refer [agenda? can-be-advanced? corp? get-card has-subtype? ice? in-hand? installed? map->Card rezzed? runner?]]
+    [game.core.card :refer [agenda? can-be-advanced? corp? get-card has-subtype? ice? identity? in-hand? installed? map->Card rezzed? runner?]]
     [game.core.damage :refer [damage]]
     [game.core.drawing :refer [draw]]
     [game.core.eid :refer [effect-completed make-eid]]
@@ -18,20 +18,22 @@
     [game.core.psi :refer [psi-game]]
     [game.core.rezzing :refer [rez]]
     [game.core.runs :refer [end-run jack-out]]
-    [game.core.say :refer [system-msg]]
+    [game.core.say :refer [system-msg system-say unsafe-say]]
     [game.core.servers :refer [zones->sorted-names]]
     [game.core.set-up :refer [build-card]]
     [game.core.to-string :refer [card-str]]
     [game.core.toasts :refer [show-error-toast toast]]
     [game.core.trace :refer [init-trace]]
+    [game.core.update :refer [update!]]
     [game.core.winning :refer [clear-win]]
-    [game.macros :refer [continue-ability effect msg req]]
+    [game.macros :refer [continue-ability effect msg req wait-for]]
     [game.utils :refer [dissoc-in quantify safe-split same-card? same-side? server-card string->num]]
     [jinteki.utils :refer [str->int]]
     [clojure.string :as string]))
 
-(defn- constrain-value [value min-value max-value]
+(defn- constrain-value
   "Constrain value to [min-value max-value]"
+  [value min-value max-value]
   (min max-value (max min-value value)))
 
 (defn- set-adv-counter [state side target value]
@@ -46,6 +48,24 @@
                      {:effect (effect (set-adv-counter target value))
                       :choices {:card (fn [t] (same-side? (:side t) side))}}
                      (map->Card {:title "/adv-counter command"}) nil)))
+
+(defn command-bug-report [state side]
+  (swap! state update :bug-reported (fnil inc -1))
+  (let [title "[EDITME] Please give a short description of your bug here"
+        body (str "Link to bug replay: https://jinteki.net/bug-report/" (:gameid @state)
+                  "?b=" (:bug-reported @state) "\n\n"
+                  "Description:\n\n"
+                  "[EDITME] Please describe the steps to reproduce your bug and the resulting effect here.")]
+    (unsafe-say state [:div.bugreport [:div.smallwarning "!"]
+                       "Thanks for helping us make the game better! The replay was saved. "
+                       "Please report a bug following "
+                       [:a {:target "_blank"
+                            :href (str "https://github.com/mtgred/netrunner/issues/new?title="
+                                       (string/replace title #" " "%20")
+                                       "&body="
+                                       (string/replace (string/replace body #" " "%20") #"\n" "%0A"))}
+                        "this link"]
+                       " to GitHub."])))
 
 (defn command-counter-smart [state side args]
   (resolve-ability
@@ -70,7 +90,7 @@
                                "error" {:time-out 0 :close-button true})
 
                         :else
-                        (do (set-prop state side target :counter (merge (:counter target) {counter-type value}))
+                        (do (update! state side (assoc-in target [:counter counter-type] value))
                             (system-msg state side (str "sets " (name counter-type) " counters to " value " on "
                                                         (card-str state target))))))))}
     (map->Card {:title "/counter command"}) nil))
@@ -80,7 +100,8 @@
                    {:prompt "Select a card to install facedown"
                     :choices {:card #(and (runner? %)
                                           (in-hand? %))}
-                    :effect (effect (runner-install target {:facedown true}))}
+                    :async true
+                    :effect (effect (runner-install (make-eid state eid) target {:facedown true}))}
                    (map->Card {:title "/faceup command"}) nil))
 
 (defn command-counter [state side args]
@@ -105,21 +126,28 @@
       (if advance
         (command-adv-counter state side value)
         (resolve-ability state side
-                         {:effect (effect (set-prop target :counter (merge (:counter target) {counter-type value}))
+                         {:effect (effect (update! (assoc-in target [:counter counter-type] value))
                                           (system-msg (str "sets " (name counter-type) " counters to " value " on "
                                                            (card-str state target))))
                           :choices {:card (fn [t] (same-side? (:side t) side))}}
                          (map->Card {:title "/counter command"}) nil)))))
 
+(defn rez-all
+  [state side eid cards]
+  (if-let [c (first cards)]
+    (wait-for (rez state side c {:ignore-cost :all-costs :force true})
+              (rez-all state side eid (next cards)))
+    (effect-completed state side eid)))
+
 (defn command-rezall
   [state side]
-  (resolve-ability state side
-    {:optional {:prompt "Rez all cards and turn cards in archives faceup?"
-                :yes-ability {:effect (req
-                                        (swap! state update-in [:corp :discard] #(map (fn [c] (assoc c :seen true)) %))
-                                        (doseq [c (all-installed state side)]
-                                          (when-not (rezzed? c)
-                                            (rez state side c {:ignore-cost :all-costs :force true}))))}}}
+  (resolve-ability
+    state side
+    {:optional
+     {:prompt "Rez all cards and turn cards in archives faceup?"
+      :yes-ability {:async true
+                    :effect (req (swap! state update-in [:corp :discard] #(map (fn [c] (assoc c :seen true)) %))
+                                 (rez-all state side eid (remove rezzed? (all-installed state side))))}}}
     (map->Card {:title "/rez-all command"}) nil))
 
 (defn command-roll [state side value]
@@ -131,7 +159,8 @@
   [state side]
   (when-let [click-state (:click-state @state)]
     (when (= (:active-player @state) side)
-      (reset! state (assoc click-state :log (:log @state) :click-state click-state :run nil))
+      (reset! state (assoc click-state :log (:log @state) :click-state click-state :run nil :history (:history @state)))
+      (system-say state side (str "[!] " (if (= side :corp) "Corp" "Runner") " uses the undo-click command"))
       (doseq [s [:runner :corp]]
         (toast state s "Game reset to start of click")))))
 
@@ -141,7 +170,7 @@
   (when-let [turn-state (:turn-state @state)]
     (swap! state assoc-in [side :undo-turn] true)
     (when (and (-> @state :runner :undo-turn) (-> @state :corp :undo-turn))
-      (reset! state (assoc turn-state :log (:log @state) :turn-state turn-state))
+      (reset! state (assoc turn-state :log (:log @state) :turn-state turn-state :history (:history @state)))
       (doseq [s [:runner :corp]]
         (toast state s "Game reset to start of turn")))))
 
@@ -170,11 +199,13 @@
       {:prompt "Select a piece of ice to install"
        :choices {:card #(and (ice? %)
                              (#{[:hand]} (:zone %)))}
+       :async true
        :effect (effect
                  (continue-ability
                    (let [chosen-ice target]
                      {:prompt "Choose a server"
                       :choices (req servers)
+                      :async true
                       :effect (effect
                                 (continue-ability
                                   (let [chosen-server target
@@ -182,9 +213,12 @@
                                                                (conj (server->zone state target) :ices)))]
                                     {:prompt "Which position to install in? (0 is innermost)"
                                      :choices (vec (reverse (map str (range (inc num-ice)))))
-                                     :effect (effect (corp-install chosen-ice chosen-server
-                                                                   {:no-install-cost true
-                                                                    :index (str->int target)}))})
+                                     :async true
+                                     :effect (effect (corp-install
+                                                       (make-eid state eid)
+                                                       chosen-ice chosen-server
+                                                       {:no-install-cost true
+                                                        :index (str->int target)}))})
                                   card nil))})
                    card nil))}
       (map->Card {:title "/install-ice command"}) nil)))
@@ -218,14 +252,19 @@
 
 (defn command-replace-id
   [state side args]
-  (let [s-card (server-card (string/join " " args))
-        card (when (and s-card (same-side? (:side s-card) side))
-               (build-card s-card))]
-    (when card
-      (let [new-id (-> card :title server-card make-card (assoc :zone [:identity] :type "Identity"))]
-        (disable-identity state side)
-        (swap! state assoc-in [side :identity] new-id)
-        (card-init state side new-id {:resolve-effect true :init-data true})))))
+  (let [card-name (string/join " " args)]
+    (try
+      (let [s-card (server-card card-name)
+            card (when (and s-card (same-side? (:side s-card) side))
+                   (build-card s-card))]
+        (if card
+          (let [new-id (-> card :title server-card make-card (assoc :zone [:identity] :type "Identity"))]
+            (disable-identity state side)
+            (swap! state assoc-in [side :identity] new-id)
+            (card-init state side new-id {:resolve-effect true :init-data true}))
+          (toast state side (str card-name " isn't a valid card"))))
+      (catch Exception ex
+        (toast state side (str card-name " isn't a real card"))))))
 
 (defn command-host
   [state side]
@@ -270,6 +309,7 @@
       (case command
         "/adv-counter" #(command-adv-counter %1 %2 value)
         "/bp"         #(swap! %1 assoc-in [%2 :bad-publicity :base] (constrain-value value -1000 1000))
+        "/bug"        command-bug-report
         "/card-info"  #(resolve-ability %1 %2
                                         {:effect (effect (system-msg (str "shows card-info of "
                                                                           (card-str state target)
@@ -334,15 +374,16 @@
         "/replace-id" #(command-replace-id %1 %2 args)
         "/rez"        #(when (= %2 :corp)
                           (resolve-ability %1 %2
-                                          {:effect (effect (rez target {:ignore-cost :all-costs :force true}))
-                                            :choices {:card (fn [t] (same-side? (:side t) %2))}}
+                                          {:choices {:card (fn [t] (same-side? (:side t) %2))}
+                                           :async true
+                                           :effect (effect (rez eid target {:ignore-cost :all-costs :force true}))}
                                           (map->Card {:title "/rez command"}) nil))
         "/rez-all"    #(when (= %2 :corp) (command-rezall %1 %2))
         "/rfg"        #(resolve-ability %1 %2
                                         {:prompt "Select a card to remove from the game"
-                                          :effect (req (let [c (deactivate %1 %2 target)]
+                                         :effect (req (let [c (deactivate %1 %2 target)]
                                                         (move %1 %2 c :rfg)))
-                                          :choices {:card (fn [t] (same-side? (:side t) %2))}}
+                                         :choices {:card (fn [t] (same-side? (:side t) %2))}}
                                         (map->Card {:title "/rfg command"}) nil)
         "/roll"       #(command-roll %1 %2 value)
         "/summon"     #(command-summon %1 %2 args)

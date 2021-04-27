@@ -9,7 +9,6 @@
             [web.stats :as stats]
             [web.admin :as admin]
             [web.tournament :as tournament]
-            [web.news :as news]
             [web.decks :as decks]
             [compojure.route :as route]
             [ring.middleware.params :refer [wrap-params]]
@@ -19,7 +18,6 @@
             [ring.middleware.anti-forgery :refer [wrap-anti-forgery]]
             [ring.middleware.stacktrace :refer [wrap-stacktrace]]
             [ring.util.response :refer [resource-response]]
-            [web.db :refer [db]]
             [cheshire.generate :refer [add-encoder encode-str]]
             [compojure.core :refer [defroutes wrap-routes GET POST DELETE PUT]]))
 
@@ -34,7 +32,7 @@
            (GET "/data/cards/version" [] data/cards-version-handler)
            (GET "/data/cards/altarts" [] data/alt-arts-handler)
 
-           (GET "/data/news" [] news/news-handler)
+           (GET "/data/news" [] data/news-handler)
            (GET "/data/sets" [] data/sets-handler)
            (GET "/data/mwl" [] data/mwl-handler)
            (GET "/data/cycles" [] data/cycles-handler)
@@ -48,6 +46,8 @@
            (GET "/ws" req ws/handshake-handler)
            (POST "/ws" req ws/post-handler)
 
+           (GET "/replay/:gameid" [] stats/replay-handler)
+           (GET "/bug-report/:bugid" [] stats/replay-handler)
            (GET "/*" [] pages/index-page))
 
 (defroutes public-routes
@@ -57,12 +57,22 @@
            (POST "/reset/:token" [] auth/reset-password-handler))
 
 (defroutes admin-routes
-           (GET "/admin/announce" [] pages/announce-page)
-           (POST "/admin/announce" [] admin/announcement-handler)
-           (GET "/admin/version" [] pages/version-page)
-           (POST "/admin/version" [] admin/version-handler)
-           (GET "/admin/fetch" [] pages/fetch-page)
-           (POST "/admin/fetch" [] admin/fetch-handler))
+           (POST "/admin/announce" [] admin/announce-create-handler)
+           (POST "/admin/news" [] admin/news-create-handler)
+           (DELETE "/admin/news/:id" [] admin/news-delete-handler)
+           (GET "/admin/version" [] admin/version-handler)
+           (PUT "/admin/version" [] admin/version-update-handler)
+           (GET "/admin/mods" [] admin/mods-handler)
+           (PUT "/admin/mods" [] admin/mods-update-handler)
+           (DELETE "/admin/mods/:id" [] admin/mods-delete-handler)
+           (GET "/admin/tos" [] admin/tos-handler)
+           (PUT "/admin/tos" [] admin/tos-update-handler)
+           (DELETE "/admin/tos/:id" [] admin/tos-delete-handler)
+           (GET "/admin/specials" [] admin/specials-handler)
+           (PUT "/admin/specials" [] admin/specials-update-handler)
+           (DELETE "/admin/specials/:id" [] admin/specials-delete-handler)
+           (GET "/admin/features" [] admin/features-handler)
+           (PUT "/admin/features" [] admin/features-update-handler))
 
 (defroutes user-routes
            (POST "/logout" [] auth/logout-handler)
@@ -75,6 +85,11 @@
 
            (GET "/profile/history" [] stats/history)
            (GET "/profile/history/:gameid" [] stats/fetch-log)
+           (GET "/profile/history/annotations/:gameid" [] stats/fetch-annotations)
+           (PUT "/profile/history/annotations/publish/:gameid" [] stats/publish-annotations)
+           (DELETE "/profile/history/annotations/delete/:gameid" [date] stats/delete-annotations)
+           (GET "/profile/history/share/:gameid" [] stats/share-replay)
+           (GET "/profile/history/full/:gameid" [] stats/fetch-replay)
 
            (GET "/data/decks" [] decks/decks-handler)
            (POST "/data/decks" [] decks/decks-create-handler)
@@ -100,14 +115,18 @@
       (resource-response "jinteki.ico" {:root "public/img"})
       (handler req))))
 
-(def app
+(defn wrap-db [handler mongo]
+  (fn [req]
+    (handler (assoc req :system/db (:db mongo)))))
+
+(defn make-app [mongo]
   (-> routes
-      auth/wrap-user
-      wrap-keyword-params
-      wrap-params
-      wrap-json-response
-      wrap-session
+      (auth/wrap-user)
+      (wrap-db mongo)
+      (wrap-keyword-params)
+      (wrap-params)
+      (wrap-json-response)
+      (wrap-session)
       (wrap-json-body {:keywords? true})
-      admin/wrap-version
-      wrap-return-favicon
-      wrap-stacktrace))
+      (wrap-return-favicon)
+      (wrap-stacktrace)))

@@ -10,7 +10,7 @@
                  [org.clojure/core.async "0.3.443"]
                  [cheshire "5.6.3"]
                  [stylefruits/gniazdo "1.1.4"]
-                 [danhut/monger "3.1.0"]
+                 [com.novemberain/monger "3.5.0"]
                  [differ "0.3.3"]
                  [com.taoensso/sente "1.16.0"]
                  [ring "1.7.1"]
@@ -24,7 +24,6 @@
                  [crypto-password "0.2.0"]
                  [digest "1.4.6"]
                  [http-kit "2.4.0"]
-                 [jwarwick/trello "0.3.3"]
                  [clj-time "0.14.2"]
                  [com.draines/postal "2.0.2"]
                  [throttler "1.0.0"]
@@ -35,31 +34,44 @@
                  [org.clojure/tools.analyzer "0.7.0"]
                  [org.clojure/tools.analyzer.jvm "0.7.2"]
                  [org.clojars.frozenlock/reagent-modals "0.2.8"]
+                 [org.clojure/tools.cli "0.4.2"]
                  [hawk "0.2.11"]
                  [danlentz/clj-uuid "0.1.9"]
-                 [potemkin "0.4.5"]]
+                 [potemkin "0.4.5"]
+                 [cond-plus "1.0.1"]
+                 [com.taoensso/tempura "1.2.1"]
+                 [org.clojure/data.csv "1.0.0"]
+                 [medley "1.3.0"]
+                 [org.slf4j/slf4j-nop "1.7.12"]
+                 [integrant "0.8.0"]]
 
   :plugins [[lein-cljsbuild "1.1.7"]
             [lein-figwheel "0.5.16"]
-            [com.gfredericks/lein-sha-version "0.1.1-p1"]
             [lein-ring "0.9.7"]
             [lein-eftest "0.5.8"]
             [lein-exec "0.3.7"]]
 
   :profiles {:dev {:dependencies [[figwheel-sidecar "0.5.16"]
                                   [binaryage/devtools "0.9.7"]
-                                  [cider/piggieback "0.5.2"]
-                                  [org.clojure/tools.cli "0.4.2"]]
-                   :plugins [[lein-figwheel "0.5.16"]]
-                   :source-paths ["src/clj" "src/cljs" "src/dev" "src/cljc"]}}
+                                  [cider/piggieback "0.5.2"]]
+                   :plugins [[lein-figwheel "0.5.16"]
+                             [integrant/repl "0.3.2"]]
+                   :source-paths ["src/clj" "src/cljs" "src/cljc"]}}
 
   :aliases {"fetch" ["run" "-m" "tasks.fetch/command"]
             "dumbrepl" ["trampoline" "run" "-m" "clojure.main/main"]
-            "add-art" ["run" "-m" "tasks.altart/add-art"]
-            "load-test" ["run" "-m" "tasks.load-test/command"]
+            "load-generator" ["run" "-m" "tasks.load-generator/command"]
             "delete-duplicate-users" ["run" "-m" "tasks.db/delete-duplicate-users"]
             "update-all-decks" ["run" "-m" "tasks.db/update-all-decks"]
-            "card-coverage" ["run" "-m" "tasks.cards/test-coverage"]}
+            "add-deck-to-all" ["run" "-m" "tasks.decks/add-for-all-users"]
+            "rename-card" ["run" "-m" "tasks.card-rename/command"]
+            "card-coverage" ["run" "-m" "tasks.card-coverage/test-coverage"]
+            "create-indexes" ["run" "-m" "tasks.index/create-indexes"]
+            "drop-indexes" ["run" "-m" "tasks.index/drop-indexes"]
+            "create-sample-data" ["run" "-m" "tasks.db/create-sample-data"]
+            "get-game-stats" ["run" "-m" "tasks.game-stats/all-games"]
+            "get-user-stats" ["run" "-m" "tasks.user-stats/all-users"]
+            "get-background-stats" ["run" "-m" "tasks.user-stats/all-backgrounds"]}
 
   ;; Compilation.
   :source-paths ["src/clj" "src/cljs/nr" "src/cljc"]
@@ -67,10 +79,12 @@
   :aot [#"game\.*"
         #"web\.*"
         #"tasks.fetch"
-        #"tasks.altart"
-        #"jinteki\.*"]
+        #"jinteki\.*"
+        #"web.core"]
   :jar-name "netrunner.jar"
+  :jar-exclusions [#"public/img/cards/*"]
   :uberjar-name "netrunner-standalone.jar"
+  :uberjar-exclusions [#"public/img/cards/*"]
   :omit-source true
   :main web.core
 
@@ -83,33 +97,32 @@
 
   :ring {:handler web.api/app}
 
-  :cljsbuild {
-    :builds [
-      {:id "dev"
-       :source-paths ["src/clj/game/core" "src/cljs/nr" "src/cljs/dev" "src/cljc"]
-       :figwheel true
-       :compiler {:output-to "resources/public/cljs/app10.js"
-                  :output-dir "resources/public/cljs"
-                  :main "dev.nr"
-                  :asset-path   "cljs"
-                  :optimizations :none
-                  :source-map-timestamp true
-                  :npm-deps false
-                  :external-config {:devtools/config {:features-to-install :all}}}}
-      {:id "prod"
-       :source-paths ["src/cljs/nr" "src/cljs/prod" "src/cljc"]
-       :compiler {:output-to "resources/public/js/app10.js"
-                  :output-dir "out"
-                  :optimizations :advanced
-                  :pretty-print false
-                  :npm-deps false
-                  :externs ["src/cljs/externs/extras.js"
-                            "src/cljs/externs/$.js"
-                            "src/cljs/externs/howler.js"
-                            "src/cljs/externs/io.js"
-                            "src/cljs/externs/marked.js"
-                            "src/cljs/externs/moment.js"
-                            "src/cljs/externs/toastr.js"]}}]}
+  :cljsbuild
+  {:builds
+   [{:id "dev"
+     :source-paths ["src/cljs/nr" "src/cljs/dev" "src/cljc"]
+     :figwheel true
+     :compiler {:output-to "resources/public/cljs/app10.js"
+                :output-dir "resources/public/cljs"
+                :main "dev.nr"
+                :asset-path   "/cljs"
+                :optimizations :none
+                :source-map-timestamp true
+                :npm-deps false
+                :external-config {:devtools/config {:features-to-install :all}}}}
+    {:id "prod"
+     :source-paths ["src/cljs/nr" "src/cljs/prod" "src/cljc"]
+     :compiler {:output-to "resources/public/js/app10.js"
+                :output-dir "out"
+                :optimizations :advanced
+                :pretty-print false
+                :npm-deps false
+                :externs ["src/cljs/externs/extras.js"
+                          "src/cljs/externs/$.js"
+                          "src/cljs/externs/howler.js"
+                          "src/cljs/externs/io.js"
+                          "src/cljs/externs/moment.js"
+                          "src/cljs/externs/toastr.js"]}}]}
 
   :figwheel {:http-server-root "public"
              :server-port 3449

@@ -683,17 +683,17 @@
       (is (= 1 (count-tags state)) "Runner took 1 tag"))
       (is (empty? (:prompt (get-runner))) "City Surveillance only fired once")))
 
-(deftest clearing-house
-  ;; Clearing House
+(deftest clearinghouse
+  ;; Clearinghouse
   (do-game
-    (new-game {:corp {:hand ["Clearing House"]}
+    (new-game {:corp {:hand ["Clearinghouse"]}
                :runner {:hand [(qty "Sure Gamble" 5)]}})
     (core/gain state :corp :click 5)
-    (play-from-hand state :corp "Clearing House" "New remote")
+    (play-from-hand state :corp "Clearinghouse" "New remote")
     (advance state (get-content state :remote1 0) 4)
     (take-credits state :corp)
     (take-credits state :runner)
-    (is (:corp-phase-12 @state) "Corp has opportunity to use Clearing House")
+    (is (:corp-phase-12 @state) "Corp has opportunity to use Clearinghouse")
     (rez state :corp (get-content state :remote1 0))
     (card-ability state :corp (get-content state :remote1 0) 0)
     (changes-val-macro
@@ -729,7 +729,7 @@
   (testing "Runner has 1+ credit and chooses to pay 1 credit"
     (do-game
       (new-game {:corp {:deck ["Clyde Van Rite"]}
-                 :runner {:deck [(qty "Sure Gamble" 3) (qty "Restructure" 2) (qty "John Masanori" 2)]}})
+                 :runner {:deck [(qty "Sure Gamble" 3) (qty "Easy Mark" 2) (qty "John Masanori" 2)]}})
       (play-from-hand state :corp "Clyde Van Rite" "New remote")
       (let [clyde (get-content state :remote1 0)]
         (rez state :corp clyde)
@@ -2724,7 +2724,28 @@
         (is (= 8 (get-counters (refresh marilyn) :credit)) "Marilyn Campaign should start with 8 credits")
         (derez state :corp (refresh marilyn))
         (rez state :corp (refresh marilyn))
-        (is (= 16 (get-counters (refresh marilyn) :credit)) "Marilyn Campaign should now have 16 credits")))))
+        (is (= 16 (get-counters (refresh marilyn) :credit)) "Marilyn Campaign should now have 16 credits"))))
+  (testing "Interactive prompt only on last trigger"
+    (do-game
+      (new-game {:corp {:deck ["PAD Campaign" "Marilyn Campaign"]}})
+      (play-from-hand state :corp "Marilyn Campaign" "New remote")
+      (play-from-hand state :corp "PAD Campaign" "New remote")
+      (let [marilyn (get-content state :remote1 0)
+            pad (get-content state :remote2 0)]
+        (rez state :corp marilyn)
+        (rez state :corp pad)
+        (take-credits state :corp)
+        (take-credits state :runner)
+        (is (empty? (:prompt (get-corp))) "No interactive prompt")
+        (take-credits state :corp)
+        (take-credits state :runner)
+        (is (empty? (:prompt (get-corp))) "No interactive prompt")
+        (take-credits state :corp)
+        (take-credits state :runner)
+        (is (empty? (:prompt (get-corp))) "No interactive prompt")
+        (take-credits state :corp)
+        (take-credits state :runner)
+        (is (not-empty (:prompt (get-corp))) "Interactive prompt")))))
 
 (deftest mark-yale
   ;; Mark Yale
@@ -2738,7 +2759,7 @@
           atlas (get-content state :remote2 0)]
       (rez state :corp mark)
       (advance state atlas 5)
-      (core/score state :corp {:card (refresh atlas)}))
+      (score state :corp (refresh atlas)))
     (let [mark (get-content state :remote1 0)
           scored-atlas (get-scored state :corp 0)
           credits (:credit (get-corp))]
@@ -3245,11 +3266,11 @@
       (click-card state :corp (refresh fif))
       (is (zero? (:click (get-corp))) "Spent 2 clicks using PAD Factory twice")
       (is (= 2 (get-counters (refresh fif) :advancement)) "Agenda has 2 advancements")
-      (core/score state :corp {:card (refresh fif)})
+      (score state :corp (refresh fif))
       (is (empty? (:scored (get-corp))) "Prevented from scoring this turn")
       (take-credits state :corp)
       (take-credits state :runner)
-      (core/score state :corp {:card (refresh fif)})
+      (score state :corp (refresh fif))
       (is (= 1 (count (:scored (get-corp)))) "Scored agenda"))))
 
 (deftest palana-agroplex
@@ -3415,17 +3436,17 @@
         (play-from-hand state :corp "Neural EMP")
         (let [corp-credits (:credit (get-corp))]
           (is (= 5 (count (:hand (get-runner)))) "No damage dealt")
-          (click-prompt state :corp "Yes")
+          (card-ability state :corp (refresh pc) 0)
           (is (= 1 (get-counters (refresh pc) :power)) "Added 1 power token")
           (is (= (+ 3 corp-credits) (:credit (get-corp))) "Gained 3 credits")
           (play-from-hand state :corp "Neural EMP")
           (is (= 5 (count (:hand (get-runner)))) "No damage dealt")
-          (click-prompt state :corp "Yes")
+          (card-ability state :corp pc 0)
           (is (= 2 (get-counters (refresh pc) :power)) "Added another power token")
           (is (= (+ 4 corp-credits) (:credit (get-corp))) "Gained another 3 credits (and paid 2 for EMP)")
           (is (= 5 (count (:hand (get-runner)))) "No damage dealt"))
         (take-credits state :runner)
-        (card-ability state :corp (refresh pc) 0)
+        (card-ability state :corp  pc 1)
         (is (= 3 (count (:hand (get-runner)))) "2 damage dealt"))))
   (testing "Refuse to prevent damage"
     (do-game
@@ -3440,29 +3461,15 @@
         (play-from-hand state :corp "Neural EMP")
         (let [corp-credits (:credit (get-corp))]
           (is (= 5 (count (:hand (get-runner)))) "No damage dealt")
-          (click-prompt state :corp "No")
+          (click-prompt state :corp "Done")
           (is (= 4 (count (:hand (get-runner)))) "1 net damage dealt")
           (is (= 0 (get-counters (refresh pc) :power)) "No power token added")
           (is (= corp-credits (:credit (get-corp))) "No credits gained")))))
-  (testing "Only prevents 1 net damage"
-    (do-game
-      (new-game {:corp {:hand ["Prāna Condenser" "Snare!"]}
-                 :runner {:hand [(qty "Sure Gamble" 5)]}})
-      (play-from-hand state :corp "Prāna Condenser" "New remote")
-      (let [pc (get-content state :remote1 0)]
-        (rez state :corp pc)
-        (take-credits state :corp)
-        (run-empty-server state :hq)
-        (is (= 5 (count (:hand (get-runner)))) "No damage dealt")
-        (click-prompt state :corp "Yes") ;Snare
-        (click-prompt state :corp "Yes") ;Prana
-        (is (= 3 (count (:hand (get-runner)))) "2 net damage dealt")
-        (is (= 1 (get-counters (refresh pc) :power)) "Only 1 power token added"))))
   (testing "Runner preventing damage on their turn"
     (do-game
       (new-game {:corp {:hand ["Prāna Condenser" "Shock!"]}
                  :runner {:hand [(qty "Caldera" 5)]
-                          :credits 6}})
+                          :credits 9}})
       (play-from-hand state :corp "Prāna Condenser" "New remote")
       (let [pc (get-content state :remote1 0)]
         (rez state :corp pc)
@@ -3471,7 +3478,6 @@
         (is (= 4 (count (:hand (get-runner)))) "Runner starts with 4 cards in grip")
         (run-empty-server state :hq)
         (card-ability state :runner (get-resource state 0) 0)
-        (click-prompt state :runner "No action")
         (is (= 4 (count (:hand (get-runner)))) "Runner took no damage")
         (is (empty? (:prompt (get-corp))) "No Prana prompt for Corp"))))
   (testing "Corp gets Prana prompt first"
@@ -3487,40 +3493,40 @@
         (run-empty-server state :archives)
         (take-credits state :runner)
         (play-from-hand state :corp "Neural EMP")
-        ; TODO: Implement interrupts to make these prompts work correctly
-        ; (is (not-empty (:prompt (get-corp))) "Prana prompt for Corp")
-        ; (is (empty? (:prompt (get-runner))) "No Caldera prompt for Runner")
-        )))
-  (testing "Runner cards don't trigger Prana"
-    (do-game
-      (new-game {:corp {:hand ["Prāna Condenser" "Shock!"]}
-                 :runner {:deck [(qty "Sure Gamble" 5)]
-                          :hand ["Zer0" "Sure Gamble"]}})
-      (play-from-hand state :corp "Prāna Condenser" "New remote")
-      (let [pc (get-content state :remote1 0)]
-        (rez state :corp pc)
-        (take-credits state :corp)
-        (play-from-hand state :runner "Zer0")
-        (card-ability state :runner (get-hardware state 0) 0)
-        (is (empty? (:prompt (get-corp))) "Prana condenser doesn't proc from Zer0"))))
-  (testing "PAD Tap gains credits from Prana trigger. Issue #5250"
-    (do-game
-      (new-game {:corp {:hand ["Prāna Condenser" "Bio-Ethics Association"]}
-                 :runner {:deck [(qty "Sure Gamble" 5)]
-                          :hand [(qty "PAD Tap" 3)]}})
-      (play-from-hand state :corp "Prāna Condenser" "New remote")
-      (play-from-hand state :corp "Bio-Ethics Association" "New remote")
-      (let [pc (get-content state :remote1 0)
-            bio (get-content state :remote2 0)]
-        (rez state :corp pc)
-        (rez state :corp bio)
-        (take-credits state :corp)
-        (play-from-hand state :runner "PAD Tap")
-        (play-from-hand state :runner "PAD Tap")
-        (play-from-hand state :runner "PAD Tap")
-        (take-credits state :runner)
-        (click-prompt state :corp "Yes")
-        (is (= 9 (:credit (get-runner))) "Runner gained 3 credits from Prana")))))
+        (is (not-empty (:prompt (get-corp))) "Prana prompt for Corp")
+        (is (= :waiting (prompt-type :runner))))))
+    (testing "Runner cards and costs don't trigger Prana"
+      (do-game
+        (new-game {:corp {:hand ["Prāna Condenser" "Shock!"]}
+                   :runner {:deck [(qty "Sure Gamble" 5)]
+                            :hand ["Zer0" "Sure Gamble" "Sure Gamble"]}})
+        (play-from-hand state :corp "Prāna Condenser" "New remote")
+        (let [pc (get-content state :remote1 0)]
+          (rez state :corp pc)
+          (take-credits state :corp)
+          (play-from-hand state :runner "Zer0")
+          (card-ability state :runner (get-hardware state 0) 0)
+          (is (empty? (:prompt (get-corp))) "Prana condenser doesn't proc on 'unpreventable' net damage")
+          (damage state :runner :net 1)
+          (is (empty? (:prompt (get-corp))) "Prana condenser doesn't proc on net damage of the runner"))))
+    (testing "PAD Tap gains credits from Prana trigger. Issue #5250"
+      (do-game
+        (new-game {:corp {:hand ["Prāna Condenser" "Bio-Ethics Association"]}
+                   :runner {:deck [(qty "Sure Gamble" 5)]
+                            :hand [(qty "PAD Tap" 3)]}})
+        (play-from-hand state :corp "Prāna Condenser" "New remote")
+        (play-from-hand state :corp "Bio-Ethics Association" "New remote")
+        (let [pc (get-content state :remote1 0)
+              bio (get-content state :remote2 0)]
+          (rez state :corp pc)
+          (rez state :corp bio)
+          (take-credits state :corp)
+          (play-from-hand state :runner "PAD Tap")
+          (play-from-hand state :runner "PAD Tap")
+          (play-from-hand state :runner "PAD Tap")
+          (take-credits state :runner)
+          (card-ability state :corp (refresh pc) 0)
+          (is (= 9 (:credit (get-runner))) "Runner gained 3 credits from Prana")))))
 
 (deftest primary-transmission-dish
   ;; Primary Transmission Dish
@@ -3579,20 +3585,6 @@
       (click-prompt state :corp "Yes")
       (is (= (dec credits) (:credit (get-corp))) "Corp should pay 1 for Project Junebug ability")
       (is (= 4 (-> (get-runner) :discard count)) "Project Junebug should do 4 net damage"))))
-
-(deftest project-kabuki
-  ;; Project Kabuki
-  (do-game
-   (new-game {:corp {:deck ["Project Kabuki"]}
-              :runner {:deck [(qty "Sure Gamble" 100)]}})
-   (play-from-hand state :corp "Project Kabuki" "New remote")
-   (advance state (get-content state :remote1 0) 2)
-   (take-credits state :corp)
-   (run-empty-server state "Server 1")
-   (let [credits (:credit (get-corp))]
-     (click-prompt state :corp "Yes")
-     (is (= 4 (-> (get-runner) :discard count)) "Project Kabuki should do 4 net damage"))))
-
 
 (deftest psychic-field
   ;; Psychic Field - Do 1 net damage for every card in Runner's hand when accessed/exposed
@@ -3679,7 +3671,7 @@
       (rez state :corp php)
       (take-credits state :corp)
       (take-credits state :runner)
-      (is (last-log-contains? state "Aiki") "Public Health Portal should reveal Aiki")
+      (is (second-last-log-contains? state "Aiki") "Public Health Portal should reveal Aiki")
       (is (= "Ben Musashi" (-> @state :corp :deck first :title)) "Top card in R&D should be Ben Musashi"))))
 
 (deftest public-support
@@ -3862,12 +3854,12 @@
       (is (= 2 (count (:discard (get-runner)))))
       (is (= 1 (get-counters (refresh rc) :advancement)) "Reconstruction Contract doesn't get advancement token for net damage"))))
 
-(deftest regolith-mining-licence
-  ;; Regolith Mining Licence
+(deftest regolith-mining-license
+  ;; Regolith Mining License
   (do-game
    (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
-                     :hand ["Regolith Mining Licence"]}})
-   (play-from-hand state :corp "Regolith Mining Licence" "New remote")
+                     :hand ["Regolith Mining License"]}})
+   (play-from-hand state :corp "Regolith Mining License" "New remote")
    (let [rml (get-content state :remote1 0)]
      (rez state :corp (refresh rml))
      (changes-val-macro
@@ -4715,12 +4707,12 @@
       (click-card state :corp (get-content state :remote1 1))
       (card-ability state :corp (second (:scored (get-corp))) 0)
       (click-card state :corp (get-content state :remote1 1))
-      (core/score state :corp {:card (get-content state :remote1 1)})
+      (score state :corp (get-content state :remote1 1))
       (click-card state :corp (find-card "Breaking News" (:hand (get-corp))))
       (click-prompt state :corp "Server 1")
       (card-ability state :corp (second (next (:scored (get-corp)))) 0)
       (click-card state :corp (get-content state :remote1 1))
-      (core/score state :corp {:card (get-content state :remote1 1)})
+      (score state :corp (get-content state :remote1 1))
       (click-prompt state :corp "Done")
       (is (= 7 (:agenda-point (get-corp))) "Scored 5 points in one turn"))))
 
@@ -4908,7 +4900,19 @@
       (run-empty-server state :remote1)
       (click-prompt state :runner "Pay 7 [Credits] to trash")
       (is (= 4 (:agenda-point (get-runner))) "Runner has 4 agenda points")
-      (is (= 2 (count (:scored (get-runner)))) "Runner has 2 agendas in scored area"))))
+      (is (= 2 (count (:scored (get-runner)))) "Runner has 2 agendas in scored area")))
+  (testing "agenda points function shouldn't override change #5643"
+    (do-game
+      (new-game {:corp {:deck ["The Board" "Global Food Initiative"]}})
+      (play-from-hand state :corp "The Board" "New remote")
+      (play-from-hand state :corp "Global Food Initiative" "New remote")
+      (rez state :corp (get-content state :remote1 0))
+      (take-credits state :corp)
+      (is (zero? (:agenda-point (get-runner))) "Runner has 0 agenda points")
+      (run-empty-server state :remote2)
+      (click-prompt state :runner "Steal")
+      (is (= 1 (:agenda-point (get-runner))) "Worth 2 in runner score area, The Board lowers by 1")
+      (is (= 1 (count (:scored (get-runner)))) "Runner has 1 agenda in scored area"))))
 
 (deftest the-news-now-hour
   ;; The News Now Hour
@@ -5079,6 +5083,19 @@
       (is (= 1 (count (:discard (get-corp)))) "Urban Renewal got trashed")
       (is (= 4 (count (:discard (get-runner)))) "Urban Renewal did 4 meat damage"))))
 
+(deftest urtica-cipher
+  ;; Urtica Cipher
+  (do-game
+   (new-game {:corp {:deck ["Urtica Cipher"]}
+              :runner {:deck [(qty "Sure Gamble" 100)]}})
+   (play-from-hand state :corp "Urtica Cipher" "New remote")
+   (advance state (get-content state :remote1 0) 2)
+   (take-credits state :corp)
+   (run-empty-server state "Server 1")
+   (let [credits (:credit (get-corp))]
+     (click-prompt state :corp "Yes")
+     (is (= 4 (-> (get-runner) :discard count)) "Urtica Cipher should do 4 net damage"))))
+
 (deftest vaporframe-fabricator
   ;; Vaporframe Fabricator
   (testing "Click ability"
@@ -5211,9 +5228,9 @@
 (deftest wall-to-wall
   (testing "Basic functionality"
     (do-game
-      (new-game {:corp {:deck ["Wall To Wall" (qty "Hedge Fund" 3)
+      (new-game {:corp {:deck ["Wall to Wall" (qty "Hedge Fund" 3)
                                "PAD Campaign" "Ice Wall"]}})
-      (play-from-hand state :corp "Wall To Wall" "New remote")
+      (play-from-hand state :corp "Wall to Wall" "New remote")
       (play-from-hand state :corp "PAD Campaign" "New remote")
       (play-from-hand state :corp "Ice Wall" "HQ")
       (let [w2w (get-content state :remote1 0)
