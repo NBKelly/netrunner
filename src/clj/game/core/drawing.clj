@@ -50,17 +50,16 @@
                        (not (pos? deck-count)))
                  (effect-completed state side eid)
                  (let [to-draw (take draws-after-prevent (get-in @state [side :deck]))
-                       drawn (doall (for [card to-draw] (move state side card :hand)))
-                       eid (make-result eid drawn)]
+                       drawn (doall (for [card to-draw] (move state side card :hand)))]
                    (swap! state assoc-in [side :register :most-recent-drawn] drawn)
                    (swap! state update-in [side :register :drawn-this-turn] (fnil #(+ % draws-after-prevent) 0))
                    (swap! state update-in [:stats side :gain :card] (fnil + 0) n)
                    (swap! state update-in [:bonus] dissoc :draw)
-                   (if (and (not suppress-event)
-                            (pos? deck-count))
+                   (if (and (not suppress-event) (pos? deck-count))
                      (wait-for
-                       (trigger-event-sync state side (make-eid state eid) (if (= side :corp) :corp-draw :runner-draw) draws-after-prevent)
-                       (trigger-event-sync state side eid (if (= side :corp) :post-corp-draw :post-runner-draw) draws-after-prevent))
+                       (trigger-event-sync state side (if (= side :corp) :corp-draw :runner-draw) draws-after-prevent)
+                       (let [eid (make-result eid drawn)]
+                         (trigger-event-sync state side eid (if (= side :corp) :post-corp-draw :post-runner-draw) draws-after-prevent)))
                      (effect-completed state side eid))
                    (when (safe-zero? (remaining-draws state side))
                      (prevent-draw state side))))

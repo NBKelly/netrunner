@@ -1,6 +1,6 @@
 (ns tasks.utils
   "utilities for the tasks"
-  (:require [clojure.string :as string]))
+  (:require [monger.collection :as mc]))
 
 (defn type->dir
   [card]
@@ -26,3 +26,8 @@
     (if (some identity vs)
       (reduce #(rec-merge %1 %2) v vs)
       v)))
+
+(defn replace-collection
+  [db col data]
+  (mc/remove db col)
+  (mc/insert-batch db col data))

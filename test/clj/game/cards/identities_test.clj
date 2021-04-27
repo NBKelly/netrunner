@@ -1384,6 +1384,7 @@
       (is (= 2 (:agenda-point (get-runner))) "Second steal not prevented")
       (play-from-hand state :runner "Scrubbed")
       (run-empty-server state "HQ")
+      (is (= ["No action"] (prompt-buttons :runner)))
       (click-prompt state :runner "No action")
       (is (= 2 (:agenda-point (get-runner))) "Third steal prevented"))))
 
@@ -1407,7 +1408,29 @@
     (run-continue state)
     (click-card state :corp (get-ice state :hq 0))
     (is (= 3 (:credit (get-corp))) "Corp not charged for Architects of Tomorrow rez of Eli 1.0")
-    (is (rezzed? (get-ice state :hq 0)) "Eli 1.0 is rezzed")))
+    (is (rezzed? (get-ice state :hq 0)) "Eli 1.0 is rezzed"))
+  (testing "Ice Destruction in HB Architects of Tomorrow #5514"
+    (do-game
+      (new-game {:corp {:id "Haas-Bioroid: Architects of Tomorrow"
+                        :deck [(qty "Eli 1.0" 3)]
+                        :credits 10}
+                 :runner {:deck ["Chisel" "Devil Charm"]}})
+      (play-from-hand state :corp "Eli 1.0" "HQ")
+      (play-from-hand state :corp "Eli 1.0" "HQ")
+      (play-from-hand state :corp "Eli 1.0" "New remote")
+      (take-credits state :corp)
+      (play-from-hand state :runner "Devil Charm")
+      (play-from-hand state :runner "Chisel")
+      (click-card state :runner (get-ice state :hq 1))
+      (run-on state "HQ")
+      (rez state :corp (get-ice state :hq 1))
+      (run-continue state)
+      (click-prompt state :runner "Devil Charm")
+      (click-prompt state :runner "Yes")
+      (rez state :corp (get-ice state :hq 0))
+      (run-continue state)
+      (run-continue state)
+      (is (not (empty? (:prompt (get-runner)))) "Architects of Tomorrow is still available"))))
 
 (deftest haas-bioroid-engineering-the-future
   ;; Engineering the Future
@@ -1434,14 +1457,15 @@
   ;; Haas-Bioroid: Precision Design
   (testing "Basic test"
     (do-game
-     (new-game {:corp {:id "Haas-Bioroid: Precision Design"
-                       :hand ["Project Vitruvius"]
-                       :discard ["Hedge Fund"]}})
-     (is (= 6 (hand-size :corp)) "Max hand size is 6")
-     (play-and-score state "Project Vitruvius")
-     (is (= 1 (count (:discard (get-corp)))) "1 card in archives")
-     (click-card state :corp (find-card "Hedge Fund" (:discard (get-corp)))) ; Ability target
-     (is (= 0 (count (:discard (get-corp)))) "0 card in archives"))))
+      (new-game {:corp {:id "Haas-Bioroid: Precision Design"
+                        :hand ["Project Vitruvius"]
+                        :discard ["Hedge Fund"]}})
+      (is (= 6 (hand-size :corp)) "Max hand size is 6")
+      (play-and-score state "Project Vitruvius")
+      (is (= 1 (count (:discard (get-corp)))) "1 card in archives")
+      (click-prompt state :corp "Yes")
+      (click-card state :corp (find-card "Hedge Fund" (:discard (get-corp)))) ; Ability target
+      (is (= 0 (count (:discard (get-corp)))) "0 card in archives"))))
 
 (deftest haas-bioroid-stronger-together
   ;; Stronger Together - +1 strength for Bioroid ice
@@ -1614,7 +1638,35 @@
               credits (:credit (get-runner))]
           (run-empty-server state :hq)
           (is (= (inc cards) (count (:hand (get-runner)))) "Runner has drawn 1 card on successful run")
-          (is (= (inc credits) (:credit (get-runner))) "Runner has gained 1 credit on successful run"))))))
+          (is (= (inc credits) (:credit (get-runner))) "Runner has gained 1 credit on successful run")))))
+(testing "Citadel interaction"
+  (do-game
+   (new-game {:runner {:id "Hoshiko Shiro: Untold Protagonist"
+                       :deck ["Citadel Sanctuary"]}
+              :corp {:hand ["SEA Source"]
+                     :deck [(qty "Hedge Fund" 5)]}})
+   (take-credits state :corp)
+   (let [ho (get-in @state [:runner :identity])]
+     (play-from-hand state :runner "Citadel Sanctuary")
+     (run-on state "Archives")
+     (run-continue state)
+     (take-credits state :runner)
+     (play-from-hand state :corp "SEA Source")
+     (click-prompt state :corp "0")
+     (click-prompt state :runner "0")
+     (take-credits state :corp)
+     (run-empty-server state :hq)
+     (click-prompt state :runner "No action")
+     (core/end-turn state :runner nil)
+     (is (= 0 (get-link state)) "Hoshiko is not flipped yet")
+     (click-prompt state :runner "Hoshiko Shiro: Untold Protagonist")
+     (is (:flipped (refresh ho)) "Only Hoshiko flip has been resolved")
+     (is (= 1 (get-link state)) "Flipped Hoshiko has 1 Link")
+     (is (= 1 (:link (prompt-map :corp))) "Trace link should be 1")
+     (click-prompt state :corp "0")
+     (click-prompt state :runner "0")
+     (is (:flipped (refresh ho)) "All end of turn effects have been resolved including a flip")
+     (is (= 1 (get-link state)) "Flipped Hoshiko has 1 Link")))))
 
 (deftest hyoubu-institute-absolute-clarity
   (testing "ID abilities"
@@ -1749,28 +1801,6 @@
         (let [credits (:credit (get-corp))]
           (click-card state :corp pad)
           (is (= (+ credits 8) (:credit (get-corp))) "Gain 8 credits from trashing PAD Campaign"))))))
-
-(deftest jean-loup-arcemont-party-animal
-  ;; "Jean \"Loup\" Arcemont: Party Animal"
-  (do-game
-   (new-game {:corp {:hand [(qty "NGO Front" 2)]}
-              :runner {:id "Jean \"Loup\" Arcemont: Party Animal"
-                       :hand ["Sure Gamble"]
-                       :deck [(qty "Sure Gamble" 3)]}})
-   (play-from-hand state :corp "NGO Front" "New remote")
-   (play-from-hand state :corp "NGO Front" "New remote")
-   (take-credits state :corp)
-   (run-empty-server state "Server 1")
-   (click-prompt state :runner "Pay 1 [Credits] to trash")
-   (let [credits (:credit (get-runner))]
-     (changes-val-macro
-      1 (count (:hand (get-runner)))
-      "Jean draws one card"
-      (click-prompt state :runner "Yes"))
-     (is (= (+ credits 1) (:credit (get-runner))) "Gain 1 credit from trashing accessed card")
-     (run-empty-server state "Server 2")
-     (click-prompt state :runner "Pay 1 [Credits] to trash")
-     (is (empty? (:prompt (get-runner))) "No prompt on second trash"))))
 
 (deftest jemison-astronautics-sacrifice-audacity-success
   ;; Jemison Astronautics - Place advancements when forfeiting agendas
@@ -1975,21 +2005,6 @@
     (play-from-hand state :corp "Neural EMP")
     (is (= 5 (count (:discard (get-runner)))))))
 
-(deftest jinteki-restoring-humanity
-  ;; Jinteki: Restoring Humanity
-  (do-game
-   (new-game {:corp {:id "Jinteki: Restoring Humanity"
-                     :discard ["Neural EMP"]}})
-   (take-credits state :corp)
-   (changes-val-macro
-     1 (:credit (get-corp))
-     "Gain 1 credit from ability"
-     (click-prompt state :corp "Yes"))
-   (run-empty-server state "Archives")
-   (take-credits state :runner)
-   (take-credits state :corp)
-   (is (empty? (:prompt (get-corp))) "Not prompted when no facedown card in archives")))
-
 (deftest jinteki-replicating-perfection
   ;; Replicating Perfection - Prevent runner from running on remotes unless they first run on a central
   (testing "Basic test"
@@ -2013,6 +2028,18 @@
       (is (core/can-run-server? state "Server 1") "Runner can run on remotes")
       (play-from-hand state :runner "Scrubbed")
       (is (not (core/can-run-server? state "Server 1")) "Runner can only run on centrals"))))
+
+(deftest jinteki-restoring-humanity
+  ;; Jinteki: Restoring Humanity
+  (do-game
+   (new-game {:corp {:id "Jinteki: Restoring Humanity"
+                     :discard ["Neural EMP"]}})
+   (take-credits state :corp)
+   (is (= 9 (:credit (get-corp))) "Gained a credit for face down card")
+   (run-empty-server state "Archives")
+   (take-credits state :runner)
+   (take-credits state :corp)
+   (is (= 12 (:credit (get-corp))) "Did not gain a credit for face down card")))
 
 (deftest kabonesa-wu-netspace-thrillseeker
   ;; Kabonesa Wu
@@ -2292,6 +2319,27 @@
         (run-empty-server state "R&D"))
       (is (zero? (count-tags state)) "Took no tags for ability being blocked"))))
 
+(deftest los-data-hijacker
+  ;; Los: Data Hijacker
+  (before-each [state (new-game {:corp {:hand [(qty "Ice Wall" 2)]}
+                                 :runner {:id "Los: Data Hijacker"}})]
+    (testing "Ability works"
+      (do-game state
+        (play-from-hand state :corp "Ice Wall" "HQ")
+        (changes-val-macro
+          2 (:credit (get-runner))
+          "Gains 2 from ice rez"
+          (rez state :corp (get-ice state :hq 0)))))
+    (testing "Only works on first rez per turn"
+      (do-game state
+        (play-from-hand state :corp "Ice Wall" "HQ")
+        (play-from-hand state :corp "Ice Wall" "R&D")
+        (rez state :corp (get-ice state :hq 0))
+        (changes-val-macro
+          0 (:credit (get-runner))
+          "Does not gain"
+          (rez state :corp (get-ice state :rd 0)))))))
+
 (deftest maxx-maximum-punk-rock
   ;; MaxX
   (testing "Basic test"
@@ -2477,10 +2525,10 @@
     (testing "Installing different cards"
       (do-game
         (new-game {:corp {:id "MirrorMorph: Endless Iteration"
-                          :hand ["PAD Campaign" "NASX" "Wall To Wall"]}})
+                          :hand ["PAD Campaign" "NASX" "Wall to Wall"]}})
         (play-from-hand state :corp "PAD Campaign" "New remote")
         (play-from-hand state :corp "NASX" "New remote")
-        (play-from-hand state :corp "Wall To Wall" "New remote")
+        (play-from-hand state :corp "Wall to Wall" "New remote")
         (is (empty? (:prompt (get-corp))) "No MM trigger")))))
 
 (deftest mti-mwekundu-life-improved
@@ -2687,11 +2735,11 @@
         (take-credits state :runner)
         (is (= 2 (get-counters (refresh nbn-mn) :recurring)) "Recurring credits refill once MN isn't disabled anymore")))))
 
-(deftest nbn-virtual-frontiers
-  ;; NBN: Virtual Frontiers
+(deftest nbn-reality-plus
+  ;; NBN: Reality Plus
   (testing "Basic test - gain credits"
     (do-game
-     (new-game {:corp {:id "NBN: Virtual Frontiers"
+     (new-game {:corp {:id "NBN: Reality Plus"
                        :credits 40
                        :hand [(qty "Data Raven" 3)]}})
      (play-from-hand state :corp "Data Raven" "HQ")
@@ -2703,10 +2751,9 @@
        (rez state :corp (refresh dr2))
        (run-continue state)
        (click-prompt state :runner "Take 1 tag")
-       (click-prompt state :corp "Yes")
        (changes-val-macro
          2 (:credit (get-corp))
-         "Gain 2 credit from NBN: Virtual Frontiers"
+         "Gain 2 credit from NBN: Reality Plus"
          (click-prompt state :corp "Gain 2 [Credits]"))
        (run-continue state)
        (rez state :corp (refresh dr))
@@ -2715,7 +2762,7 @@
        (is (empty? (:prompt (get-corp))) "No prompt for the Corp for second tag"))))
   (testing "Basic test - gain credits"
     (do-game
-     (new-game {:corp {:id "NBN: Virtual Frontiers"
+     (new-game {:corp {:id "NBN: Reality Plus"
                        :credits 40
                        :deck [(qty "Hedge Fund" 10)]
                        :hand [(qty "Data Raven" 3)]}})
@@ -2728,10 +2775,9 @@
        (rez state :corp (refresh dr2))
        (run-continue state)
        (click-prompt state :runner "Take 1 tag")
-       (click-prompt state :corp "Yes")
        (changes-val-macro
          2 (count (:hand (get-corp)))
-         "Draw 2 cards from NBN: Virtual Frontiers"
+         "Draw 2 cards from NBN: Reality Plus"
          (click-prompt state :corp "Draw 2 cards"))
        (run-continue state)
        (rez state :corp (refresh dr))
@@ -3120,6 +3166,27 @@
         "Gain 1 credit from Blue Sun"
         (click-card state :corp "Ice Wall")))))
 
+(deftest rene-loup-arcemont-party-animal
+  ;; "René \"Loup\" Arcemont: Party Animal"
+  (do-game
+   (new-game {:corp {:hand [(qty "NGO Front" 2)]}
+              :runner {:id "René \"Loup\" Arcemont: Party Animal"
+                       :hand ["Sure Gamble"]
+                       :deck [(qty "Sure Gamble" 3)]}})
+   (play-from-hand state :corp "NGO Front" "New remote")
+   (play-from-hand state :corp "NGO Front" "New remote")
+   (take-credits state :corp)
+   (run-empty-server state "Server 1")
+   (is (= 1 (count (:hand (get-runner)))) "Runner starts with 1 card")
+   (is (= 5 (:credit (get-runner))) "Runner starts with 5 credits")
+   (click-prompt state :runner "Pay 1 [Credits] to trash")
+   (is (= 5 (:credit (get-runner))) "Gain 1 credit from trashing accessed card (and paid 1 to trash)")
+   (is (= 2 (count (:hand (get-runner)))) "Runner draws 1 card")
+   (run-empty-server state "Server 2")
+   (click-prompt state :runner "Pay 1 [Credits] to trash")
+   (is (= 4 (:credit (get-runner))) "Runner doesn't gain 1 credit from trashing accessed card")
+   (is (= 2 (count (:hand (get-runner)))) "Runner doesn't draw 1 card")))
+
 (deftest rielle-kit-peddler-transhuman
   ;; Rielle "Kit" Peddler - Give ICE Code Gate
   (do-game
@@ -3158,12 +3225,12 @@
       (let [house (get-content state :remote2 0)]
         (advance state house)
         (advance state house)
-        (core/score state :corp (refresh house))
+        (score state :corp (refresh house))
         (is (empty? (:scored (get-corp))) "House of Knives not scored")
         (is (zero? (:agenda-point (get-corp))))
         (take-credits state :corp)
         (take-credits state :runner)
-        (core/score state :corp (refresh house))
+        (score state :corp (refresh house))
         (is (= 1 (:agenda-point (get-corp))) "House of Knives was able to be scored")))))
 
 (deftest seidr-laboratories-destiny-defined
@@ -3204,7 +3271,7 @@
   (testing "Expose trigger ability resolves completely before access. Issue #2173"
     (do-game
       (new-game {:corp {:hand ["Psychic Field" "Fetal AI"]
-                        :deck [(qty "Sure Gamble" 10)]}
+                        :deck [(qty "Hedge Fund" 10)]}
                  :runner {:id "Silhouette: Stealth Operative"
                           :hand ["Feedback Filter" "Inside Job"]}})
       (play-from-hand state :corp "Psychic Field" "New remote")
@@ -3401,6 +3468,7 @@
                           :discard ["Sure Gamble" "Easy Mark"]}})
       (take-credits state :corp)
       (run-empty-server state :hq)
+      (click-prompt state :runner "Yes")
       (click-card state :runner "Sure Gamble")
       (click-card state :runner "Easy Mark")
       (click-prompt state :corp "Sure Gamble")
@@ -3553,7 +3621,7 @@
         (core/advance state :corp {:card (refresh atl)})
         (core/advance state :corp {:card (refresh atl)})
         (core/advance state :corp {:card (refresh atl)})
-        (core/score state :corp {:card (refresh atl)})
+        (score state :corp (refresh atl))
         (let [scored (get-scored state :corp 0)]
           (is (= 1 (get-counters scored :agenda)) "1 counter added by Titan")))))
   (testing "only use one counter of Corporate Sales Team"
@@ -3569,7 +3637,7 @@
         (core/advance state :corp {:card (refresh cst)})
         (core/advance state :corp {:card (refresh cst)})
         (core/advance state :corp {:card (refresh cst)})
-        (core/score state :corp {:card (refresh cst)})
+        (score state :corp (refresh cst))
         (let [scored (get-scored state :corp 0)]
           (is (= 1 (get-counters (refresh scored) :agenda)) "1 counter added by Titan")
           (is (= 10 (get-counters (refresh scored) :credit)) "10 credits from Titan")
@@ -3653,31 +3721,56 @@
       (click-prompt state :runner "Yes")
       (is (nil? (get-ice state :remote1 0)) "Ice Wall is trashed")
       (is (nil? (:run @state)) "Ice Wall is trashed, so run has been ended")
-      (is (= 1 (count (:discard (get-runner))))))))
+      (is (= 1 (count (:discard (get-runner)))))))
+  (testing "doesn't trigger if ID was blank during first end of encounter #5594"
+    (do-game
+      (new-game {:corp {:id "Weyland Consortium: Builder of Nations"
+                        :deck [(qty "Hedge Fund" 5)]
+                        :hand ["Ice Wall"]}
+                 :runner {:hand [(qty "Direct Access" 5)]}})
+      (play-from-hand state :corp "Ice Wall" "HQ")
+      (advance state (get-ice state :hq 0) 1)
+      (take-credits state :corp)
+      (play-from-hand state :runner "Direct Access")
+      (click-prompt state :runner "HQ")
+      (rez state :corp (get-ice state :hq 0))
+      (run-continue state)
+      (run-continue state)
+      (is (zero? (count (:discard (get-runner)))) "Runner takes no damage")
+      (run-jack-out state)
+      (click-prompt state :runner "Yes")
+      (run-on state "HQ")
+      (run-continue state)
+      (run-continue state)
+      (is (zero? (count (:discard (get-runner)))) "Runner takes no damage at the second encounter")
+      (is (empty? (:prompt (get-corp)))))))
 
 (deftest weyland-consortium-built-to-last
   ;; Weyland Consortium: Built to Last
   (testing "Basic test"
     (do-game
       (new-game {:corp {:id "Weyland Consortium: Built to Last"
-                        :hand [(qty "NGO Front" 2)]}})
+                        :hand [(qty "NGO Front" 2) "Oaktown Renovation"]}})
       (core/gain state :corp :click 5)
       (play-from-hand state :corp "NGO Front" "New remote")
       (play-from-hand state :corp "NGO Front" "New remote")
+      (play-from-hand state :corp "Oaktown Renovation" "New remote")
       (let [ngo1 (get-content state :remote1 0)
-            ngo2 (get-content state :remote2 0)]
-        (advance state (refresh ngo1) 1)
+            ngo2 (get-content state :remote2 0)
+            oaktown (get-content state :remote3 0)]
         (changes-val-macro
-          2 (:credit (get-corp))
-          "Gain 2 credits from Weyland Built to Last ability"
-          (click-prompt state :corp "Yes"))
-        (advance state (refresh ngo1) 1)
-        (is (empty? (:prompt (get-corp))) "No prompt for second advance counter")
-        (advance state (refresh ngo2) 1)
+          3 (:credit (get-corp))
+          "Gain 2 + 2 - 1 = 3 credits from Weyland Built to Last + Oaktown ability"
+          (advance state (refresh oaktown) 1))
         (changes-val-macro
-          2 (:credit (get-corp))
-          "Gain 2 credits from Weyland Built to Last ability"
-          (click-prompt state :corp "Yes"))))))
+          0 (:credit (get-corp))
+          "Gain 2 - 1 - 1 = 0 credits net from double advancing Weyland Built to Last ability"
+          (advance state (refresh ngo1) 1)
+          (advance state (refresh ngo1) 1))
+        (changes-val-macro
+          1 (:credit (get-corp))
+          "Gain 2 - 1 = 1 credits from Weyland Built to Last ability"
+          (advance state (refresh ngo2) 1))))))
 
 (deftest whizzard-master-gamer
   ;; Whizzard
@@ -3741,12 +3834,12 @@
       (is (= "Sure Gamble" (:title (last (:discard (get-runner)))))
           "Sure Gamble still in Wyvern's discard"))))
 
-(deftest zahyaa-sadeghi-versatile-smuggler
-  ;; "Zahyaa Sadeghi: Versatile Smuggler"
+(deftest zahya-sadeghi-versatile-smuggler
+  ;; "Zahya Sadeghi: Versatile Smuggler"
   (testing "Basic test"
     (do-game
      (new-game {:corp   {:hand [(qty "Hedge Fund" 3)]}
-                :runner {:id   "Zahyaa Sadeghi: Versatile Smuggler"
+                :runner {:id   "Zahya Sadeghi: Versatile Smuggler"
                          :hand [(qty "HQ Interface" 2)]
                          :credits 20}})
      (take-credits state :corp)

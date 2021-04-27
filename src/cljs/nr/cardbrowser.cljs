@@ -3,28 +3,33 @@
   (:require [cljs.core.async :refer [chan put! >! sub pub] :as async]
             [clojure.string :as s]
             [jinteki.cards :refer [all-cards] :as cards]
+            [jinteki.utils :refer [str->int slugify]]
             [nr.appstate :refer [app-state]]
             [nr.account :refer [alt-art-name]]
             [nr.ajax :refer [GET]]
-            [nr.utils :refer [toastr-options banned-span restricted-span rotated-span
-                              influence-dots slug->format format->slug render-icons]]
-            [reagent.core :as r]))
+            [nr.utils :refer [toastr-options banned-span restricted-span rotated-span set-scroll-top store-scroll-top
+                              influence-dots slug->format format->slug render-icons non-game-toast faction-icon
+                              get-image-path image-or-face]]
+            [nr.translations :refer [tr tr-type tr-side tr-faction tr-format tr-sort]]
+            [reagent.core :as r]
+            [medley.core :refer [find-first]]))
 
-(def cards-channel (chan))
-(def pub-chan (chan))
-(def notif-chan (pub pub-chan :topic))
-
-(def browser-state (atom {}))
+(defonce cards-channel (chan))
 
 (declare generate-previous-cards)
+(declare generate-flip-cards)
+(declare insert-starter-info)
+(declare insert-starter-ids)
 
 (go (let [server-version (get-in (<! (GET "/data/cards/version")) [:json :version])
           local-cards (js->clj (.parse js/JSON (.getItem js/localStorage "cards")) :keywordize-keys true)
           need-update? (or (not local-cards) (not= server-version (:version local-cards)))
-          cards (sort-by :code
-                         (if need-update?
+          latest-cards (if need-update?
                            (:json (<! (GET "/data/cards")))
-                           (:cards local-cards)))
+                           (:cards local-cards))
+          cards (->> latest-cards
+                     (insert-starter-ids)
+                     (sort-by :code))
           sets (:json (<! (GET "/data/sets")))
           cycles (:json (<! (GET "/data/cycles")))
           mwls (:json (<! (GET "/data/mwl")))
@@ -33,41 +38,102 @@
                           (map (fn [e] (update e :date-start #(js/Date.parse %))))
                           (sort-by :date-start)
                           last)
-            alt-cards (->> cards
-                       (map #(select-keys % [:title :code :alt_art]))
-                       (filter :alt_art)
-                       (map (juxt :code identity))
-                       (into {}))
           alt-info (->> (<! (GET "/data/cards/altarts"))
                         (:json)
-                        (map #(select-keys % [:version :name :description :position])))]
+                        (map #(select-keys % [:version :name :description :artist-blurb :artist-link :artist-about])))]
       (reset! cards/mwl latest-mwl)
       (reset! cards/sets sets)
       (reset! cards/cycles cycles)
       (swap! app-state assoc :sets sets :cycles cycles)
       (when need-update?
         (.setItem js/localStorage "cards" (.stringify js/JSON (clj->js {:cards cards :version server-version}))))
-      (reset! all-cards cards)
+      (reset! all-cards (into {} (map (juxt :title identity) (sort-by :code cards))))
       (swap! app-state assoc
-             :cards-loaded true :previous-cards (generate-previous-cards cards)
-             :alt-info alt-info :alt-cards alt-cards)
+             :cards-loaded true
+             :all-cards-and-flips (merge @all-cards (generate-flip-cards cards))
+             :previous-cards (generate-previous-cards cards)
+             :alt-info alt-info)
       (put! cards-channel cards)))
+
+(defn- insert-starter-info
+  [card]
+  (-> card
+      (assoc :influencelimit "∞")
+      (assoc-in [:format :standard] "banned")
+      (assoc-in [:format :startup] "banned")
+      (assoc-in [:format :eternal] "banned")
+      (assoc-in [:format :snapshot] "banned")
+      (assoc-in [:format :snapshot-plus] "banned")
+      (assoc-in [:format :classic] "banned")))
+
+(defn- insert-starter-ids
+  "Add special case info for the Starter Deck IDs"
+  [cards]
+  (->> cards
+       (map #(if (= (:title %) "The Catalyst: Convention Breaker") (insert-starter-info %) %))
+       (map #(if (= (:title %) "The Syndicate: Profit over Principle") (insert-starter-info %) %))))
+
+(defn- expand-face [card acc f]
+  (let [flip (f (:flips card))
+        updated (-> card
+                    (assoc :title (:title flip)
+                           :text (:text flip)
+                           :images (:images (f (:faces card))))
+                    (dissoc :faces :flips))]
+    (conj acc updated)))
+
+(defn- expand-one-flip [acc card]
+  (let [faces (keys (:flips card))]
+    (reduce (partial expand-face card) acc faces)))
+
+(defn- generate-flip-cards [cards]
+  (let [flips (filter :flips cards)
+        modified (reduce expand-one-flip [] flips)]
+    (into {} (map (juxt :title identity) (sort-by :code modified)))))
+
+(defn- keys-in [m]
+  (if (map? m)
+    (vec
+      (mapcat (fn [[k v]]
+                (let [sub (keys-in v)
+                      nested (map #(into [k] %) (filter (comp not empty?) sub))]
+                  (if (seq nested)
+                    nested
+                    [[k]])))
+              m))
+    []))
+
+(defn- update-nested-images
+  [code images acc nested-key]
+  (if (= (keyword code) (last nested-key))
+    (let [value (get-in images nested-key)
+          new-key (conj (pop nested-key) :stock)]
+      (assoc-in acc new-key value))
+    acc))
+
+(defn- update-previous-image-paths
+  [prev]
+  (let [code (:code prev)
+        images (:images prev)
+        nested-keys (keys-in images)]
+    (reduce (partial update-nested-images code images) {} nested-keys)))
 
 (defn- expand-one
   "Reducer function to create a previous card from a newer card definition."
-  [acc version c]
-  (let [number (js/parseInt (subs version 3))
-        cycle-pos (js/parseInt (subs version 0 2))
-        prev-set (first (filter #(= cycle-pos (:cycle_position %1)) @cards/sets))
-        prev (assoc c
-                    :code version
-                    :rotated true
-                    :cycle_code (:cycle_code prev-set)
-                    :setname (:name prev-set)
-                    :set_code (:id prev-set)
-                    :number number
-                    :future-version (:code c))
-        prev (dissoc prev :previous-versions :alt_art)]
+  [acc {:keys [code set_code] :as version} c]
+  (let [number (str->int (subs code 3))
+        prev-set (find-first #(= set_code (:code %)) @cards/sets)
+        prev (-> c
+                 (assoc
+                   :code code
+                   :rotated true
+                   :cycle_code (:cycle_code prev-set)
+                   :setname (:name prev-set)
+                   :set_code (:id prev-set)
+                   :number number
+                   :future-version (:code c))
+                 (dissoc :previous-versions))
+        prev (assoc prev :images (update-previous-image-paths prev))]
     (conj acc prev)))
 
 (defn- expand-previous
@@ -78,8 +144,8 @@
 (defn generate-previous-cards
   "The cards database only has the latest version of a card. Create stubs for previous versions of a card for display purposes."
   [cards]
-  (let [c (filter #(contains? % :previous-versions) cards)]
-    (reduce expand-previous `() c)))
+  (let [c (filter :previous-versions cards)]
+    (reduce expand-previous [] c)))
 
 (defn make-span [text sym icon-class]
   (s/replace text (js/RegExp. sym "gi") (str "<span class='anr-icon " icon-class "'></span>")))
@@ -95,64 +161,73 @@
 (defn image-url
   ([card] (image-url card false))
   ([card allow-all-users]
-   (let [art (or (:art card) ; use the art set on the card itself, or fall back to the user's preferences.
-                 (get-in @app-state [:options :alt-arts (keyword (:code card))]))
-         alt-card (get (:alt-cards @app-state) (:code card))
-         has-art (and (show-alt-art? allow-all-users) art)
-         version-path (if has-art
-                        (get (:alt_art alt-card) (keyword art) art)
-                        (:code card))]
-     (str "/img/cards/" version-path ".png"))))
+   (let [lang (get-in @app-state [:options :language] "en")
+         res (get-in @app-state [:options :card-resolution] "default")
+         art (if (show-alt-art? allow-all-users)
+               (get-in @app-state [:options :alt-arts (keyword (:code card))] "stock")
+               "stock")
+         images (image-or-face card)]
+     (get-image-path images (keyword lang) (keyword res) (keyword art)))))
 
 (defn- base-image-url
   "The default card image. Displays an alternate image if the card is specified as one."
   [card]
-  (let [path (if (keyword? (:art card))
-                 (get-in card [:alt_art (:art card)] (:code card))
-                 (:code card))]
-    (str "/img/cards/" path ".png")))
+   (let [lang (get-in @app-state [:options :language] "en")
+         res (get-in @app-state [:options :card-resolution] "default")
+         art (if (keyword? (:art card)) (:art card) :stock)]
+     (get-image-path (:images card) (keyword lang) (keyword res) art)))
 
 (defn- alt-version-from-string
   "Given a string name, get the keyword version or nil"
   [setname]
-  (when-let [alt (some #(when (= setname (:name %)) %) (:alt-info @app-state))]
+  (when-let [alt (find-first #(= setname (:name %)) (:alt-info @app-state))]
     (keyword (:version alt))))
 
 (defn- expand-alts
   [only-version acc card]
-  (let [alt-card (get (:alt-cards @app-state) (:code card))
-        alt-only (alt-version-from-string only-version)
-        alt-keys (keys (:alt_art alt-card))
-        alt-arts (if alt-only
-                   (filter #(= alt-only %) alt-keys)
-                   alt-keys)]
-    (if (and alt-arts
-             (show-alt-art? true))
-      (->> alt-arts
-           (concat [""])
-           (map #(if % (assoc card :art %) card))
-           (map #(if (not= "" (:art %)) (dissoc % :previous-versions) %))
-           (concat acc))
-      (conj acc card))))
+   (let [lang (get-in @app-state [:options :language] "en")
+         res (get-in @app-state [:options :card-resolution] "default")
+         alt-versions (remove #{:prev} (map keyword (map :version (:alt-info @app-state))))
+         images (select-keys (get-in (:images card) [(keyword lang) (keyword res)]) alt-versions)
+         alt-only (alt-version-from-string only-version)
+         filtered-images (cond
+                           (= :prev alt-only) nil
+                           alt-only (list alt-only)
+                           :else (keys images))]
+     (if (and filtered-images
+              (show-alt-art? true))
+       (->> filtered-images
+            (concat [""])
+            (map #(if % (assoc card :art %) card))
+            (map #(if (not= "" (:art %)) (dissoc % :previous-versions) %))
+            (concat acc))
+       (conj acc card))))
 
 (defn- insert-alt-arts
   "Add copies of alt art cards to the list of cards. If `only-version` is nil, all alt versions will be added."
   [only-version cards]
   (reduce (partial expand-alts only-version) () (reverse cards)))
 
-(defn non-game-toast
-  "Display a toast warning with the specified message."
-  [msg type options]
-  (set! (.-options js/toastr) (toastr-options options))
-  (let [f (aget js/toastr type)]
-    (f msg)))
+(defn- expand-flips
+  [acc card]
+  (if-let [faces (:faces card)]
+    (->> (keys faces)
+         (map #(assoc card :images (get-in card [:faces % :images])))
+         (map #(dissoc % :faces))
+         (concat acc))
+    (conj acc card)))
+
+(defn- insert-flip-arts
+  "Add copies of cards that have multiple faces (eg. Hoshiko Shiro: Untold Protagonist)"
+  [cards]
+  (reduce expand-flips () (reverse cards)))
 
 (defn- post-response [response]
   (if (= 200 (:status response))
     (let [new-alts (get-in response [:json :altarts] {})]
       (swap! app-state assoc-in [:user :options :alt-arts] new-alts)
-      (non-game-toast "Updated Art" "success" nil))
-    (non-game-toast "Failed to Update Art" "error" nil)))
+      (non-game-toast (tr [:card-browser.update-success "Updated Art"]) "success" nil))
+    (non-game-toast (tr [:card-browser.update-failure "Failed to Update Art"]) "error" nil)))
 
 (defn- future-selected-alt-art [card]
   (let [future-code (keyword (:future-version card))
@@ -170,12 +245,11 @@
         (contains? card :previous-versions) (previous-selected-alt-art card)
         :else
         (let [code (keyword (:code card))
-              alt-card (get (:alt-cards @app-state) (:code card))
               selected-alts (:alt-arts (:options @app-state))
               selected-art (keyword (get selected-alts code))
               card-art (:art card)]
           (or (and card-art (nil? selected-art) (= "" card-art))
-              (and alt-card selected-art (= card-art selected-art))))))
+              (and selected-art (= card-art selected-art))))))
 
 ;; Alts can only be set on th most recent version of a card
 ;; So if the card has a :future-version key, we apply the alt to
@@ -200,65 +274,70 @@
     :banned "invalid"
     "casual"))
 
-(defn- card-as-text
+(defn card-as-text
   "Generate text html representation a card"
-  [card]
-  [:div
-   [:h4 (:title card)]
-   (when-let [memory (:memoryunits card)]
-     (if (< memory 3)
-       [:div.anr-icon {:class (str "mu" memory)} ""]
-       [:div.heading (str "Memory: " memory) [:span.anr-icon.mu]]))
-   (when-let [cost (:cost card)]
-     [:div.heading (str "Cost: " cost)])
-   (when-let [trash-cost (:trash card)]
-     [:div.heading (str "Trash cost: " trash-cost)])
-   (when-let [strength (:strength card)]
-     [:div.heading (str "Strength: " strength)])
-   (when-let [requirement (:advancementcost card)]
-     [:div.heading (str "Advancement requirement: " requirement)])
-   (when-let [agenda-point (:agendapoints card)]
-     [:div.heading (str "Agenda points: " agenda-point)])
-   (when-let [min-deck-size (:minimumdecksize card)]
-     [:div.heading (str "Minimum deck size: " min-deck-size)])
-   (when-let [influence-limit (:influencelimit card)]
-     [:div.heading (str "Influence limit: " influence-limit)])
-   (when-let [influence (:factioncost card)]
-     (when-let [faction (:faction card)]
-       [:div.heading "Influence "
-        [:span.influence
-         {:class (-> faction s/lower-case (s/replace " " "-"))}
-         (influence-dots influence)]]))
-   [:div.text
-    [:p [:span.type (str (:type card))]
-     (if (empty? (:subtype card)) "" (str ": " (:subtype card)))]
-    [:pre (render-icons (:text (first (filter #(= (:title %) (:title card)) @all-cards))))]
+  [card show-extra-info]
+  (let [title (:title card)
+        icon (faction-icon (:faction card) title)
+        uniq (when (:uniqueness card) "◇ ")]
+    [:div
+     [:h4 uniq title icon
+      (when-let [influence (:factioncost card)]
+        (when-let [faction (:faction card)]
+           [:span.influence
+            {:class (slugify faction)}
+            (influence-dots influence)]))]
+     (when-let [memory (:memoryunits card)]
+       (if (< memory 3)
+         [:div.anr-icon {:class (str "mu" memory)} ""]
+         [:div.heading (str (tr [:card-browser.memory "Memory"]) ": " memory) [:span.anr-icon.mu]]))
+     (when-let [cost (:cost card)]
+       [:div.heading (str (tr [:card-browser.cost "Cost"]) ": " cost)])
+     (when-let [trash-cost (:trash card)]
+       [:div.heading (str (tr [:card-browser.trash-cost "Trash cost"]) ": " trash-cost)])
+     (when-let [strength (:strength card)]
+       [:div.heading (str (tr [:card-browser.strength "Strength"]) ": " strength)])
+     (when-let [requirement (:advancementcost card)]
+       [:div.heading (str (tr [:card-browser.advancement "Advancement requirement"]) ": " requirement)])
+     (when-let [agenda-point (:agendapoints card)]
+       [:div.heading (str (tr [:card-browser.agenda-points "Agenda points"]) ": " agenda-point)])
+     (when-let [min-deck-size (:minimumdecksize card)]
+       [:div.heading (str (tr [:card-browser.min-deck "Minimum deck size"]) ": " min-deck-size)])
+     (when-let [influence-limit (:influencelimit card)]
+       [:div.heading (str (tr [:card-browser.inf-limit "Influence limit"]) ": " influence-limit)])
 
-    [:div.formats
-     (doall (for [[k name] (-> slug->format butlast)]
-              (let [status (keyword (get-in card [:format (keyword k)] "unknown"))
-                    c (text-class-for-status status)]
-                ^{:key k}
-                [:div {:class c} name
-                 (case status
-                   :banned banned-span
-                   :restricted restricted-span
-                   :rotated rotated-span
-                   nil)])))]
+     [:div.text.card-body
+      [:p [:span.type (tr-type (:type card))]
+       (if (empty? (:subtype card)) "" (str ": " (:subtype card)))]
+      [:pre (render-icons (:text (get @all-cards (:title card))))]
 
-    [:div.pack
-     (when-let [pack (:setname card)]
-       (when-let [number (:number card)]
-         (str pack " " number
-              (when-let [art (:art card)]
-                (str " [" (alt-art-name art) "]")))))]
-    (when (show-alt-art?)
-      (if (selected-alt-art card)
-        [:div.selected-alt "Selected Alt Art"]
-        (when (or (:art card) (:previous-versions card) (:future-version card))
-          [:button.alt-art-selector
-           {:on-click #(select-alt-art card)}
-           "Select Art"])))]])
+      (when show-extra-info
+        [:<>
+         [:div.formats
+          (doall (for [[k name] (-> slug->format butlast)]
+                   (let [status (keyword (get-in card [:format (keyword k)] "unknown"))
+                         c (text-class-for-status status)]
+                     ^{:key k}
+                     [:div.format-item {:class c} name
+                      (case status
+                        :banned banned-span
+                        :restricted restricted-span
+                        :rotated rotated-span
+                        nil)])))]
+
+         [:div.pack
+          (when-let [pack (:setname card)]
+            (when-let [number (:number card)]
+              (str pack " " number
+                   (when-let [art (:art card)]
+                     (str " [" (alt-art-name art) "]")))))]
+         (when (show-alt-art?)
+           (if (selected-alt-art card)
+             [:div.selected-alt (tr [:card-browser.selected-art "Selected Alt Art"])]
+             (when (or (:art card) (:previous-versions card) (:future-version card))
+               [:button.alt-art-selector
+                {:on-click #(select-alt-art card)}
+                (tr [:card-browser.select-art "Select Art"])])))])]]))
 
 (defn types [side]
   (let [runner-types ["Identity" "Program" "Hardware" "Resource" "Event"]
@@ -273,12 +352,14 @@
         corp-factions ["Jinteki" "Haas-Bioroid" "NBN" "Weyland Consortium" "Neutral"]]
     (case side
       "All" (concat runner-factions corp-factions)
+      "Any Side" (concat runner-factions corp-factions)
       "Runner" (conj runner-factions "Neutral")
       "Corp" corp-factions)))
 
 (defn- filter-alt-art-cards [cards]
-  (let [alt-arts (:alt-cards @app-state)]
-    (filter #(or (contains? alt-arts (:code %))
+  (let [lang (get-in @app-state [:options :language] "en")
+        res (get-in @app-state [:options :card-resolution] "default")]
+    (filter #(or (not-empty (dissoc (get-in (:images %) [(keyword lang) (keyword res)]) :stock))
                  (contains? % :future-version)
                  (contains? % :previous-versions))
             cards)))
@@ -287,9 +368,9 @@
   (when-let [alt-key (alt-version-from-string setname)]
     (if (= alt-key :prev)
       (filter #(or (contains? % :future-version) (contains? % :previous-versions)) cards)
-      (let [sa (map first
-                    (filter (fn [[k v]] (contains? (:alt_art v) alt-key)) (:alt-cards @app-state)))]
-        (filter (fn [c] (some #(= (:code c) %) sa)) cards)))))
+      (let [lang (get-in @app-state [:options :language] "en")
+            res (get-in @app-state [:options :card-resolution] "default")]
+        (filter #(get-in (:images %) [(keyword lang) (keyword res) alt-key]) cards)))))
 
 (defn filter-cards [filter-value field cards]
   (if (= filter-value "All")
@@ -344,38 +425,46 @@
                  nil)}
        (if (or (= card (:selected-card @state))
                (:show-text @cv))
-         [card-as-text card]
+         [card-as-text card true]
          (when-let [url (base-image-url card)]
            [:img {:src url
                   :alt (:title card)
                   :onError #(-> (swap! cv assoc :show-text true))
                   :onLoad #(-> % .-target js/$ .show)}]))])))
 
-(defn card-list-view [state]
-  (let [selected (selected-set-name state)
-        selected-cycle (-> selected s/lower-case (s/replace " " "-"))
-        combined-cards (concat @all-cards (:previous-cards @app-state))
-        [alt-filter cards] (cond
-                             (= selected "All") [nil combined-cards]
-                             (= selected "Alt Art") [nil (filter-alt-art-cards combined-cards)]
-                             (s/ends-with? (:set-filter @state) " Cycle") [nil (filter #(= (:cycle_code %) selected-cycle) combined-cards)]
-                             (not (some #(= selected (:name %)) (:sets @app-state))) [selected (filter-alt-art-set selected combined-cards)]
-                             :else
-                             [nil (filter #(= (:setname %) selected) combined-cards)])
-        cards (->> cards
-                   (filter-cards (:side-filter @state) :side)
-                   (filter-cards (:faction-filter @state) :faction)
-                   (filter-cards (:type-filter @state) :type)
-                   (filter-format (:format-filter @state))
-                   (filter-title (:search-query @state))
-                   (insert-alt-arts alt-filter)
-                   (sort-by (sort-field (:sort-field @state)))
-                   (take (* (:page @state) 28)))]
-    [:div.card-list {:on-scroll #(handle-scroll % state)}
-     (doall
-       (for [card cards]
-         ^{:key (str (image-url card true) "-" (:code card))}
-         [card-view card state]))]))
+(defn card-list-view [state scroll-top]
+  (r/create-class
+    {
+     :display-name "card-list-view"
+     :component-did-mount #(set-scroll-top % @scroll-top)
+     :component-will-unmount #(store-scroll-top % scroll-top)
+     :reagent-render
+     (fn [state scroll-top]
+       (let [selected (selected-set-name state)
+             selected-cycle (slugify selected)
+             combined-cards (concat (sort-by :code (vals @all-cards)) (:previous-cards @app-state))
+             [alt-filter cards] (cond
+                                  (= selected "All") [nil combined-cards]
+                                  (= selected "Alt Art") [nil (filter-alt-art-cards combined-cards)]
+                                  (s/ends-with? (:set-filter @state) " Cycle") [nil (filter #(= (:cycle_code %) selected-cycle) combined-cards)]
+                                  (not (some #(= selected (:name %)) (:sets @app-state))) [selected (filter-alt-art-set selected combined-cards)]
+                                  :else
+                                  [nil (filter #(= (:setname %) selected) combined-cards)])
+             cards (->> cards
+                        (filter-cards (:side-filter @state) :side)
+                        (filter-cards (:faction-filter @state) :faction)
+                        (filter-cards (:type-filter @state) :type)
+                        (filter-format (:format-filter @state))
+                        (filter-title (:search-query @state))
+                        (insert-flip-arts)
+                        (insert-alt-arts alt-filter)
+                        (sort-by (sort-field (:sort-field @state)))
+                        (take (* (:page @state) 28)))]
+         [:div.card-list {:on-scroll #(handle-scroll % state)}
+          (doall
+            (for [card cards]
+              ^{:key (str (base-image-url card) "-" (:code card))}
+              [card-view card state]))]))}))
 
 (defn handle-search [e state]
   (doseq [filter [:set-filter :type-filter :faction-filter]]
@@ -392,31 +481,32 @@
                               :on-click #(swap! state assoc :search-query "")}])
      [:input.search {:on-change #(handle-search % state)
                      :type "text"
-                     :placeholder "Search cards"
+                     :placeholder (tr [:card-browser.search-hint "Search cards"])
                      :value query}]]))
 
 (defn sort-by-builder [state]
   [:div
-   [:h4 "Sort by"]
+   [:h4 (tr [:card-browser.sort "Sort by"])]
    [:select {:value (:sort-field @state)
              :on-change #(swap! state assoc :sort-field (.. % -target -value))}
-    (for [field ["Faction" "Name" "Type" "Influence" "Cost" "Set number"]]
-      [:option {:value field
-                :key field
-                :dangerouslySetInnerHTML #js {:__html field}}])]])
+    (doall
+      (for [field ["Faction" "Name" "Type" "Influence" "Cost" "Set number"]]
+        [:option {:value field
+                  :key field
+                  :dangerouslySetInnerHTML #js {:__html (tr-sort field)}}]))]])
 
 (defn simple-filter-builder
-  [title state state-key options]
+  [title state state-key options translator]
   [:div
    [:h4 title]
    [:select {:value (get @state state-key)
              :on-change #(swap! state assoc state-key (.. % -target -value))}
-    (for [option (cons "All" options)]
-      ^{:key option}
-      [:option {:value option
-                :key option
-                :dangerouslySetInnerHTML #js {:__html option}}])]])
-
+    (doall
+      (for [option (cons "All" options)]
+        ^{:key option}
+        [:option {:value option
+                  :key option
+                  :dangerouslySetInnerHTML #js {:__html (translator option)}}]))]])
 
 (defn format-set-name [pack-name]
   (str "&nbsp;&nbsp;&nbsp;&nbsp;" pack-name))
@@ -448,14 +538,14 @@
         formats (-> format->slug keys butlast)]
     [:div
      (doall
-       (for [[title state-key options]
-             [["Format" :format-filter formats]
-              ["Set" :set-filter sets-to-display]
-              ["Side" :side-filter ["Corp" "Runner"]]
-              ["Faction" :faction-filter (factions (:side-filter @state))]
-              ["Type" :type-filter (types (:side-filter @state))]]]
+       (for [[title state-key options translator]
+             [[(tr [:card-browser.format "Format"]) :format-filter formats tr-format]
+              [(tr [:card-browser.set "Set"]) :set-filter sets-to-display identity]
+              [(tr [:card-browser.side "Side"]) :side-filter ["Corp" "Runner"] tr-side]
+              [(tr [:card-browser.faction "Faction"]) :faction-filter (factions (:side-filter @state)) tr-faction]
+              [(tr [:card-browser.type "Type"]) :type-filter (types (:side-filter @state)) tr-type]]]
          ^{:key title}
-         [simple-filter-builder title state state-key options]))]))
+         [simple-filter-builder title state state-key options translator]))]))
 
 (defn clear-filters [state]
   [:p [:button
@@ -468,27 +558,45 @@
                           :type-filter "All"
                           :side-filter "All"
                           :faction-filter "All")}
-       "Clear"]])
+       (tr [:card-browser.clear "Clear"])]])
+
+(defn art-info [state]
+  (let [selected (r/cursor state [:selected-card])]
+    (when (and @selected (:art @selected))
+      (let [art (name (:art @selected))
+            alts (:alt-info @app-state)
+            info (first (filter #(= (:version %) art) alts))
+            blurb (:artist-blurb info)
+            link (:artist-link info)]
+        (when blurb
+          [:div.panel.green-shade.artist-blurb
+           [:h4 "Artist Info"]
+           [:div blurb]
+           (when link
+             [:a {:href link} "More Info"])])))))
 
 (defn card-browser []
-  (r/with-let [active (r/cursor app-state [:active-page])]
-    (when (= "/cards" (first @active))
-      (let [state (r/atom {:search-query ""
-                           :sort-field "Faction"
-                           :format-filter "All"
-                           :set-filter "All"
-                           :type-filter "All"
-                           :side-filter "All"
-                           :faction-filter "All"
-                           :page 1
-                           :decorate-card true
-                           :selected-card nil})]
-        (fn []
-          (.focus (js/$ ".search"))
-          [:div.cardbrowser
-           [:div.blue-shade.panel.filters
-            [query-builder state]
-            [sort-by-builder state]
-            [dropdown-builder state]
-            [clear-filters state]]
-           [card-list-view state]])))))
+  (let [active (r/cursor app-state [:active-page])
+        state (r/atom {:search-query ""
+                       :sort-field "Faction"
+                       :format-filter "All"
+                       :set-filter "All"
+                       :type-filter "All"
+                       :side-filter "All"
+                       :faction-filter "All"
+                       :page 1
+                       :decorate-card true
+                       :selected-card nil})
+        scroll-top (atom 0)]
+
+    (fn []
+      (when (= "/cards" (first @active))
+        [:div#cardbrowser.cardbrowser
+         [:div.card-info
+          [:div.blue-shade.panel.filters
+           [query-builder state]
+           [sort-by-builder state]
+           [dropdown-builder state]
+           [clear-filters state]]
+          [art-info state]]
+         [card-list-view state scroll-top]]))))
