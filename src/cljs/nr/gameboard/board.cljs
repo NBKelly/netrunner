@@ -357,10 +357,14 @@
       (let [command (case ab-type
                       :runner "runner-ability"
                       :corp "corp-ability"
-                      :ability (if (:dynamic ab) "dynamic-ability" "ability"))]
+                      :ability (if (:dynamic ab) "dynamic-ability" "ability"))
+            args (merge {:card card}
+                        (if (:dynamic ab)
+                          (select-keys ab [:dynamic :source :index])
+                          {:ability i}))]
         [:div {:key i
                :on-click #(do
-                            (send-command command {:card card :ability i})
+                            (send-command command args)
                             (if (:keep-menu-open ab)
                               (swap! c-state assoc :keep-menu-open (keyword (:keep-menu-open ab)))
                               (close-abilities c-state)))}
@@ -1581,9 +1585,12 @@
                                                   card))
                      get-zone (fn [card] (:zone (get-nested-host card)))
                      in-play-area? (fn [card] (= (get-zone card) ["play-area"]))
+                     in-scored? (fn [card] (= (get-zone card) ["scored"]))
                      installed? (fn [card] (or (:installed card)
                                                (= "servers" (first (get-zone card)))))]
-                 (if (or (installed? card)
+                 (if (or (nil? (:side card))
+                         (installed? card)
+                         (in-scored? card)
                          (in-play-area? card))
                    [:div {:style {:text-align "center"}
                           :on-mouse-over #(card-highlight-mouse-over % card button-channel)
