@@ -1392,6 +1392,30 @@
       (is (= ["End the run"] (prompt-buttons :runner)) "Only choice should be End the run")
       (click-prompt state :runner "End the run")
       (is (not (:run @state)) "Run should be ended from Giordano Memorial Field ability")))
+  (testing "Payable with net mercur"
+    (do-game
+      (new-game {:corp {:deck ["Giordano Memorial Field" "Hostile Takeover"]}
+                 :runner {:deck [(qty "Fan Site" 3) "Net Mercur"]}})
+      (play-from-hand state :corp "Giordano Memorial Field" "New remote")
+      (rez state :corp (get-content state :remote1 0))
+      (take-credits state :corp)
+      (play-from-hand state :runner "Fan Site")
+      (play-from-hand state :runner "Fan Site")
+      (play-from-hand state :runner "Fan Site")
+      (play-from-hand state :runner "Net Mercur")
+      (take-credits state :runner)
+      (play-and-score state "Hostile Takeover")
+      (take-credits state :corp)
+      (let [nm (get-resource state 0)]
+        (core/command-counter state :runner '("c" "3"))
+        (click-card state :runner nm)
+        (run-empty-server state "Server 1")
+        (click-prompt state :runner "Pay 6 [Credits]")
+        (click-card state :runner nm)
+        (click-card state :runner nm)
+        (click-card state :runner nm)
+        (click-prompt state :runner "Place 1 [Credits]")
+        (click-prompt state :runner "No action"))))
   (testing "Ending the run doesn't mark the run as unsuccessful. Issue #4223"
     (do-game
       (new-game {:corp {:hand ["Giordano Memorial Field" "Hostile Takeover"]}
@@ -2013,12 +2037,12 @@
 
 (deftest midway-station-grid
   ;; Midway Station Grid
-  (do-game
-    (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
-                      :hand ["Midway Station Grid" (qty "Battlement" 2)]
-                      :credits 20}
-               :runner {:hand ["Corroder"]
-                        :credits 10}})
+  (testing "Addtional cost on single sub break"
+    (do-game (new-game {:corp  {:deck [(qty "Hedge Fund" 5)]
+                                :hand ["Midway Station Grid" (qty "Battlement" 2)]
+                                :credits 20}
+                        :runner {:hand ["Corroder"]
+                                 :credits 10}})
     (play-from-hand state :corp "Midway Station Grid" "HQ")
     (rez state :corp (get-content state :hq 0))
     (play-from-hand state :corp "Battlement" "HQ")
@@ -2047,6 +2071,21 @@
         -1 (:credit (get-runner))
         "Runner loses 1 credit only for running on a different server"
         (card-ability state :runner corroder 0)
+        (click-prompt state :runner "End the run")))))
+   (testing "Addtional cost when breaking all"
+    (do-game (new-game {:corp {:hand ["Midway Station Grid" "Quandary"] :credits 20} :runner {:hand ["Cradle"] :credits 20} })
+      (play-from-hand state :corp "Midway Station Grid" "HQ")
+      (rez state :corp (get-content state :hq 0))
+      (play-from-hand state :corp "Quandary" "HQ")
+      (take-credits state :corp)
+      (play-from-hand state :runner "Cradle")
+      (run-on state "HQ")
+      (rez state :corp (get-ice state :hq 0))
+      (run-continue state)
+      (changes-val-macro
+        -3 (:credit (get-runner))
+        "Runner loses 3 credits, 2 for cradle 1 for midway"
+        (card-ability state :runner (get-program state 0) 0)
         (click-prompt state :runner "End the run")))))
 
 (deftest mumbad-city-grid

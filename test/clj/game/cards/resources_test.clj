@@ -5161,7 +5161,47 @@
        (take-credits state :runner)
        (core/purge state :corp)
        (take-credits state :corp)
-       (is (seq (:prompt (get-runner))) "Runner gets a prompt cuz we don't know what they have")))))
+       (is (seq (:prompt (get-runner))) "Runner gets a prompt cuz we don't know what they have"))))
+  (testing "Cannot remove virus counters from Corp cards"
+    (do-game
+      (new-game {:runner {:deck ["The Nihilist" "Cache"]}
+                 :corp {:deck [(qty "Sandstone" 10)]}})
+      (starting-hand state :runner ["The Nihilist" "Cache"])
+      (starting-hand state :corp ["Sandstone"])
+      (play-from-hand state :corp "Sandstone" "HQ")
+      (take-credits state :corp)
+      (play-from-hand state :runner "The Nihilist")
+      (play-from-hand state :runner "Cache")
+      (let [sandstone (get-ice state :hq 0)]
+        (rez state :corp sandstone)
+        (run-on state "HQ")
+        (run-continue state)
+        (card-subroutine state :corp sandstone 0)
+        (is (not (:run @state)) "Run Ended")
+        (take-credits state :runner)
+        (take-credits state :corp)
+        (click-prompt state :runner "Yes") ; spend 2 tokens?
+        (is (= 1 (get-counters (refresh sandstone) :virus)) "Sandstone has 1 virus counter")
+        (click-card state :runner (refresh sandstone))
+        (is (= 1 (get-counters (refresh sandstone) :virus)) "Sandstone should still have 1 virus counter"))))
+  (testing "Ability activation trigger only counts Runner virus counters"
+    (do-game
+      (new-game {:runner {:deck ["The Nihilist"]}
+                 :corp {:deck ["Sandstone"]}})
+      (starting-hand state :runner ["The Nihilist"])
+      (starting-hand state :corp ["Sandstone"])
+      (play-from-hand state :corp "Sandstone" "HQ")
+      (take-credits state :corp)
+      (play-from-hand state :runner "The Nihilist")
+      (take-credits state :runner)
+      (let [sandstone (get-ice state :hq 0)
+            nihilist (get-resource state 0)]
+        (rez state :corp sandstone)
+        (core/purge state :corp)
+        (core/add-counter state :corp sandstone :virus 2)
+        (is (= 0 (get-counters (refresh nihilist) :virus)) "The Nihilist has 0 virus counters")
+        (is (= 2 (get-counters (refresh sandstone) :virus)) "Sandstone has 2 virus counters")
+        (is (= 0 (count (prompt-buttons :runner))) "The Nihilist did not trigger")))))
 
 (deftest the-shadow-net
   ;; The Shadow Net
@@ -5399,7 +5439,7 @@
   (testing "Bounce test"
     (do-game
       (new-game {:corp {:deck [(qty "Ice Wall" 5)]
-                        :hand [(qty "Fire Wall" 5)]}
+                        :hand [(qty "Hard-Hitting News" 5)]}
                  :runner {:hand ["The Turning Wheel"]
                           :credits 10}})
       (take-credits state :corp)
@@ -5409,7 +5449,12 @@
         (card-ability state :runner ttw 2) ;; Bounce HQ ability
         (is (= 1 (get-counters (refresh ttw) :power)) "The Turning Wheel ability has 1 power counter")
         (card-ability state :runner ttw 3) ;; Bounce R&D ability
-        (is (= 2 (get-counters (refresh ttw) :power)) "The Turning Wheel ability has 2 power counter")))))
+        (is (= 2 (get-counters (refresh ttw) :power)) "The Turning Wheel ability has 2 power counter")
+        (take-credits state :runner)
+        (play-from-hand state :corp "Hard-Hitting News")
+        (click-prompt state :corp "0")
+        (click-prompt state :runner "0")
+        (is (= 4 (count-tags state)) "Bouncing enables Hard-Hitting News")))))
 
 (deftest theophilius-bagbiter
   ;; Theophilius Bagbiter - hand size is equal to credit pool

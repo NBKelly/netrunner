@@ -99,20 +99,20 @@
         (apply map-longest f default (map rest colls))))))
 
 (def slug->format
-  {"standard" "Future Standard"
+  {"standard" "Standard"
    "system-gateway" "System Gateway"
    "startup" "Startup"
-   "eternal" "MWL Testing"
+   "eternal" "Eternal"
    "snapshot" "Snapshot"
    "snapshot-plus" "Snapshot Plus"
    "classic" "Classic"
    "casual" "Casual"})
 
 (def format->slug
-  {"Future Standard" "standard"
+  {"Standard" "standard"
    "System Gateway" "system-gateway"
    "Startup" "startup"
-   "MWL Testing" "eternal"
+   "Eternal" "eternal"
    "Snapshot" "snapshot"
    "Snapshot Plus" "snapshot-plus"
    "Classic" "classic"

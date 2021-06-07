@@ -11,18 +11,17 @@
             [nr.ajax :refer [GET PUT DELETE]]
             [nr.appstate :refer [app-state]]
             [nr.auth :as auth]
-            [nr.avatar :refer [avatar]]
             [nr.cardbrowser :refer [card-as-text]]
             [nr.end-of-game-stats :refer [build-game-stats]]
             [nr.gameboard.actions :refer [send-command toast]]
-            [nr.gameboard.log :refer [log-panel log-mode send-msg card-preview-mouse-over card-preview-mouse-out
-                                      card-highlight-mouse-over card-highlight-mouse-out resize-card-zoom
-                                      zoom-channel should-scroll]]
-            [nr.gameboard.replay :refer [init-replay replay-panel update-notes get-remote-annotations
-                                         load-remote-annotations delete-remote-annotations publish-annotations
-                                         load-annotations-file save-annotations-file]]
-            [nr.gameboard.state :refer [game-state last-state lock replay-side parse-state get-side not-spectator?]]
-            [nr.translations :refer [tr tr-pronouns tr-side]]
+            [nr.gameboard.log :refer [send-msg should-scroll]]
+            [nr.gameboard.card-preview :refer [card-preview-mouse-over card-preview-mouse-out
+                                               card-highlight-mouse-over card-highlight-mouse-out zoom-channel]]
+            [nr.gameboard.right-pane :refer [content-pane]]
+            [nr.gameboard.player-stats :refer [stat-controls stats-view]]
+            [nr.gameboard.replay :refer [replay-panel]]
+            [nr.gameboard.state :refer [game-state replay-side not-spectator?]]
+            [nr.translations :refer [tr tr-side]]
             [nr.utils :refer [banned-span influence-dot influence-dots map-longest
                               toastr-options render-icons render-message
                               checkbox-button cond-button get-image-path
@@ -724,14 +723,6 @@
      (str (get-in opts [:opts :name])
           (when (not (get-in opts [:opts :hide-cursor])) (str " (" (fn cursor) ")")))]))
 
-(defn controls
-  "Create the control buttons for the side displays."
-  ([key] (controls key 1 -1))
-  ([key increment decrement]
-   [:div.controls
-    [:button.small {:on-click #(send-command "change" {:key key :delta decrement}) :type "button"} "-"]
-    [:button.small {:on-click #(send-command "change" {:key key :delta increment}) :type "button"} "+"]]))
-
 (defn- this-user?
   [user]
   (if (:replay @game-state)
@@ -783,8 +774,7 @@
              [:a {:on-click #(close-popup % (:hand-popup @s) nil false false)} (tr [:game.close "Close"])]
              [:label (tr [:game.card-count] size)]
              (let [{:keys [total]} @hand-size]
-               [:div.hand-size (str total " " (tr [:game.max-hand "Max hand size"]))
-                (controls :hand-size)])
+               (stat-controls :hand-size [:div.hand-size (str total " " (tr [:game.max-hand "Max hand size"]))]))
              [build-hand-card-view filled-hand size prompt "card-popup-wrapper"]]])]))))
 
 (defn show-deck [event ref]
@@ -925,7 +915,8 @@
          [label @cards {:opts {:name name}}]]))))
 
 (defn scored-view [scored agenda-point me?]
-  (let [size (count @scored)]
+  (let [size (count @scored)
+        ctrl (if me? stat-controls (fn [key content] content))]
     [:div.panel.blue-shade.scored.squeeze
      (doall
        (map-indexed (fn [i card]
@@ -934,83 +925,8 @@
                        [:div [card-view card]]])
                     @scored))
      [label @scored {:opts {:name (tr [:game.scored-area "Scored Area"])}}]
-     [:div.stats
-      [:div (tr [:game.agenda-count] @agenda-point)
-       (when me? (controls :agenda-point))]]]))
-
-(defn name-area
-  [user]
-  [:div.namearea [avatar user {:opts {:size 32}}]
-   [:div.namebox
-    [:div.username (:username user)]
-    (if-let [pronouns (get-in user [:options :pronouns])]
-      (let [pro-str (if (= "blank" pronouns) "" (tr-pronouns pronouns))]
-        [:div.pronouns (lower-case pro-str)]))]])
-
-(defmulti stats-view #(get-in @% [:identity :side]))
-
-(defn display-memory
-  [memory]
-  (let [me? (= (:side @game-state) :runner)]
-    (fn [memory]
-      (let [{:keys [available used only-for]} memory
-            unused (- available used)]
-        [:div (tr [:game.mu-count] unused available)
-         (when (neg? unused) [:div.warning "!"])
-         (when me? (controls :memory))]))))
-
-(defn display-special-memory
-  [memory]
-  (when-let [only-for (->> (:only-for memory)
-                           (filter #(pos? (:available (second %))))
-                           (into {})
-                           not-empty)]
-    [:div
-     (str "("
-          (join "), (" (for [[mu-type {:keys [available used]}] only-for
-                             :let [unused (max 0 (- available used))]]
-                         (str unused " of " available
-                              " " (capitalize (name mu-type))
-                              " MU unused")))
-          ")")]))
-
-(defmethod stats-view "Runner" [runner]
-  (let [me? (= (:side @game-state) :runner)]
-    (fn [runner]
-      (let [{:keys [user click credit run-credit memory link tag
-                    brain-damage active]} @runner]
-        [:div.panel.blue-shade.stats {:class (when active "active-player")}
-         (name-area user)
-         [:div (tr [:game.click-count] click)
-          (when me? (controls :click))]
-         [:div (tr [:game.credit-count] credit run-credit)
-          (when me? (controls :credit))]
-         [display-memory memory]
-         [display-special-memory memory]
-         [:div (str link " " (tr [:game.link-strength "Link Strength"]))
-          (when me? (controls :link))]
-         (let [{:keys [base total is-tagged]} tag
-               additional (- total base)
-               show-tagged (or is-tagged (pos? total))]
-           [:div (tr [:game.tag-count] base additional total)
-            (when show-tagged [:div.warning "!"])
-            (when me? (controls :tag))])
-         [:div (str brain-damage " " (tr [:game.brain-damage "Brain Damage"]))
-          (when me? (controls :brain-damage))]]))))
-
-(defmethod stats-view "Corp" [corp]
-  (let [me? (= (:side @game-state) :corp)]
-    (fn [corp]
-      (let [{:keys [user click credit bad-publicity active]} @corp]
-        [:div.panel.blue-shade.stats {:class (when active "active-player")}
-         (name-area user)
-         [:div (tr [:game.click-count] click)
-          (when me? (controls :click))]
-         [:div (tr [:game.credit-count] credit -1)
-          (when me? (controls :credit))]
-         (let [{:keys [base additional]} bad-publicity]
-           [:div (tr [:game.bad-pub-count] base additional)
-            (when me? (controls :bad-publicity))])]))))
+     [:div.stats-area
+      (ctrl :agenda-point [:div (tr [:game.agenda-count] @agenda-point)])]]))
 
 (defn run-arrow [run]
   [:div.run-arrow [:div {:class (cond
@@ -1124,7 +1040,8 @@
         server-type (first rs)
         side-class (if (= player-side :runner) "opponent" "me")
         hand-count-number (if (nil? @hand-count) (count @hand) @hand-count)]
-    [:div.outer-corp-board {:class side-class}
+    [:div.outer-corp-board {:class [side-class
+                                    (when (get-in @app-state [:options :sides-overlap]) "overlap")]}
      [:div.corp-board {:class side-class}
       (doall
         (for [server (reverse (get-remotes @servers))
@@ -1172,7 +1089,8 @@
                           (= "irl" (get-in @app-state [:options :runner-board-order])))
                    reverse
                    seq)]
-    [:div.runner-board {:class (if is-me "me" "opponent")}
+    [:div.runner-board {:class [(if is-me "me" "opponent")
+                                (when (get-in @app-state [:options :sides-overlap]) "overlap")]}
      (when-not is-me centrals)
      (doall
        (for [zone (runner-f [:program :hardware :resource :facedown])]
@@ -1863,10 +1781,12 @@
                                    :spectator @background)
                                  @background)}]
 
-                 [:div.rightpane
+                 [:div.right-pane
                   [card-zoom-view zoom-card]
-                  [log-panel send-command]]
-                 (do (resize-card-zoom) nil)
+
+                  (if (:replay @game-state)
+                    [content-pane :log :settings :notes :notes-shared]
+                    [content-pane :log :settings])]
 
                  [:div.centralpane
                   (if (= op-side :corp)

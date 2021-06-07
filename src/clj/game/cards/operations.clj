@@ -141,6 +141,7 @@
                                     (or (in-hand? %)
                                         (in-discard? %)))}
               :async true
+              :show-discard true
               :effect
               (req (wait-for
                      (reveal state side targets)
@@ -2491,28 +2492,30 @@
 
 (defcard "Trick of Light"
   {:on-play
-   {:req (req (let [advanceable (some can-be-advanced? (get-all-installed state))
-                    advanced (some #(get-counters % :advancement) (get-all-installed state))]
-                (and advanceable advanced)))
-    :choices {:card #(and (pos? (get-counters % :advancement))
+   {:prompt "Choose an installed card you can advance"
+    :req (req (let [advanceable (some can-be-advanced? (get-all-installed state))
+                    num-installed (count (get-all-installed state))]
+                 (and advanceable
+                      (> num-installed 1))))
+    :choices {:card #(and (can-be-advanced? %)
                           (installed? %))}
     :async true
     :effect (effect
               (continue-ability
-                (let [fr target]
+                (let [card-to-advance target]
                   {:async true
-                   :prompt "Move how many advancement tokens?"
-                   :choices (take (inc (get-counters fr :advancement)) ["0" "1" "2"])
+                   :prompt "Choose another installed card"
+                   :choices {:card #(and (not (same-card? card-to-advance %))
+                                         (installed? %))}
                    :effect (effect
                              (continue-ability
-                               (let [c (str->int target)]
-                                 {:prompt "Move to where?"
-                                  :choices {:card #(and (not (same-card? fr %))
-                                                        (can-be-advanced? %))}
-                                  :msg (msg "move " c " advancement tokens from "
-                                            (card-str state fr) " to " (card-str state target))
-                                  :effect (effect (add-prop :corp target :advance-counter c {:placed true})
-                                                  (add-prop :corp fr :advance-counter (- c) {:placed true}))})
+                               (let [source target]
+                                 {:prompt "Choose number of counters"
+                                  :choices (take (inc (get-counters source :advancement)) ["0" "1" "2"])
+                                  :msg (msg "move " target " advancement counters from "
+                                            (card-str state source) " to " (card-str state card-to-advance))
+                                  :effect (effect (add-prop :corp card-to-advance :advance-counter (str->int target) {:placed true})
+                                                  (add-prop :corp source :advance-counter (- (str->int target)) {:placed true}))})
                                card nil))})
                 card nil))}})
 
@@ -2529,7 +2532,7 @@
                        state side
                        {:async true
                         :prompt (str "Select a program with an install cost of no more than "
-                                     exceed "[Credits]")
+                                     exceed " [Credits]")
                         :choices {:card #(and (program? %)
                                               (installed? %)
                                               (>= exceed (:cost %)))}

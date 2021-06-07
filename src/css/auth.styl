@@ -1,11 +1,13 @@
+@require "opacity"
+@require "palette"
 // Auth
 
 #auth-forms, .reset-form
     input
         width: 240px
         margin-bottom: 10px
-        font-size: 15px
-        border-color: orange
+        font-size: 1rem
+        border-color: gold-base
         height:auto
 
     button
@@ -20,18 +22,6 @@
     margin: -92px 0 0 -141px
 
 .flash-message
-    color: orangered
-    font-size: 14px
+    color: orange-dark
+    font-size: .875rem
     margin-bottom: 10px
-
-.block-link
-    cursor: pointer
-    border: 1px solid transparent
-    padding: 0 5px
-    border-radius: 4px
-    display: block
-    margin: 0 -4px
-
-    &:hover
-        background-color: transparent-orange
-        border: 1px solid orange

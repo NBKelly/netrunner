@@ -408,7 +408,20 @@
       (is (= 3 (core/available-mu state)))
       (let [atman (get-program state 0)]
         (is (= 2 (get-counters atman :power)) "2 power counters")
-        (is (= 2 (get-strength atman)) "2 current strength")))))
+        (is (= 2 (get-strength atman)) "2 current strength"))))
+  (testing "Paying for install with multithreader"
+    (do-game
+      (new-game {:runner {:deck ["Atman" "Multithreader"] :credits 8}})
+      (take-credits state :corp)
+      (play-from-hand state :runner "Multithreader")
+      (play-from-hand state :runner "Atman")
+      (click-prompt state :runner "4")
+      (click-card state :runner (get-program state 0))
+      (click-card state :runner (get-program state 0))
+      (is (= 2 (core/available-mu state)))
+      (let [atman (get-program state 1)]
+        (is (= 4 (get-counters atman :power)) "4 power counters")
+        (is (= 4 (get-strength atman)) "4 current strength")))))
 
 (deftest au-revoir
   ;; Au Revoir - Gain 1 credit every time you jack out
@@ -1690,8 +1703,74 @@
                            (card-ability state :runner daiv 0)
                            (click-prompt state :runner "Force the Runner to lose 1 [Click]")
                            (click-prompt state :runner "End the run")
+                           (is (clojure.string/includes? (:msg (prompt-map :runner)) "2 stealth") "The prompt tells us how many stealth credits we need")
                            (click-card state :runner cl1)
-                           (click-card state :runner cl2))))))
+                           (click-card state :runner cl2)))))
+  (testing "Can't pay with a non-stealth source"
+    (do-game
+      (new-game {:corp {:deck ["Enigma"]}
+                 :runner {:deck ["Multithreader" "Dai V"]}})
+      (play-from-hand state :corp "Enigma" "HQ")
+      (take-credits state :corp)
+      (core/gain state :runner :credit 20)
+      (play-from-hand state :runner "Multithreader")
+      (play-from-hand state :runner "Dai V")
+      (run-on state :hq)
+      (let [enig (get-ice state :hq 0)
+            mt (get-program state 0)
+            daiv (get-program state 1)]
+        (rez state :corp enig)
+        (run-continue state)
+        (card-ability state :runner daiv 1)
+        (click-prompt state :runner "Done")
+        (card-ability state :runner daiv 0)
+        (is (nil? (prompt-map :runner)) "We are incapable of paying"))))
+  (testing "Can't pay from credit pool"
+    (do-game
+      (new-game {:corp {:deck ["Enigma"]}
+                 :runner {:deck ["Dai V"]}})
+      (play-from-hand state :corp "Enigma" "HQ")
+      (take-credits state :corp)
+      (core/gain state :runner :credit 20)
+      (play-from-hand state :runner "Dai V")
+      (run-on state :hq)
+      (let [enig (get-ice state :hq 0)
+            daiv (get-program state 0)]
+        (rez state :corp enig)
+        (run-continue state)
+        (card-ability state :runner daiv 1)
+        (changes-val-macro 0 (:credit (get-runner))
+          "Credits are not taken from the pool"
+          (card-ability state :runner daiv 0)))))
+  (comment testing "Additional costs are also stealth"
+    (do-game
+      (new-game {:corp {:deck ["Enigma" "Midway Station Grid"]}
+                 :runner {:deck [(qty "Cloak" 2) "Dai V"]}})
+      (core/gain state :corp :credit 10)
+      (play-from-hand state :corp "Enigma" "HQ")
+      (play-from-hand state :corp "Midway Station Grid" "HQ")
+      (rez state :corp (get-content state :hq 0))
+      (take-credits state :corp)
+      (core/gain state :runner :credit 20)
+      (play-from-hand state :runner "Cloak")
+      (play-from-hand state :runner "Cloak")
+      (play-from-hand state :runner "Dai V")
+      (run-on state :hq)
+      (let [enig (get-ice state :hq 0)
+            cl1 (get-program state 0)
+            cl2 (get-program state 1)
+            daiv (get-program state 2)]
+        (rez state :corp enig)
+        (run-continue state)
+        (changes-val-macro -1 (:credit (get-runner))
+                           "Was only charged the 1 credit to pump"
+                           (card-ability state :runner daiv 1)
+                           (click-prompt state :runner "Done")
+                           (card-ability state :runner daiv 0)
+                           (click-prompt state :runner "Force the Runner to lose 1 [Click]")
+                           (click-prompt state :runner "End the run")
+                           (is (nil? (prompt-map :runner)) "We are incapable of paying")
+                           (is (= 0 (count (filter :broken (:subroutines (refresh enig))))) "No subroutines were broken"))))))
 
 (deftest darwin
   ;; Darwin - starts at 0 strength
@@ -2361,6 +2440,45 @@
         (click-card state :runner "Armitage Codebusting")
         (is (empty? (:prompt (get-runner))) "No trash-prevention prompt for resource")))))
 
+(deftest fawkes
+  ;; Fawkes
+  (testing "Requires a stealth credit to pump"
+    (do-game (new-game {:runner {:hand ["Fawkes"] :credits 20}})
+      (take-credits state :corp)
+      (play-from-hand state :runner "Fawkes")
+      (let [fawkes (get-program state 0)]
+        (changes-val-macro
+          0 (get-strength (refresh fawkes))
+          "Strength was not increased"
+          (card-ability state :runner fawkes 1)
+          (is (empty? (:prompt (get-runner))) "Not asked how many credits to pay")))))
+  (testing "Charges the correct amount"
+    (do-game (new-game {:runner {:hand ["Fawkes" "Cloak"] :credits 20}})
+      (take-credits state :corp)
+      (play-from-hand state :runner "Fawkes")
+      (play-from-hand state :runner "Cloak")
+      (let [fawkes (get-program state 0)
+            cloak (get-program state 1)]
+        (changes-val-macro
+          -2 (:credit (get-runner))
+          "Runner was charged correctly"
+          (card-ability state :runner fawkes 1)
+          (click-prompt state :runner "3")
+          (click-card state :runner cloak)))))
+  (testing "Pumps the correct amount"
+    (do-game (new-game {:runner {:hand ["Fawkes" "Cloak"] :credits 20}})
+      (take-credits state :corp)
+      (play-from-hand state :runner "Fawkes")
+      (play-from-hand state :runner "Cloak")
+      (let [fawkes (get-program state 0)
+            cloak (get-program state 1)]
+        (changes-val-macro
+          3 (get-strength (refresh fawkes))
+          "Strength increased correctly"
+          (card-ability state :runner fawkes 1)
+          (click-prompt state :runner "3")
+          (click-card state :runner cloak))))))
+
 (deftest femme-fatale
   ;; Femme Fatale
   (testing "Bypass functionality"
@@ -2641,6 +2759,30 @@
       (trash state :runner (-> (get-runner) :rig :program first))
       (is (zero? (count (:discard (get-runner)))) "Harbinger not in heap")
       (is (-> (get-runner) :rig :facedown first :facedown) "Harbinger installed facedown"))))
+
+(deftest houdini
+  ;; Houdini
+  (testing "Must use a single stealth credit to pump"
+    (do-game (new-game {:runner {:deck ["Houdini" "Cloak"]}})
+      (take-credits state :corp)
+      (play-from-hand state :runner "Houdini")
+      (play-from-hand state :runner "Cloak")
+      (let [houdini (get-program state 0) cloak (get-program state 1)]
+        (changes-val-macro 4 (get-strength (refresh houdini))
+          "Houdini gains strength"
+          (card-ability state :runner houdini 1)
+          (click-card state :runner cloak)))))
+  (testing "Can't pump without a stealth credit"
+    (do-game (new-game {:runner {:deck ["Houdini"]}})
+      (take-credits state :corp)
+      (play-from-hand state :runner "Houdini")
+      (let [houdini (get-program state 0)]
+        (changes-val-macro 0 (:credit (get-runner))
+          "Runner has not been charged"
+          (card-ability state :runner houdini 1))
+        (changes-val-macro 0 (get-strength houdini)
+          "Strength has not been changed"
+          (card-ability state :runner houdini 1))))))
 
 (deftest hyperdriver
   ;; Hyperdriver - Remove from game to gain 3 clicks
@@ -3711,7 +3853,7 @@
           "Using recurring credits"
           (card-ability state :runner mis 0)
           (click-prompt state :runner "2")
-          (is (= "Select a credit providing card (0 of 2 credits)"
+          (is (= "Select a credit providing card (0 of 2 [Credits])"
                  (:msg (prompt-map :runner)))
               "Runner has pay-credit prompt")
           (click-card state :runner multi)
@@ -3733,7 +3875,7 @@
           "Using recurring credits and credits from credit pool"
           (card-ability state :runner mis 0)
           (click-prompt state :runner "4")
-          (is (= "Select a credit providing card (0 of 4 credits)"
+          (is (= "Select a credit providing card (0 of 4 [Credits])"
                  (:msg (prompt-map :runner)))
               "Runner has pay-credit prompt")
           (click-card state :runner mantle))
@@ -3804,7 +3946,7 @@
         (changes-val-macro 0 (:credit (get-runner))
                            "Used 2 credits from Multithreader"
                            (card-ability state :runner ab 1)
-                           (is (= "Select a credit providing card (0 of 2 credits)"
+                           (is (= "Select a credit providing card (0 of 2 [Credits])"
                                   (:msg (prompt-map :runner)))
                                "Runner has pay-credit prompt")
                            (click-card state :runner mt)
@@ -5075,6 +5217,22 @@
         (is (= 3 (:credit (get-runner))) "Gained 2 credits from Gabe's ability")
         (is (= (:cid ash) (-> (prompt-map :runner) :card :cid)) "Ash interrupted HQ access after Sneakdoor run")
         (is (= :hq (-> (get-runner) :register :successful-run first)) "Successful Run on HQ recorded"))))
+   (testing "Crisium grid on HQ should prevent Gabriel gaining credits"
+    (do-game
+      (new-game {:corp {:deck ["Crisium Grid"]}
+                 :runner {:id "Gabriel Santiago: Consummate Professional"
+                          :deck ["Sneakdoor Beta"]}})
+      (play-from-hand state :corp "Crisium Grid" "HQ")
+      (take-credits state :corp)
+      (play-from-hand state :runner "Sneakdoor Beta")
+      (is (= 1 (:credit (get-runner))) "Sneakdoor cost 4 credits")
+      (let [sb (get-program state 0)
+            crisium (get-content state :hq 0)]
+        (rez state :corp crisium)
+        (card-ability state :runner sb 0)
+        (run-continue state)
+        (is (= 1 (:credit (get-runner))) "Did not gain 2 credits from Gabe's ability")
+        (is (not= :hq (-> (get-runner) :register :successful-run first)) "Successful Run on HQ was not recorded"))))
   (testing "do not switch to HQ if Archives has Crisium Grid. Issue #1229."
     (do-game
       (new-game {:corp {:deck ["Crisium Grid" "Priority Requisition" "Private Security Force"]}

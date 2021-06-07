@@ -151,7 +151,7 @@
 (defcard "Algo Trading"
   {:flags {:runner-phase-12 (req (pos? (:credit runner)))}
    :abilities [{:label "Move up to 3 [Credit] from credit pool to Algo Trading"
-                :prompt "Choose how many [Credit] to move" :once :per-turn
+                :prompt "Choose how many credits to move" :once :per-turn
                 :choices {:number (req (min 3 (total-available-credits state :runner eid card)))}
                 :async true
                 :effect (effect (add-counter card :credit target)
@@ -1340,7 +1340,7 @@
                    :choices {:number (req (get-counters card :credit))}
                    :async true
                    :effect (req (wait-for (gain-credits state :runner target)
-                                          (system-msg state :runner (str "trashes Jackpot! to gain " target " credits"))
+                                          (system-msg state :runner (str "trashes Jackpot! to gain " target " [Credits]"))
                                           (trash state :runner eid card nil)))}}}]
     {:events [{:event :runner-turn-begins
                :effect (effect (add-counter :runner card :credit 1))}
@@ -2031,7 +2031,7 @@
                         :label "Remove 1 counter from a hosted card"
                         :cost [:credit 1])
                  {:async true
-                  :label "X[Credit]: Remove counters from a hosted card"
+                  :label "X [Credit]: Remove counters from a hosted card"
                   :choices {:card #(:host %)}
                   :req (req (not (empty? (:hosted card))))
                   :effect (effect
@@ -2761,7 +2761,7 @@
                        :optional
                        {:prompt "Spend 2 virus counters on The Nihilist?"
                         :yes-ability
-                        {:req (req (<= 2 (number-of-virus-counters state)))
+                        {:req (req (<= 2 (number-of-runner-virus-counters state)))
                          :async true
                          :effect (req (wait-for (resolve-ability state side (pick-virus-counters-to-spend 2) card nil)
                                                 (if (:number async-result)
@@ -2857,7 +2857,10 @@
              :cost [:click 1]
              :keep-menu-open :while-clicks-left
              :msg (msg "bounce off of " name " for a token (shortcut)")
-             :effect (effect (add-counter card :power 1))})]
+             :effect (req (add-counter state :runner card :power 1)
+                          (swap! state assoc-in [:runner :register :made-click-run] true)
+                          (swap! state update-in [:runner :register :unsuccessful-run] conj server)
+                          (swap! state update-in [:runner :register :made-run] conj server))})]
     {:events [{:event :agenda-stolen
                :effect (effect (update! (assoc card :agenda-stolen true)))
                :silent (req true)}

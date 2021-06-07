@@ -44,7 +44,23 @@
         (changes-val-macro 3 (:credit (get-runner))
                            "Runner got Acacia credits"
                            (click-prompt state :runner "Done"))
-        (is (zero? (count (:discard (get-runner)))) "Acacia has not been trashed")))))
+        (is (zero? (count (:discard (get-runner)))) "Acacia has not been trashed"))))
+  (testing "Effect counts both Runner and Corp virus counters"
+    (do-game
+      (new-game {:runner {:deck ["Acacia"]}
+                 :corp {:deck ["Sandstone"]}})
+      (play-from-hand state :corp "Sandstone" "HQ")
+      (take-credits state :corp)
+      (play-from-hand state :runner "Acacia")
+      (take-credits state :runner)
+      (let [sandstone (get-ice state :hq 0)]
+        (rez state :corp sandstone)
+        (core/add-counter state :corp sandstone :virus 1)
+        (is (= 1 (get-counters (refresh sandstone) :virus)) "Sandstone has 1 virus counter")
+        (is (= 7 (:credit (get-runner))) "Runner credits should be 7")
+        (core/purge state :corp)
+        (click-prompt state :runner "Yes")
+        (is (= 8 (:credit (get-runner))) "Runner gained 1 credit from Sandstone's virus counter")))))
 
 (deftest adjusted-matrix
   ;; Adjusted Matrix
@@ -945,21 +961,28 @@
 (deftest chop-bot-3000
   ;; Chop Bot 3000 - when your turn begins trash 1 card, then draw or remove tag
   (do-game
-    (new-game {:runner {:deck ["Chop Bot 3000" "Spy Camera"]}})
-    (take-credits state :corp)
+    (new-game {:runner {:deck ["Chop Bot 3000" (qty "Spy Camera" 3)]}})
     (core/gain state :runner :tag 2)
+    (take-credits state :corp)
     (play-from-hand state :runner "Chop Bot 3000")
-    (play-from-hand state :runner "Spy Camera")
-    (is (= 2 (count-tags state)) "Runner has 2 tags")
     (take-credits state :runner)
     (take-credits state :corp)
-    (is (:runner-phase-12 @state) "Runner in Step 1.2")
-    (let [cb (get-hardware state 0)]
+    (is (nil? (:runner-phase-12 @state)) "Does not trigger with no other cards installed")
+    (play-from-hand state :runner "Spy Camera")
+    (take-credits state :runner)
+    (take-credits state :corp)
+    (is (true? (:runner-phase-12 @state)) "Does trigger when one other card is installed")
+    (play-from-hand state :runner "Spy Camera")
+    (take-credits state :runner)
+    (take-credits state :corp)
+    (is (true? (:runner-phase-12 @state)) "Does trigger when two other cards are installed")
+    (is (= 2 (count-tags state)) "Runner has 2 tags")
+    (let [chop-bot (get-hardware state 0)]
       (is (empty? (:discard (get-runner))) "No cards in trash")
-      (card-ability state :runner cb 0)
+      (card-ability state :runner chop-bot 0)
       (click-card state :runner (find-card "Spy Camera" (get-hardware state)))
       (click-prompt state :runner "Remove 1 tag")
-      (is (= 1 (count (:discard (get-runner)))) "Spy Camera trashed")
+      (is (find-card "Spy Camera" (:discard (get-runner))) "Spy Camera trashed")
       (is (= 1 (count-tags state)) "Runner lost 1 tag")
       (end-phase-12 state :runner))))
 
@@ -2042,7 +2065,41 @@
       (changes-val-macro
         -2 (:credit (get-runner))
         "Triggers only on Companions"
-        (play-from-hand state :runner "Corroder")))))
+        (play-from-hand state :runner "Corroder"))))
+  (testing "Issue #5892: Does not fire a second time"
+    (testing "when a companion is installed and then credits from a companion are used"
+      (do-game
+        (new-game {:runner {:hand ["Keiko" "Trickster Taka"]}})
+        (take-credits state :corp)
+        (play-from-hand state :runner "Keiko")
+        (take-credits state :runner)
+        (take-credits state :corp)
+        (changes-val-macro 0 (:credit (get-runner))
+                           "Got 1c back from installing Trickster Taka"
+                           (play-from-hand state :runner "Trickster Taka"))
+        (let [tt (get-resource state 0)]
+          (core/add-counter state :runner (refresh tt) :credit 1)
+          (run-on state "HQ")
+          (changes-val-macro 1 (:credit (get-runner))
+                             "Only got 1c for using Trickster Taka"
+                             (card-ability state :runner tt 0)))))
+    (testing "when credits from a companion are used and then a companion is installed"
+      (do-game
+        (new-game {:runner {:hand ["Keiko" "Trickster Taka" "Mystic Maemi"]}})
+        (take-credits state :corp)
+        (play-from-hand state :runner "Keiko")
+        (play-from-hand state :runner "Trickster Taka")
+        (let [tt (get-resource state 0)]
+          (core/add-counter state :runner (refresh tt) :credit 1)
+          (take-credits state :runner)
+          (take-credits state :corp)
+          (run-on state "HQ")
+          (changes-val-macro 2 (:credit (get-runner))
+                             "Got 1c from Keiko for using Trickster Taka"
+                             (card-ability state :runner tt 0))
+          (changes-val-macro -1 (:credit (get-runner))
+                             "Did not get 1c back from installing Mystic Maemi"
+                             (play-from-hand state :runner "Mystic Maemi")))))))
 
 (deftest knobkierie
   ;; Knobkierie - first successful run, place a virus counter on a virus program
@@ -3130,7 +3187,7 @@
       (card-ability state :runner (get-hardware state 0) 1)
       (click-prompt state :runner "Yes")
       (is (prompt-is-type? state :runner :select))
-      (is (= "Select a credit providing card (0 of 1 credits)" (:msg (prompt-map :runner)))
+      (is (= "Select a credit providing card (0 of 1 [Credits])" (:msg (prompt-map :runner)))
           "Credit selection prompt is opened"))))
 
 (deftest public-terminal

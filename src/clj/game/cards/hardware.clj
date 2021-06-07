@@ -1,6 +1,7 @@
 (ns game.cards.hardware
   (:require [game.core :refer :all]
             [game.utils :refer :all]
+            [game.core.cost-fns :refer [all-stealth min-stealth]]
             [jinteki.utils :refer :all]
             [clojure.string :as string]
             [clojure.set :as clj-set]))
@@ -21,7 +22,7 @@
                :effect (req (let [counters (- (get-in (get-card state card) [:special :numpurged])
                                               (number-of-virus-counters state))]
                               (wait-for (trash state side card nil)
-                                        (system-msg state side (str "trashes Acacia and gains " counters "[Credit]"))
+                                        (system-msg state side (str "trashes Acacia and gains " counters " [Credit]"))
                                         (gain-credits state side eid counters))))}}}]})
 
 (defcard "Adjusted Matrix"
@@ -279,7 +280,7 @@
      :effect (effect (trash eid (assoc target :seen true) {:accessed true}))}}})
 
 (defcard "Chop Bot 3000"
-  {:flags {:runner-phase-12 (req (>= 2 (count (all-installed state :runner))))}
+  {:flags {:runner-phase-12 (req (>= (count (all-installed state :runner)) 2))}
    :abilities [{:req (req (:runner-phase-12 @state))
                 :label "trash and draw or remove tag"
                 :choices {:card #(and (runner? %)
@@ -633,7 +634,7 @@
                   :async true
                   :effect (req (let [credits (get-counters card :credit)]
                                  (update! state :runner (dissoc-in card [:counter :credit]))
-                                 (system-msg state :runner (str "takes " credits "[Credits] from Flame-out"))
+                                 (system-msg state :runner (str "takes " credits " [Credits] from Flame-out"))
                                  (register-events
                                    state :runner (get-card state card)
                                    [(assoc turn-end :event :runner-turn-ends)
@@ -942,10 +943,12 @@
    :events [{:event :spent-credits-from-card
              :req (req (and (not (facedown? target))
                             (has-subtype? target "Companion")
-                            (let [f #(and (not (facedown? (first %)))
-                                          (has-subtype? (first %) "Companion"))]
-                              (= 1 (+ (event-count state :runner :spent-credits-from-card f)
-                                      (event-count state :runner :runner-install f))))))
+                            (= 1 (+ (event-count state :runner :spent-credits-from-card
+                                                 #(and (not (facedown? (first %)))
+                                                       (has-subtype? (first %) "Companion")))
+                                    (event-count state :runner :runner-install
+                                                 #(and (not (facedown? (:card (first %))))
+                                                       (has-subtype? (:card (first %)) "Companion")))))))
              :msg "gain 1 [Credit]"
              :async true
              :effect (effect (gain-credits :runner eid 1))}
@@ -1169,6 +1172,7 @@
                    {:eid (assoc eid :source-type :ability)
                     :async true
                     :cost [:credit 1]
+                    :cost-req all-stealth
                     :msg "access 1 additional card from HQ"
                     :effect (effect (access-bonus :hq 1)
                                     (effect-completed eid))}
@@ -1187,6 +1191,7 @@
                    {:eid (assoc eid :source-type :ability)
                     :async true
                     :cost [:credit 2]
+                    :cost-req all-stealth
                     :msg "access 1 additional card from R&D"
                     :effect (effect (access-bonus :rd 1)
                                     (effect-completed eid))}
@@ -1401,7 +1406,7 @@
              :msg "place 1 [Credits]"
              :effect (req (add-counter state :runner eid card :credit 1 nil))}]
    :abilities [{:cost [:click 1]
-                :label "Gain 1 [Credits]. Take all hosted [Credits]"
+                :label "Gain 1 [Credits]. Take all hosted credits"
                 :async true
                 :msg (msg "gain " (inc (get-counters card :credit)) " [Credits]")
                 :effect (req (let [credits (inc (get-counters card :credit))]

@@ -256,7 +256,7 @@
                                                       (same-server? card %)))
                                         count
                                         pos?))
-                 :label "place an advancement counter"
+                 :label "place an advancement counter (start of turn)"
                  :async true
                  :effect
                  (effect
@@ -460,7 +460,7 @@
 (defcard "Embolus"
   (let [maybe-gain-counter {:once :per-turn
                             :async true
-                            :label "Place a power counter on Embolus"
+                            :label "Place a power counter on Embolus (start of turn)"
                             :effect (effect
                                       (continue-ability
                                         {:optional
@@ -576,7 +576,7 @@
              :msg "force the Runner to pay or end the run"
              :effect (effect
                        (continue-ability
-                         (let [credits (:credit runner)
+                         (let [credits (total-available-credits state :runner (assoc eid :source-type :ability :source card) card)
                                cost (* 2 (count (:scored runner)))
                                pay-str (str "pay " cost " [Credits]")
                                c-pay-str (capitalize pay-str)]
@@ -803,7 +803,7 @@
 
 (defcard "La Costa Grid"
   (let [ability {:prompt (msg "Select a card in " (zone->name (second (get-zone card))))
-                 :label "place an advancement counter"
+                 :label "place an advancement counter (start of turn)"
                  :msg (msg "place an advancement token on " (card-str state target))
                  :choices {:req (req (and (installed? target)
                                           (in-same-server? card target)))}
@@ -933,7 +933,7 @@
                                       (has-subtype? target "Icebreaker")
                                       ; and is using a break ability
                                       (contains? (second targets) :break)
-                                      (pos? (:break (second targets) 0))
+                                      (pos? (count (:broken-subs (second targets))))
                                       ; during a run on this server
                                       this-server))
                        :value [:credit 1]}]})

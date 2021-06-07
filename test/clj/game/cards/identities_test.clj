@@ -637,7 +637,7 @@
         (is (= 6 (count (:servers (get-corp)))) "There are six servers, including centrals")))))
 
 (deftest ayla-bios-rahim-simulant-specialist
-  ;; Ayla - choose & use cards for NVRAM
+  ;; Ayla - choose & use hosted cards
   (do-game
     (new-game {:runner {:id "Ayla \"Bios\" Rahim: Simulant Specialist"
                         :deck ["Sure Gamble" "Desperado"
@@ -650,7 +650,7 @@
     (click-card state :runner (find-card "Desperado" (get-in @state [:runner :play-area])))
     (click-card state :runner (find-card "Bank Job" (get-in @state [:runner :play-area])))
     (click-card state :runner (find-card "Eater" (get-in @state [:runner :play-area])))
-    (is (= 4 (count (:hosted (:identity (get-runner))))) "4 cards in NVRAM")
+    (is (= 4 (count (:hosted (:identity (get-runner))))) "4 hosted cards")
     (is (zero? (count (get-in @state [:runner :play-area]))) "The play area is empty")
     (click-prompt state :corp "Keep")
     (click-prompt state :runner "Keep")
@@ -1293,7 +1293,39 @@
       (play-from-hand state :runner "Cache")
       (run-empty-server state "HQ")
       (is (= 1 (count (prompt-buttons :runner))) "Should only have 1 option")
-      (is (= ["No action"] (prompt-buttons :runner)) "Only option should be 'Done'"))))
+      (is (= ["No action"] (prompt-buttons :runner)) "Only option should be 'Done'")))
+  (testing "Cannot remove virus counters from Corp cards"
+    (do-game
+      (new-game {:runner {:id "Freedom Khumalo: Crypto-Anarchist"
+                          :deck ["Cache"]}
+                 :corp {:deck ["Sandstone" "Ice Wall"]}})
+      (play-from-hand state :corp "Sandstone" "R&D")
+      (take-credits state :corp)
+      (play-from-hand state :runner "Cache")
+      (let [sandstone (get-ice state :rd 0)]
+        (rez state :corp sandstone)
+        (run-on state "R&D")
+        (run-continue state)
+        (card-subroutine state :corp sandstone 0)
+        (is (not (:run @state)) "Run Ended")
+        (run-empty-server state "HQ")
+        (click-prompt state :runner "[Freedom Khumalo] Trash card")
+        (is (= 1 (get-counters (refresh sandstone) :virus)) "Sandstone has 1 virus counter")
+        (click-card state :runner (refresh sandstone))
+        (is (= 1 (get-counters (refresh sandstone) :virus)) "Sandstone should still have 1 virus counter"))))
+  (testing "Ability activation trigger only counts Runner virus counters"
+    (do-game
+      (new-game {:runner {:id "Freedom Khumalo: Crypto-Anarchist"}
+                 :corp {:deck ["Sandstone" "Ice Wall"]}})
+      (play-from-hand state :corp "Sandstone" "R&D")
+      (let [sandstone (get-ice state :rd 0)]
+        (rez state :corp sandstone)
+        (core/add-counter state :corp sandstone :virus 1)
+        (take-credits state :corp)
+        (run-empty-server state "HQ")
+        (is (= 1 (get-counters (refresh sandstone) :virus)) "Sandstone has 1 virus counter")
+        (is (= 1 (count (prompt-buttons :runner))) "Should only have 1 option")
+        (is (= ["No action"] (prompt-buttons :runner)) "Only option should be 'Done'")))))
 
 (deftest gabriel-santiago-consummate-professional
   ;; Gabriel Santiago - Gain 2c on first successful HQ run each turn
@@ -3387,7 +3419,7 @@
       (play-from-hand state :corp "Merger" "New remote")
       (score-agenda state :corp (get-content state :remote1 0))
       (is (= 5 (:credit (get-corp))) "Corp starts with 5 credits")
-      (click-prompt state :corp "Gain 2 credits")
+      (click-prompt state :corp "Gain 2 [Credits]")
       (is (= 7 (:credit (get-corp))) "Corp gains 2 credits")))
   (testing "Gain 2 credits on steal"
     (do-game
@@ -3398,7 +3430,7 @@
       (run-empty-server state "Server 1")
       (is (= 7 (:credit (get-corp))) "Corp starts with 7 credits")
       (click-prompt state :runner "Steal")
-      (click-prompt state :corp "Gain 2 credits")
+      (click-prompt state :corp "Gain 2 [Credits]")
       (is (= 9 (:credit (get-corp))) "Corp gains 2 credits")))
   (testing "Draw 2 cards on score"
     (do-game

@@ -51,7 +51,7 @@
                    {:async true
                     :effect (req (if (not (can-pay? state :corp (assoc eid :source card :source-type :ability) card nil :credit 1))
                                    (do
-                                     (toast state :corp "Cannot afford to pay 1 credit to block card exposure" "info")
+                                     (toast state :corp "Cannot afford to pay 1 [Credit] to block card exposure" "info")
                                      (expose state :runner eid (:card context)))
                                    (continue-ability
                                      state side
@@ -232,23 +232,23 @@
                               card nil)))}]})
 
 (defcard "Ayla \"Bios\" Rahim: Simulant Specialist"
-  {:abilities [{:label "Add 1 card from NVRAM to your grip"
+  {:abilities [{:label "Add 1 hosted card to your grip"
                 :cost [:click 1]
                 :async true
-                :prompt "Choose a card from NVRAM"
+                :prompt "Choose a hosted card"
                 :choices (req (cancellable (:hosted card)))
-                :msg "move a card from NVRAM to their Grip"
+                :msg "move a hosted card to their Grip"
                 :effect (effect (move target :hand)
                                 (effect-completed eid))}]
    :events [{:event :pre-start-game
              :req (req (= side :runner))
              :async true
-             :waiting-prompt "Runner to choose cards for NVRAM"
+             :waiting-prompt "Runner to choose cards to be hosted"
              :effect (req (doseq [c (take 6 (:deck runner))]
                             (move state side c :play-area))
                           (continue-ability
                             state side
-                            {:prompt "Select 4 cards for NVRAM"
+                            {:prompt "Select 4 cards to be hosted"
                              :choices {:max 4
                                        :all true
                                        :card #(and (runner? %)
@@ -453,7 +453,7 @@
      :req (req (and (not (:disabled card))
                     (not (agenda? target))
                     (<= (play-cost state side target)
-                        (number-of-virus-counters state))))
+                        (number-of-runner-virus-counters state))))
      :waiting-prompt "Runner to use Freedom Khumalo's ability"
      :effect (req (let [accessed-card target
                         play-or-rez (:cost target)]
@@ -1251,10 +1251,8 @@
              :prompt "Treat as a successful run on which server?"
              :choices ["HQ" "R&D"]
              :effect (req (let [target-server (if (= target "HQ") :hq :rd)]
-                            (swap! state update-in [:runner :register :successful-run] next)
                             (swap! state assoc-in [:run :server] [target-server])
                             (trigger-event state :corp :no-action)
-                            (swap! state update-in [:runner :register :successful-run] conj target-server)
                             (system-msg state side (str "uses Omar Keung: Conspiracy Theorist to make a successful run on " target))))}
             {:event :run-ends
              :effect (effect (update! (dissoc-in card [:special :omar-run])))}]})
@@ -1385,15 +1383,15 @@
              :msg (msg "make the Runner lose 1 [Credits] by rezzing an Advertisement")}]})
 
 (defcard "Sportsmetal: Go Big or Go Home"
-  (let [ab {:prompt "Gain 2 credits or draw 2 cards?"
+  (let [ab {:prompt "Gain 2 [Credits] or draw 2 cards?"
             :player :corp
-            :choices ["Gain 2 credits" "Draw 2 cards"]
-            :msg (msg (if (= target "Gain 2 credits")
-                        "gain 2 credits"
+            :choices ["Gain 2 [Credits]" "Draw 2 cards"]
+            :msg (msg (if (= target "Gain 2 [Credits]")
+                        "gain 2 [Credits]"
                         "draw 2 cards"))
             :async true
             :interactive (req true)
-            :effect (req (if (= target "Gain 2 credits")
+            :effect (req (if (= target "Gain 2 [Credits]")
                            (gain-credits state :corp eid 2)
                            (draw state :corp eid 2 nil)))}]
     {:events [(assoc ab :event :agenda-scored)
@@ -1679,7 +1677,7 @@
               :async true
               :once :per-turn
               :yes-ability
-              {:msg (msg "gain " (total-cards-accessed context) "[Credits]")
+              {:msg (msg "gain " (total-cards-accessed context) " [Credits]")
                :once :per-turn
                :async true
                :effect (req (gain-credits state :runner eid (total-cards-accessed context)))}}}]})

@@ -465,7 +465,7 @@
                             (empty? (filter #(and (:broken %) (:printed %)) (:subroutines card)))
                             :unrestricted))]
     {:advanceable :always
-     :subroutines [{:label "Gain 1[Credit]. Place 1 advancement token."
+     :subroutines [{:label "Gain 1 [Credit]. Place 1 advancement token."
                     :breakable breakable-fn
                     :msg (msg "gain 1 [Credit] and place 1 advancement token on " (card-str state target))
                     :prompt "Choose an installed card"
@@ -1469,9 +1469,24 @@
                                            (effect-completed state :corp eid)))
                             :cancel-effect (effect (shuffle! :deck)
                                                    (effect-completed eid))
-                            :msg (msg "add "
-                                      (str (string/join ", " (map :title targets)))
-                                      " to R&D")}
+                            :msg (msg
+                                   "shuffle "
+                                   (string/join
+                                     " and "
+                                     (filter identity
+                                             [(when-let [h (->> targets
+                                                                (filter in-hand?)
+                                                                (map :title)
+                                                                not-empty)]
+                                                (str (enumerate-str h)
+                                                     " from HQ"))
+                                              (when-let [d (->> targets
+                                                                (filter in-discard?)
+                                                                (map :title)
+                                                                not-empty)]
+                                                (str (enumerate-str d)
+                                                     " from Archives"))]))
+                                   " into R&D")}
         draw-reveal-shuffle {:async true
                              :label "Draw cards, reveal and shuffle agendas"
                              :effect (req (wait-for (resolve-ability state side draw-ab card nil)
@@ -1545,18 +1560,13 @@
                                           (all-active-installed state :runner)))))})
 
 (defcard "Hailstorm"
-         {:subroutines [{:label  "Remove a card in the Heap from the game"
-                         :async  true
-                         :effect (effect (continue-ability
-                                           {:async   true
-                                            :req     (req (not (zone-locked? state :runner :discard)))
-                                            :prompt  "Choose a card in the Runner's Heap"
-                                            :choices (req (:discard runner))
-                                            :msg     (msg "remove " (:title target) " from the game")
-                                            :effect  (effect (move :runner target :rfg))
-                                            }
-                                           card nil))}
-                        end-the-run]})
+  {:subroutines [{:label  "Remove a card in the Heap from the game"
+                  :req     (req (not (zone-locked? state :runner :discard)))
+                  :prompt  "Choose a card in the Runner's Heap"
+                  :choices (req (cancellable (:discard runner) :sorted))
+                  :msg     (msg "remove " (:title target) " from the game")
+                  :effect  (effect (move :runner target :rfg))}
+                 end-the-run]})
 
 (defcard "Harvester"
   (let [sub {:label "Runner draws 3 cards and discards down to maximum hand size"
@@ -1608,7 +1618,7 @@
                                                (system-msg state :corp (:msg async-result))
                                                (continue-ability
                                                  state side
-                                                 {:msg (msg "pay " c "[Credits] and place " (quantify c " advancement token")
+                                                 {:msg (msg "pay " c " [Credits] and place " (quantify c " advancement token")
                                                             " on " (card-str state target))
                                                   :choices {:card can-be-advanced?}
                                                   :effect (effect (add-prop target :advance-counter c {:placed true}))}
@@ -2095,8 +2105,8 @@
   {:subroutines [trash-program-sub
                  trash-program-sub
                  trash-hardware-sub
-                 {:label "Runner loses 3[credit], if able. End the run."
-                  :msg "make the Runner lose 3[credit] and end the run"
+                 {:label "Runner loses 3 [credit], if able. End the run."
+                  :msg "make the Runner lose 3 [credit] and end the run"
                   :async true
                   :effect (req (if (>= (:credit runner) 3)
                                  (wait-for (lose-credits state :runner 3)
@@ -2125,16 +2135,12 @@
                                    :async   true
                                    :effect  (effect (clear-wait-prompt :runner)
                                                     (trash eid target {:cause :subroutine}))})
-                 (trace-ability 2 {:label  "Remove a virus in the Heap from the game"
-                                   :async  true
-                                   :effect (effect (continue-ability
-                                                     {:async   true
-                                                      :req     (req (not (zone-locked? state :runner :discard)))
-                                                      :prompt "Choose a virus in the Heap to remove from the game"
-                                                      :choices (req (cancellable (filter #(has-subtype? % "Virus") (:discard runner)) :sorted))
-                                                      :msg     (msg "remove " (:title target) " from the game")
-                                                      :effect  (effect (move :runner target :rfg))}
-                                                     card nil))})
+                 (trace-ability 2 {:label   "Remove a virus in the Heap from the game"
+                                   :req     (req (not (zone-locked? state :runner :discard)))
+                                   :prompt  "Choose a virus in the Heap to remove from the game"
+                                   :choices (req (cancellable (filter #(has-subtype? % "Virus") (:discard runner)) :sorted))
+                                   :msg     (msg "remove " (:title target) " from the game")
+                                   :effect  (effect (move :runner target :rfg))})
                  (trace-ability 1 end-the-run)]})
 
 (defcard "Magnet"
@@ -2218,7 +2224,7 @@
 (defcard "Mausolus"
   {:advanceable :always
    :subroutines [{:label "Gain 1 [Credits] (Gain 3 [Credits])"
-                  :msg (msg "gain " (if (wonder-sub card 3) 3 1) "[Credits]")
+                  :msg (msg "gain " (if (wonder-sub card 3) 3 1) " [Credits]")
                   :async true
                   :effect (effect (gain-credits eid (if (wonder-sub card 3) 3 1)))}
                  {:label "Do 1 net damage (Do 3 net damage)"
