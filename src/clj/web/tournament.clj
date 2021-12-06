@@ -1,18 +1,19 @@
 (ns web.tournament
-  (:require [clojure.string :as str]
-            [web.mongodb :refer [find-maps-case-insensitive]]
-            [web.lobby :refer [all-games refresh-lobby close-lobby]]
-            [web.stats :refer [fetch-elapsed]]
-            [web.utils :refer [response]]
-            [web.ws :as ws]
-            [jinteki.utils :refer [str->int]]
-            [monger.operators :refer :all]
-            [org.httpkit.client :as http]
-            [cheshire.core :as json]
-            [clj-time.core :as t]
-            [clj-uuid :as uuid]))
+  (:require
+   [cheshire.core :as json]
+   [clj-uuid :as uuid]
+   [cljc.java-time.instant :as inst]
+   [clojure.string :as str]
+   [jinteki.utils :refer [str->int]]
+   [monger.operators :refer :all]
+   [org.httpkit.client :as http]
+   ; [web.lobby :refer [all-games refresh-lobby close-lobby]]
+   [web.mongodb :refer [find-maps-case-insensitive]]
+   [web.stats :refer [fetch-elapsed]]
+   [web.utils :refer [response]]
+   [web.ws :as ws]))
 
-(defn auth [req]
+(defn auth [_]
   (response 200 {:message "ok"}))
 
 (defn parse-response
@@ -33,8 +34,7 @@
 
 (defn build-players
   [data]
-  (into {} (for [player (:players data)]
-             [(:id player) player])))
+  (into {} (for [player (:players data)] [(:id player) player])))
 
 (defn get-player-name
   [players player]
@@ -93,6 +93,7 @@
                        [(second players) (first players)])
                      (filter identity)
                      (into []))
+        now (inst/now)
         game {:gameid gameid
               :title title
               :room "tournament"
@@ -109,11 +110,11 @@
               :timer timer
               :spectatorhands false
               :mute-spectators true
-              :date (java.util.Date.)
-              :last-update (t/now)
+              :date now
+              :last-update now
               :on-close on-close}]
     (when (= 2 (count players))
-      (refresh-lobby gameid game)
+      ; (refresh-lobby gameid game)
       game)))
 
 (defn create-lobbies-for-tournament
@@ -150,7 +151,7 @@
 (defn load-tournament
   [{{db :system/db} :ring-req
     {:keys [cobra-link]} :?data
-    client-id :client-id}]
+    uid :uid}]
   (let [data (download-cobra-data cobra-link)
         player-names (keep :name (:players data))
         query (into [] (for [username player-names] {:username username}))
@@ -159,11 +160,11 @@
         missing-players (remove found-player-names player-names)
         players (build-players data)
         rounds (process-all-rounds data players)]
-    (ws/broadcast-to! [client-id] :tournament/loaded {:data {:players players
-                                                             :missing-players missing-players
-                                                             :rounds rounds
-                                                             :cobra-link cobra-link
-                                                             :tournament-name (:name data)}})))
+    (ws/broadcast-to! [uid] :tournament/loaded {:data {:players players
+                                                       :missing-players missing-players
+                                                       :rounds rounds
+                                                       :cobra-link cobra-link
+                                                       :tournament-name (:name data)}})))
 
 (defn wrap-with-to-handler
   "Wrap a function in a handler which checks that the user is a tournament organizer."
@@ -179,7 +180,7 @@
 (defn create-tables
   [{{db :system/db} :ring-req
     {:keys [cobra-link selected-round save-replays? single-sided? timer]} :?data
-    client-id :client-id}]
+    uid :uid}]
   (let [data (download-cobra-data cobra-link)
         created-rounds (create-lobbies-for-tournament
                          db data
@@ -187,7 +188,7 @@
                          {:timer timer
                           :save-replays? save-replays?
                           :single-sided? single-sided?})]
-    (ws/broadcast-to! [client-id] :tournament/created {:data {:created-rounds (count created-rounds)}})))
+    (ws/broadcast-to! [uid] :tournament/created {:data {:created-rounds (count created-rounds)}})))
 
 (defmethod ws/-msg-handler :tournament/create [event]
   ((wrap-with-to-handler create-tables) event))
@@ -195,20 +196,21 @@
 (defn close-tournament-tables
   [cobra-link]
   (when cobra-link
-    (let [tables (for [game (vals @all-games)
+    (let [tables (for [game (vals {})
                        :when (= cobra-link (:cobra-link game))]
                    {:started false
                     :gameid (:gameid game)})]
-      (map #(close-lobby % true) tables))))
+      ; (map #(close-lobby % true) tables)
+      )))
 
 (defmethod ws/-msg-handler :tournament/fetch [event]
   ((wrap-with-to-handler load-tournament) event))
 
 (defn- delete-tables
   [{{:keys [cobra-link]} :?data
-    client-id :client-id}]
+    uid :uid}]
   (let [deleted-rounds (close-tournament-tables cobra-link)]
-    (ws/broadcast-to! [client-id] :tournament/deleted {:data {:deleted-rounds (count deleted-rounds)}})))
+    (ws/broadcast-to! [uid] :tournament/deleted {:data {:deleted-rounds (count deleted-rounds)}})))
 
 (defmethod ws/-msg-handler :tournament/delete [event]
   ((wrap-with-to-handler delete-tables) event))

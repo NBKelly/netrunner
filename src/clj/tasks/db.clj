@@ -1,19 +1,18 @@
 (ns tasks.db
   "Database maintenance tasks"
   (:require
-    ;; external
-    [monger.collection :as mc]
-    [monger.db]
-    [monger.operators :refer :all]
-    [clj-uuid :as uuid]
-    ;; internal
-    [jinteki.validator :refer [calculate-deck-status]]
-    [tasks.setup :refer [connect disconnect]]
-    [web.auth :refer [create-user]]
-    [web.mongodb :refer [object-id]]
-    [web.decks :refer [hash-deck update-deck prepare-deck-for-db]]
-    [web.nrdb :refer [download-public-decklist]]
-    [web.utils :refer [md5]]))
+   [clj-uuid :as uuid]
+   [cljc.java-time.instant :as inst]
+   [jinteki.validator :refer [calculate-deck-status]]
+   [monger.collection :as mc]
+   [monger.db]
+   [monger.operators :refer :all]
+   [tasks.setup :refer [connect disconnect]]
+   [web.decks :refer [hash-deck prepare-deck-for-db update-deck]]
+   [web.mongodb :refer [->object-id]]
+   [web.nrdb :refer [download-public-decklist]]
+   [web.user :refer [create-user]]
+   [web.utils :refer [md5]]))
 
 (defn- get-deck-status
   [deck]
@@ -24,23 +23,24 @@
 
 (defn update-all-decks
   "Run after fetching the data to update all decks"
-  [& args]
+  [& _]
   (let [{{:keys [db]} :mongodb/connection :as system} (connect)
         cnt (atom 0)]
-    (doseq [deck (mc/find-maps db "decks" nil)]
-      (let [deck-id (:_id deck)]
-        (swap! cnt inc)
-        (when (zero? (mod @cnt 1000)) (do (print ".") (flush)))
-        (try
+    (try
+      (doseq [deck (mc/find-maps db "decks" nil)]
+        (let [deck-id (:_id deck)]
+          (swap! cnt inc)
+          (when (zero? (mod @cnt 1000))
+            (print ".")
+            (flush))
           (let [status (get-deck-status deck)]
             (mc/update db "decks"
-                       {:_id (object-id deck-id)}
-                       {"$set" {"status" status}}))
-          (catch Exception e (do (println "Something got hecked" (.getMessage e))
-                                 (println "Deck id:" deck-id))))))
-    (newline)
-    (println "Updated" @cnt "decks")
-    (disconnect))
+                       {:_id (->object-id deck-id)}
+                       {"$set" {"status" status}}))))
+      (newline)
+      (println "Updated" @cnt "decks")
+      (catch Exception e (println "Something got hecked" (.getMessage e)))
+      (finally (disconnect system)))))
 
 (defn- get-all-users
   "Get all users in the database. Takes a list of fields."
@@ -55,38 +55,38 @@
 (defn delete-duplicate-users
   "Delete entries in the users table that share a username. Leave the first registered entry found in the collection."
   [& args]
-  (try
-    (let [{{:keys [db]} :mongodb/connection :as system} (connect)
-          dry-run (some #{"--dry-run"} args)
-          users (get-all-users db [:email :username :registrationDate :lastConnection])
-          grouped (vals (group-by :username users))
-          duplicates (filter #(> (count %) 1) grouped)]
-      (when dry-run
-        (println "DRY RUN: not deleting accounts"))
-      (println "Found" (count users) "user accounts.")
-      (println "Found" (count duplicates) "duplicated usernames.")
-      (doseq [d duplicates]
-        (let [[f & r] (sort-by :registrationDate d)]
-          (println "Found username:" (:username f))
-          (println "\tKeeping:" (:email f) "," (:registrationDate f))
-          (if dry-run
-            (println "\tWould delete:")
-            (println "\tDeleting:"))
-          (doseq [del r]
-            (println "\t\t" (:email del) "," (:registrationDate del))
-            (when (not dry-run)
-              (delete-user db (:_id del)))))))
-    (catch Exception e (do
-                         (println "Delete duplicate users failed" (.getMessage e))
-                         (.printStackTrace e)))
-    (finally (disconnect))))
+  (let [{{:keys [db]} :mongodb/connection :as system} (connect)]
+    (try
+      (let [dry-run (some #{"--dry-run"} args)
+            users (get-all-users db [:email :username :registrationDate :lastConnection])
+            grouped (vals (group-by :username users))
+            duplicates (filter #(> (count %) 1) grouped)]
+        (when dry-run
+          (println "DRY RUN: not deleting accounts"))
+        (println "Found" (count users) "user accounts.")
+        (println "Found" (count duplicates) "duplicated usernames.")
+        (doseq [d duplicates]
+          (let [[f & r] (sort-by :registrationDate d)]
+            (println "Found username:" (:username f))
+            (println "\tKeeping:" (:email f) "," (:registrationDate f))
+            (if dry-run
+              (println "\tWould delete:")
+              (println "\tDeleting:"))
+            (doseq [del r]
+              (println "\t\t" (:email del) "," (:registrationDate del))
+              (when (not dry-run)
+                (delete-user db (:_id del)))))))
+      (catch Exception e (do
+                           (println "Delete duplicate users failed" (.getMessage e))
+                           (.printStackTrace e)))
+      (finally (disconnect system)))))
 
 (defn- prepare-sample-decks
-  [nrdb-urls]
+  [db nrdb-urls]
   (vec
    (for [url nrdb-urls]
-     (let [deck (assoc (download-public-decklist url)
-                       :date (java.util.Date.)
+     (let [deck (assoc (download-public-decklist db url)
+                       :date (inst/now)
                        :format "standard")
            updated-deck (update-deck deck)
            status (calculate-deck-status updated-deck)
@@ -114,42 +114,51 @@
 (defn- create-sample-game-log
   [username]
   (let [email (str username "@example.com")
-        players {:runner {:player {:username "<nobody>", :emailhash (md5 "nobody@example.com")},
-                          :deck-name "Firestorm (Worlds 110th)",
-                          :identity "Ele \"Smoke\" Scovak: Cynosure of the Net",
+        players {:runner {:player {:username "<nobody>" :emailhash (md5 "nobody@example.com")}
+                          :deck-name "Firestorm (Worlds 110th)"
+                          :identity "Ele \"Smoke\" Scovak: Cynosure of the Net"
                           :agenda-points 0}
-                 :corp {:player {:username "<nobody>", :emailhash (md5 "nobody@example.com")},
-                        :deck-name "That One SYNC Deck -- 35th at Worlds",
-                        :identity "SYNC: Everything, Everywhere",
+                 :corp {:player {:username "<nobody>" :emailhash (md5 "nobody@example.com")}
+                        :deck-name "That One SYNC Deck -- 35th at Worlds"
+                        :identity "SYNC: Everything, Everywhere"
                         :agenda-points 0}}
         side (rand-nth (keys players))
         players (update players side
-                        #(assoc % :player {:username username :emailhash (md5 email)}))]
-    {:gameid (uuid/v4),
-     :format "standard",
-     :replay-shared false,
-     :end-date (java.util.Date.),
-     :winner "runner",
-     :replay nil,
-     :title (str username "'s game"),
-     :turn 0,
-     :reason "Concede",
-     :creation-date (java.util.Date.),
-     :runner (:runner players),
-     :corp (:corp players),
-     :room "casual",
-     :start-date (java.util.Date.),
+                        #(assoc % :player {:username username :emailhash (md5 email)}))
+        now (inst/minus-seconds (inst/now) 100)]
+    {:gameid (uuid/v4)
+     :format "standard"
+     :replay-shared false
+     :end-date (inst/now)
+     :winner "runner"
+     :replay nil
+     :title (str username "'s game")
+     :turn 0
+     :reason "Concede"
+     :creation-date now
+     :runner (:runner players)
+     :corp (:corp players)
+     :room "casual"
+     :start-date now
      :log
-     [{:user "__system__", :text "<username> has created the game."}
-      {:user "__system__", :text "<username> joined the game."}
-      {:user "__system__", :text "[hr]"}
-      {:user "__system__", :text "<username> keeps their hand."}
-      {:user "__system__", :text "<username> keeps their hand."}
-      {:user "__system__", :text "<username> concedes."}
-      {:user "__system__", :text "<username> wins the game."}
-      {:user "__system__", :text "<username> has left the game."}],
+     (->> ["<username> has created the game."
+           "<username> joined the game."
+           "[hr]"
+           "<username> keeps their hand."
+           "<username> keeps their hand."
+           "<username> concedes."
+           "<username> wins the game."
+           "<username> has left the game."]
+          (map-indexed
+            (fn [idx text]
+              {:user "__system__"
+               :text text
+               :timestamp (inst/plus-seconds now idx)}))
+          (into []))
      :stats
-     {:time {:elapsed 0}, :corp {:gain {:card 5}}, :runner {:gain {:card 5}}}}))
+     {:time {:elapsed 0}
+      :corp {:gain {:card 5}}
+      :runner {:gain {:card 5}}}}))
 
 (defn- create-sample-message
   [username messages]
@@ -159,7 +168,7 @@
      :emailhash (md5 email)
      :msg message
      :channel "general"
-     :date (java.util.Date.)}))
+     :date (inst/now)}))
 
 (defn- samples-for-user
   "Number of samples to be created for a specific user.
@@ -183,12 +192,13 @@
 
 (defn- sample-data-batches
   "Return a lazy sequence of lists of maps containing documents for the database."
-  [username-prefix users decks game-logs messages]
+  [db username-prefix users decks game-logs messages]
   (let [batch-size 10
         user-template (create-user "" "password" "")
         sample-decks (prepare-sample-decks
-                      ["https://netrunnerdb.com/en/decklist/62104/that-one-sync-deck-35th-at-worlds"
-                       "https://netrunnerdb.com/en/decklist/62113/firestorm-worlds-110th-"])
+                       db
+                       ["https://netrunnerdb.com/en/decklist/62104/that-one-sync-deck-35th-at-worlds"
+                        "https://netrunnerdb.com/en/decklist/62113/firestorm-worlds-110th-"])
         sample-messages ["Hello ""¡Hola!" "Grüß Gott" "Hyvää päivää" "Tere õhtust" "⠓⠑⠇⠇⠕"
                          "Bonġu Cześć!" "Dobrý den" "Здравствуйте!" "Γειά σας" "გამარჯობა"]]
     (for [b (range (Math/ceil (/ users batch-size)))]
@@ -196,11 +206,11 @@
              (for [k (range (* b batch-size) (min (* (+ b 1) batch-size) users))]
                (let [username (str username-prefix k)]
                  {:users [(create-sample-user username user-template)]
-                  :decks (for [i (range (samples-for-user k users decks))]
+                  :decks (for [_ (range (samples-for-user k users decks))]
                            (create-sample-deck username sample-decks))
-                  :game-logs (for [i (range (samples-for-user k users game-logs))]
+                  :game-logs (for [_ (range (samples-for-user k users game-logs))]
                                (create-sample-game-log username))
-                  :messages (for [i (range (samples-for-user k users messages))]
+                  :messages (for [_ (range (samples-for-user k users messages))]
                               (create-sample-message username sample-messages))}))))))
 
 (defn create-sample-data
@@ -240,12 +250,11 @@
                  (total-samples users messages) "messages.")
         (println "Press any key to continue.")
         (read-line)
-        (doseq [batch (sample-data-batches username-prefix users decks game-logs messages)]
-          (do
-            (mc/insert-batch db "users" (:users batch))
-            (mc/insert-batch db "decks" (:decks batch))
-            (mc/insert-batch db "game-logs" (:game-logs batch))
-            (mc/insert-batch db "messages" (:messages batch))))
+        (doseq [batch (sample-data-batches db username-prefix users decks game-logs messages)]
+          (mc/insert-batch db "users" (:users batch))
+          (mc/insert-batch db "decks" (:decks batch))
+          (mc/insert-batch db "game-logs" (:game-logs batch))
+          (mc/insert-batch db "messages" (:messages batch)))
         (println "Successfully created sample data.")
         (println "You can now login with e.g. username"
                  (format "\"%s%d\"," username-prefix 1)

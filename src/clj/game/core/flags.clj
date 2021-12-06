@@ -1,15 +1,15 @@
 (ns game.core.flags
-  (:require [clojure.string :as string]
-            [game.core.agendas :refer [get-advancement-requirement]]
-            [game.core.board :refer [all-active all-installed]]
-            [game.core.card :refer [agenda? condition-counter? corp? facedown? get-cid get-counters in-discard? in-hand? installed? operation? rezzed? runner?]]
-            [game.core.card-defs :refer [card-def]]
-            [game.core.eid :refer [make-eid]]
-            [game.core.effects :refer [any-effects]]
-            [game.core.servers :refer [zone->name]]
-            [game.core.to-string :refer [card-str]]
-            [game.core.toasts :refer [toast]]
-            [game.utils :refer [same-side? same-card?]]))
+  (:require
+    [clojure.string :as string]
+    [game.core.board :refer [all-active all-installed]]
+    [game.core.card :refer [agenda? get-advancement-requirement get-cid get-counters installed? in-scored? rezzed?]]
+    [game.core.card-defs :refer [card-def]]
+    [game.core.effects :refer [any-effects]]
+    [game.core.eid :refer [make-eid]]
+    [game.core.servers :refer [zone->name]]
+    [game.core.to-string :refer [card-str]]
+    [game.core.toasts :refer [toast]]
+    [game.utils :refer [same-card? same-side?]]))
 
 (defn card-flag?
   "Checks the card to see if it has a :flags entry of the given flag-key, and with the given value if provided"
@@ -271,12 +271,13 @@
 
 (defn can-run?
   "Checks if the runner is allowed to run"
-  [state side]
+  ([state side] (can-run? state side false))
+  ([state side silent]
   (let [cards (->> @state :stack :current-turn :can-run (map :card))]
     (if (empty? cards)
       true
-      (do (toast state side (str "Cannot run due to " (string/join ", " (map :title cards))))
-        false))))
+      (do (when-not silent (toast state side (str "Cannot run due to " (string/join ", " (map :title cards))))
+        false))))))
 
 (defn can-access?
   "Checks if the runner can access the specified card"
@@ -303,6 +304,8 @@
   ([state side card {:keys [no-req]}]
    (and
      (agenda? card)
+     ;; The Agenda is not already scored
+     (not (in-scored? card))
      ;; The agenda has enough agenda counters to legally score
      (or no-req
          (let [cost (get-advancement-requirement card)]

@@ -94,13 +94,31 @@
   ([state side eid amount args]
    (if (and amount
             (or (= :all amount)
-                (pos? amount)))
+                (pos? amount))
+            (pos? (:credit (side @state))))
      (do (lose state side :credit amount)
          (when (and (= side :runner)
                     (= :all amount))
            (lose state :runner :run-credit :all))
          (trigger-event-sync state side eid (if (= :corp side) :corp-credit-loss :runner-credit-loss) amount args))
      (effect-completed state side eid))))
+
+(defn gain-clicks
+  ([state side amount] (gain-clicks state side amount nil))
+  ([state side amount args]
+    (when (and amount
+               (pos? amount))
+      (do (gain state side :click amount)
+          (trigger-event state side (if (= :corp side) :corp-click-gain :runner-click-gain) amount args)))))
+
+(defn lose-clicks
+  ([state side amount] (lose-clicks state side amount nil))
+  ([state side amount args]
+    (when (and amount
+               (or (= :all amount)
+                   (pos? amount)))
+      (do (lose state side :click amount)
+          (trigger-event state side (if (= :corp side) :corp-click-loss :runner-click-loss) amount args)))))
 
 ;;; Stuff for handling {:base x :mod y} data structures
 (defn base-mod-size

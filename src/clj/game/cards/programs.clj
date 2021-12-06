@@ -1,6 +1,7 @@
 (ns game.cards.programs
   (:require [game.core :refer :all]
             [game.core.cost-fns :refer [all-stealth min-stealth]]
+            [game.core.runs :refer [active-encounter?]]
             [game.utils :refer :all]
             [jinteki.utils :refer :all]
             [clojure.string :as string]))
@@ -23,7 +24,7 @@
                  {:req (req (seq (filter #(has-subtype? % "Deva") (:hand runner))))
                   :label "Swap with a deva program from your Grip"
                   :cost [:credit 2]
-                  :prompt (str "Select a deva program in your Grip to swap with " card-name)
+                  :prompt (str "Choose a deva program in your Grip to swap with " card-name)
                   :choices {:card #(and (in-hand? %)
                                         (has-subtype? % "Deva"))}
                   :msg (msg "swap in " (:title target) " from their Grip")
@@ -85,12 +86,12 @@
 (def heap-breaker-auto-pump-and-break
   "Implements auto-pump-and-break for heap breakers. Updates an icebreaker's
   abilities with a pseudo-ability to trigger the auto-pump routine in core,
-  IF we are encountering a rezzed ice with a subtype we can break."
+  IF we are encountering an ice with a subtype we can break."
   {:effect
    (req (let [abs (remove #(or (= (:dynamic %) :auto-pump)
                                (= (:dynamic %) :auto-pump-and-break))
                           (:abilities card))
-              current-ice (when-not (get-in @state [:run :ended])
+              current-ice (when-not (get-in @state [:end-run :ended])
                             (get-card state current-ice))
               ;; match strength
               can-pump (fn [ability]
@@ -140,8 +141,7 @@
           (update! state side
                    (assoc card :abilities
                           (if (and (seq total-cost)
-                                   (rezzed? current-ice)
-                                   (= :encounter-ice (:phase run))
+                                   (active-encounter? state)
                                    pump-ability
                                    break-ability)
                             (vec (concat abs
@@ -169,7 +169,7 @@
   (Greek/Philosopher suite: Adept, Sage, Savant)"
   [first-qty first-type second-qty second-type]
   {:cost [:credit 2]
-   :req (req (and (rezzed? current-ice)
+   :req (req (and (active-encounter? state)
                   (or (and (has-subtype? current-ice first-type)
                            (<= first-qty (count (remove :broken (:subroutines current-ice)))))
                       (and (has-subtype? current-ice second-type)
@@ -198,8 +198,7 @@
                :effect
                (effect
                  (continue-ability
-                   {:eid (assoc eid :source-type :ability)
-                    :optional
+                   {:optional
                     {:prompt (str "Pay " cost
                                   " [Credits] to make " (:title (:ice context))
                                   " gain " ice-type "?")
@@ -249,7 +248,7 @@
                    pump
                    {:label (str "Derez " ice-type " being encountered")
                     :cost [:credit 2 :return-to-hand]
-                    :req (req (and (= :encounter-ice (:phase run))
+                    :req (req (and (get-current-encounter state)
                                    (rezzed? current-ice)
                                    (has-subtype? current-ice ice-type)
                                    (all-subs-broken-by-card? current-ice card)))
@@ -266,8 +265,7 @@
                    pump
                    {:label (str "Bypass " ice-type " being encountered")
                     :cost [:trash]
-                    :req (req (and (= :encounter-ice (:phase run))
-                                   (rezzed? current-ice)
+                    :req (req (and (active-encounter? state)
                                    (has-subtype? current-ice ice-type)))
                     :msg (msg "bypass " (:title current-ice))
                     :effect (req (bypass-ice state)
@@ -312,22 +310,16 @@
                               :interactive (req true)
                               :optional
                               {:req (req (and (has-subtype? (:ice context) "Sentry")
-                                              (can-pay? state :runner (assoc eid :source card :source-type :ability) card nil [:credit 2])))
+                                              (can-pay? state :runner eid card nil [:credit 2])))
                                :once :per-turn
                                :prompt (msg "Pay 2 [Credits] to bypass " (:title (:ice context)))
                                :yes-ability
-                               {:async true
-                                :effect
-                                (effect
-                                  (continue-ability
-                                    {:eid (assoc eid :source-type :ability)
-                                     :cost [:credit 2]
-                                     :cost-req all-stealth
-                                     :msg (msg "bypass " (:title (:ice context)))
-                                     :effect (req (bypass-ice state))}
-                                    card targets))}}}]
+                               {:cost [:credit 2]
+                                :cost-req all-stealth
+                                :msg (msg "bypass " (:title (:ice context)))
+                                :effect (req (bypass-ice state))}}}]
                     :abilities [(break-sub 1 2 "Sentry")
-                                (strength-pump 1 2 {:cost-req (min-stealth 1)})]}))
+                                (strength-pump 1 2 :end-of-encounter {:cost-req (min-stealth 1)})]}))
 
 (defcard "Aghora"
   (swap-with-in-hand "Aghora"
@@ -343,7 +335,7 @@
       :player :runner
       :yes-ability {:cost [:credit 2]
                     :msg "gain [Click]"
-                    :effect (req (gain state :runner :click 1)
+                    :effect (req (gain-clicks state :runner 1)
                                  (update! state :runner (assoc-in (get-card state card) [:special :used-algernon] true)))}}}
     {:event :runner-turn-ends
      :async true
@@ -362,8 +354,11 @@
                 (strength-pump 2 3)))
 
 (defcard "Alpha"
-  (auto-icebreaker {:abilities [(break-sub 1 1 "All" {:req (req (= (:position run) (count run-ices)))})
-                                (strength-pump 1 1 :end-of-encounter {:req (req (= (:position run) (count run-ices)))})]}))
+  (auto-icebreaker {:abilities [(break-sub
+                                 1 1 "All"
+                                 {:req (req (let [server-ice (:ices (card->server state current-ice))]
+                                              (same-card? current-ice (last server-ice))))})
+                                (strength-pump 1 1)]}))
 
 (defcard "Amina"
   (auto-icebreaker {:abilities [(break-sub 2 3 "Code Gate")
@@ -379,22 +374,23 @@
                               :effect (effect (lose-credits :corp eid 1))}]}))
 
 (defcard "Analog Dreamers"
-  {:abilities [{:cost [:click 1]
-                :msg "make a run on R&D"
-                :makes-run true
-                :async true
-                :effect (effect (make-run eid :rd card))}]
-   :events [(successful-run-replace-access
-              {:target-server :rd
-               :this-card-run true
-               :ability
-               {:prompt "Choose a card to shuffle into R&D"
-                :choices {:card #(and (not (ice? %))
-                                      (not (rezzed? %))
-                                      (zero? (get-counters % :advancement)))}
-                :msg (msg "shuffle " (card-str state target) " into R&D")
-                :effect (effect (move :corp target :deck)
-                                (shuffle! :corp :deck))}})]})
+  (let [ability (successful-run-replace-breach
+                 {:target-server :rd
+                  :duration :end-of-run
+                  :ability
+                  {:prompt "Choose a card to shuffle into R&D"
+                   :choices {:card #(and (not (ice? %))
+                                         (not (rezzed? %))
+                                         (zero? (get-counters % :advancement)))}
+                   :msg (msg "shuffle " (card-str state target) " into R&D")
+                   :effect (effect (move :corp target :deck)
+                                   (shuffle! :corp :deck))}})]
+    {:abilities [{:cost [:click 1]
+                  :msg "make a run on R&D"
+                  :makes-run true
+                  :async true
+                  :effect (effect (register-events card [ability])
+                                  (make-run eid :rd card))}]}))
 
 (defcard "Ankusa"
   (auto-icebreaker {:abilities [(break-sub 2 1 "Barrier")
@@ -408,12 +404,9 @@
                                               (continue :runner nil))}]}))
 
 (defcard "Atman"
-  {:on-install {:effect (effect
-                          (continue-ability {:eid (assoc eid :source-type :ability :source card)
-                                             :cost [:x-credits]
-                                             :msg (msg "add " (cost-value eid :x-credits) " power counters")
-                                             :effect (effect (add-counter card :power (cost-value eid :x-credits)))}
-                                            card targets))}
+  {:on-install {:cost [:x-credits]
+                :msg (msg "add " (cost-value eid :x-credits) " power counters")
+                :effect (effect (add-counter card :power (cost-value eid :x-credits)))}
    :abilities [(break-sub 1 1 "All" {:req (req (= (get-strength current-ice) (get-strength card)))})]
    :strength-bonus (req (get-counters card :power))})
 
@@ -497,7 +490,7 @@
                                    remote? (is-remote? (second (get-zone (:host b))))]
                                (continue-ability
                                  state side
-                                 {:prompt (msg "Host Bishop on a piece of ICE protecting "
+                                 {:prompt (msg "Host Bishop on a piece of ice protecting "
                                                (if hosted? (if remote? "a central" "a remote") "any") " server")
                                   :choices {:card #(if hosted?
                                                      (and (if remote?
@@ -571,14 +564,30 @@
                 (strength-pump 2 4)))
 
 (defcard "Bug"
-  {:implementation "Can only pay to see last card drawn after multiple draws"
-   :req (req (some #{:hq} (:successful-run runner-reg)))
+  {:req (req (some #{:hq} (:successful-run runner-reg)))
    :events [{:event :corp-draw
              :optional
-             {:prompt "Pay 2 [Credits] to reveal card just drawn?"
-              :player :runner
-              :yes-ability {:cost [:credit 2]
-                            :msg (msg "reveal the card just drawn: " (:title (last (:hand corp))))}}}]})
+             {:prompt "Use Bug?"
+              :req (req (< 1 (total-available-credits state :runner eid card)))
+              :yes-ability
+              {:prompt "How many cards do you want to reveal for 2 [Credits] each?"
+               :waiting-promt "Runner to use Bug"
+               :choices {:number (req (min (:count context)
+                                           (quot (total-available-credits state :runner eid card) 2)))}
+               :async true
+               :effect (req (let [cards (->> corp-currently-drawing
+                                             (shuffle)
+                                             (keep #(find-cid (:cid %) (:hand corp)))
+                                             (take target))]
+                              (wait-for
+                                (pay state side (make-eid state eid) card [:credit (* 2 target)])
+                                (let [payment-str (:msg async-result)]
+                                  (wait-for
+                                    (reveal state side (make-eid state eid) cards)
+                                    (system-msg state side (str payment-str
+                                                                " to use Bug to reveal "
+                                                                (string/join ", " (map :title cards))))
+                                    (effect-completed state side eid))))))}}}]})
 
 (defcard "Bukhgalter"
   (auto-icebreaker {:abilities [(break-sub 1 1 "Sentry")
@@ -683,7 +692,7 @@
              :req (req (ice? (:card target)))
              :msg "draw 1 card"
              :async true
-             :effect (effect (draw :runner eid 1 nil))}]})
+             :effect (effect (draw :runner eid 1))}]})
 
 (defcard "Conduit"
   {:events [{:event :run-ends
@@ -691,7 +700,7 @@
              {:req (req (and (:successful context)
                              (= :rd (target-server context))))
               :player :runner
-              :waiting-prompt "Runner to decide if they will use Conduit"
+              :waiting-prompt "Runner to choose an option"
               :autoresolve (get-autoresolve :auto-conduit)
               :prompt "Use Conduit?"
               :yes-ability {:msg "add 1 virus counter to Conduit"
@@ -700,7 +709,8 @@
             {:event :successful-run
              :req (req (and (= :rd (target-server context))
                             this-card-run))
-             :effect (req (access-bonus state side :rd (max 0 (get-virus-counters state card))))}]
+             :effect (effect (register-events
+                              card [(breach-access-bonus :rd (max 0 (get-virus-counters state card)) {:duration :end-of-run})]))}]
    :abilities [{:cost [:click 1]
                 :msg "make a run on R&D"
                 :makes-run true
@@ -770,7 +780,7 @@
               :once :per-turn
               :prompt "Use Cordyceps to swap ice?"
               :yes-ability
-              {:prompt "Select ice protecting this server"
+              {:prompt "Choose ice protecting this server"
                :choices {:req (req (and (installed? target)
                                         (ice? target)
                                         (= (target-server (:run @state)) (second (get-zone target)))))}
@@ -778,14 +788,14 @@
                :effect (effect
                          (continue-ability
                            (let [first-ice target]
-                             {:prompt "Select ice to swap with"
+                             {:prompt "Choose ice to swap with"
                               :choices {:req (req (and (installed? target)
                                                        (ice? target)
                                                        (not= first-ice target)))}
                               :msg (msg "swap the positions of " (card-str state first-ice)
                                         " and " (card-str state target))
                               :async true
-                              :effect (req (wait-for (pay state side card [:virus 1])
+                              :effect (req (wait-for (pay state side (make-eid state eid) card [:virus 1])
                                                      (system-msg state side (:msg async-result))
                                                      (swap-ice state side first-ice target)
                                                      (effect-completed state side eid)))})
@@ -805,8 +815,8 @@
                                   (strength-pump 1 1)]})))
 
 (defcard "Crescentus"
-  {:abilities [{:req (req (and run
-                               (= :encounter-ice (:phase run))
+  {:abilities [{:req (req (and (get-current-encounter state)
+                               (rezzed? current-ice)
                                (all-subs-broken? current-ice)))
                 :label "derez an ice"
                 :cost [:trash]
@@ -829,7 +839,7 @@
                                           "remove a virus token from Crypsis"
                                           "trash Crypsis"))
                               :async true
-                              :effect (req (wait-for (pay state :runner card [:virus 1])
+                              :effect (req (wait-for (pay state :runner (make-eid state eid) card [:virus 1])
                                                      (if-let [payment-str (:msg async-result)]
                                                        (do (system-msg state :runner payment-str)
                                                            (effect-completed state side eid))
@@ -852,7 +862,7 @@
     {:on-install {:async true
                   :interactive (req (some #(card-flag? % :runner-install-draw true) (all-active state :runner)))
                   :msg (msg "reveal the top 5 cards of their Stack: " (string/join ", " (map :title (take 5 (:deck runner)))))
-                  :waiting-prompt "Runner to host programs on Customized Secretary"
+                  :waiting-prompt "Runner to make a decision"
                   :effect (req (let [from (take 5 (:deck runner))]
                                  (wait-for (reveal state side from)
                                            (continue-ability state side (custsec-host from) card nil))))}
@@ -872,13 +882,13 @@
     {:on-install {:prompt "Choose a server"
                   :msg (msg "target " target)
                   :choices (req servers)
-                  :effect (effect (update! (assoc card :server-target target)))}
-     :leave-play (effect (update! (dissoc card :server-target)))
-     :abilities [(break-sub 1 1 "Code Gate" {:req (req (if (:server-target card)
-                                                         (#{(last (server->zone state (:server-target card)))} (target-server run))
+                  :effect (effect (update! (assoc card :card-target target)))}
+     :leave-play (effect (update! (dissoc card :card-target)))
+     :abilities [(break-sub 1 1 "Code Gate" {:req (req (if (:card-target card)
+                                                         (#{(last (server->zone state (:card-target card)))} (target-server run))
                                                          true))})
-                 (strength-pump 1 1 :end-of-encounter {:req (req (if (:server-target card)
-                                                                   (#{(last (server->zone state (:server-target card)))} (target-server run))
+                 (strength-pump 1 1 :end-of-encounter {:req (req (if (:card-target card)
+                                                                   (#{(last (server->zone state (:card-target card)))} (target-server run))
                                                                    true))})]}))
 
 (defcard "D4v1d"
@@ -888,7 +898,7 @@
 
 (defcard "Dagger"
   (auto-icebreaker {:abilities [(break-sub 1 1 "Sentry")
-                                (strength-pump 1 5 {:cost-req (min-stealth 1)})]}))
+                                (strength-pump 1 5 :end-of-encounter {:cost-req (min-stealth 1)})]}))
 
 (defcard "Dai V"
   (auto-icebreaker {:abilities [(break-sub 2 0 "All" {:all true :cost-req all-stealth})
@@ -911,9 +921,9 @@
              :req (req (is-central? (target-server context)))
              :effect (effect (add-counter card :virus 1))}]
    :abilities [{:cost [:virus 1]
-                :label "Give -1 strength to current ICE"
+                :label "Give -1 strength to current piece of ice"
                 :req (req (and (rezzed? current-ice)
-                               (= :encounter-ice (:phase run))))
+                               (get-current-encounter state)))
                 :msg (msg "give -1 strength to " (:title current-ice))
                 :effect (effect (pump-ice current-ice -1))}]})
 
@@ -932,7 +942,7 @@
                 :async true
                 :effect (effect
                           (continue-ability
-                            {:waiting-prompt "Runner to use DaVinci"
+                            {:waiting-prompt "Runner to make a decision"
                              :prompt "Choose a card to install from your Grip"
                              :msg (msg "install " (:title target) " at no cost")
                              :choices {:req (req (and (in-hand? target)
@@ -1028,7 +1038,7 @@
      :trash-icon true
      :optional
      {:player :runner
-      :waiting-prompt "Runner to use Disruptor"
+      :waiting-prompt "Runner to choose an option"
       :prompt "Use Disrupter's ability?"
       :yes-ability
       {:cost [:trash]
@@ -1037,12 +1047,10 @@
 (defcard "Diwan"
   {:on-install {:prompt "Choose the server that this copy of Diwan is targeting:"
                 :choices (req servers)
-                :effect (effect (update! (assoc card :server-target target)))}
+                :effect (effect (update! (assoc card :card-target target)))}
    :constant-effects [{:type :install-cost
                        :req (req (let [serv (:server (second targets))]
-                                   (and (= serv (:server-target card))
-                                        (not (and (is-central? serv)
-                                                  (upgrade? target))))))
+                                   (= serv (:card-target card))))
                        :value 1}]
    :events [{:event :purge
              :async true
@@ -1082,7 +1090,7 @@
 
 (defcard "Eater"
   (auto-icebreaker {:abilities [(break-sub 1 1 "All" {:additional-ability {:msg (msg "access not more than 0 cards for the remainder of this run")
-                                                                           :effect (effect (max-access 0))}
+                                                                           :effect (req (max-access state 0))}
                                                       :label "break 1 subroutine and access 0 cards"})
                                 (strength-pump 1 1)]}))
 
@@ -1119,7 +1127,7 @@
                        :yes-ability
                        {:async true
                         :effect (req (system-msg state :corp (str "is forced to draw " title))
-                                     (draw state :corp eid 1 nil))}}})
+                                     (draw state :corp eid 1))}}})
         reveal {:optional
                 {:prompt "Reveal the top card of R&D?"
                  :yes-ability
@@ -1134,7 +1142,7 @@
                :req (req (= :rd (target-server context)))
                :async true
                :interactive (req true)
-               :waiting-prompt "Runner to use Equivocation"
+               :waiting-prompt "Runner to make a decision"
                :effect (effect (continue-ability reveal card nil))}]}))
 
 (defcard "Euler"
@@ -1143,25 +1151,26 @@
                                 (strength-pump 1 1)]}))
 
 (defcard "eXer"
-  {:in-play [:rd-access 1]
-   :events [{:event :purge
+  {:events [(breach-access-bonus :rd 1)
+            {:event :purge
              :async true
              :effect (effect (trash eid card {:cause :purge}))}]})
 
 (defcard "Expert Schedule Analyzer"
-  {:abilities [{:cost [:click 1]
-                :msg "make a run on HQ"
-                :makes-run true
-                :async true
-                :effect (effect (make-run eid :hq card))}]
-   :events [(successful-run-replace-access
-              {:target-server :hq
-               :this-card-run true
-               :ability
-               {:msg (msg "reveal all of the cards cards in HQ: "
-                          (string/join ", " (map :title (:hand corp))))
-                :async true
-                :effect (effect (reveal eid (:hand corp)))}})]})
+  (let [ability (successful-run-replace-breach
+                 {:target-server :hq
+                  :duration :end-of-run
+                  :ability
+                  {:msg (msg "reveal all of the cards cards in HQ: "
+                             (string/join ", " (map :title (:hand corp))))
+                   :async true
+                   :effect (effect (reveal eid (:hand corp)))}})]
+    {:abilities [{:cost [:click 1]
+                  :msg "make a run on HQ"
+                  :makes-run true
+                  :async true
+                  :effect (effect (register-events card [ability])
+                                  (make-run eid :hq card))}]}))
 
 (defcard "Faerie"
   (auto-icebreaker {:abilities [(break-sub 0 1 "Sentry")
@@ -1179,7 +1188,7 @@
               :prompt "Trash False Echo?"
               :yes-ability
               {:async true
-               :msg "trashes False Echo to make the Corp rez the passed ICE or add it to HQ"
+               :msg "trashes False Echo to make the Corp rez the passed piece of ice or add it to HQ"
                :effect
                (req (wait-for
                       (trash state side card nil)
@@ -1194,7 +1203,7 @@
                                            ["Add to HQ"]))
                            :effect (req (if (= target "Rez")
                                           (rez state side eid ice)
-                                          (do (system-msg state :corp "chooses to add the passed ICE to HQ")
+                                          (do (system-msg state :corp "chooses to add the passed piece of ice to HQ")
                                               (move state :corp ice :hand)
                                               (effect-completed state side eid))))})
                         card target)))}}}]})
@@ -1208,7 +1217,7 @@
                {:label "+X strength for the remainder of the run (using at least 1 stealth [Credits])"
                 :cost [:x-credits]
                 :cost-req (min-stealth 1)
-                :prompt "How many credits?"
+                :prompt "How many credits do you want to spend?"
                 :effect (effect (pump card (cost-value eid :x-credits) :end-of-run))
                 :msg (msg "increase strength by " (cost-value eid :x-credits)
                           " for the remainder of the run")}]})
@@ -1216,7 +1225,7 @@
 (defcard "Femme Fatale"
   (auto-icebreaker
     {:on-install
-     {:prompt "Select a piece of ICE to target for bypassing"
+     {:prompt "Choose a piece of ice to target for bypassing"
       :choices {:card ice?}
       :effect (req (let [ice target]
                      (add-icon state side card ice "F" "blue")
@@ -1253,7 +1262,7 @@
 (defcard "Flashbang"
   (auto-icebreaker {:abilities [{:label "Derez a Sentry being encountered"
                                  :cost [:credit 6]
-                                 :req (req (and (= :encounter-ice (:phase run))
+                                 :req (req (and (get-current-encounter state)
                                                 (has-subtype? current-ice "Sentry")))
                                  :msg (msg "derez " (:title current-ice))
                                  :effect (effect (derez current-ice))}
@@ -1314,14 +1323,13 @@
                      (doseq [sub subroutines]
                        (break-subroutine! state (get-card state ice) sub)))]
     {:abilities [{:label "break all but 1 subroutine"
-                  :req (req (and current-ice
-                                 (rezzed? current-ice)
+                  :req (req (and (active-encounter? state)
                                  (< 1 (count (remove :broken (:subroutines current-ice))))))
                   :break 1 ;technically not correct, but will only be used by the engine to check for breaking abilities
                   :breaks "All"
                   :break-cost [:trash]
                   :cost [:trash]
-                  :prompt "Select the subroutine to NOT break"
+                  :prompt "Choose the subroutine to NOT break"
                   :choices (req (unbroken-subroutines-choice current-ice))
                   :msg (msg (let [subroutines (:subroutines current-ice)
                                   target (->> subroutines
@@ -1382,7 +1390,7 @@
                 :async true
                 :effect (req (continue-ability
                                state :corp
-                               {:waiting-prompt "Corp to trash a card"
+                               {:waiting-prompt "Corp to make a decision"
                                 :prompt "Choose a card to trash"
                                 :choices (req (filter corp? (:hand corp)))
                                 :async true
@@ -1409,12 +1417,12 @@
    :abilities [{:label "Remove Hyperdriver from the game to gain [Click] [Click] [Click]"
                 :req (req (:runner-phase-12 @state))
                 :effect (effect (move card :rfg)
-                                (gain :click 3))
+                                (gain-clicks 3))
                 :msg "gain [Click][Click][Click]"}]})
 
 (defcard "Ika"
-  (auto-icebreaker {:abilities [{:label "Host Ika on a piece of ICE"
-                                 :prompt (msg "Host Ika on a piece of ICE")
+  (auto-icebreaker {:abilities [{:label "Host Ika on a piece of ice"
+                                 :prompt (msg "Host Ika on a piece of ice")
                                  :cost [:credit 2]
                                  :choices {:card #(and (ice? %)
                                                        (installed? %)
@@ -1465,7 +1473,7 @@
                                     {:optional
                                      {:prompt (str "Swap " (:title ice) " with another ice?")
                                       :yes-ability
-                                      {:prompt "Select another ice"
+                                      {:prompt "Choose another ice"
                                        :choices {:card #(and (installed? %)
                                                              (ice? %)
                                                              (not (same-card? % ice)))}
@@ -1484,36 +1492,37 @@
              :effect (effect (trash eid card {:cause :purge}))}]})
 
 (defcard "Keyhole"
-  {:abilities [{:cost [:click 1]
-                :msg "make a run on R&D"
-                :makes-run true
-                :async true
-                :effect (effect (make-run eid :rd card))}]
-   :events [(successful-run-replace-access
-              {:target-server :rd
-               :this-card-run true
-               :mandatory true
-               :ability
-               {:prompt "Choose a card to trash"
-                :not-distinct true
-                :msg (msg "trash " (:title target))
-                :choices (req (take 3 (:deck corp)))
-                :async true
-                :effect (effect (shuffle! :corp :deck)
-                                (trash eid (assoc target :seen true) nil))}})]})
+  (let [ability (successful-run-replace-breach
+                 {:target-server :rd
+                  :mandatory true
+                  :duration :end-of-run
+                  :ability
+                  {:prompt "Choose a card to trash"
+                   :not-distinct true
+                   :msg (msg "trash " (:title target))
+                   :choices (req (take 3 (:deck corp)))
+                   :async true
+                   :effect (effect (shuffle! :corp :deck)
+                                   (trash eid (assoc target :seen true) nil))}})]
+    {:abilities [{:cost [:click 1]
+                  :msg "make a run on R&D"
+                  :makes-run true
+                  :async true
+                  :effect (effect (register-events card [ability])
+                                  (make-run eid :rd card))}]}))
 
 (defcard "Knight"
   (let [knight-req (req (and (same-card? current-ice (get-nested-host card))
                              (<= (get-strength current-ice) (get-strength card))))]
-    {:abilities [{:label "Host Knight on a piece of ICE"
+    {:abilities [{:label "Host Knight on a piece of ice"
                   :async true
                   :effect (req (let [k (get-card state card)
                                      hosted (ice? (:host k))
                                      icepos (card-index state (get-card state (:host k)))]
                                  (continue-ability
                                    state side
-                                   {:prompt (msg "Host Knight on a piece of ICE"
-                                                 (when hosted " not before or after the current host ICE"))
+                                   {:prompt (msg "Host Knight on a piece of ice"
+                                                 (when hosted " not before or after the current host ice"))
                                     :cost [:click 1]
                                     :choices {:card #(if hosted
                                                        (and (or (when (= (get-zone %) (get-zone (:host k)))
@@ -1563,9 +1572,8 @@
              :effect (req (add-counter state side card :virus 1))}]
    :autoresolve (get-autoresolve :auto-fire)
    :abilities [{:cost [:virus 1]
-                :label "Give -1 strength to current ICE"
-                :req (req (and (rezzed? current-ice)
-                               (= :encounter-ice (:phase run))))
+                :label "Give -1 strength to current piece of ice"
+                :req (req (active-encounter? state))
                 :msg (msg "give -1 strength to " (:title current-ice))
                 :effect (effect (pump-ice current-ice -1))}
                (set-autoresolve :auto-fire "Leech")]})
@@ -1696,7 +1704,7 @@
   {:events [{:event :successful-run
              :req (req (= :rd (target-server context)))
              :effect (effect (add-counter card :virus 1))}
-            {:event :pre-access
+            {:event :breach-server
              :async true
              :req (req (= target :rd))
              :effect (effect (continue-ability
@@ -1753,7 +1761,7 @@
   {:events [{:event :successful-run
              :req (req (= :hq (target-server context)))
              :effect (effect (add-counter card :virus 1))}
-            {:event :pre-access
+            {:event :breach-server
              :async true
              :req (req (= target :hq))
              :effect (effect (continue-ability
@@ -1787,11 +1795,11 @@
 
 (defcard "Nyashia"
   {:data {:counter {:power 3}}
-   :events [{:event :pre-access
+   :events [{:event :breach-server
              :optional
              {:req (req (and (pos? (get-counters card :power))
                              (= target :rd)))
-              :waiting-prompt "Runner to use Nyashia"
+              :waiting-prompt "Runner to choose an option"
               :prompt "Spend a power counter on Nyashia to access 1 additional card?"
               :autoresolve (get-autoresolve :auto-nyashia)
               :yes-ability {:msg "access 1 additional card from R&D"
@@ -1810,8 +1818,11 @@
                                 (strength-pump 3 3)]}))
 
 (defcard "Omega"
-  (auto-icebreaker {:abilities [(break-sub 1 1 "All" {:req (req (= 1 (:position run)))})
-                                (strength-pump 1 1 :end-of-encounter {:req (req (= 1 (:position run)))})]}))
+  (auto-icebreaker {:abilities [(break-sub
+                                 1 1 "All"
+                                 {:req (req (let [server-ice (:ices (card->server state current-ice))]
+                                                                  (same-card? current-ice (first server-ice))))})
+                                (strength-pump 1 1)]}))
 
 (defcard "Origami"
   {:constant-effects [{:type :hand-size
@@ -1853,7 +1864,7 @@
              {:prompt "Give ice a subtype?"
               :req (req (not (get-in @state [:per-turn (:cid card)])))
               :yes-ability
-              {:prompt "Choose an ICE subtype"
+              {:prompt "Choose an ice subtype"
                :choices (req (->> (server-cards)
                                   (reduce (fn [acc card]
                                             (if (ice? card)
@@ -1882,9 +1893,7 @@
                     :cost [:x-credits]
                     :heap-breaker-pump :x ; strength gained
                     :heap-breaker-break :x ; number of subs broken
-                    :break-req (req (and current-ice
-                                         (rezzed? current-ice)
-                                         (= :encounter-ice (:phase run))
+                    :break-req (req (and (active-encounter? state)
                                          (has-subtype? current-ice "Barrier")))
                     :effect (effect (pump card (cost-value eid :x-credits))
                                     (continue-ability
@@ -1934,17 +1943,17 @@
 
 (defcard "Pawn"
   {:implementation "All abilities are manual"
-   :abilities [{:label "Host Pawn on the outermost ICE of a central server"
+   :abilities [{:label "Host Pawn on the outermost piece of ice of a central server"
                 :cost [:click 1]
-                :prompt "Host Pawn on the outermost ICE of a central server"
+                :prompt "Host Pawn on the outermost piece of ice of a central server"
                 :choices {:card #(and (ice? %)
                                       (can-host? %)
                                       (= (last (get-zone %)) :ices)
                                       (is-central? (second (get-zone %))))}
                 :msg (msg "host it on " (card-str state target))
                 :effect (effect (host target card))}
-               {:label "Advance to next ICE"
-                :prompt "Choose the next innermost ICE to host Pawn on it"
+               {:label "Advance to next piece of ice"
+                :prompt "Choose the next innermost piece of ice to host Pawn on it"
                 :choices {:card #(and (ice? %)
                                       (can-host? %)
                                       (= (last (get-zone %)) :ices)
@@ -1976,12 +1985,10 @@
 (defcard "Pelangi"
   {:data {:counter {:virus 2}}
    :abilities [{:once :per-turn
-                :req (req (and current-ice
-                               (rezzed? current-ice)
-                               (= :encounter-ice (:phase run))))
+                :req (req (active-encounter? state))
                 :cost [:virus 1]
                 :label "Make ice gain a subtype"
-                :prompt "Choose an ICE subtype"
+                :prompt "Choose an ice subtype"
                 :choices (req (->> (server-cards)
                                    (reduce (fn [acc card]
                                              (if (ice? card)
@@ -2001,10 +2008,9 @@
                                      :value target})))}]})
 
 (defcard "Penrose"
-  (auto-icebreaker {:implementation "Stealth credit restriction not enforced"
-                    :abilities [(break-sub 1 1 "Barrier" {:req (req (= :this-turn (installed? card)))})
+  (auto-icebreaker {:abilities [(break-sub 1 1 "Barrier" {:req (req (= :this-turn (installed? card)))})
                                 (break-sub 1 1 "Code Gate")
-                                (strength-pump 1 3 {:cost-req (min-stealth 1)})]}))
+                                (strength-pump 1 3 :end-of-encounter {:cost-req (min-stealth 1)})]}))
 
 (defcard "Peregrine"
   (return-and-derez (break-sub 1 1 "Code Gate")
@@ -2049,11 +2055,11 @@
   {:on-install {:prompt "Choose a server for Plague"
                 :choices (req servers)
                 :msg (msg "target " target)
-                :req (req (not (get-in card [:special :server-target])))
-                :effect (effect (update! (assoc-in card [:special :server-target] target)))}
+                :req (req (not (:card-target card)))
+                :effect (effect (update! (assoc card :card-target target)))}
    :events [{:event :successful-run
              :req (req (= (zone->name (:server context))
-                          (get-in (get-card state card) [:special :server-target])))
+                          (:card-target (get-card state card))))
              :msg "gain 2 virus counters"
              :effect (effect (add-counter :runner card :virus 2))}]})
 
@@ -2110,7 +2116,7 @@
              :req (req (and (some #(installed? (:card %)) targets)
                             (first-installed-trash? state side)))
              :msg "draw 1 card"
-             :effect (effect (draw :runner eid 1 nil))}]})
+             :effect (effect (draw :runner eid 1))}]})
 
 (defcard "Refractor"
   (auto-icebreaker {:implementation "Stealth credit restriction not enforced"
@@ -2142,7 +2148,7 @@
                                                "draw 2 cards"
                                                "gain 3 [Credits]"))
                                    :effect (req (if (= target "Draw 2 cards")
-                                                  (draw state :runner eid 2 nil)
+                                                  (draw state :runner eid 2)
                                                   (gain-credits state :runner eid 3)))}))
                               card nil)))}
             {:event :post-access-card
@@ -2182,9 +2188,9 @@
                                (continue-ability
                                  state side
                                  {:prompt (if hosted?
-                                            (msg "Host Rook on a piece of ICE protecting this server or at position "
+                                            (msg "Host Rook on a piece of ice protecting this server or at position "
                                                  icepos " of a different server")
-                                            (msg "Host Rook on a piece of ICE protecting any server"))
+                                            (msg "Host Rook on a piece of ice protecting any server"))
                                   :choices {:card #(if hosted?
                                                      (and (or (= (get-zone %) (get-zone (:host r)))
                                                               (= (card-index state %) icepos))
@@ -2319,17 +2325,10 @@
               :prompt "Use Snitch to expose approached ice?"
               :yes-ability
               {:async true
+               :msg "expose the approached ice"
                :effect (req (wait-for
                               (expose state side (:ice context))
-                              (continue-ability
-                                state side
-                                {:optional
-                                 {:prompt "Jack out?"
-                                  :yes-ability {:msg "jack out"
-                                                :async true
-                                                :effect (effect (jack-out eid))}
-                                  :no-ability {:msg "continue the run"}}}
-                                card nil)))}}}]})
+                              (continue-ability state side (offer-jack-out) card nil)))}}}]})
 
 (defcard "Snowball"
   (auto-icebreaker {:abilities [(break-sub 1 1 "Barrier"
@@ -2341,42 +2340,43 @@
   (break-and-enter "Barrier"))
 
 (defcard "Stargate"
-  {:abilities [{:cost [:click 1]
-                :once :per-turn
-                :msg "make a run on R&D"
-                :makes-run true
-                :async true
-                :effect (effect (make-run eid :rd card))}]
-   :events [(successful-run-replace-access
-              {:target-server :rd
-               :this-card-run true
-               :mandatory true
-               :ability
-               {:async true
-                :msg (msg "reveal " (->> (:deck corp)
-                                         (take 3)
-                                         (map :title)
-                                         (string/join ", ")))
-                :effect (req (wait-for
-                               (reveal state side (take 3 (:deck corp)))
-                               (continue-ability
-                                 state side
-                                 {:async true
-                                  :prompt "Choose a card to trash"
-                                  :not-distinct true
-                                  :choices (req (take 3 (:deck corp)))
-                                  :msg (msg (let [card-titles (map :title (take 3 (:deck corp)))
-                                                  target-position (first (positions #{target} (take 3 (:deck corp))))
-                                                  position (case target-position
-                                                             0 "top "
-                                                             1 "middle "
-                                                             2 "bottom "
-                                                             "this-should-not-happen ")]
-                                              (if (= 1 (count (filter #{(:title target)} card-titles)))
-                                                (str "trash " (:title target))
-                                                (str "trash " position (:title target)))))
-                                  :effect (effect (trash :runner eid (assoc target :seen true) nil))}
-                                 card nil)))}})]})
+  (let [ability (successful-run-replace-breach
+                 {:target-server :rd
+                  :mandatory true
+                  :duration :end-of-run
+                  :ability
+                  {:async true
+                   :msg (msg "reveal " (->> (:deck corp)
+                                            (take 3)
+                                            (map :title)
+                                            (string/join ", ")))
+                   :effect (req (wait-for
+                                 (reveal state side (take 3 (:deck corp)))
+                                 (continue-ability
+                                  state side
+                                  {:async true
+                                   :prompt "Choose a card to trash"
+                                   :not-distinct true
+                                   :choices (req (take 3 (:deck corp)))
+                                   :msg (msg (let [card-titles (map :title (take 3 (:deck corp)))
+                                                   target-position (first (positions #{target} (take 3 (:deck corp))))
+                                                   position (case target-position
+                                                              0 "top "
+                                                              1 "middle "
+                                                              2 "bottom "
+                                                              "this-should-not-happen ")]
+                                               (if (= 1 (count (filter #{(:title target)} card-titles)))
+                                                 (str "trash " (:title target))
+                                                 (str "trash " position (:title target)))))
+                                   :effect (effect (trash :runner eid (assoc target :seen true) nil))}
+                                  card nil)))}})]
+    {:abilities [{:cost [:click 1]
+                  :once :per-turn
+                  :msg "make a run on R&D"
+                  :makes-run true
+                  :async true
+                  :effect (effect (register-events card [ability])
+                                  (make-run eid :rd card))}]}))
 
 (defcard "Study Guide"
   (auto-icebreaker {:abilities [(break-sub 1 1 "Code Gate")
@@ -2395,7 +2395,7 @@
 
 (defcard "Surfer"
   (letfn [(surf [state cice]
-            {:prompt (msg "Choose an ICE before or after " (:title cice))
+            {:prompt (msg "Choose a piece of ice before or after " (:title cice))
              :choices {:card #(and (ice? %)
                                    (= (get-zone %) (get-zone cice))
                                    (= 1 (abs (- (card-index state %)
@@ -2403,15 +2403,14 @@
              :msg (msg "swap " (card-str state cice)
                        " and " (card-str state target))
              :effect (req (let [tgtndx (card-index state target)]
-                            (swap! state assoc-in [:run :position] (inc tgtndx))
+                            (when run (swap! state assoc-in [:run :position] (inc tgtndx)))
                             (swap-ice state side cice target)))})]
     {:abilities [{:cost [:credit 2]
-                  :msg "swap a piece of Barrier ICE"
-                  :req (req (and run
-                                 (= :encounter-ice (:phase run))
+                  :msg "swap a piece of Barrier ice"
+                  :req (req (and (get-current-encounter state)
                                  (rezzed? current-ice)
                                  (has-subtype? current-ice "Barrier")))
-                  :label "Swap the Barrier ICE currently being encountered with a piece of ICE directly before or after it"
+                  :label "Swap the piece of Barrier ice currently being encountered with a piece of ice directly before or after it"
                   :async true
                   :effect (effect (continue-ability (surf state current-ice) card nil))}]}))
 
@@ -2429,12 +2428,11 @@
   {:events [{:event :subroutines-broken
              :optional {:req (req (all-subs-broken? target))
                         :prompt "Place 1 power counter on Takobi?"
+                        :autoresolve (get-autoresolve :auto-takobi)
                         :yes-ability
                         {:msg "add 1 power counter to Takobi"
                          :effect (effect (add-counter card :power 1))}}}]
-   :abilities [{:req (req (and run
-                               (rezzed? current-ice)
-                               (= :encounter-ice (:phase run))))
+   :abilities [{:req (req (get-current-encounter state))
                 :cost [:power 2]
                 :label "Give non-AI icebreaker +3 strength"
                 :prompt "Choose an installed non-AI icebreaker"
@@ -2442,7 +2440,8 @@
                                       (not (has-subtype? % "AI"))
                                       (installed? %))}
                 :msg (msg "add +3 strength to " (:title target))
-                :effect (effect (pump target 3))}]})
+                :effect (effect (pump target 3))}
+               (set-autoresolve :auto-takobi "Takobi")]})
 
 (defcard "Tapwrm"
   (let [ability {:label "Gain [Credits] (start of turn)"
@@ -2467,23 +2466,23 @@
   (let [ability {:prompt "Choose a server for Tracker"
                  :choices (req servers)
                  :msg (msg "target " target)
-                 :req (req (not (:server-target card)))
-                 :effect (effect (update! (assoc card :server-target target)))}]
+                 :req (req (not (:card-target card)))
+                 :effect (effect (update! (assoc card :card-target target)))}]
     {:implemention "Doesn't preveent subroutine from resolving"
      :abilities [{:label "Make a run on targeted server"
                   :cost [:click 1 :credit 2]
-                  :req (req (some #(= (:server-target card) %) runnable-servers))
-                  :msg (msg "make a run on " (:server-target card) ". Prevent the first subroutine that would resolve from resolving")
+                  :req (req (some #(= (:card-target card) %) runnable-servers))
+                  :msg (msg "make a run on " (:card-target card) ". Prevent the first subroutine that would resolve from resolving")
                   :async true
-                  :effect (effect (make-run eid (:server-target card) card))}]
+                  :effect (effect (make-run eid (:card-target card) card))}]
      :events [(assoc ability :event :runner-turn-begins)
               {:event :runner-turn-ends
-               :effect (effect (update! (dissoc card :server-target)))}]}))
+               :effect (effect (update! (dissoc card :card-target)))}]}))
 
 (defcard "Tranquilizer"
   (let [action (req (add-counter state side card :virus 1)
-                    (if (and (rezzed? (get-card state (:host card)))
-                             (<= 3 (get-virus-counters state (get-card state card))))
+                    (when (and (rezzed? (get-card state (:host card)))
+                               (<= 3 (get-virus-counters state (get-card state card))))
                       (derez state side (get-card state (:host card)))))]
     {:hosting {:card #(and (ice? %)
                            (can-host? %))}
@@ -2554,16 +2553,12 @@
                               :effect (effect (gain-credits :corp eid 2))}]}))
 
 (defcard "Unity"
-  {:abilities [(break-sub 1 1 "Code Gate")
-               {:label "1 [Credits]: Add 1 strength for each installed icebreaker"
-                :async true
-                :effect (effect (continue-ability
-                                  (strength-pump
-                                    1
-                                    (count (filter #(and (program? %)
-                                                         (has-subtype? % "Icebreaker"))
-                                                   (all-active-installed state :runner))))
-                                  card nil))}]})
+  (auto-icebreaker {:abilities [(break-sub 1 1 "Code Gate")
+                                (strength-pump 1 0 :end-of-encounter
+                                               {:label "Add 1 strength for each installed icebreaker"
+                                                :pump-bonus (req (count (filter #(and (program? %)
+                                                                                      (has-subtype? % "Icebreaker"))
+                                                                                (all-active-installed state :runner))))})]}))
 
 (defcard "Upya"
   {:implementation "Power counters added automatically"
@@ -2574,7 +2569,7 @@
    :abilities [{:cost [:click 1 :power 3]
                 :once :per-turn
                 :msg "gain [Click][Click]"
-                :effect (effect (gain :click 2))}]})
+                :effect (effect (gain-clicks 2))}]})
 
 (defcard "Utae"
   (let [break-req (:break-req (break-sub 1 1 "Code Gate"))]
@@ -2629,15 +2624,16 @@
                                (some #(and (ice? %)
                                            (not (rezzed? %)))
                                      (all-installed state :corp))))
-                :prompt "Trash Wari to expose an ICE?"
+                :prompt "Trash Wari to expose a piece of ice?"
                 :yes-ability (prompt-for-subtype)}}]}))
 
 (defcard "Wyrm"
-  (auto-icebreaker {:abilities [(break-sub 3 1 "All" {:label "break 1 subroutine on ICE with 0 or less strength"
+  (auto-icebreaker {:abilities [(break-sub 3 1 "All" {:label "break 1 subroutine on a piece of ice with 0 or less strength"
                                                       :req (req (not (pos? (get-strength current-ice))))})
                                 {:cost [:credit 1]
-                                 :label "Give -1 strength to current ICE"
-                                 :req (req (rezzed? current-ice))
+                                 :label "Give -1 strength to current piece of ice"
+                                 :req (req (and (active-encounter? state)
+                                                (<= (get-strength current-ice) (get-strength card))))
                                  :msg (msg "give -1 strength to " (:title current-ice))
                                  :effect (effect (pump-ice current-ice -1))}
                                 (strength-pump 1 1)]}))

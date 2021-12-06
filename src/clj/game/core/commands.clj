@@ -13,11 +13,12 @@
     [game.core.initializing :refer [card-init deactivate make-card]]
     [game.core.installing :refer [corp-install runner-install]]
     [game.core.moving :refer [move swap-ice swap-installed trash]]
+    [game.core.prompt-state :refer [remove-from-prompt-queue]]
     [game.core.prompts :refer [show-prompt]]
     [game.core.props :refer [set-prop]]
     [game.core.psi :refer [psi-game]]
     [game.core.rezzing :refer [rez]]
-    [game.core.runs :refer [end-run jack-out]]
+    [game.core.runs :refer [end-run get-current-encounter jack-out]]
     [game.core.say :refer [system-msg system-say unsafe-say]]
     [game.core.servers :refer [zones->sorted-names]]
     [game.core.set-up :refer [build-card]]
@@ -97,7 +98,7 @@
 
 (defn command-facedown [state side]
   (resolve-ability state side
-                   {:prompt "Select a card to install facedown"
+                   {:prompt "Choose a card to install facedown"
                     :choices {:card #(and (runner? %)
                                           (in-hand? %))}
                     :async true
@@ -186,17 +187,17 @@
                    (map->Card {:title "/unique command" :side side}) nil))
 
 (defn command-close-prompt [state side]
-  (when-let [fprompt (-> @state side :prompt first)]
-    (swap! state update-in [side :prompt] rest)
+  (when-let [prompt (-> @state side :prompt first)]
+    (remove-from-prompt-queue state side prompt)
     (swap! state dissoc-in [side :selected])
-    (effect-completed state side (:eid fprompt))))
+    (effect-completed state side (:eid prompt))))
 
 (defn command-install-ice
   [state side]
   (when (= side :corp)
     (resolve-ability
       state side
-      {:prompt "Select a piece of ice to install"
+      {:prompt "Choose a piece of ice to install"
        :choices {:card #(and (ice? %)
                              (#{[:hand]} (:zone %)))}
        :async true
@@ -271,14 +272,14 @@
   (let [f (if (= :corp side) corp? runner?)]
     (resolve-ability
       state side
-      {:prompt "Select the card to be hosted"
+      {:prompt "Choose the card to be hosted"
        :choices {:card #(and (f %)
                              (installed? %))}
        :async true
        :effect (effect
                  (continue-ability
                    (let [h1 target]
-                     {:prompt "Select the card to host the first card"
+                     {:prompt "Choose the card to host the first card"
                       :choices {:card #(and (f %)
                                             (installed? %)
                                             (not (same-card? % h1)))}
@@ -291,7 +292,7 @@
   (let [f (if (= :corp side) corp? runner?)]
     (resolve-ability
       state side
-      {:prompt "Select a card to trash"
+      {:prompt "Choose a card to trash"
        :choices {:card #(f %)}
        :effect (effect (trash eid target {:unpreventable true}))}
       nil nil)))
@@ -324,7 +325,7 @@
         "/deck"       #(toast %1 %2 "/deck number takes the format #n")
         "/discard"    #(toast %1 %2 "/discard number takes the format #n")
         "/discard-random" #(move %1 %2 (rand-nth (get-in @%1 [%2 :hand])) :discard)
-        "/draw"       #(draw %1 %2 (constrain-value value 0 1000))
+        "/draw"       #(draw %1 %2 (make-eid %1) (constrain-value value 0 1000))
         "/end-run"    (fn [state side]
                         (when (and (= side :corp)
                                     (:run @state))
@@ -340,7 +341,8 @@
         "/install-ice" command-install-ice
         "/jack-out"   (fn [state side]
                         (when (and (= side :runner)
-                                    (:run @state))
+                                   (or (:run @state)
+                                       (get-current-encounter state)))
                           (jack-out state side (make-eid state))))
         "/link"       (fn [state side]
                         (when (= side :runner)
@@ -349,19 +351,19 @@
                         (when (= side :runner)
                           (swap! state assoc-in [:runner :memory :used] (constrain-value value -1000 1000))))
         "/move-bottom"  #(resolve-ability %1 %2
-                                          {:prompt "Select a card in hand to put on the bottom of your deck"
+                                          {:prompt "Choose a card in hand to put on the bottom of your deck"
                                             :effect (effect (move target :deck))
                                             :choices {:card (fn [t] (and (same-side? (:side t) %2)
                                                                         (in-hand? t)))}}
                                           (map->Card {:title "/move-bottom command"}) nil)
         "/move-deck"   #(resolve-ability %1 %2
-                                          {:prompt "Select a card to move to the top of your deck"
+                                          {:prompt "Choose a card to move to the top of your deck"
                                           :effect (req (let [c (deactivate %1 %2 target)]
                                                           (move %1 %2 c :deck {:front true})))
                                           :choices {:card (fn [t] (same-side? (:side t) %2))}}
                                           (map->Card {:title "/move-deck command"}) nil)
         "/move-hand"  #(resolve-ability %1 %2
-                                        {:prompt "Select a card to move to your hand"
+                                        {:prompt "Choose a card to move to your hand"
                                           :effect (req (let [c (deactivate %1 %2 target)]
                                                         (move %1 %2 c :hand)))
                                           :choices {:card (fn [t] (same-side? (:side t) %2))}}
@@ -380,7 +382,7 @@
                                           (map->Card {:title "/rez command"}) nil))
         "/rez-all"    #(when (= %2 :corp) (command-rezall %1 %2))
         "/rfg"        #(resolve-ability %1 %2
-                                        {:prompt "Select a card to remove from the game"
+                                        {:prompt "Choose a card to remove from the game"
                                          :effect (req (let [c (deactivate %1 %2 target)]
                                                         (move %1 %2 c :rfg)))
                                          :choices {:card (fn [t] (same-side? (:side t) %2))}}
@@ -390,7 +392,7 @@
         "/swap-ice"   #(when (= %2 :corp)
                           (resolve-ability
                             %1 %2
-                            {:prompt "Select two installed ice to swap"
+                            {:prompt "Choose two installed ice to swap"
                             :choices {:max 2
                                       :all true
                                       :card (fn [c] (and (installed? c)
@@ -400,7 +402,7 @@
         "/swap-installed" #(when (= %2 :corp)
                               (resolve-ability
                                 %1 %2
-                                {:prompt "Select two installed non-ice to swap"
+                                {:prompt "Choose two installed non-ice to swap"
                                 :choices {:max 2
                                           :all true
                                           :card (fn [c] (and (installed? c)

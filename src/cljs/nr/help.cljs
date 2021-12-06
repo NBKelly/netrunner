@@ -65,7 +65,7 @@
     :help "Set your handsize to n"}
    {:name "/install-ice"
     :usage "/install-ice"
-    :help "Install a piece of ICE at any position in a server (Corp only)"}
+    :help "Install a piece of ice at any position in a server (Corp only)"}
    {:name "/jack-out"
     :usage "/jack-out"
     :help "Jack out (Runner only)"}
@@ -99,13 +99,13 @@
     :help "Replace your ID with the card \"n\""}
    {:name "/rez"
     :usage "/rez"
-    :help "Select a card to rez, ignoring all costs (Corp only)"}
+    :help "Choose a card to rez, ignoring all costs (Corp only)"}
    {:name "/rez-all"
     :usage "/rez-all"
     :help "Rez all cards, ignoring all costs and flip cards in archives faceup (Corp only). For revealing your servers at the end of a game."}
    {:name "/rfg"
     :usage "/rfg"
-    :help "Select a card to remove from the game"}
+    :help "Choose a card to remove from the game"}
    {:name "/roll"
     :has-args :required
     :usage "/roll n"
@@ -116,10 +116,10 @@
     :help "Add card \"n\" to your hand (from outside the game)"}
    {:name "/swap-ice"
     :usage "/swap-ice"
-    :help "Swap the position of two installed ICE (Corp only)"}
+    :help "Swap the position of two installed pieces of ice (Corp only)"}
    {:name "/swap-installed"
     :usage "/swap-installed"
-    :help "Swap the position of two installed non-ICE (Corp only)"}
+    :help "Swap the position of two installed non-ice (Corp only)"}
    {:name "/tag"
     :has-args :required
     :usage "/tag n"
@@ -150,6 +150,20 @@
     :usage "/unique"
     :help "Toggles uniqueness of selected card (can be used to e.g. play with non-errata version of Wireless Net Pavillion)"}])
 
+(def keyboard-control-info
+  [{:name "Space"
+    :usage "Space"
+    :help "Performs a default action if there are no controls focused. Otherwise, activates the focused control. Default actions: Clicking for credits, Starting/Ending turns, and continuing a run"}
+   {:name "Enter"
+    :usage "Enter"
+    :help "Focuses the chat if there are no controls focused. Otherwise, activates the focused control"}
+   {:name "/"
+    :usage "/ (forward slash)"
+    :help "Focuses the chat and brings up the command menu"}
+   {:name "numbers"
+    :usage "Number keys"
+    :help "Activates options in the button panel or card menu. Numbers are mapped to options from top to bottom"}])
+
 (def help-data
   "List of maps with FAQ about jinteki.net. Every section MUST have an :id here, so the links can work."
   (list
@@ -160,7 +174,7 @@
              :title "How do I perform actions in a game?"
              :content [:ul
                        [:p "In general, if you want to perform an action connected to a card, try clicking that card. "
-                        "Either something will happen or a menu should appear. Your mouse cursor may also turn into a \"target\" icon if you need to select a target. "
+                        "Either something will happen or a menu should appear. Your mouse cursor may also turn into a \"target\" icon if you need to choose a target. "
                         "You will be prompted discard down to your hand size after you choose \"End Turn\"."]
                        [:p "Most cards in the game are now automated, but be aware that some cards' restrictions or trigger conditions are not implemented. "
                         "If you want to spend credits from a card, but the game is not giving you the option, just click the card with credits and take some."]]}
@@ -177,12 +191,12 @@
                        [:p "There are two undo functions - undo to turn start, and undo the last click. "
                         "To undo the start of the current turn both players must use the /undo-turn command. "
                         "To undo to the start of the click the active player must use the /undo-click command. "]
-                       [:p "There are some non-click based interactions such as using clone-chip and rezzing ICE or assets which are "
+                       [:p "There are some non-click based interactions such as using clone-chip and rezzing ice or assets which are "
                         "not supported via the undo-click function and players will need to handle manually. "
                         " Trashed/played cards can be dragged back to hand and reinstalled if needed. If there"
                         " are lingering/hard to dismiss prompts, try using " [:code "/close-prompt"] " command as a last resort."]]}
             {:id "breakice"
-             :title "How do I break ICE and fire ICE subroutines?"
+             :title "How do I break ice and fire ice subroutines?"
              :content [:ul
                        [:p "Once the Runner encounters a piece of ice, both the Runner and the Corp will see a menu. "
                         "To break subroutines, the Runner should click on their icebreakers and use their abilities. "
@@ -194,8 +208,14 @@
             {:id "closemenu"
              :title "How do I close a card's menu?"
              :content [:ul
-                       [:p "Click that card again. If it isn't a menu, but a bugged prompt that shouldn't be there, "
+                       [:p "Click outside the menu or press Escape. If it isn't a menu, but a bugged prompt that shouldn't be there, "
                         "try using " [:code "/close-prompt"] "."]]}
+            {:id "keyboard"
+             :title "Are there any keyboard controls?"
+             :content [:ul
+                       [:div "The keyboard can control some basic functionality. "
+                        "List of available keyboard controls:"
+                        [:ul (doall (map-indexed (fn [idx {:keys [usage help]}] [:li {:key idx} [:code usage] " - " help]) keyboard-control-info))]]]}
             {:id "commands"
              :title "How do I use commands during a game?"
              :content [:ul
@@ -375,7 +395,7 @@
             {:id "nasir"
              :title "How do I use Nasir's ability?"
              :content [:ul
-                        [:p "Nasir's ability is currently triggered manually - when encountering a piece of ICE, click Nasir's "
+                        [:p "Nasir's ability is currently triggered manually - when encountering a piece of ice, click Nasir's "
                        "identity card to trigger the ability."]]}
             {:id "adam"
              :title "How do I install Adam's directives?"

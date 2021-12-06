@@ -1,12 +1,11 @@
 (ns game.core.prompts
-  (:require [clj-uuid :as uuid]
-            [game.core.eid :refer [effect-completed make-eid]]
-            [game.core.toasts :refer [toast]]))
-
-(defn add-to-prompt-queue
-  "Adds a newly created prompt to the current prompt queue"
-  [state side prompt]
-  (swap! state update-in [side :prompt] #(cons prompt %)))
+  (:require
+    [clj-uuid :as uuid]
+    [game.core.eid :refer [effect-completed make-eid]]
+    [game.core.prompt-state :refer [add-to-prompt-queue remove-from-prompt-queue]]
+    [game.core.toasts :refer [toast]]
+    [game.macros :refer [when-let*]]
+    [medley.core :refer [find-first]]))
 
 (defn choice-parser
   [choices]
@@ -38,6 +37,7 @@
                   :cancel-effect cancel-effect
                   :end-effect end-effect}]
      (when (or (= prompt-type :waiting)
+               (= prompt-type :run)
                (:number choices)
                (:card-title choices)
                (#{:credit :counter} choices)
@@ -101,7 +101,7 @@
         prompt (first (filter #(= :select (:prompt-type %)) (get-in @state [side :prompt])))]
     (swap! state update-in [side :selected] #(vec (rest %)))
     (when prompt
-      (swap! state update-in [side :prompt] (fn [prompts] (remove #(= % prompt) prompts))))
+      (remove-from-prompt-queue state side prompt))
     (if (seq cards)
       (do (doseq [card cards]
             (update! state side card))
@@ -137,8 +137,8 @@
                     (if-let [message (:prompt ability)]
                       message
                       (if m
-                        (str "Select " (if all "" "up to ") m " targets for " (:title card))
-                        (str "Select a target for " (:title card))))
+                        (str "Choose " (if all "" "up to ") m " targets for " (:title card))
+                        (str "Choose a target for " (:title card))))
                     (if all ["Hide"] ["Done"])
                     (if all
                       (fn [_]
@@ -164,8 +164,22 @@
 (defn clear-wait-prompt
   "Removes the first 'Waiting for...' prompt from the given side's prompt queue."
   [state side]
-  (when-let [wait (first (filter #(= :waiting (:prompt-type %)) (-> @state side :prompt)))]
-    (swap! state update-in [side :prompt] (fn [pr] (remove #(= % wait) pr)))))
+  (when-let [wait (find-first #(= :waiting (:prompt-type %)) (-> @state side :prompt))]
+    (remove-from-prompt-queue state side wait)))
+
+(defn show-run-prompts
+  "Adds a dummy prompt to both side's prompt queues.
+   The prompt cannot be closed except by a later call to clear-run-prompts."
+  [state msg card]
+  (show-prompt state :runner card (str "You are " msg) nil nil {:prompt-type :run})
+  (show-prompt state :corp card (str "The Runner is " msg) nil nil {:prompt-type :run}))
+
+(defn clear-run-prompts
+  [state]
+  (when-let* [runner-prompt (find-first #(= :run (:prompt-type %)) (-> @state :runner :prompt))
+              corp-prompt (find-first #(= :run (:prompt-type %)) (-> @state :corp :prompt))]
+             (remove-from-prompt-queue state :runner runner-prompt)
+             (remove-from-prompt-queue state :corp corp-prompt)))
 
 (defn cancellable
   "Wraps a vector of prompt choices with a final 'Cancel' option. Optionally sorts the vector alphabetically,

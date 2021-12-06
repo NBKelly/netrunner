@@ -1,45 +1,77 @@
 (ns game.core.card
-  (:require [clojure.string :refer [lower-case includes?]]
-            [medley.core :refer [find-first]]))
+  (:require
+   [clojure.string :refer [lower-case]]
+   [medley.core :refer [find-first]]))
 
 (defrecord Card
-  [advancementcost
+  [abilities
+   advance-counter
+   advanceable
+   advancementcost
    agendapoints
    art
    baselink
+   card-target
    cid
    code
+   corp-abilities
    cost
+   counter
+   current-advancement-requirement
+   current-points
+   current-strength
    cycle_code
    deck-limit
+   disabled
+   extra-advance-counter
+   face
+   facedown
+   faces
    faction
    format
+   host
+   hosted
+   icon
+   images
    implementation
+   index
+   installed
    memoryunits
    minimumdecksize
+   new
    normalizedtitle
+   playable
    previous-versions
+   previous-zone
+   printed-title
    quantity
+   rezzed
    rotated
+   runner-abilities
+   seen
+   selected
    set_code
    side
+   special
    strength
+   subroutines
    subtype
+   subtypes
    title
    trash
    type
-   uniqueness])
-
-(defn private-card
-  "Returns only the public information of a given card when it's in a private state,
-  for example, when it's facedown or in the hand"
-  [card]
-  (select-keys card [:zone :cid :side :new :host :counter :advance-counter :hosted :icon]))
+   uniqueness
+   zone])
 
 (defn get-cid
   "Gets the cid of a given card when wrapped in an effect-handler map"
   [card]
   (get-in card [:card :cid]))
+
+(defn get-title
+  "Title or printed title if the card is a counter or fake agenda"
+  [card]
+  (or (:title card) (:printed-title card)))
 
 (defn get-nested-host
   "Recursively searches upward to find the 'root' card of a hosting chain."
@@ -169,7 +201,6 @@
 (defn event?
   [card]
   (and (not (facedown? card))
-       (not (:condition card))
        (is-type? card "Event")))
 
 (defn hardware?
@@ -192,8 +223,7 @@
 
 (defn operation?
   [card]
-  (and (not (:condition card))
-       (is-type? card "Operation")))
+  (is-type? card "Operation"))
 
 (defn program?
   [card]
@@ -211,9 +241,11 @@
 
 (defn condition-counter?
   [card]
-  (and (:condition card)
-       (or (is-type? card "Event")
-           (is-type? card "Operation"))))
+  (is-type? card "Counter"))
+
+(defn basic-action?
+  [card]
+  (is-type? card "Basic Action"))
 
 (defn has-subtype?
   "Checks if the specified subtype is present in the card, ignoring case."
@@ -257,16 +289,31 @@
 (defn active?
   "Checks if the card is active and should receive game events/triggers."
   [card]
-  (or (identity? card)
+  (or (basic-action? card)
+      (and (identity? card)
+           (not (facedown? card)))
       (in-play-area? card)
       (in-current? card)
       (in-scored? card)
+      (condition-counter? card)
       (and (corp? card)
            (installed? card)
            (rezzed? card))
       (and (runner? card)
            (installed? card)
            (not (facedown? card)))))
+
+(defn get-advancement-requirement
+  [card]
+  (when (agenda? card)
+    (or (:current-advancement-requirement card)
+        (:advancementcost card))))
+
+(defn get-agenda-points
+  [card]
+  (or (:current-points card)
+      (:agendapoints card)
+      0))
 
 (defn can-be-advanced?
   "Returns true if the card can be advanced"
@@ -285,8 +332,8 @@
   "Get number of counters of specified type."
   [card counter]
   (if (= counter :advancement)
-    (+ (:advance-counter card 0) (:extra-advance-counter card 0))
-    (get-in card [:counter counter] 0)))
+    ((fnil + 0 0) (:advance-counter card) (:extra-advance-counter card))
+    (or (get-in card [:counter counter]) 0)))
 
 (defn assoc-host-zones
   "Associates a new zone onto a card and its host(s)."
@@ -320,7 +367,7 @@
                     (get-in @state (cons (to-keyword side) zones))))))
         card))))
 
-(defn- same-card?
+(defn same-card?
   "Checks if the two cards are the same by `:cid`. Returns false if both cards
   do not have `:cid`. Alternatively specify 1-function to use to check the card."
   ([card1 card2] (same-card? :cid card1 card2))
@@ -351,9 +398,11 @@
   ([card] (is-public? (to-keyword (:side card))))
   ([card side]
    ;; public cards for both sides:
+   ;; * basic action
    ;; * identity
    ;; * in a public zone: score area, current, play area, remove from game
-   (or (identity? card)
+   (or (basic-action? card)
+       (identity? card)
        (in-scored? card)
        (in-current? card)
        (in-play-area? card)
@@ -378,3 +427,41 @@
                       (rezzed? card)))
              (and (in-discard? card)
                   (faceup? card)))))))
+
+;; CR 1.5
+;; 10.1.3. Some abilities add a card to a player’s score area “as an agenda”. When this
+;;    happens, the card loses all its previous properties and gains only those
+;;    properties specified in the effect converting it. This conversion lasts until the
+;;    card moves to a zone that is not a score area, at which point it returns to being
+;;    its original printed card. If this happens in any way other than by agenda
+;;    forfeit, the card is immediately trashed. See rule 8.2.5.
+
+(defn convert-to-agenda
+  [{:keys [cid code host hosted side title zone]} n]
+  (map->Card
+    {:agendapoints n
+     :cid cid
+     :code code
+     :host host
+     :hosted hosted
+     :printed-title title
+     :side side
+     :type "Agenda"
+     :zone zone}))
+
+;; CR 1.5
+;; 10.1.4. Some abilities can convert a card into a counter. When this happens, the card
+;;    loses all its previous properties and gains only those properties specified in the
+;;    effect converting it. This conversion lasts until the counter moves to another
+;;    zone, at which point it reverts to being a card, regains its original printed
+;;    characteristics, and is trashed.
+
+(defn convert-to-condition-counter
+  [{:keys [cid code side title zone]}]
+  (map->Card
+    {:cid cid
+     :code code
+     :printed-title title
+     :side side
+     :type "Counter"
+     :zone zone}))

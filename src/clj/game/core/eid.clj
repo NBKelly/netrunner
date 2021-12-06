@@ -1,4 +1,7 @@
-(ns game.core.eid)
+(ns game.core.eid
+  (:require
+    [medley.core :refer [find-first]]
+    [game.core.prompt-state :refer [remove-from-prompt-queue]]))
 
 (defn make-eid
   ([state] (make-eid state nil))
@@ -19,15 +22,15 @@
 (defn register-effect-completed
   [state eid effect]
   (if (get-in @state [:effect-completed (:eid eid)])
-    (throw (Exception. (str "Eid has alreasy been registered")))
+    (throw (Exception. (str "Eid has already been registered")))
     (swap! state assoc-in [:effect-completed (:eid eid)] effect)))
 
 (defn clear-eid-wait-prompt
   [state side eid]
-  (when-let [prompts (remove #(and (= (:eid eid) (:eid (:eid %)))
-                                   (= :waiting (:prompt-type %)))
-                             (get-in @state [side :prompt]))]
-    (swap! state assoc-in [side :prompt] (doall prompts))))
+  (when-let [prompt (find-first #(and (= (:eid eid) (:eid (:eid %)))
+                                      (= :waiting (:prompt-type %)))
+                                (get-in @state [side :prompt]))]
+    (remove-from-prompt-queue state side prompt)))
 
 (defn effect-completed
   [state _ eid]

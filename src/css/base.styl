@@ -145,6 +145,10 @@ button.on
 button.off
     background-color: alpha(gold-base, o-40)
 
+.centered
+    text-align: center
+    margin: 0 auto
+
 .block-link
     cursor: pointer
     border: 1px solid transparent
@@ -164,22 +168,25 @@ button.off
     margin:15px
     border-radius: 4px
 
-.infobox::before
-    display: block;
-    position: relative;
-    float: left;
-    left: -2px;
-    top: 4px;
-    margin: 5px
-    content: "!";
-    border-radius: 50%;
-    border: 1px solid lighten(gold-base, 25);
-    color: lighten(gold-base, 25);
-    width: 20px;
-    height: 20px;
-    line-height: 21px;
-    text-align: center;
-    font-weight: normal;
+    &::before
+        display: block;
+        float: left;
+        margin: 10px 5px 10px 0px
+        content: "!";
+        border-radius: 50%;
+        border: 1px solid lighten(gold-base, 25);
+        color: lighten(gold-base, 25);
+        width: 20px;
+        height: 20px;
+        line-height: 21px;
+        text-align: center;
+        font-weight: normal;
+
+    &.one-line::before
+        margin: -2px 5px 5px 0px
+
+    &>p
+        margin: 0px 4px 0px 0px
 
 [draggable]
     -moz-user-select: none
@@ -238,18 +245,6 @@ button.off
     color: gold-base
     transition(all 0.2s ease-in-out)
 
-.standard, .eternal, .system-gateway, .startup, .snapshot, .snapshot-plus, .classic, .legal
-    color: green-bright
-    border-color: green-bright
-
-.casual
-    color: yellow-core
-    border-color: yellow-core
-
-.invalid
-    color: orange-dark
-    border-color: orange-dark
-
 .smallwarning
     position: relative
     background: alpha(gold-base, o-40)
@@ -281,13 +276,11 @@ button.off
     pointer-events: none
 
 .warning:after
-    border-color: blue-mid
     border-right-color: blue-mid
     border-width: 8px
     margin-top: -8px
 
 .warning:before
-    border-color: gray-light
     border-right-color: gray-light
     border-width: 10px
     margin-top: -10px
@@ -298,6 +291,18 @@ button.off
 
 button .fake-link
     color: white-solid
+
+.standard, .eternal, .system-gateway, .startup, .snapshot, .snapshot-plus, .classic, .legal
+    color: green-bright
+    border-color: green-bright
+
+.casual
+    color: yellow-core
+    border-color: yellow-core
+
+.invalid
+    color: orange-dark
+    border-color: orange-dark
 
 .darken
     background-color: black-solid

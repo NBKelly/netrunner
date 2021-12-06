@@ -46,7 +46,7 @@
         top: 100%
         transform: translate(0, -100%)
 
-    .card-frame, .deck, .identity, .discard
+    .card-frame, .deck-container, .identity, .discard-container
         pointer-events: auto
 
     .card-frame
@@ -57,6 +57,7 @@
         height: 84px
         width: 60px
         border-radius: 4px
+        outline: none
         display-flex()
 
         .cardname
@@ -78,6 +79,20 @@
 
     .card.selected
         box-shadow(0 0 1px 2px green-bright)
+        animation: none
+
+    @keyframes encountered-card {
+        0% {
+            box-shadow: 0 0 10px 4px red-light, 0px 0px 12px 12px lighten(alpha(red-light, 30%), 80%)
+        }
+        100% {
+            box-shadow: 0 0 1px 2px red-light, 0px 0px 0px 0px lighten(alpha(red-light, 30%), 80%)
+        }
+    }
+
+    .card.encountered
+        animation: encountered-card 1s cubic-bezier(0.25,1,0.5,1) forwards
+        border-color: red-light
 
     @keyframes hovered-card {
         0% {
@@ -87,10 +102,21 @@
             box-shadow: 0 0 1px 2px blue-light, 0px 0px 0px 0px lighten(alpha(blue-light, 30%), 80%)
         }
     }
+
+    .card.playable
+        box-shadow(0 0 1px 2px gold-base)
+        animation: none
+        
     .card.hovered
         animation: hovered-card 1s cubic-bezier(0.25,1,0.5,1) forwards
         border-color: blue-light
-
+    
+    .card
+        &:not(.selected)
+            &:focus
+                box-shadow(0 0 1px 2px blue-light)
+                animation: none
+        
     .counters
         position: absolute
         top: 0
@@ -108,7 +134,7 @@
         font-size: .75rem
         width: 1.5rem
         height: 1.5rem
-        line-height: 2rem
+        line-height: 1.5rem
         text-align: center
         margin: 2px
 
@@ -179,7 +205,7 @@
         &.green
             background-color: green-core
 
-    .server-target, .additional-subtypes
+    .card-target, .additional-subtypes
         position: absolute
         z-index: 10
         padding: 0
@@ -191,42 +217,49 @@
         padding-left: 3px
         padding-right: 3px
 
-    .server-target
-        background-color: dark-gold
-
     .additional-subtypes
         background-color: gray-mid
 
-    .abilities, .servers-menu, .menu, .runner-abilities, .corp-abilities, .popup
+    .abilities, .servers-menu, .menu, .runner-abilities, .corp-abilities, .encounter-info, .popup
         left: 0
         bottom: 100%
         margin: 6px -1px
 
-    .abilities, .servers-menu, .menu, .runner-abilities, .corp-abilities
+    .abilities, .servers-menu, .menu, .runner-abilities, .corp-abilities, .encounter-info
         display: none
         position: absolute
         z-index: 30
         width: 200px
         font-size: .75rem
         line-height: 1rem
-
+        
+        ul
+            list-style: none
+            
         > span
             margin: 2px
             &:last-child
                 margin-bottom: 0
 
-        > div
+        > div, li
             border: 1px solid white-solid
             padding: 3px 6px
             border-radius: 4px
             margin-bottom: 4px
             cursor: pointer
+            outline: 0
 
             &:last-child
                 margin-bottom: 0
 
-            &:hover
+            &:hover, &:focus
                 border-color: gold-base
+
+        .disabled
+            cursor: default
+
+            &:hover, &:focus
+                border-color: white-solid
 
     .popup
         display: none
@@ -241,7 +274,8 @@
 
         .card
             float: left
-            margin: 2px
+            margin-right: 4px
+            margin-bottom: 2px
 
         a
         label
@@ -277,10 +311,6 @@
 
     .playable
         cursor: pointer
-        border-radius: 4px
-
-        .card
-            box-shadow(0 0 1px 2px gold-base)
 
     .bg
         position: absolute
@@ -292,7 +322,7 @@
         height: 84px
         width: 60px
         border-radius: 4px
-
+    
     .server-card
         position: relative
         min-height: 84px
@@ -305,10 +335,7 @@
         margin-left: 16px
         margin-right: 16px
 
-    .discard
-        position: relative
-
-    .hand-container
+    .hand-container, .deck-container, .discard-container
         position: relative
 
     .hand-controls
@@ -587,7 +614,7 @@
 
                                 >div:first-child
                                     display:inline
-                                    width: 168px!important
+                                    width: 168px !important
                                     height: 234.833px
 
                                     >img.card
@@ -615,6 +642,8 @@
                         font-style: italic
 
                     button
+                        min-height: 1.75rem
+                        height: auto
                         width: 100%
                         font-size: .75rem
                         margin: 0 0 5px 0
@@ -629,6 +658,10 @@
 
                         select
                             margin-right: 5px
+
+                    .encounter-info
+                        width: 100%
+                        margin: 6px 0px
 
     .centralpane
         flex(1)
@@ -683,7 +716,7 @@
                 padding: 5px 0
                 display-flex()
 
-                .deck, .discard, .identity
+                .deck-container, .discard-container, .identity
                     margin-left: 16px
                     margin-right: 16px
 
@@ -762,6 +795,12 @@
                                 -webkit-filter: drop-shadow(0px 0px 10px alpha(black-solid, o-60));
                                 filter: drop-shadow(0px 0px 10px alpha(black-solid, o-60));
 
+                        > div.movement
+                            background-color: alpha(yellow-light, o-70)
+
+                            &:before
+                                border-bottom: 22px solid alpha(yellow-light, o-70)
+
                         > div.approach
                             background-color: alpha(yellow-core, o-70)
 
@@ -804,6 +843,9 @@
 
                             .counters
                                 transform(rotate(-90deg))
+
+                            .strength
+                                transform(initial)
 
                         .abilities, .runner-abilities, .corp-abilities
                             top: auto
@@ -853,11 +895,14 @@
             .content
                 transform(initial)
 
-            .strength
-                transform(rotate(-90deg))
-
             .icon
                 transform(rotate(-90deg))
+
+            .hosted
+
+                .abilities, .runner-abilities, .corp-abilities
+                    top: 100%
+                    bottom: auto
 
             .ices
                 opacity: 0.99
@@ -873,11 +918,13 @@
                     .counters
                         transform(rotate(90deg))
 
-                    .abilities, .runner-abilities, .corp-abilities
-                        top: 100%
-                        bottom: auto
+                    .strength
+                        transform(initial)
 
                 .counter
+                    transform(rotate(-90deg))
+
+                .strength
                     transform(rotate(-90deg))
 
                 .run-card
@@ -949,14 +996,14 @@
                 flex(1)
                 margin: 0
                 min-height: 20px
-                overflow-x:clip
-                overflow-y:auto
 
                 >div
                     animation: fadein 0.5s
+                    overflow-x: clip
+                    overflow-y: auto
+                    height: 100%
 
                 .log
-                    height:100%
                     display-flex()
                     flex-direction(column)
                     // width: 225px
@@ -974,7 +1021,7 @@
 
                     .messages
                         flex(1)
-                        overflow: auto!important
+                        overflow: auto !important
                         -webkit-overflow-scrolling: touch
 
                         div

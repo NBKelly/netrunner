@@ -1,18 +1,20 @@
 (ns nr.cardbrowser
   (:require-macros [cljs.core.async.macros :refer [go]])
-  (:require [cljs.core.async :refer [chan put! >! sub pub] :as async]
-            [clojure.string :as s]
-            [jinteki.cards :refer [all-cards] :as cards]
-            [jinteki.utils :refer [str->int slugify]]
-            [nr.appstate :refer [app-state]]
-            [nr.account :refer [alt-art-name]]
-            [nr.ajax :refer [GET]]
-            [nr.utils :refer [toastr-options banned-span restricted-span rotated-span set-scroll-top store-scroll-top
-                              influence-dots slug->format format->slug render-icons non-game-toast faction-icon
-                              get-image-path image-or-face]]
-            [nr.translations :refer [tr tr-type tr-side tr-faction tr-format tr-sort]]
-            [reagent.core :as r]
-            [medley.core :refer [find-first]]))
+  (:require
+   [cljs.core.async :refer [<! chan put!] :as async]
+   [clojure.string :as s]
+   [jinteki.cards :refer [all-cards] :as cards]
+   [jinteki.utils :refer [slugify str->int]]
+   [medley.core :refer [find-first]]
+   [nr.account :refer [alt-art-name]]
+   [nr.ajax :refer [GET]]
+   [nr.appstate :refer [app-state]]
+   [nr.translations :refer [tr tr-faction tr-format tr-side tr-sort tr-type]]
+   [nr.utils :refer [banned-span deck-points-card-span faction-icon
+                     format->slug get-image-path image-or-face influence-dots
+                     non-game-toast render-icons restricted-span rotated-span set-scroll-top slug->format
+                     store-scroll-top]]
+   [reagent.core :as r]))
 
 (defonce cards-channel (chan))
 
@@ -20,6 +22,13 @@
 (declare generate-flip-cards)
 (declare insert-starter-info)
 (declare insert-starter-ids)
+
+(defn- format-card-key->string
+  [format]
+  (assoc format :cards
+                (reduce-kv
+                  (fn [m k v] (assoc m (name k) v))
+                  {} (:cards format))))
 
 (go (let [server-version (get-in (<! (GET "/data/cards/version")) [:json :version])
           local-cards (js->clj (.parse js/JSON (.getItem js/localStorage "cards")) :keywordize-keys true)
@@ -34,10 +43,13 @@
           cycles (:json (<! (GET "/data/cycles")))
           mwls (:json (<! (GET "/data/mwl")))
           latest-mwl (->> mwls
-                          (filter #(= "standard" (:format %)))
                           (map (fn [e] (update e :date-start #(js/Date.parse %))))
-                          (sort-by :date-start)
-                          last)
+                          (group-by #(keyword (:format %)))
+                          (mapv (fn [[k, v]] [k (->> v
+                                                     (sort-by :date-start)
+                                                     (last)
+                                                     (format-card-key->string))]))
+                          (into {}))
           alt-info (->> (<! (GET "/data/cards/altarts"))
                         (:json)
                         (map #(select-keys % [:version :name :description :artist-blurb :artist-link :artist-about])))]
@@ -59,12 +71,12 @@
   [card]
   (-> card
       (assoc :influencelimit "∞")
-      (assoc-in [:format :standard] "banned")
-      (assoc-in [:format :startup] "banned")
-      (assoc-in [:format :eternal] "banned")
-      (assoc-in [:format :snapshot] "banned")
-      (assoc-in [:format :snapshot-plus] "banned")
-      (assoc-in [:format :classic] "banned")))
+      (assoc-in [:format :standard] {:banned true})
+      (assoc-in [:format :startup] {:banned true})
+      (assoc-in [:format :eternal] {:banned true})
+      (assoc-in [:format :snapshot] {:banned true})
+      (assoc-in [:format :snapshot-plus] {:banned true})
+      (assoc-in [:format :classic] {:banned true})))
 
 (defn- insert-starter-ids
   "Add special case info for the Starter Deck IDs"
@@ -120,7 +132,7 @@
 
 (defn- expand-one
   "Reducer function to create a previous card from a newer card definition."
-  [acc {:keys [code set_code] :as version} c]
+  [acc {:keys [code set_code]} c]
   (let [number (str->int (subs code 3))
         prev-set (find-first #(= set_code (:code %)) @cards/sets)
         prev (-> c
@@ -146,9 +158,6 @@
   [cards]
   (let [c (filter :previous-versions cards)]
     (reduce expand-previous [] c)))
-
-(defn make-span [text sym icon-class]
-  (s/replace text (js/RegExp. sym "gi") (str "<span class='anr-icon " icon-class "'></span>")))
 
 (defn show-alt-art?
   "Is the current user allowed to use alternate art cards and do they want to see them?"
@@ -188,7 +197,9 @@
    (let [lang (get-in @app-state [:options :language] "en")
          res (get-in @app-state [:options :card-resolution] "default")
          alt-versions (remove #{:prev} (map keyword (map :version (:alt-info @app-state))))
-         images (select-keys (get-in (:images card) [(keyword lang) (keyword res)]) alt-versions)
+         images (select-keys (merge (get-in (:images card) [(keyword lang) :default])
+                                    (get-in (:images card) [(keyword lang) (keyword res)]))
+                             alt-versions)
          alt-only (alt-version-from-string only-version)
          filtered-images (cond
                            (= :prev alt-only) nil
@@ -262,17 +273,15 @@
         new-alts (cond
                    (keyword? art) (assoc alts code-kw (name art))
                    is-old-card (assoc alts code-kw (:code card))
-                   true (dissoc alts code-kw))] ; remove the key entirely if the newest card is selected
+                   :else (dissoc alts code-kw))] ; remove the key entirely if the newest card is selected
     (swap! app-state assoc-in [:options :alt-arts] new-alts)
     (nr.account/post-options "/profile" (partial post-response))))
 
 (defn- text-class-for-status
   [status]
-  (case (keyword status)
-    (:legal :restricted) "legal"
-    :rotated "casual"
-    :banned "invalid"
-    "casual"))
+  (cond (:legal status) "legal"
+        (:rotated status) "casual"
+        (:banned status) "invalid"))
 
 (defn card-as-text
   "Generate text html representation a card"
@@ -315,15 +324,14 @@
         [:<>
          [:div.formats
           (doall (for [[k name] (-> slug->format butlast)]
-                   (let [status (keyword (get-in card [:format (keyword k)] "unknown"))
+                   (let [status (get-in card [:format (keyword k)] "unknown")
                          c (text-class-for-status status)]
                      ^{:key k}
                      [:div.format-item {:class c} name
-                      (case status
-                        :banned banned-span
-                        :restricted restricted-span
-                        :rotated rotated-span
-                        nil)])))]
+                      (cond (:banned status) banned-span
+                            (:restricted status) restricted-span
+                            (:rotated status) rotated-span
+                            (:points status) (deck-points-card-span (:points status)))])))]
 
          [:div.pack
           (when-let [pack (:setname card)]
@@ -381,7 +389,7 @@
   (if (= "All" fmt)
     cards
     (let [fmt (keyword (get format->slug fmt))]
-      (filter #(= "legal" (get-in % [:format fmt])) cards))))
+      (filter #(get-in % [:format fmt :legal]) cards))))
 
 (defn filter-title [query cards]
   (if (empty? query)
@@ -405,13 +413,13 @@
       (s/replace "&nbsp;&nbsp;&nbsp;&nbsp;" "")
       (s/replace " Cycle" "")))
 
-(defn handle-scroll [e state]
+(defn handle-scroll [_ state]
   (let [$cardlist (js/$ ".card-list")
         height (- (.prop $cardlist "scrollHeight") (.prop $cardlist "clientHeight"))]
     (when (> (.scrollTop $cardlist) (- height 600))
       (swap! state update-in [:page] (fnil inc 0)))))
 
-(defn- card-view [card state]
+(defn- card-view [_ _]
   (let [cv (r/atom {:show-text false})]
     (fn [card state]
       [:div.card-preview.blue-shade
@@ -432,14 +440,14 @@
                   :onError #(-> (swap! cv assoc :show-text true))
                   :onLoad #(-> % .-target js/$ .show)}]))])))
 
-(defn card-list-view [state scroll-top]
+(defn card-list-view [_ scroll-top]
   (r/create-class
     {
      :display-name "card-list-view"
      :component-did-mount #(set-scroll-top % @scroll-top)
      :component-will-unmount #(store-scroll-top % scroll-top)
      :reagent-render
-     (fn [state scroll-top]
+     (fn [state _]
        (let [selected (selected-set-name state)
              selected-cycle (slugify selected)
              combined-cards (concat (sort-by :code (vals @all-cards)) (:previous-cards @app-state))
@@ -590,13 +598,14 @@
         scroll-top (atom 0)]
 
     (fn []
-      (when (= "/cards" (first @active))
-        [:div#cardbrowser.cardbrowser
-         [:div.card-info
-          [:div.blue-shade.panel.filters
-           [query-builder state]
-           [sort-by-builder state]
-           [dropdown-builder state]
-           [clear-filters state]]
-          [art-info state]]
-         [card-list-view state scroll-top]]))))
+      [:div#cardbrowser.cardbrowser
+       (when (= "/cards" (first @active))
+         [:<>
+          [:div.card-info
+           [:div.blue-shade.panel.filters
+            [query-builder state]
+            [sort-by-builder state]
+            [dropdown-builder state]
+            [clear-filters state]]
+           [art-info state]]
+          [card-list-view state scroll-top]])])))

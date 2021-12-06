@@ -1,8 +1,8 @@
 (ns game.utils-test
-  (:require [game.core :as core]
-            [game.utils :as utils :refer [side-str same-card?]]
-            [clojure.test :refer :all]
-            [clojure.string :refer [lower-case split]]))
+  (:require
+    [clojure.test :refer :all]
+    [game.core :as core]
+    [game.utils :as utils :refer [same-card? side-str]]))
 
 (defmacro error-wrapper [form]
   `(try ~form
@@ -65,6 +65,12 @@
          (get-in prompt [:card :cid])
          (= (:cid card) (get-in prompt [:card :cid])))))
 
+(defn no-prompt?
+  [state side]
+  (let [prompt (get-prompt state side)]
+    (or (empty? prompt)
+        (= :run (:prompt-type prompt)))))
+
 (defn expect-type
   [type-name choice]
   (str "Expected a " type-name ", received [ " choice
@@ -81,13 +87,13 @@
       (if (map? card)
         (core/process-action "select" state side {:card card})
         (let [all-cards (core/get-all-cards state)
-              matching-cards (filter #(= card (:title %)) all-cards)]
+              matching-cards (filter #(= card (core/get-title %)) all-cards)]
           (if (= (count matching-cards) 1)
             (core/process-action "select" state side {:card (first matching-cards)})
             (is' (= 1 (count matching-cards))
                  (str "Expected to click card [ " card
                       " ] but found " (count matching-cards)
-                      " matching cards. Current prompt is: n" prompt)))))
+                      " matching cards. Current prompt is: " prompt)))))
       ;; Prompt isn't a select so click-card shouldn't be used
       (not (prompt-is-type? state side :select))
       (is' (true? (prompt-is-type? state side :select))
@@ -236,4 +242,18 @@
         :actual prompt-card#
         :expected card#
         :message ~msg})
+     found#))
+
+(defmethod assert-expr 'no-prompt?
+  [msg form]
+  `(let [state# ~(nth form 1)
+         side# ~(nth form 2)
+         prompt# (-> @state# side# :prompt)
+         prompt-type# (-> @state# side# :prompt :prompt-type)
+         found# ~form]
+     (do-report
+      {:type (if found# :pass :fail)
+       :actual (select-keys (first prompt#) [:msg :prompt-type])
+       :expected "No prompt or :prompt-type of :run"
+       :message ~msg})
      found#))

@@ -1,18 +1,22 @@
 (ns game.core.actions
   (:require
-    [game.core.agendas :refer [get-agenda-points update-advancement-requirement update-all-advancement-requirements update-all-agenda-points]]
+    [clj-uuid :as uuid]
+    [clojure.stacktrace :refer [print-stack-trace]]
+    [clojure.string :as string]
+    [game.core.agendas :refer [update-advancement-requirement update-all-advancement-requirements update-all-agenda-points]]
     [game.core.board :refer [get-zones installable-servers]]
-    [game.core.card :refer [facedown? get-card rezzed? runner?]]
+    [game.core.card :refer [get-agenda-points get-card]]
     [game.core.card-defs :refer [card-def]]
-    [game.core.cost-fns :refer [card-ability-cost]]
+    [game.core.cost-fns :refer [break-sub-ability-cost card-ability-cost]]
     [game.core.effects :refer [any-effects]]
     [game.core.eid :refer [effect-completed eid-set-defaults make-eid]]
-    [game.core.engine :refer [ability-as-handler card-as-handler checkpoint make-pending-event pay queue-event resolve-ability trigger-event-simult]]
+    [game.core.engine :refer [ability-as-handler checkpoint register-pending-event pay queue-event resolve-ability trigger-event-simult]]
     [game.core.flags :refer [can-advance? can-score?]]
-    [game.core.ice :refer [break-subroutine! get-current-ice get-run-ices get-strength pump resolve-subroutine! resolve-unbroken-subs!]]
+    [game.core.ice :refer [break-subroutine! get-current-ice get-pump-strength get-strength pump resolve-subroutine! resolve-unbroken-subs!]]
     [game.core.initializing :refer [card-init]]
     [game.core.moving :refer [move trash]]
     [game.core.payment :refer [build-spend-msg can-pay? merge-costs]]
+    [game.core.prompt-state :refer [remove-from-prompt-queue]]
     [game.core.prompts :refer [resolve-select]]
     [game.core.props :refer [add-counter add-prop set-prop]]
     [game.core.runs :refer [continue total-run-cost]]
@@ -21,13 +25,8 @@
     [game.core.to-string :refer [card-str]]
     [game.core.toasts :refer [toast]]
     [game.core.update :refer [update!]]
-    [game.core.winning :refer [check-win-by-agenda]]
     [game.macros :refer [continue-ability req wait-for]]
-    [game.utils :refer [dissoc-in quantify remove-once same-card? same-side? server-cards to-keyword]]
-    [jinteki.utils :refer [other-side]]
-    [clj-uuid :as uuid]
-    [clojure.stacktrace :refer [print-stack-trace]]
-    [clojure.string :as string]))
+    [game.utils :refer [dissoc-in quantify remove-once same-card? same-side? server-cards]]))
 
 ;;; Neutral actions
 (defn- do-play-ability [state side card ability ability-idx targets]
@@ -91,10 +90,11 @@
                                                      (apply str " " text)))))]
         (case server
           ("Heap" "Archives")
-          (do (when (not (zero? (count card-prompts)))
-                  ;remove all prompts associated with the trashed card
-                  (swap! state update-in [side :prompt] #(filter (fn [p] (not= (get-in p [:card :title]) (:title c))) %))
-                  (map #(effect-completed state side (:eid %)) card-prompts))
+          (do (when (pos? (count card-prompts))
+                ;; Remove all prompts associated with the trashed card
+                (doseq [prompt card-prompts]
+                  (remove-from-prompt-queue state side prompt)
+                  (effect-completed state side (:eid prompt))))
               (if (= :hand (first (:zone c)))
                 ;; Discard from hand, do not trigger trash
                 (do (move-card-to :discard {:force true})
@@ -142,7 +142,7 @@
           (:counter choices)
           (:number choices))
       (if (number? choice)
-        (do (swap! state update-in [side :prompt] (fn [pr] (filter #(not= % prompt) pr)))
+        (do (remove-from-prompt-queue state side prompt)
             (wait-for (maybe-pay state side card choices choice)
                       (when (:counter choices)
                         ;; :Counter prompts deduct counters from the card
@@ -160,7 +160,7 @@
               found (some #(when (= (string/lower-case choice) (string/lower-case (:title % ""))) %) (server-cards))]
           (if found
             (if (title-fn state side (make-eid state) card [found])
-              (do (swap! state update-in [side :prompt] (fn [pr] (filter #(not= % prompt) pr)))
+              (do (remove-from-prompt-queue state side prompt)
                   (when effect
                     (effect (or choice card)))
                   (finish-prompt state side prompt card))
@@ -174,8 +174,7 @@
       (let [uuid (uuid/as-uuid (:uuid choice))
             match (first (filter #(= uuid (:uuid %)) choices))]
         (when match
-          ;; remove the prompt from the queue
-          (swap! state update-in [side :prompt] (fn [pr] (filter #(not= % prompt) pr)))
+          (remove-from-prompt-queue state side prompt)
           (if (= (:value match) "Cancel")
             (do (if-let [cancel-effect (:cancel-effect prompt)]
                   ;; trigger the cancel effect
@@ -218,23 +217,21 @@
 (defn play-auto-pump
   "Use the 'match strength with ice' function of icebreakers."
   [state side args]
-  (let [run (:run @state)
-        card (get-card state (:card args))
+  (let [card (get-card state (:card args))
         eid (make-eid state {:source card :source-type :ability})
-        run-ice (get-run-ices state)
-        ice-cnt (count run-ice)
-        ice-idx (dec (:position run 0))
-        in-range (and (pos? ice-cnt) (< -1 ice-idx ice-cnt))
-        current-ice (when (and run in-range) (get-card state (run-ice ice-idx)))
+        current-ice (get-current-ice state)
         pump-ability (some #(when (:pump %) %) (:abilities (card-def card)))
         cost-req (or (:cost-req pump-ability) identity)
+        pump-strength (get-pump-strength state side pump-ability card)
         strength-diff (when (and current-ice
                                  (get-strength current-ice)
                                  (get-strength card))
                         (max 0 (- (get-strength current-ice)
                                   (get-strength card))))
-        times-pump (when strength-diff
-                     (int (Math/ceil (/ strength-diff (:pump pump-ability 1)))))
+        times-pump (if (and strength-diff
+                              (pos? pump-strength))
+                     (int (Math/ceil (/ strength-diff pump-strength)))
+                     0)
         total-pump-cost (when (and pump-ability
                                    times-pump)
                           (repeat times-pump (cost-req [(:cost pump-ability)])))]
@@ -267,14 +264,9 @@
 (defn play-heap-breaker-auto-pump-and-break
   "Play auto-pump-and-break for heap breakers"
   [state side args]
-  (let [run (:run @state)
-        card (get-card state (:card args))
+  (let [card (get-card state (:card args))
         eid (make-eid state {:source card :source-type :ability})
-        run-ice (get-run-ices state)
-        ice-cnt (count run-ice)
-        ice-idx (dec (:position run 0))
-        in-range (and (pos? ice-cnt) (< -1 ice-idx ice-cnt))
-        current-ice (when (and run in-range) (get-card state (run-ice ice-idx)))
+        current-ice (get-current-ice state)
         ;; match strength
         can-pump (fn [ability]
                    (when (:heap-breaker-pump ability)
@@ -354,27 +346,25 @@
   [state side args]
   (if (some #(:heap-breaker-break %) (:abilities (card-def (get-card state (:card args)))))
     (play-heap-breaker-auto-pump-and-break state side args)
-    (let [run (:run @state)
-          card (get-card state (:card args))
+    (let [card (get-card state (:card args))
           eid (make-eid state {:source card :source-type :ability})
-          run-ice (get-run-ices state)
-          ice-cnt (count run-ice)
-          ice-idx (dec (:position run 0))
-          in-range (and (pos? ice-cnt) (< -1 ice-idx ice-cnt))
-          current-ice (when (and run in-range) (get-card state (run-ice ice-idx)))
+          current-ice (get-current-ice state)
           ;; match strength
           can-pump (fn [ability]
                      (when (:pump ability)
                        ((:req ability) state side eid card nil)))
           pump-ability (some #(when (can-pump %) %) (:abilities (card-def card)))
           pump-cost-req (or (:cost-req pump-ability) identity)
+          pump-strength (get-pump-strength state side pump-ability card)
           strength-diff (when (and current-ice
                                    (get-strength current-ice)
                                    (get-strength card))
                           (max 0 (- (get-strength current-ice)
                                     (get-strength card))))
-          times-pump (when strength-diff
-                       (int (Math/ceil (/ strength-diff (:pump pump-ability 1)))))
+          times-pump (if (and strength-diff
+                              (pos? pump-strength))
+                       (int (Math/ceil (/ strength-diff pump-strength)))
+                       0)
           total-pump-cost (when (and pump-ability
                                      times-pump)
                             (repeat times-pump (pump-cost-req [(:cost pump-ability)])))
@@ -384,6 +374,7 @@
                         ((:break-req ability) state side eid card nil)))
           break-ability (some #(when (can-break %) %) (:abilities (card-def card)))
           break-cost-req (or (:cost-req break-ability) identity)
+          break-cost (break-sub-ability-cost state side break-ability card current-ice)
           subs-broken-at-once (when break-ability
                                 (:break break-ability 1))
           unbroken-subs (when (:subroutines current-ice)
@@ -394,9 +385,9 @@
                         (if (pos? subs-broken-at-once)
                           (int (Math/ceil (/ unbroken-subs subs-broken-at-once)))
                           1))
-          total-break-cost (when (and break-ability
+          total-break-cost (when (and break-cost
                                       times-break)
-                             (repeat times-break (break-cost-req [(:break-cost break-ability)])))
+                             (repeat times-break (break-cost-req [break-cost])))
           total-cost (merge-costs (conj total-pump-cost total-break-cost))]
       (when (and break-ability
                  (can-pay? state side eid card (:title card) total-cost))
@@ -574,7 +565,7 @@
        (swap! state update-in [:corp :register :scored-agenda] #(+ (or % 0) points))
        (play-sfx state side "agenda-score")
        (when-let [on-score (:on-score (card-def c))]
-         (make-pending-event state :agenda-scored c on-score))
+         (register-pending-event state :agenda-scored c on-score))
        (queue-event state :agenda-scored {:card c
                                           :points points})
        (checkpoint state nil eid {:duration :agenda-scored})))))

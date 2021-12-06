@@ -4,7 +4,7 @@
     [game.core.eid :refer [effect-completed make-eid]]
     [game.core.engine :refer [can-trigger? register-ability-type register-once resolve-ability]]
     [game.core.payment :refer [can-pay?]]
-    [game.core.prompts :refer [add-to-prompt-queue show-prompt]]
+    [game.core.prompts :refer [show-prompt]]
     [game.core.toasts :refer [toast]]
     [game.core.update :refer [update!]]
     [game.macros :refer [effect req wait-for]]
@@ -64,7 +64,8 @@
 (defn set-autoresolve
   "Makes a card ability which lets the user toggle auto-resolve on an ability. Setting is stored under [:special toggle-kw]."
   [toggle-kw ability-name]
-  {:label (str "Toggle auto-resolve on " ability-name)
+  {:autoresolve true
+   :label (str "Toggle auto-resolve on " ability-name)
    :prompt (str "Set auto-resolve on " ability-name " to:")
    :choices ["Always" "Never" "Ask"]
    :effect (effect (update! (assoc-in card [:special toggle-kw] (keyword (string/lower-case target))))

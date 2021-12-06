@@ -51,9 +51,9 @@
                  :corp {:hand [(qty "Ice Wall" 2) "Turtlebacks" "Beanstalk Royalties" "Hedge Fund" "Project Beale" "Ben Musashi"]}})
       (core/gain state :corp :click 10)
       (play-from-hand state :corp "Ice Wall" "HQ")
-      (is (last-log-contains? state "Corp spends \\[Click\\] and pays 0 \\[Credits\\] to install ICE protecting HQ.") "Install ICE, zero cost")
+      (is (last-log-contains? state "Corp spends \\[Click\\] and pays 0 \\[Credits\\] to install ice protecting HQ.") "Install ice, zero cost")
       (play-from-hand state :corp "Ice Wall" "HQ")
-      (is (last-log-contains? state "Corp spends \\[Click\\] and pays 1 \\[Credits\\] to install ICE protecting HQ.") "Install ICE, one cost")
+      (is (last-log-contains? state "Corp spends \\[Click\\] and pays 1 \\[Credits\\] to install ice protecting HQ.") "Install ice, one cost")
       (play-from-hand state :corp "Turtlebacks" "New remote")
       (is (last-log-contains? state "Corp spends \\[Click\\] to install a card in Server 1.") "Install asset, zero cost")
       (play-from-hand state :corp "Ben Musashi" "Server 1")
@@ -81,7 +81,7 @@
       (play-from-hand state :runner "Daily Casts")
       (is (last-log-contains? state "Runner spends \\[Click\\] and pays 3 \\[Credits\\] to install Daily Casts.") "Install resource, three cost")
       (run-on state :archives)
-      (is (second-last-log-contains? state "Runner spends \\[Click\\] to make a run on Archives.") "Initiate run, zero cost")))
+      (is (last-log-contains? state "Runner spends \\[Click\\] to make a run on Archives.") "Initiate run, zero cost")))
   (testing "Issue #4295: Auto-pumping Icebreaker with pay-credits prompt"
     (do-game
       (new-game {:runner {:hand ["Corroder" "Net Mercur" "Cloak"]}

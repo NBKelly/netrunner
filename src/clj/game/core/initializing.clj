@@ -1,12 +1,12 @@
 (ns game.core.initializing
   (:require
     [game.core.board :refer [all-active all-active-installed]]
-    [game.core.card :refer [get-card get-counters has-subtype? program? runner? map->Card]]
+    [game.core.card :refer [get-card map->Card program? runner?]]
     [game.core.card-defs :refer [card-def]]
-    [game.core.cost-fns :refer [card-ability-cost]]
+    [game.core.cost-fns :refer [break-sub-ability-cost card-ability-cost]]
     [game.core.effects :refer [register-constant-effects register-floating-effect unregister-constant-effects]]
     [game.core.eid :refer [effect-completed make-eid]]
-    [game.core.engine :refer [is-ability? register-events resolve-ability unregister-events]]
+    [game.core.engine :refer [is-ability? register-default-events register-events resolve-ability unregister-events]]
     [game.core.finding :refer [find-cid]]
     [game.core.gaining :refer [gain lose]]
     [game.core.ice :refer [add-sub]]
@@ -14,7 +14,7 @@
     [game.core.payment :refer [add-cost-label-to-ability]]
     [game.core.props :refer [add-counter]]
     [game.core.update :refer [update!]]
-    [game.macros :refer [effect req]]
+    [game.macros :refer [req]]
     [game.utils :refer [make-cid server-card to-keyword]]
     [jinteki.utils :refer [make-label]]))
 
@@ -41,10 +41,10 @@
         c (dissoc card
                   :current-strength :current-advancement-requirement :current-points
                   :runner-abilities :corp-abilities :rezzed :new
-                  :subtype-target :server-target :extra-advance-counter)
-        c (assoc c :subroutines (subroutines-init c cdef) :abilities (ability-init cdef) :special nil)
+                  :subtype-target :card-target :extra-advance-counter :special)
+        c (assoc c :subroutines (subroutines-init c cdef) :abilities (ability-init cdef))
         c (if keep-counter c (dissoc c :counter :advance-counter))]
-    c))
+    (map->Card c)))
 
 (defn- trigger-leave-effect
   "Triggers leave effects for specified card if relevant"
@@ -63,7 +63,7 @@
   "Deactivates a card, unregistering its events, removing certain attribute keys, and triggering
   some events."
   ([state side card] (deactivate state side card nil))
-  ([state side {:keys [cid disabled facedown installed rezzed] :as card} keep-counter]
+  ([state side {:keys [cid disabled installed rezzed] :as card} keep-counter]
    (unregister-events state side card)
    (unregister-constant-effects state side card)
    (trigger-leave-effect state side card)
@@ -77,17 +77,19 @@
 
 
 ;;; Initialising a card
-(defn- corp-ability-init
+(defn corp-ability-init
   "Gets abilities associated with the card"
   [cdef]
-  (for [ab (:corp-abilities cdef)]
-    (assoc (select-keys ab [:cost]) :label (make-label ab))))
+  (into [] (for [ab (:corp-abilities cdef)
+                 :let [ab (assoc (select-keys ab [:cost]) :label (make-label ab))]]
+             (add-cost-label-to-ability ab))))
 
-(defn- runner-ability-init
+(defn runner-ability-init
   "Gets abilities associated with the card"
   [cdef]
-  (for [ab (:runner-abilities cdef)]
-    (assoc (select-keys ab [:cost]) :label (make-label ab))))
+  (into [] (for [ab (:runner-abilities cdef)
+                 :let [ab (assoc (select-keys ab [:cost :break-cost]) :label (make-label ab))]]
+             (add-cost-label-to-ability ab (or (:break-cost ab) (:cost ab))))))
 
 (defn card-init
   "Initializes the abilities and events of the given card."
@@ -124,7 +126,7 @@
            [{:event (if (= side :corp) :corp-phase-12 :runner-phase-12)
              :req (req (not (:disabled card)))
              :effect r}])))
-     (register-events state side c)
+     (register-default-events state side c)
      (register-constant-effects state side c)
      ;; Facedown cards can't be initialized
      (when (and (program? card)
@@ -146,7 +148,7 @@
   [state side card ability-kw]
   (into [] (for [ab (get card ability-kw)
                  :let [ab-cost (if (:break-cost ab)
-                                 (assoc ab :cost (:break-cost ab))
+                                 (assoc ab :cost (break-sub-ability-cost state side ab card))
                                  ab)]]
              (add-cost-label-to-ability ab (card-ability-cost state side ab-cost card)))))
 
@@ -186,20 +188,23 @@
   "Makes or remakes (with current cid) a proper card from a server card"
   ([card] (make-card card (make-cid)))
   ([card cid]
-   (-> card
-       (assoc :cid cid
-              :implementation (card-implemented card)
-              :subroutines (subroutines-init (assoc card :cid cid) (card-def card))
-              :abilities (ability-init (card-def card)))
-       (dissoc :setname :text :_id :influence :number :influencelimit
-               :image_url :factioncost :format :quantity)
-       (map->Card))))
+   (let [cdef (card-def card)]
+     (-> card
+         (assoc :cid cid
+                :implementation (card-implemented card)
+                :subroutines (subroutines-init (assoc card :cid cid) cdef)
+                :abilities (ability-init cdef)
+                :printed-title (:title card))
+         (dissoc :setname :text :_id :influence :number :influencelimit
+                 :image_url :factioncost :format :quantity)
+         (map->Card)))))
 
 (defn reset-card
   "Resets a card back to its original state - retaining any data in the :persistent key"
-  ([state side {:keys [cid persistent previous-zone seen title zone]}]
-   (swap! state update-in [:per-turn] dissoc cid)
-   (let [new-card (make-card (server-card title) cid)]
+  ([state side {:keys [cid persistent previous-zone printed-title seen title zone]}]
+   (swap! state update :per-turn dissoc cid)
+   (let [s-card (server-card (or printed-title title))
+         new-card (make-card s-card cid)]
      (update! state side (assoc new-card
                                 :persistent persistent
                                 :previous-zone previous-zone

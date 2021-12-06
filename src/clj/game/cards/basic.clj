@@ -16,17 +16,22 @@
                                        (play-sfx state side "click-credit")
                                        (effect-completed state side eid)))}
                {:label "Draw 1 card"
+                :req (req (not-empty (:deck corp)))
                 :cost [:click]
                 :msg "draw 1 card"
                 :async true
-                :effect (req (wait-for (trigger-event-simult state side (make-eid state eid) :pre-corp-click-draw nil nil)
-                                       (trigger-event state side :corp-click-draw (->> @state side :deck (take 1)))
-                                       (swap! state update-in [:stats side :click :draw] (fnil inc 0))
-                                       (play-sfx state side "click-card")
-                                       (draw state side eid 1 nil)))}
+                :effect (req (trigger-event state side :corp-click-draw (-> @state side :deck (nth 0)))
+                             (swap! state update-in [:stats side :click :draw] (fnil inc 0))
+                             (play-sfx state side "click-card")
+                             (draw state side eid 1))}
                {:label "Install 1 agenda, asset, upgrade, or piece of ice from HQ"
                 :async true
                 :req (req (and (not-empty (:hand corp))
+                               (in-hand? target)
+                               (or (agenda? target)
+                                   (asset? target)
+                                   (ice? target)
+                                   (upgrade? target))
                                (if-let [server (second targets)]
                                  (corp-can-pay-and-install?
                                    state side (assoc eid :source server :source-type :corp-install)
@@ -49,6 +54,8 @@
                {:label "Play 1 operation"
                 :async true
                 :req (req (and (not-empty (:hand corp))
+                               (in-hand? target)
+                               (operation? target)
                                (can-play-instant? state :corp (assoc eid :source :action :source-type :play)
                                                   target {:base-cost [:click 1]})))
                 :effect (req (play-instant state :corp (assoc eid :source :action :source-type :play)
@@ -90,16 +97,20 @@
                                        (play-sfx state side "click-credit")
                                        (effect-completed state side eid)))}
                {:label "Draw 1 card"
+                :req (req (not-empty (:deck runner)))
                 :cost [:click]
                 :msg "draw 1 card"
-                :effect (req (wait-for (trigger-event-simult state side (make-eid state eid) :pre-runner-click-draw nil nil)
-                                       (trigger-event state side :runner-click-draw (->> @state side :deck (take 1)))
-                                       (swap! state update-in [:stats side :click :draw] (fnil inc 0))
-                                       (play-sfx state side "click-card")
-                                       (draw state side eid 1 nil)))}
+                :effect (req (trigger-event state side :runner-click-draw (-> @state side :deck (nth 0)))
+                             (swap! state update-in [:stats side :click :draw] (fnil inc 0))
+                             (play-sfx state side "click-card")
+                             (draw state side eid 1))}
                {:label "Install 1 program, resource, or piece of hardware from the grip"
                 :async true
                 :req (req (and (not-empty (:hand runner))
+                               (in-hand? target)
+                               (or (hardware? target)
+                                   (program? target)
+                                   (resource? target))
                                (runner-can-pay-and-install?
                                  state :runner (assoc eid :source :action :source-type :runner-install)
                                  target {:base-cost [:click 1]})))
@@ -110,6 +121,8 @@
                {:label "Play 1 event"
                 :async true
                 :req (req (and (not-empty (:hand runner))
+                               (in-hand? target)
+                               (event? target)
                                (can-play-instant? state :runner (assoc eid :source :action :source-type :play)
                                                   target {:base-cost [:click 1]})))
                 :effect (req (play-instant state :runner (assoc eid :source :action :source-type :play)

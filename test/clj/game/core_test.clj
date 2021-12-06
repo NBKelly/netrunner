@@ -1,14 +1,13 @@
 (ns game.core-test
-  (:require [clojure.string :as string]
-            [clojure.edn :as edn]
+  (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.test :refer :all]
-            [hawk.core :as hawk]
             [game.core :as core]
-            [game.core.card :refer [get-card installed? rezzed? active? get-counters]]
+            [game.core.card :refer [get-card installed? rezzed? active? get-counters get-title]]
+            [game.core.ice :refer [active-ice?]]
             [game.utils :as utils :refer [server-card]]
             [game.core.eid :as eid]
-            [game.utils-test :refer [click-prompt error-wrapper is']]
+            [game.utils-test :refer [click-prompt error-wrapper is' no-prompt?]]
             [game.macros :refer [wait-for]]
             [jinteki.cards :refer [all-cards]]
             [jinteki.utils :as jutils]))
@@ -40,7 +39,10 @@
 (load-all-cards)
 
 ;; General utilities necessary for starting a new game
-(def find-card core/find-card)
+(defn find-card
+  "Copied from core so we can check printed title too"
+  [title from]
+  (some #(when (= (get-title %) title) %) from))
 
 (defn starting-hand
   "Moves all cards in the player's hand to their draw pile, then moves the specified card names
@@ -61,6 +63,14 @@
     (when (zero? (get-in @state [side :click]))
       (core/process-action "end-turn" state side nil)
       (core/process-action "start-turn" state other nil))))
+
+(defmacro start-turn
+  [state side]
+  `(do (is (and (empty? (get-in @~state [:corp :prompt]))
+                (empty? (get-in @~state [:runner :prompt]))) "Players have prompts open")
+       (when (and (empty? (get-in @~state [:corp :prompt]))
+                  (empty? (get-in @~state [:runner :prompt])))
+         (core/process-action "start-turn" ~state ~side nil))))
 
 
 ;; Deck construction helpers
@@ -97,7 +107,7 @@
                   (flatten hand))
           :discard (when-let [discard (:discard corp)]
                      (flatten discard))
-          :identity (when-let [id (:id corp)]
+          :identity (when-let [id (or (:id corp) (:identity corp))]
                       (server-card id))
           :credits (:credits corp)
           :bad-pub (:bad-pub corp)}
@@ -109,22 +119,24 @@
                     (flatten hand))
             :discard (when-let [discard (:discard runner)]
                        (flatten discard))
-            :identity (when-let [id (:id runner)]
+            :identity (when-let [id (or (:id runner) (:identity runner))]
                         (server-card id))
             :credits (:credits runner)
             :tags (:tags runner)}
    :mulligan (:mulligan options)
    :start-as (:start-as options)
    :dont-start-turn (:dont-start-turn options)
-   :dont-start-game (:dont-start-game options)})
+   :dont-start-game (:dont-start-game options)
+   :format (or (:format options) :casual)})
 
 (defn new-game
   "Init a new game using given corp and runner. Keep starting hands (no mulligan) and start Corp's turn."
   ([] (new-game nil))
   ([players]
-   (let [{:keys [corp runner mulligan start-as dont-start-turn dont-start-game]} (make-decks players)
+   (let [{:keys [corp runner mulligan start-as dont-start-turn dont-start-game format]} (make-decks players)
          state (core/init-game
                  {:gameid 1
+                  :format format
                   :players [{:side "Corp"
                              :user {:username "Corp"}
                              :deck {:identity (:identity corp)
@@ -174,14 +186,14 @@
         ability (cond
                   (number? ability) ability
                   (string? ability) (some #(when (= (:label (second %)) ability) (first %)) (map-indexed vector (:abilities card)))
-                  :else -1)]
-    (is' (active? card) (str (:title card) " is active"))
-    (is' (and (number? ability)
-              (nth (:abilities card) ability nil))
-         (str (:title card) " has ability #" ability))
-    (when (and (active? card)
-               (number? ability)
-               (nth (:abilities card) ability nil))
+                  :else -1)
+        has-ability? (and (number? ability)
+                          (nth (:abilities card) ability nil))
+        playable? (or (active? card)
+                      (:autoresolve (nth (:abilities card) ability nil)))]
+    (is' has-ability? (str (:title card) " has ability #" ability))
+    (is' playable? (str (:title card) " is active or ability #" ability " is an auto resolve toggle"))
+    (when (and has-ability? playable?)
       (core/process-action "ability" state side {:card card
                                                  :ability ability
                                                  :targets (first targets)}))))
@@ -194,12 +206,11 @@
 
 (defn card-subroutine-impl
   [state _ card ability]
-  (let [ice (get-card state card)
-        run (:run @state)]
-    (is' (rezzed? ice) (str (:title ice) " is active"))
-    (is' (some? run) "There is a run happening")
-    (is' (= :encounter-ice (:phase run)) "Subroutines can be resolved")
-    (when (and (rezzed? ice) (some? run) (= :encounter-ice (:phase run)))
+  (let [ice (get-card state card)]
+    (is' (active-ice? state ice) (str (:title ice) " is active"))
+    (is' (core/get-current-encounter state) "Subroutines can be resolved")
+    (when (and (active-ice? state ice)
+               (core/get-current-encounter state))
       (core/process-action "subroutine" state :corp {:card ice :subroutine ability})
       true)))
 
@@ -348,57 +359,61 @@
   [state]
   `(error-wrapper (run-next-phase-impl ~state)))
 
-(defn run-continue-impl
-  ([state] (run-continue-impl state :any))
+(defn encounter-continue-impl
+  ([state] (encounter-continue-impl state :any))
   ([state phase]
-   (let [run (:run @state)]
-     (is' (some? run) "There is a run happening")
-     (is' (empty? (get-in @state [:runner :prompt])) "No open prompts for the runner")
-     (is' (empty? (get-in @state [:corp :prompt])) "No open prompts for the corp")
-     (is' (not (:no-action run)) "No player has pressed continue yet")
-     (is' (not= :access-server (:phase run))
-          "The run has not reached the server yet")
-     (when (and (some? run)
-                (empty? (get-in @state [:runner :prompt]))
-                (empty? (get-in @state [:corp :prompt]))
-                (not (:no-action run))
-                (not= :access-server (:phase run)))
+   (let [encounter (core/get-current-encounter state)]
+     (is' (some? encounter) "There is an encounter happening")
+     (is' (no-prompt? state :runner) "No open prompts for the runner")
+     (is' (no-prompt? state :corp) "No open prompts for the corp")
+     (is' (not (:no-action encounter)) "No player has pressed continue yet")
+     (when (and (some? encounter)
+                (no-prompt? state :runner)
+                (no-prompt? state :corp)
+                (not (:no-action encounter)))
        (core/process-action "continue" state :corp nil)
        (core/process-action "continue" state :runner nil)
        (when-not (= :any phase)
-         (is (= phase (get-in @state [:run :phase])) "Run is in the correct phase"))))))
+         (is (= phase (:phase (:run @state))) "Run is in the correct phase"))))))
+
+(defmacro encounter-continue
+  "No action from corp and continue for runner to proceed in current encounter."
+  ([state] `(error-wrapper (encounter-continue-impl ~state :any)))
+  ([state phase] `(error-wrapper (encounter-continue-impl ~state ~phase))))
+
+(defn run-continue-impl
+  ([state] (run-continue-impl state :any))
+  ([state phase]
+   (if (core/get-current-encounter state)
+     (encounter-continue-impl state)
+     (let [run (:run @state)]
+       (is' (some? run) "There is a run happening")
+       (is' (no-prompt? state :runner) "No open prompts for the runner")
+       (is' (no-prompt? state :corp) "No open prompts for the corp")
+       (is' (not (:no-action run)) "No player has pressed continue yet")
+       (is' (not= :success (:phase run))
+            "The run has not reached the server yet")
+       (when (and (some? run)
+                  (no-prompt? state :runner)
+                  (no-prompt? state :corp)
+                  (not (:no-action run))
+                  (not= :success (:phase run)))
+         (core/process-action "continue" state :corp nil)
+         (core/process-action "continue" state :runner nil)
+         (when-not (= :any phase)
+           (is (= phase (:phase (:run @state))) "Run is in the correct phase")))))))
 
 (defmacro run-continue
   "No action from corp and continue for runner to proceed in current run."
   ([state] `(error-wrapper (run-continue-impl ~state :any)))
   ([state phase] `(error-wrapper (run-continue-impl ~state ~phase))))
 
-(defn run-phase-43-impl
-  [state]
-  (let [run (:run @state)]
-    (is' (some? run) "There is a run happening")
-    (is' (zero? (:position run)) "Runner has passed all ice")
-    (is' (not (:no-action run)) "No player has pressed continue yet")
-    (is' (= :approach-server (:phase run)) "Runner is approaching the server")
-    (when (and (some? run)
-               (zero? (:position run))
-               (not (:no-action run))
-               (= :approach-server (:phase run)))
-      (core/process-action "corp-phase-43" state :corp nil)
-      (core/process-action "continue" state :runner nil)
-      true)))
-
-(defmacro run-phase-43
-  "Ask for triggered abilities phase 4.3"
-  [state]
-  `(error-wrapper (run-phase-43-impl ~state)))
-
 (defn run-jack-out-impl
   [state]
   (let [run (:run @state)]
     (is' (some? run) "There is a run happening")
-    (is' (:jack-out run) "Runner is allowed to jack out")
-    (when (and (some? run) (:jack-out run))
+    (is' (= :movement (:phase run)) "Runner is allowed to jack out")
+    (when (and (some? run) (= :movement (:phase run)))
       (core/process-action "jack-out" state :runner nil)
       true)))
 
@@ -407,24 +422,51 @@
   [state]
   `(error-wrapper (run-jack-out-impl ~state)))
 
-(defn run-empty-server-impl
+(defmacro run-empty-server-impl
   [state server]
-  (when (run-on state server)
-    (run-continue state)))
+  `(when (run-on ~state ~server)
+     (run-continue ~state)))
 
 (defmacro run-empty-server
   "Make a successful run on specified server, assumes no ice in place."
   [state server]
   `(error-wrapper (run-empty-server-impl ~state ~server)))
 
+(defn run-continue-until-impl
+  [state phase ice]
+  (is' (some? (:run @state)) "There is a run happening")
+  (is' (some #(= phase %) [:approach-ice :encounter-ice :movement :success]) "Valid phase")
+  (run-continue-impl state)
+  (while (and (:run @state)
+              (or (not= phase (:phase (:run @state)))
+                  (and ice
+                       (not (utils/same-card? ice (core/get-current-ice state)))))
+              (not (and (= :movement (:phase (:run @state)))
+                        (zero? (:position (:run @state)))))
+              (no-prompt? state :runner)
+              (no-prompt? state :corp)
+              (not (:no-action (:run @state)))
+              (not= :success (:phase (:run @state))))
+    (run-continue-impl state))
+  (when (and (= :success phase)
+             (and (= :movement (:phase (:run @state)))
+                  (zero? (:position (:run @state)))))
+    (run-continue-impl state))
+  (when ice
+    (is' (utils/same-card? ice (core/get-current-ice state))) "Current ice reached"))
+
+(defmacro run-continue-until
+  ([state phase] `(error-wrapper (run-continue-until-impl ~state ~phase nil)))
+  ([state phase ice]
+   `(error-wrapper (run-continue-until-impl ~state ~phase ~ice))))
+
 (defn fire-subs-impl
   [state card]
-  (let [ice (get-card state card)
-        run (:run @state)]
-    (is' (rezzed? ice) (str (:title ice) " is active"))
-    (is' (some? run) "There is a run happening")
-    (is' (= :encounter-ice (:phase run)) "Subroutines can be resolved")
-    (when (and (rezzed? ice) (some? run)) (= :encounter-ice (:phase run))
+  (let [ice (get-card state card)]
+    (is' (active-ice? state ice) (str (:title ice) " is active"))
+    (is' (core/get-current-encounter state) "Subroutines can be resolved")
+    (when (and (active-ice? state ice)
+               (core/get-current-encounter state))
       (core/process-action "unbroken-subroutines" state :corp {:card ice}))))
 
 (defmacro fire-subs
@@ -432,7 +474,7 @@
   `(error-wrapper (fire-subs-impl ~state ~card)))
 
 (defn play-run-event-impl
-  [state card server & show-prompt]
+  [state card server]
   (when (play-from-hand state :runner card)
     (is' (:run @state) "There is a run happening")
     (is' (= [server] (get-in @state [:run :server])) "Correct server is run")
@@ -445,8 +487,8 @@
 (defmacro play-run-event
   "Play a run event with a replace-access effect on an unprotected server.
   Advances the run timings to the point where replace-access occurs."
-  [state card server & show-prompt]
-  `(error-wrapper (play-run-event-impl ~state ~card ~server ~@show-prompt)))
+  [state card server]
+  `(error-wrapper (play-run-event-impl ~state ~card ~server)))
 
 (defn get-run-event
   ([state] (get-in @state [:runner :play-area]))
@@ -598,5 +640,11 @@
 
 (defn move
   [state side card location]
-  (do (core/move state side card location)
-      (core/fake-checkpoint state)))
+  (core/move state side card location)
+  (core/fake-checkpoint state))
+
+(defn draw
+  ([state side] (draw state side 1 nil))
+  ([state side n] (draw state side n nil))
+  ([state side n args]
+   (core/draw state side (core/make-eid state) n args)))

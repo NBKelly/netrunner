@@ -1,12 +1,11 @@
 (ns game.core.play-instants
   (:require
-    [game.core.board :refer [all-active]]
-    [game.core.card :refer [get-card has-subtype?]]
+    [game.core.card :refer [has-subtype?]]
     [game.core.card-defs :refer [card-def]]
     [game.core.cost-fns :refer [play-additional-cost-bonus play-cost]]
     [game.core.effects :refer [unregister-constant-effects]]
-    [game.core.eid :refer [complete-with-result effect-completed eid-set-defaults make-eid make-result]]
-    [game.core.engine :refer [dissoc-req checkpoint queue-event merge-costs-paid pay resolve-ability should-trigger? unregister-events]]
+    [game.core.eid :refer [complete-with-result effect-completed eid-set-defaults make-eid]]
+    [game.core.engine :refer [checkpoint dissoc-req merge-costs-paid pay queue-event resolve-ability should-trigger? unregister-events]]
     [game.core.flags :refer [can-run?]]
     [game.core.gaining :refer [lose]]
     [game.core.initializing :refer [card-init]]
@@ -24,7 +23,7 @@
      (complete-with-result state side eid card))))
 
 (defn- current-handler
-  [state side card]
+  [state _ card]
   (if (has-subtype? card "Current")
     (move state (to-keyword (:side card)) card :current)
     card))
@@ -47,7 +46,7 @@
                           (if (:rfg-instead-of-trashing cdef)
                             (assoc card :rfg-instead-of-trashing true)
                             card)
-                          {:resolve-effect false :init-data true})
+                          {:resolve-effect true :init-data true});;:resolve-effect is true as a temporary solution to allow Direct Access to blank IDs
           play-event (if (= side :corp) :play-operation :play-event)]
       (queue-event state play-event {:card card :event play-event})
       (wait-for (checkpoint state nil (make-eid state eid) {:duration play-event})
@@ -73,10 +72,9 @@
                                   (effect-completed state side eid)))))))))
 
 (defn play-instant-costs
-  [state side eid card {:keys [ignore-cost base-cost no-additional-cost cached-costs]}]
+  [state side card {:keys [ignore-cost base-cost no-additional-cost cached-costs]}]
   (or cached-costs
-      (let [on-play (or (:on-play (card-def card)) {})
-            cost (play-cost state side card)
+      (let [cost (play-cost state side card)
             additional-costs (play-additional-cost-bonus state side card)
             costs (merge-costs
                     [(when-not ignore-cost
@@ -88,15 +86,15 @@
                                 (not no-additional-cost)
                                 (not (get-in @state [side :register :double-ignore-additional])))
                        [:click 1])
-                     (when-not (and no-additional-cost ignore-cost)
+                     (when-not (or no-additional-cost ignore-cost)
                        [additional-costs])])]
         costs)))
 
 (defn can-play-instant?
   ([state side eid card] (can-play-instant? state side eid card nil))
-  ([state side eid card {:keys [targets] :as args}]
+  ([state side eid card {:keys [targets silent] :as args}]
    (let [on-play (or (:on-play (card-def card)) {})
-         costs (play-instant-costs state side eid card args)]
+         costs (play-instant-costs state side card args)]
      (and ;; req is satisfied
           (should-trigger? state side eid card targets on-play)
           ;; can pay all costs
@@ -109,7 +107,7 @@
           ;; This is a run event or makes a run, and running is allowed
           (not (and (or (:makes-run (card-def card))
                         (has-subtype? card "Run"))
-                    (not (can-run? state :runner))))
+                    (not (can-run? state :runner silent))))
           ;; if priority, have not spent a click
           (not (and (has-subtype? card "Priority")
                     (get-in @state [side :register :spent-click])))
@@ -121,7 +119,7 @@
   ([state side eid card] (play-instant state side eid card nil))
   ([state side eid card {:keys [ignore-cost] :as args}]
    (let [eid (eid-set-defaults eid :source :action :source-type :play)
-         costs (play-instant-costs state side eid card (dissoc args :cached-costs))]
+         costs (play-instant-costs state side card (dissoc args :cached-costs))]
      ;; ensure the instant can be played
      (if (can-play-instant? state side eid card (assoc args :cached-costs costs))
        ;; Wait on pay to finish before triggering instant-effect
@@ -134,7 +132,7 @@
                    (let [payment-str (:msg async-result)
                          cost-paid (merge-costs-paid (:cost-paid eid) (:cost-paid async-result))]
                      (if payment-str
-                       (complete-play-instant state side (assoc eid :cost-paid (:cost-paid async-result)) moved-card payment-str ignore-cost)
+                       (complete-play-instant state side (assoc eid :cost-paid cost-paid) moved-card payment-str ignore-cost)
                        ;; could not pay the card's price; put it back and mark the effect as being over.
                        (let [returned-card (move state side moved-card original-zone)]
                          (update! state :runner (-> returned-card

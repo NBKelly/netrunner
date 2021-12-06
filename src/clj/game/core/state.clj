@@ -1,7 +1,8 @@
 (ns game.core.state)
 
 (defrecord State
-  [active-player
+  [angel-arena-info
+   active-player
    bonus
    click-state
    corp
@@ -9,10 +10,12 @@
    effects
    effect-completed
    eid
+   encounters
    end-run
    end-time
    end-turn
    events
+   format
    gameid
    history
    log
@@ -53,12 +56,13 @@
     current-rid))
 
 (defn new-state
-  [gameid room now options corp runner]
+  [gameid room fmt now options corp runner]
   (map->State
     {:gameid gameid
      :log []
      :active-player :runner
      :end-turn true
+     :format (keyword fmt)
      :history []
      :room room
      :rid 1 :turn 0 :eid 0
@@ -66,5 +70,6 @@
      :stats {:time {:started now}}
      :start-date now
      :options options
+     :encounters []
      :corp corp
      :runner runner}))
