@@ -2001,6 +2001,9 @@
                  ;; discards
                  me-discard (r/cursor game-state [me-side :discard])
                  op-discard (r/cursor game-state [op-side :discard])
+                 ;; conspiracy
+                 conspiracy (r/cursor game-state [:corp :conspiracy])
+                 conspiracy-count (r/cursor game-state [:corp :conspiracy-count])
                  ;; user settings
                  me-user (r/cursor game-state [me-side :user])
                  op-user (r/cursor game-state [op-side :user])
@@ -2082,7 +2085,11 @@
                      [play-area-view op-user (tr [:game.play-area "Play Area"]) op-play-area]
                      [play-area-view me-user (tr [:game.play-area "Play Area"]) me-play-area]
                      [rfg-view op-current (tr [:game.current "Current"]) false]
-                     [rfg-view me-current (tr [:game.current "Current"]) false]])
+                     [rfg-view me-current (tr [:game.current "Current"]) false]
+                     [play-area-view me-user (tr [:game.conspiracy "Conspiracy"])
+                      (if (= @conspiracy-count (count @conspiracy)) ; Fill up conspiracy with facedowns if Runner
+                        conspiracy
+                        (r/atom [{:side "Corp"}]))]])
                   (when-not (= @side :spectator)
                     [button-pane {:side me-side :active-player active-player :run run :encounters encounters
                                   :end-turn end-turn :runner-phase-12 runner-phase-12
