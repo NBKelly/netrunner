@@ -276,11 +276,12 @@
                             :key (str amount)}
              (str amount)])])]
       [:div.group
-       [:button {:on-click #(do (.preventDefault %)
-                                (ws/ws-send! [:game/say {:gameid (current-gameid app-state)
-                                                         :msg "/conspire"}]))
-                 :key "/conspire"}
-        "Conspire"]
+       (when (= :corp (get-side @game-state))
+         [:button {:on-click #(do (.preventDefault %)
+                                  (ws/ws-send! [:game/say {:gameid (current-gameid app-state)
+                                                           :msg "/conspire"}]))
+                   :key "/conspire"}
+          "Conspire"])
        [:button {:on-click #(do (.preventDefault %)
                                 (ws/ws-send! [:game/say {:gameid (current-gameid app-state)
                                                          :msg "/breach hq"}]))
