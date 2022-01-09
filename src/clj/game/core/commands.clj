@@ -1,6 +1,7 @@
 (ns game.core.commands
   (:require
    [clojure.string :as string]
+   [game.core.access :refer [access-bonus breach-server]]
    [game.core.board :refer [all-installed server->zone]]
    [game.core.card :refer [agenda? can-be-advanced? corp? get-card
                            has-subtype? ice? in-hand? installed? map->Card rezzed?
@@ -40,6 +41,13 @@
   [value min-value max-value]
   (min max-value (max min-value value)))
 
+(defn command-access-bonus [state side args]
+  (when (= :runner side)
+    (let [server (keyword (string/lower-case (first args)))
+          server (if (= :r&d server) :rd server)
+          value (constrain-value (if-let [n (string->num (second args))] n 0) 0 1000)]
+      (access-bonus state side server value))))
+
 (defn- set-adv-counter [state side target value]
   (set-prop state side target :advance-counter value)
   (system-msg state side (str "sets advancement counters to " value " on "
@@ -52,6 +60,12 @@
                      {:effect (effect (set-adv-counter target value))
                       :choices {:card (fn [t] (same-side? (:side t) side))}}
                      (map->Card {:title "/adv-counter command"}) nil)))
+
+(defn command-breach [state side args]
+  (when (= :runner side)
+    (let [server (keyword (string/lower-case (first args)))
+          server (if (= :r&d server) :rd server)]
+      (breach-server state side (make-eid state) [server]))))
 
 (defn command-bug-report [state side]
   (swap! state update :bug-reported (fnil inc -1))
@@ -319,8 +333,10 @@
         "/discard"    #(move %1 %2 (nth (get-in @%1 [%2 :hand]) num nil) :discard)
         nil)
       (case command
+        "/access-bonus" #(command-access-bonus %1 %2 args)
         "/adv-counter" #(command-adv-counter %1 %2 value)
         "/bp"         #(swap! %1 assoc-in [%2 :bad-publicity :base] (constrain-value value -1000 1000))
+        "/breach"     #(command-breach %1 %2 args)
         "/bug"        command-bug-report
         "/card-info"  #(resolve-ability %1 %2
                                         {:effect (effect (system-msg (str "shows card-info of "
