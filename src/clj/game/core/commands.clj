@@ -311,11 +311,10 @@
        :choices {:card #(and (corp? %)
                              (in-hand? %))}
        :async true
-       :msg (msg "add a card from HQ to their conspiracy")
-       :effect (req
-                 (when-let [c (first (get-in @state [:corp :conspiracy]))]
-                   (trash state side eid c {:unpreventable true}))
-                 (move state side target :conspiracy))}
+       :effect (req (system-msg "add a card from HQ to their conspiracy")
+                    (when-let [c (first (get-in @state [:corp :conspiracy]))]
+                      (trash state side eid c {:unpreventable true}))
+                    (move state side target :conspiracy))}
       nil nil)))
 
 (defn parse-command
