@@ -62,6 +62,9 @@
 (defmulti stats-area
   (fn [player] (get-in @player [:identity :side])))
 
+(defmethod stats-area :default [runner]
+  (fn [player] (println "Default handler for player-stats.stats-area reached")))
+
 (defmethod stats-area "Runner" [runner]
   (let [ctrl (stat-controls-for-side :runner)]
     (fn [runner]

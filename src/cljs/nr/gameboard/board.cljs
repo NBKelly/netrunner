@@ -1980,7 +1980,8 @@
 
        :reagent-render
        (fn []
-         (when @render-board?
+         (when (and @render-board?
+                    (not-empty @game-state))
            (let [me-side (if (= :spectator @side) :corp @side)
                  op-side (utils/other-side me-side)
                  me (r/cursor game-state [me-side])
