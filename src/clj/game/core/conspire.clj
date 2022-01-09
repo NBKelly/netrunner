@@ -14,12 +14,10 @@
                          (resolve-ability state side eid
                                           {:prompt "Choose the card to be added to your conspiracy."
                                            :choices {:card #(and (corp? %)
-                                                                 (in-hand? %))
-                                                     :max 1}
+                                                                 (in-hand? %))}
                                            :async true
-                                           :effect (req (when target
-                                                          (system-msg state side "adds a card from HQ to their conspiracy")
-                                                          (move state side target :conspiracy))
+                                           :effect (req (system-msg state side "adds a card from HQ to their conspiracy")
+                                                        (move state side target :conspiracy)
                                                         (effect-completed state side eid))}
                                           nil nil)
                          (effect-completed state side eid))}
