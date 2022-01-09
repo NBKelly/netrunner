@@ -5,6 +5,7 @@
    [game.core.card :refer [agenda? can-be-advanced? corp? get-card
                            has-subtype? ice? in-hand? installed? map->Card rezzed?
                            runner?]]
+   [game.core.conspire :refer [conspire]]
    [game.core.damage :refer [damage]]
    [game.core.drawing :refer [draw]]
    [game.core.effects :refer [register-floating-effect]]
@@ -305,17 +306,7 @@
 (defn command-conspire
   [state side]
   (when (= :corp side)
-    (resolve-ability
-      state side
-      {:prompt "Choose the card to added to your conspiracy."
-       :choices {:card #(and (corp? %)
-                             (in-hand? %))}
-       :async true
-       :effect (req (system-msg "add a card from HQ to their conspiracy")
-                    (when-let [c (first (get-in @state [:corp :conspiracy]))]
-                      (trash state side eid c {:unpreventable true}))
-                    (move state side target :conspiracy))}
-      nil nil)))
+    (conspire state side)))
 
 (defn parse-command
   [text]
