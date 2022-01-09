@@ -393,6 +393,7 @@
    :runner-phase-12
    :sfx
    :sfx-current-id
+   :special
    :start-date
    :stats
    :trace
