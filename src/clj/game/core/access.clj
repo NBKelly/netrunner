@@ -1290,7 +1290,7 @@
    (if (and (= (zone->name server) "HQ")
             (not declined-conspiracy)
             (> (count (get-in @state [:corp :conspiracy])) 0))
-     (wait-for (resolve-ability state side
+     (resolve-ability state side eid
                                 {:optional
                                  {:async true
                                   :player :runner
@@ -1301,7 +1301,6 @@
                                   :yes-ability {:effect (req (wait-for (breach-conspiracy state side args)
                                                                        (effect-completed state side eid)))}}}
                                 nil nil)
-               (effect-completed state side eid))
      (do (system-msg state side (str "breaches " (zone->name server)))
          (wait-for (trigger-event-sync state side :breach-server (first server))
                    (let [args (clean-access-args args)
