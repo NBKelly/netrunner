@@ -35,10 +35,10 @@
    runner-phase-12
    sfx
    sfx-current-id
-   special
    stack
    start-date
    stats
+   subversion
    trace
    trash
    turn

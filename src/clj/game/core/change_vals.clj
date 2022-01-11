@@ -100,18 +100,18 @@
 
 (defn- change-subversion
   "Change the game's subversion count"
-  [state side key delta]
-  (if (get-in @state [:special key])
-    (swap! state update-in [:special key] (partial + delta))
-    (swap! state assoc-in [:special key] delta))
+  [state side subversion delta]
+  (if (get-in @state [:subversion subversion])
+    (swap! state update-in [:subversion subversion] (partial + delta))
+    (swap! state assoc-in [:subversion subversion] delta))
   (let [sub-name (case key
-                   :subversion-a "Repress"
-                   :subversion-b "Isolate"
-                   :subversion-c "Starve"
-                   :subversion-d "Tax"
+                   :a "Repress"
+                   :b "Isolate"
+                   :c "Starve"
+                   :d "Tax"
                    "????")]
     (system-msg state side
-                (str "sets subversion \"" sub-name "\" to " (get-in @state [:special key])))))
+                (str "sets subversion \"" sub-name "\" to " (get-in @state [:subversion key])))))
 
 (defn- change-generic
   "Change a player's base generic property."
