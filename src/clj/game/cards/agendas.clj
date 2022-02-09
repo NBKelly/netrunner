@@ -1835,3 +1835,7 @@
                                       (not (has-subtype? target "Virtual"))
                                       (not (:facedown (second targets)))))
                        :value 1}]})
+
+(defcard "Vosmash Sell-Off"
+  {:score-cost-bonus (req [:installed-corp 1])
+   })
