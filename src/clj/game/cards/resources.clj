@@ -1642,7 +1642,7 @@
                     :effect (effect (register-events card [breach-ability])
                                     (register-events card [run-end-trigger pre-redirect-trigger corp-install-trigger])
                                     (disable-server (second (server->zone state target)))
-                                    (make-run (make-eid state eid) target card)
+                                    (make-run eid target card)
                                     (effect-completed eid))}]})))
 
 (defcard "Logic Bomb"
