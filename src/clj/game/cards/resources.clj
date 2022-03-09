@@ -1569,6 +1569,75 @@
                              :effect (effect (as-agenda :runner card 2))})
                           card nil))}]})
 
+(defcard "Light the Fire"
+  (letfn [(eligible? [state card server]
+            (let [zone (:zone card)] (and (some #{:content} zone) (some #{server} zone))))
+          (select-targets [state server]
+            (filter #(eligible? state % server) (all-installed state :corp)))
+          (disable-server [state side server]
+            (doseq [c (select-targets state server)]
+              (disable-card state :corp c)))
+          (enable-server [state side server]
+            (doseq [c (select-targets state server)]
+              (enable-card state :corp c)))]
+    (let [breach-ability (successful-run-replace-breach
+                          {:mandatory true
+                           :duration :end-of-run
+                           :ability {:async true
+                                     :msg "trash all cards in the server at no cost"
+                                     :effect (effect (trash-cards eid (:content run-server)))}})
+          pre-redirect-trigger {:event :pre-redirect-server
+                                :duration :end-of-run
+                                :effect (effect (enable-server (first target))
+                                                (disable-server (second (second targets))))}
+          ;post-redirect-trigger {:event :redirect-server
+          ;                       :duration :end-of-run
+          ;                       :async true
+          ;                       :effect (effect (disable-server (first (:server run)))
+          ;                                       (effect-completed eid))}
+          corp-install-trigger {:event :corp-install
+                                :duration :end-of-run
+                                :effect (req (disable-server state side (first (:server run))))}
+          swap-trigger {:event :swap
+                        :duration :end-of-run
+                        :effect (req (let [first-card (first targets)
+                                           second-card (second targets)
+                                           server (first (:server run))]
+                                       ;; disable cards that have moved into the server
+                                       (when (and (some #{:content} (:zone first-card))
+                                                  (some #{server} (:zone first-card)))
+                                         (disable-card state :corp first-card))
+                                       (when (and (some #{:content} (:zone second-card))
+                                                  (some #{server} (:zone second-card)))
+                                         (disable-card state :corp second-card))
+                                       ;; disable cards that have left the server
+                                       (when (and (some #{:content} (:zone first-card))
+                                                  (not (some #{server} (:zone first-card)))
+                                                  (some #{server} (:zone second-card)))
+                                         (enable-card state :corp first-card))
+                                       (when (and (some #{:content} (:zone second-card))
+                                                  (not (some #{server} (:zone second-card)))
+                                                  (some #{server} (:zone first-card)))
+                                         (enable-card state :corp second-card))))}
+          run-end-trigger {:event :run-ends
+                           :duration :end-of-run 
+                           :effect (effect (enable-server (first (:server target))))}]
+      {:abilities [{:label "Run a remote server."
+                    :cost [:trash :click 1 :brain 1]
+                    :prompt "Choose a remote server to run with Light the Fire"
+                    :choices (req (filter #(can-run-server? state %) remotes))
+                    :msg (msg "make a run on " target " during which cards in the root of the attacked server lose all abilities")
+                    :makes-run true
+                    :async true
+                    :effect (effect (register-events card [breach-ability
+                                                           run-end-trigger
+                                                           pre-redirect-trigger
+                                                           ;post-redirect-trigger
+                                                           corp-install-trigger
+                                                           swap-trigger])
+                                    (disable-server (second (server->zone state target)))
+                                    (make-run eid target card))}]})))
+
 (defcard "Logic Bomb"
   {:abilities [{:label "Bypass the encountered ice"
                 :req (req (and (get-current-encounter state)
