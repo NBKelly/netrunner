@@ -425,6 +425,19 @@
 
 ;; Card definitions
 
+(defcard "Anemone"
+  {:on-rez {:optional {:prompt "trash a card from HQ to do 2 net damage?"
+                       :req (req (and (< 0 (count (:hand corp)))
+                                      run
+                                      this-server))
+                       :waiting-prompt "Corp to resolve Anemone"
+                       :yes-ability {:msg "do 2 net damage"
+                                     :cost [:trash-from-hand 1]
+                                     :async true
+                                     :effect (effect (damage eid :net 2 {:card card}))}
+                       :no-ability {:msg "decline to deal 2 net damage"}}}
+   :subroutines [(do-net-damage 1)]})
+
 (defcard "Ansel 1.0"
   {:subroutines [trash-installed-sub
                  (install-from-hq-or-archives-sub)
