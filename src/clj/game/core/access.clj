@@ -17,7 +17,7 @@
     [game.core.servers :refer [get-server-type name-zone zone->name]]
     [game.core.update :refer [update!]]
     [game.utils :refer [quantify same-card?]]
-    [game.macros :refer [continue-ability req wait-for]]
+    [game.macros :refer [continue-ability req wait-for effect]]
     [jinteki.utils :refer [add-cost-to-label]]
     [clojure.set :as clj-set]
     [clojure.string :as string]))
@@ -1269,19 +1269,47 @@
               (unregister-floating-events state side :end-of-access)
               (effect-completed state side eid))))
 
-(defn breach-server
-  "Starts the breach routines for the run's server."
-  ([state side eid server] (breach-server state side eid server nil))
-  ([state side eid server {:keys [no-root access-first] :as args}]
-   (system-msg state side (str "breaches " (zone->name server)))
-   (wait-for (trigger-event-sync state side :breach-server (first server))
-             (let [args (clean-access-args args)
-                   access-amount (num-cards-to-access state side (first server) nil)]
-               (turn-archives-faceup state side server)
+(defn breach-conspiracy
+  ([state side eid] (breach-conspiracy state side eid nil))
+  ([state side eid args]
+   (system-msg state side (str "breaches the conspiracy"))
+   (wait-for (trigger-event-sync state side :breach-server :conspiracy)
+             (let [args (clean-access-args args)]
                (when (:run @state)
                  (swap! state assoc-in [:run :did-access] true))
-               (wait-for (resolve-ability state side (choose-access access-amount server (assoc args :server server)) nil nil)
-                         (wait-for (trigger-event-sync state side :end-breach-server {:from-server (first server)})
+               (wait-for (resolve-ability state side (access-card state side eid (first (get-in @state [:corp :conspiracy]))) nil nil)
+                         (wait-for (trigger-event-sync state side :end-breach-server {:from-server :conspiracy})
                                    (unregister-floating-effects state side :end-of-access)
                                    (unregister-floating-events state side :end-of-access)
                                    (effect-completed state side eid)))))))
+
+(defn breach-server
+  "Starts the breach routines for the run's server."
+  ([state side eid server] (breach-server state side eid server nil))
+  ([state side eid server {:keys [no-root access-first declined-conspiracy] :as args}]
+   (if (and (= (zone->name server) "HQ")
+            (not declined-conspiracy)
+            (> (count (get-in @state [:corp :conspiracy])) 0))
+     (resolve-ability state side eid
+                      {:optional
+                       {:async true
+                        :player :runner
+                        :prompt "Breach the conspiracy instead of breaching HQ?"
+                        :waiting-prompt "Waiting for Runner to make a decision"
+                        :no-ability {:async true
+                                     :effect (effect (breach-server server eid (assoc args :declined-conspiracy true)))}
+                        :yes-ability {:async true
+                                      :effect (effect (breach-conspiracy eid args))}}}
+                      nil nil)
+     (do (system-msg state side (str "breaches " (zone->name server)))
+         (wait-for (trigger-event-sync state side :breach-server (first server))
+                   (let [args (clean-access-args args)
+                         access-amount (num-cards-to-access state side (first server) nil)]
+                     (turn-archives-faceup state side server)
+                     (when (:run @state)
+                       (swap! state assoc-in [:run :did-access] true))
+                     (wait-for (resolve-ability state side (choose-access access-amount server (assoc args :server server)) nil nil)
+                               (wait-for (trigger-event-sync state side :end-breach-server {:from-server (first server)})
+                                         (unregister-floating-effects state side :end-of-access)
+                                         (unregister-floating-events state side :end-of-access)
+                                         (effect-completed state side eid)))))))))

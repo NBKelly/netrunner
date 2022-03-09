@@ -234,7 +234,8 @@
       (select-non-nil-keys (into player-keys additional-keys))))
 
 (def corp-keys
-  [:servers
+  [:conspiracy
+   :servers
    :bad-publicity])
 
 (defn servers-summary
@@ -265,6 +266,13 @@
     (cards-summary hand state side)
     []))
 
+(defn conspiracy-summary
+  "Is the player's conspiracy publicly visible?"
+  [conspiracy same-side? player]
+  (if same-side?
+    (prune-cards conspiracy)
+    []))
+
 (defn discard-summary
   [discard state same-side? side player]
   (if (or same-side? (:openhand player))
@@ -279,9 +287,11 @@
         (update :deck deck-summary corp-player? corp)
         (update :hand hand-summary state corp-player? :corp corp)
         (update :discard discard-summary state corp-player? side corp)
+        (update :conspiracy conspiracy-summary corp-player? corp)
         (assoc
           :deck-count (count (:deck corp))
           :hand-count (count (:hand corp))
+          :conspiracy-count (count (:conspiracy corp))
           :servers (servers-summary state side))
         (cond-> (and corp-player? install-list) (assoc :install-list install-list)))))
 
@@ -395,6 +405,7 @@
    :sfx-current-id
    :start-date
    :stats
+   :subversion
    :trace
    :turn
    :typing
