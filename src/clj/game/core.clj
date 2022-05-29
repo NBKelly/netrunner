@@ -46,6 +46,7 @@
     [game.core.revealing]
     [game.core.rezzing]
     [game.core.runs]
+    [game.core.sabotage]
     [game.core.say]
     [game.core.servers]
     [game.core.set-up]
@@ -708,6 +709,10 @@
    toggle-auto-no-action
    total-cards-accessed
    total-run-cost])
+
+(import-vars
+  [game.core.sabotage
+   sabotage-ability])
 
 (import-vars
   [game.core.say
