@@ -1256,7 +1256,7 @@
                                (update-all-ice)
                                (trash eid target {:unpreventable true}))}}}]})
 
-(defcard "Ob Superheavy Logistics: No Place Out Of Reach"
+(defcard "Ob Superheavy Logistics: Matter Made Easy"
   ;; note - we ensure the card can be installed (asset/upgrade/ice) - condition counters (like patch)
   ;;   are very questionable, and somebody on rules would need to say something to convince me they
   ;;   would be valid targets --nbkelly
@@ -1308,12 +1308,15 @@
           ;; to be compatable. Updating those functions is quite quick, just make sure it actually
           ;; is the corporation doing it.
           (trash-cause [eid target context]
-            (cond
-              (corp? (:source eid)) (str "trashed by " (:title (:source eid)))
-              (= :ability-cost (:cause target)) (str "trashed as an ability-cost")
-              (= :subroutine (:cause target)) (str "trashed by an ice subroutine")
-              (corp? (:cause context)) (str "trashed by " (:title (:cause context)))
-              :else nil))
+            (let [cause (:cause target)
+                  cause-card (:cause-card target)]
+              (cond
+                (corp? (:source eid))   (str "trashed by " (:title (:source eid)))
+                (= :ability-cost cause) "trashed as an ability-cost"
+                (= :subroutine cause)   "trashed by an ice subroutine"
+                (and (corp? cause-card) (not= cause :opponent-trashes)) "trashed by a corp card"
+                (and (runner? cause-card) (= cause :forced-to-trash)) "forced to trash by runner"
+                :else nil)))
           ;; prompts to install an x-cost card (handles validation)
           (ob-ability [target-cost]
             {:optional
