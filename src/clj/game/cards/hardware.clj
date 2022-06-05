@@ -2040,6 +2040,7 @@
   {:constant-effects [(mu+ 1)]
    :events [{:event :runner-turn-begins
              :req (req true)
+             :async true
              :effect (effect (continue-ability
                                identify-mark-ability
                                card nil))}
