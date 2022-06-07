@@ -1285,6 +1285,22 @@
                                                (same-card? card (:host target))))
                                 :type :recurring}}})
 
+(defcard "PAN-Weave"
+  {:on-install {:async true
+                :msg "suffer 1 meat damage"
+                :effect (effect (damage eid :meat 1 {:unboostable true :card card}))}
+   :events [{:event :successful-run
+             :req (req (and
+                         (= :hq (first (:server target)))
+                         (first-event? state side :successful-run #(= :hq (first (:server (first %)))))))
+             :msg (msg "force the Corp to lose 1 [Credits]")
+             :async true
+             :effect (req (if (pos? (:credit corp))
+                            (wait-for (lose-credits state :corp 1)
+                                      (system-msg state side (str "uses " (:title card) " to gain 1 [Credits]"))
+                                      (gain-credits state :runner eid 1))
+                            (effect-completed state side eid)))}]})
+
 (defcard "Pantograph"
   (let [install-ability
         {:async true
@@ -1891,6 +1907,17 @@
                        :req (req (= :runner side))
                        :value 1}]})
 
+(defcard "The Endurance"
+  {:data {:counter {:power 3}}
+   :constant-effects [(mu+ 2)]
+   :events [{:event :successful-run
+             :req (req (first-event? state :runner :successful-run))
+             :silent (req true)
+             :msg "place 1 power counter on itself"
+             :async true
+             :effect (effect (add-counter eid card :power 1 nil))}]
+   :abilities [(break-sub [:power 2] 2 "All")]})
+
 (defcard "The Gauntlet"
   {:constant-effects [(mu+ 2)]
    :events [{:event :breach-server
@@ -2035,6 +2062,32 @@
     {:constant-effects [(mu+ 1)]
      :events [(assoc ability :event :runner-turn-begins)]
      :abilities [ability]}))
+
+(defcard "Virtuoso"
+  {:constant-effects [(mu+ 1)]
+   :events [(assoc identify-mark-ability :event :runner-turn-begins)
+            {:event :successful-run
+             :req (req (and (:marked-server target)
+                            (first-event? state side :successful-run #(:marked-server (first %)))))
+             :async true
+             :effect (req (if (= :hq (first (:server target)))
+                            (do
+                              (system-msg state side (str "uses " (:title card) " to access 1 additional card from HQ this run"))
+                              (register-events
+                                  state side
+                                  card [(breach-access-bonus :hq 1 {:duration :end-of-run})])
+                                (effect-completed state side eid))
+                            (do (system-msg state side (str "will use " (:title card) " to breach HQ when this run ends"))
+                                (register-events
+                                  state side
+                                  card
+                                  [{:event :run-ends
+                                    :duration :end-of-run
+                                    :async true
+                                    :interactive (req true)
+                                    :msg (msg "breach HQ")
+                                    :effect (req (breach-server state :runner eid [:hq] {:no-root true}))}])
+                                (effect-completed state side eid))))}]})
 
 (defcard "Window"
   {:abilities [{:cost [:click 1]

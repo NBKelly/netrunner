@@ -964,6 +964,34 @@
       (rez state :corp (refresh pad))
       (is (rezzed? (refresh pad)) "Rez prevention of asset ended"))))
 
+(deftest carpe-diem-no-mark
+  ;; Carpe Diem - identify mark. Gain 4. You may run mark.
+  (do-game
+    (new-game {:runner {:hand ["Carpe Diem"]}})
+    (take-credits state :corp)
+    (is (nil? (:mark @state)) "No mark identified")
+    (changes-val-macro
+      3 (:credit (get-runner))
+      "gained 3c  net from carpe diem"
+      (play-from-hand state :runner "Carpe Diem"))
+    (click-prompt state :runner "Yes")
+    (is (= (first (:server (get-run))) (:mark @state)))
+    (run-jack-out state)))
+
+(deftest carpe-diem-hq-marked
+  ;; Carpe Diem - identify mark. Gain 4. You may run mark.
+  (do-game
+    (new-game {:runner {:hand ["Carpe Diem"]}})
+    (take-credits state :corp)
+    (is (nil? (:mark @state)) "No mark identified")
+    (core/set-mark state :hq)
+    (changes-val-macro
+      3 (:credit (get-runner))
+      "gained 3c  net from carpe diem"
+      (play-from-hand state :runner "Carpe Diem"))
+    (click-prompt state :runner "Yes")
+    (is (= [:hq] (:server (get-run))) "Ran the correct server")))
+
 (deftest cbi-raid
   ;; CBI Raid - Full test
   (do-game
@@ -3214,6 +3242,51 @@
       (rez state :corp jackson)
       (is (not (rezzed? (refresh jackson))) "Jackson is not rezzed"))))
 
+(deftest into-the-depths
+  ;; Into the depths
+  (do-game
+    ;; Didn't pass any ice
+    (new-game {:runner {:hand ["Into the Depths"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Into the Depths")
+    (click-prompt state :runner "HQ")
+    (run-continue state)
+    (click-prompt state :runner "No action"))
+  (do-game
+    ;; Passed 1 ice
+    (new-game {:runner {:hand ["Into the Depths"]}
+               :corp {:hand [(qty "Ice Wall" 5)] :credits 50}})
+    (play-from-hand state :corp "Ice Wall" "HQ")
+    (rez state :corp (get-ice state :hq 0))
+    (take-credits state :corp)
+    (play-from-hand state :runner "Into the Depths")
+    (click-prompt state :runner "HQ")
+    (run-continue state)
+    (run-continue state)
+    (run-continue state)
+    (click-prompt state :runner "Gain 4 [Credits]")
+    (click-prompt state :runner "No action"))
+  (do-game
+    ;; Passed 4 ice
+    (new-game {:runner {:hand ["Into the Depths"] :deck ["D4v1d"]}
+               :corp {:hand [(qty "Ice Wall" 5)] :credits 50}})
+    (core/gain state :corp :click 2)
+    (doseq [n [0 1 2 3]]
+      (play-from-hand state :corp "Ice Wall" "HQ")
+      (rez state :corp (get-ice state :hq n)))
+    (take-credits state :corp)
+    (play-from-hand state :runner "Into the Depths")
+    (click-prompt state :runner "HQ")
+    (dotimes [n 12]
+      (run-continue state))
+    (click-prompt state :runner "Gain 4 [Credits]")
+    (click-prompt state :runner "Install a program from R&D")
+    (click-prompt state :runner "D4v1d")
+    (click-prompt state :runner "Charge a card")
+    (click-card state :runner "D4v1d")
+    (click-prompt state :runner "No action")
+    (is (= 4 (get-counters (get-program state 0) :power)) "4 counters on david")))
+
 (deftest isolation
   ;; Isolation - A resource must be trashed, gain 7c
   (do-game
@@ -4387,6 +4460,26 @@
       (play-from-hand state :runner "Peace in Our Time")
       (is (= 5 (:credit (get-runner))) "Runner cannot play Peace in Our time, still has 5 credits")))
 
+(deftest pinhole-threading
+  (do-game
+    ;;can't access in same server, can't steal/trash agenda
+    (new-game {:runner {:hand ["Imp" "Pinhole Threading"]}
+               :corp {:hand ["Project Beale" "PAD Campaign"]}})
+    (play-from-hand state :corp "PAD Campaign" "New remote")
+    (play-from-hand state :corp "Project Beale" "New remote")
+    (take-credits state :corp)
+    (play-from-hand state :runner "Imp")
+    (play-from-hand state :runner "Pinhole Threading")
+    (click-prompt state :runner "Server 1")
+    (run-continue state)
+    (click-card state :runner "Project Beale")
+    ;; note: Imp does not check to see if the card can be trashed
+    ;;       the ability should fizzle though -nbkelly
+    (is (= ["[Imp] Hosted virus counter: Trash card" "No action"]
+           (mapv :value (:choices (prompt-map :runner)))))
+    (click-prompt state :runner "[Imp] Hosted virus counter: Trash card")
+    (is (= 0 (count (:discard (get-corp)))) "Beale was not trashed")))
+
 (deftest planned-assault
   ;; Planned Assault
   (do-game
@@ -5080,6 +5173,32 @@
       (play-from-hand state :runner "Government Investigations")
       (play-from-hand state :runner "Rigged Results")
       (is (= ["0" "1"] (prompt-buttons :runner)) "Runner can't choose 2 because of Government Investigations")))
+
+(deftest rigging-up
+  ;; Rigging Up - Modded, but you may charge
+  (do-game
+    (new-game {:runner {:hand ["Rigging Up" "D4v1d"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Rigging Up")
+    (click-card state :runner "D4v1d")
+    (click-prompt state :runner "Yes")
+    (is (= 4 (get-counters (get-program state 0) :power)) "Rigging up gave +1 counter"))
+  (do-game
+    (new-game {:runner {:hand ["Rigging Up" "D4v1d"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Rigging Up")
+    (click-card state :runner "D4v1d")
+    (click-prompt state :runner "No")
+    (is (= 3 (get-counters (get-program state 0) :power)) "Rigging up gave no extra counters"))
+  (do-game
+    (new-game {:runner {:hand ["Rigging Up" "Maw"]}})
+    (take-credits state :corp)
+    (changes-val-macro
+      -3 (:credit (get-runner))
+      "saved 3 credits with Rigging up"
+      (play-from-hand state :runner "Rigging Up")
+      (click-card state :runner "Maw")
+      (is (no-prompt? state :runner) "No prompt because maw cannot be charged"))))
 
 (deftest rip-deal
   ;; Rip Deal - replaces number of HQ accesses with heap retrieval

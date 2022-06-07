@@ -1133,6 +1133,36 @@
       (is (second-last-log-contains? state "Runner trashes Corroder, Corroder, Corroder due to meat damage."))
       (is (last-log-contains? state "Runner spends \\[Click\\] and pays 2 \\[Credits\\] to install Corroder."))))
 
+(deftest daeg-first-net-cat
+  ;; Daeg, First Net-Cat - charge on score/steal
+  (do-game
+    (new-game {:runner {:hand ["Daeg, First Net-Cat" "Earthrise Hotel"]}
+               :corp {:hand ["Hostile Takeover"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Earthrise Hotel")
+    (play-from-hand state :runner "Daeg, First Net-Cat")
+    (take-credits state :runner)
+    (let [hotel (get-resource state 0)]
+      (play-and-score state "Hostile Takeover")
+      (changes-val-macro
+        1 (get-counters (refresh hotel) :power)
+        "charge added 1 counter"
+        (click-card state :runner "Earthrise Hotel"))))
+  (do-game
+    (new-game {:runner {:hand ["Daeg, First Net-Cat" "Earthrise Hotel"]}
+               :corp {:hand ["Hostile Takeover"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Earthrise Hotel")
+    (play-from-hand state :runner "Daeg, First Net-Cat")
+    (let [hotel (get-resource state 0)]
+      (run-empty-server state :hq)
+      (click-prompt state :runner "Steal")
+      (changes-val-macro
+        1 (get-counters (refresh hotel) :power)
+        "charge added 1 counter"
+        (click-card state :runner "Earthrise Hotel")))))
+
+
 (deftest daily-casts
   ;; Daily Casts
   ;; Play and tick through all turns of daily casts
@@ -1852,6 +1882,34 @@
         1 (:credit (get-corp))
         "Corp gains 1 from Enhanced Vision forced reveal"
         (run-empty-server state "Archives"))))
+
+(deftest environmental-testing
+  ;; Pops at 4 power counters
+  (do-game
+    (new-game {:runner {:hand ["Environmental Testing" (qty "Spy Camera" 2) (qty "Marjanah" 2)]}})
+    (take-credits state :corp)
+    (core/gain-clicks state :runner 5)
+    (play-from-hand state :runner "Environmental Testing")
+    (let [env (get-resource state 0)]
+      (is (= 0 (get-counters (refresh env) :power)) "starts at 0 counters")
+      (changes-val-macro
+        1 (get-counters (refresh env) :power)
+        "+1 from hardware"
+        (play-from-hand state :runner "Spy Camera"))
+      (changes-val-macro
+        1 (get-counters (refresh env) :power)
+        "+1 from hardware"
+        (play-from-hand state :runner "Spy Camera"))
+      (changes-val-macro
+        1 (get-counters (refresh env) :power)
+        "+1 from program"
+        (play-from-hand state :runner "Marjanah"))
+      (changes-val-macro
+        9 (:credit (get-runner))
+        "Env Testing pops for 9c"
+        (play-from-hand state :runner "Marjanah")
+        (is (find-card "Environmental Testing" (:discard (get-runner)))
+            "Env. Testing was trashed")))))
 
 (deftest fan-site
   ;; Fan Site - Add to score area as 0 points when Corp scores an agenda
@@ -4901,6 +4959,28 @@
       (is (no-prompt? state :runner) "No Feedback Filter brain dmg prevention possible")
       (is (= 1 (:brain-damage (get-runner))) "Took 1 brain damage")
       (is (= 4 (:click (get-runner))) "Didn't gain extra click"))))
+
+(deftest stoneship-library
+  ;; Stoneship Library - Trash to draw 2, trash to charge
+  (do-game
+    (new-game {:runner {:hand ["Stoneship Library"] :deck [(qty "Sure Gamble" 5)]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Stoneship Library")
+    (changes-val-macro
+      2 (count (:hand (get-runner)))
+      "Drew 2 card with stoneship"
+      (card-ability state :runner (get-resource state 0) 0)))
+  (do-game
+    (new-game {:runner {:hand ["Stoneship Library" "Earthrise Hotel"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Stoneship Library")
+    (card-ability state :runner (get-resource state 0) 1)
+    (is (= 0 (count (:discard (get-runner)))) "Stoneship not discarded")
+    (is (no-prompt? state :runner) "No prompt because stoneship wasn't used")
+    (play-from-hand state :runner "Earthrise Hotel")
+    (card-ability state :runner (get-resource state 0) 1)
+    (click-card state :runner "Earthrise Hotel")
+    (is (= 4 (get-counters (get-resource state 0) :power)) "earthrise hotel was charged")))
 
 (deftest street-magic
   ;; Street Magic

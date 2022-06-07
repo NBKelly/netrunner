@@ -777,6 +777,14 @@
      :events [(assoc ability :event :runner-turn-begins)
               (trash-on-empty :credit)]}))
 
+(defcard "Daeg, First Net-Cat"
+  (let [ability {:async true
+                 :interactive (req true)
+                 :msg "charge"
+                 :effect (effect (continue-ability (charge-ability state side eid card) card nil))}]
+    {:events [(assoc ability :event :agenda-scored)
+              (assoc ability :event :agenda-stolen)]}))
+
 (defcard "Data Dealer"
   {:abilities [{:cost [:click 1 :forfeit]
                 :async true
@@ -1034,6 +1042,23 @@
                             (system-msg state :runner (str "uses Enhanced Vision to force the Corp to reveal " (:title target)))
                             (reveal state :corp eid target)))
              :req (req (genetics-trigger? state side :successful-run))}]})
+
+(defcard "Environmental Testing"
+  {:events [{:event :runner-install
+             :silent (req true)
+             :req (req (and (or (hardware? (:card context))
+                                (program? (:card context)))
+                            (not (:facedown? context))))
+             :async true
+             :msg "place 1 power counter on Environmental Testing"
+             :effect (req (add-counter state :runner eid card :power 1 nil))}
+            {:event :counter-added
+             :async true
+             :req (req (<= 4 (get-counters (get-card state card) :power)))
+             :msg "trash itself and gain 9 [Credit]"
+             :effect (req (wait-for (trash state side card {:unpreventable :true
+                                                            :cause-card card})
+                                    (gain-credits state side eid 9)))}]})
 
 (defcard "Fall Guy"
   {:interactions {:prevent [{:type #{:trash-resource}
@@ -2539,6 +2564,18 @@
                             (do (add-counter state side card :power 1)
                                 (gain-clicks state side 1)
                                 (system-msg state side "uses Stim Dealer to gain [Click]"))))}]})
+
+(defcard "Stoneship Library"
+  {:abilities [{:label "Draw 2 cards"
+                :msg "draw 2 cards"
+                :cost [:trash-can]
+                :async true
+                :effect (effect (draw :runner eid 2))}
+               {:label "Charge a card"
+                :req (req (can-charge state side))
+                :cost [:trash-can]
+                :async true
+                :effect (effect (continue-ability (charge-ability state side eid card) card nil))}]})
 
 (defcard "Street Magic"
   (letfn [(runner-break [unbroken-subs]
