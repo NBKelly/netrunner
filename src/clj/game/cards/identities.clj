@@ -1281,6 +1281,15 @@
                                (update-all-ice)
                                (trash eid target {:unpreventable true}))}}}]})
 
+(defcard "Nyusha \"Sable\" Sintashta: Symphonic Prodigy"
+  {:events [(assoc identify-mark-ability :event :runner-turn-begins)
+            {:event :successful-run
+             :interactive (req true)
+             :req (req (and (:marked-server target)
+                            (first-event? state side :successful-run #(:marked-server (first %)))))
+             :msg "gain [Click]"
+             :effect (effect (gain-clicks 1))}]})
+
 (defcard "Ob Superheavy Logistics: Matter Made Easy"
   ;; note - we ensure the card can be installed (asset/upgrade/ice) - condition counters (like patch)
   ;;   are very questionable, and somebody on rules would need to say something to convince me they
