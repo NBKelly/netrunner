@@ -433,6 +433,41 @@
     (play-from-hand state :corp "Big Brother")
     (is (= 3 (count-tags state)) "Runner gained 2 tags")))
 
+(deftest big-deal-happy-path
+  ;; Big Deal - terminal, place 4 advancement tokens, may score if able
+  (do-game
+    (new-game {:corp {:hand ["SDS Drone Deployment" "Big Deal"] :credits 20}})
+    (play-from-hand state :corp "SDS Drone Deployment" "New remote")
+    (core/advance state :corp {:card (get-content state :remote1 0)})
+    (play-from-hand state :corp "Big Deal")
+    (click-card state :corp "SDS Drone Deployment")
+    (is (= 5 (get-counters (get-content state :remote1 0) :advancement)))
+    (click-prompt state :corp "Yes")
+    (is (= 3 (:agenda-point (get-corp))) "Corp scored 3 points")
+    (is (no-prompt? state :corp))))
+
+(deftest big-deal-non-agenda
+  ;; Big Deal - can't score non-agendas
+  (do-game
+    (new-game {:corp {:hand ["NGO Front" "Big Deal"] :credits 20}})
+    (play-from-hand state :corp "NGO Front" "New remote")
+    (play-from-hand state :corp "Big Deal")
+    (click-card state :corp "NGO Front")
+    (is (zero? (:click (get-corp))))
+    (is (= 4 (get-counters (get-content state :remote1 0) :advancement)))
+    (is (no-prompt? state :corp))))
+
+(deftest big-deal-not-enough-advancements
+  ;; Big Deal - no prompt if requirements not met
+  (do-game
+    (new-game {:corp {:hand ["SDS Drone Deployment" "Big Deal"] :credits 20}})
+    (play-from-hand state :corp "SDS Drone Deployment" "New remote")
+    (play-from-hand state :corp "Big Deal")
+    (click-card state :corp "SDS Drone Deployment")
+    (is (zero? (:click (get-corp))))
+    (is (= 4 (get-counters (get-content state :remote1 0) :advancement)))
+    (is (no-prompt? state :corp))))
+
 (deftest bioroid-efficiency-research
   ;; Eli 1.0
   (do-game
