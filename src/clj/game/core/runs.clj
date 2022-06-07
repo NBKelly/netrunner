@@ -615,10 +615,10 @@
               (do (swap! state update-in [:runner :register :successful-run] conj (-> @state :run :server first))
                   (swap! state assoc-in [:run :successful] true)
                   ;; if the server is a mark, add it to the successful run
-                  (let [marked (when (is-mark? state (first (:server (:run @state))))
-                                 {:marked-server true})
-                        keys (conj (select-keys (:run @state) [:server :run-id]) marked)]
-                    (queue-event state :successful-run keys)
+                  (let [marked (is-mark? state (first (:server (:run @state))))
+                        args (cond-> (select-keys (:run @state) [:server :run-id])
+                               marked (assoc :marked-server true))]
+                    (queue-event state :successful-run args)
                     (checkpoint state nil eid))))))
 
 (defn successful-run
