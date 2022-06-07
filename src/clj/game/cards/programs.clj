@@ -1412,6 +1412,15 @@
   (auto-icebreaker {:abilities [(break-sub 1 1 "Code Gate")
                                 (strength-pump 2 4 :end-of-run {:label "add 4 strength (using at least 1 stealth [Credits])" :cost-req (min-stealth 1)})]}))
 
+(defcard "Hyperbaric"
+  (auto-icebreaker {:data {:counter {:power 1}}
+                    :abilities [(break-sub 1 1 "Code Gate")
+                                {:cost [:credit 2]
+                                 :msg "place 1 power counter"
+                                 :async true
+                                 :effect (effect (add-counter eid card :power 1 nil))}]
+                    :strength-bonus (req (get-counters card :power))}))
+
 (defcard "Hyperdriver"
   {:flags {:runner-phase-12 (req true)}
    :abilities [{:label "Remove Hyperdriver from the game to gain [Click] [Click] [Click]"
