@@ -1386,7 +1386,6 @@
                                 (ob-ability target-cost)
                                 card nil)))}]}))
 
-
 (defcard "Omar Keung: Conspiracy Theorist"
   {:abilities [{:cost [:click 1]
                 :msg "make a run on Archives"
