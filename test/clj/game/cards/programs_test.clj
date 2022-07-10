@@ -153,6 +153,34 @@
       (is (:broken (first (:subroutines (get-ice state :rd 0))))
           "The break ability worked")))
 
+(deftest aghora-break-ability-interacts-with-xanadu
+    ;; Break ability targets ice with rez cost 4 or higher when using xanadu
+    (do-game
+      (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                        :hand ["Rototurret"]
+                        :credits 10}
+                 :runner {:hand ["Aghora" "Xanadu"]
+                          :credits 20}})
+      (play-from-hand state :corp "Rototurret" "HQ")
+      (take-credits state :corp)
+      (play-from-hand state :runner "Aghora")
+      (run-on state "HQ")
+      (rez state :corp (get-ice state :hq 0))
+      (run-continue state)
+      (card-ability state :runner (get-program state 0) 0)
+      (is (no-prompt? state :runner) "No break prompt")
+      (run-continue state :movement)
+      (run-jack-out state)
+      (play-from-hand state :runner "Xanadu")
+      (run-on state "HQ")
+      (run-continue state)
+      (card-ability state :runner (get-program state 0) 0)
+      (is (seq (:prompt (get-runner))) "Have a break prompt")
+      (click-prompt state :runner "Trash a program")
+      (click-prompt state :runner "Done")
+      (is (:broken (first (:subroutines (get-ice state :hq 0))))
+          "The break ability worked")))
+
 (deftest algernon-use-successful-run
     ;; Use, successful run
     (do-game
@@ -508,6 +536,39 @@
       (core/gain state :runner :credit 5)
       (run-empty-server state "Server 1")
       (is (zero? (get-counters (get-program state 0) :virus)) "Aumakua does not gain virus counter from ABT-forced trash")))
+
+(deftest aumakua-gang-sign-interaction
+  ;; Gang sign should give turtle counters
+  (do-game
+   (new-game {:corp {:hand ["Hostile Takeover" "NGO Front"]}
+              :runner {:hand ["Aumakua" (qty "Gang Sign" 2)]}})
+   (take-credits state :corp)
+   (play-from-hand state :runner "Aumakua")
+   (play-from-hand state :runner "Gang Sign")
+   (play-from-hand state :runner "Gang Sign")
+   (take-credits state :runner)
+   (play-and-score state "Hostile Takeover")
+   (click-prompt state :runner "Gang Sign")
+   (click-prompt state :runner "No action")
+   (is (= 1 (get-counters (get-program state 0) :virus)) "Aumakua gained a virus counter from the first breach")
+   (click-prompt state :runner "Pay 1 [Credits] to trash")
+   (is (= 1 (get-counters (get-program state 0) :virus)) "Aumakua gained no virus counter from the second breach")))
+
+(deftest aumakua-divide-and-conquer
+  ;; divide and conquer should proc turtle for each access
+  (do-game
+   (new-game {:corp {:discard ["Hostile Takeover"] :deck ["Ice Wall"] :hand ["Ice Wall"]}
+              :runner {:hand ["Aumakua" "Sure Gamble" "Divide and Conquer"]}})
+   (take-credits state :corp)
+   (play-from-hand state :runner "Sure Gamble")
+   (play-from-hand state :runner "Aumakua")
+   (play-run-event state "Divide and Conquer" :archives)
+   (click-prompt state :runner "Steal")
+   (is (= 0 (get-counters (get-program state 0) :virus)) "Aumakua gained no virus counter")
+   (click-prompt state :runner "No action")
+   (is (= 1 (get-counters (get-program state 0) :virus)) "Aumakua gained a virus counter")
+   (click-prompt state :runner "No action")
+   (is (= 2 (get-counters (get-program state 0) :virus)) "Aumakua gained a virus counter")))
 
 (deftest baba-yaga
   ;; Baba Yaga
@@ -1346,7 +1407,7 @@
         (is (nil? (refresh iw)) "Ice Wall should be trashed")
         (is (nil? (refresh chisel)) "Chisel should likewise be trashed"))))
 
-(deftest cats-cradle
+(deftest-pending cats-cradle
   ;; cats cradle: 1str decoder, 1/1 break, code gates cost 1 more
   (do-game
     (new-game {:corp {:hand [(qty "Enigma" 2)] :credits 20}
@@ -1421,6 +1482,21 @@
                            "Used 1 credit from Cloak"
                            (card-ability state :runner refr 1)
                            (click-card state :runner cl)))))
+
+(deftest clot-trashed-on-purge-triggers-reaver
+  (do-game
+    (new-game {:corp {:deck ["Hedge Fund"]}
+               :runner {:deck ["Clot" (qty "Reaver" 5)]}})
+    (starting-hand state :runner ["Clot" "Reaver"])
+    (take-credits state :corp)
+    (play-from-hand state :runner "Clot")
+    (play-from-hand state :runner "Reaver")
+    (take-credits state :runner)
+    (is (= 0 (count (:hand (get-runner)))) "No cards in hand")
+    (core/purge state :corp)
+    (is (= "Clot" (-> (get-runner) :discard first :title)) "Clot was trashed on purge")
+    (is (= 1 (count (:hand (get-runner)))) "Reaver triggered when Clot was trashed")
+    ))
 
 (deftest conduit
   ;; Conduit
@@ -1775,6 +1851,82 @@
         (core/continue state :corp nil)
         (is (= 0 (get-counters (refresh crypsis) :virus)) "Used up virus token on Crypsis"))))
 
+(deftest customized-secretary
+  ;; Customized Secretary - shuffles the stack even when no program is found
+  (do-game
+    (new-game {:runner {:deck ["Aniccam" "Bravado" "Creative Commission" "Deuces Wild" "Encore"]
+                        :hand ["Customized Secretary"]
+                        :credits 50}})
+    (take-credits state :corp)
+    (core/move state :runner (find-card "Aniccam" (:deck (get-runner))) :deck)
+    (core/move state :runner (find-card "Bravado" (:deck (get-runner))) :deck)
+    (core/move state :runner (find-card "Creative Commission" (:deck (get-runner))) :deck)
+    (core/move state :runner (find-card "Deuces Wild" (:deck (get-runner))) :deck)
+    (core/move state :runner (find-card "Encore" (:deck (get-runner))) :deck)
+    (is (= (:title (nth (-> @state :runner :deck) 0)) "Aniccam"))
+    (is (= (:title (nth (-> @state :runner :deck) 1)) "Bravado"))
+    (is (= (:title (nth (-> @state :runner :deck) 2)) "Creative Commission"))
+    (is (= (:title (nth (-> @state :runner :deck) 3)) "Deuces Wild"))
+    (is (= (:title (nth (-> @state :runner :deck) 4)) "Encore"))
+    ;; Stack is now from top to bottom: A B C D E
+    (play-from-hand state :runner "Customized Secretary")
+    (is (not (and (= (:title (nth (-> @state :runner :deck) 0)) "Aniccam")
+              (= (:title (nth (-> @state :runner :deck) 1)) "Bravado")
+              (= (:title (nth (-> @state :runner :deck) 2)) "Creative Commission")
+              (= (:title (nth (-> @state :runner :deck) 3)) "Deuces Wild")
+              (= (:title (nth (-> @state :runner :deck) 4)) "Encore"))))))
+
+(deftest customized-secretary-shuffles-stack-when-last-program-is-hosted
+  ;; Customized Secretary - shuffles the stack when last program is hosted
+  (do-game
+    (new-game {:runner {:deck ["Aniccam" "Bravado" "Cleaver" "Deuces Wild" "Encore"]
+                        :hand ["Customized Secretary"]
+                        :credits 50}})
+    (take-credits state :corp)
+    (core/move state :runner (find-card "Aniccam" (:deck (get-runner))) :deck)
+    (core/move state :runner (find-card "Bravado" (:deck (get-runner))) :deck)
+    (core/move state :runner (find-card "Cleaver" (:deck (get-runner))) :deck)
+    (core/move state :runner (find-card "Deuces Wild" (:deck (get-runner))) :deck)
+    (core/move state :runner (find-card "Encore" (:deck (get-runner))) :deck)
+    (is (= (:title (nth (-> @state :runner :deck) 0)) "Aniccam"))
+    (is (= (:title (nth (-> @state :runner :deck) 1)) "Bravado"))
+    (is (= (:title (nth (-> @state :runner :deck) 2)) "Cleaver"))
+    (is (= (:title (nth (-> @state :runner :deck) 3)) "Deuces Wild"))
+    (is (= (:title (nth (-> @state :runner :deck) 4)) "Encore"))
+    ;; Stack is now from top to bottom: A B C D E
+    (play-from-hand state :runner "Customized Secretary")
+    (click-prompt state :runner "Cleaver")
+    (is (not (and (= (:title (nth (-> @state :runner :deck) 0)) "Aniccam")
+              (= (:title (nth (-> @state :runner :deck) 1)) "Bravado")
+              (= (:title (nth (-> @state :runner :deck) 2)) "Deuces Wild")
+              (= (:title (nth (-> @state :runner :deck) 3)) "Encore"))))))
+
+(deftest customized-secretary-shuffles-stack-when-no-program-is-hosted
+  ;; Customized Secretary - shuffles the stack when no program is hosted
+  (do-game
+    (new-game {:runner {:deck ["Aniccam" "Bravado" "Councilman" "Deuces Wild" "Encore"]
+                        :hand ["Customized Secretary"]
+                        :credits 50}})
+    (take-credits state :corp)
+    (core/move state :runner (find-card "Aniccam" (:deck (get-runner))) :deck)
+    (core/move state :runner (find-card "Bravado" (:deck (get-runner))) :deck)
+    (core/move state :runner (find-card "Councilman" (:deck (get-runner))) :deck)
+    (core/move state :runner (find-card "Deuces Wild" (:deck (get-runner))) :deck)
+    (core/move state :runner (find-card "Encore" (:deck (get-runner))) :deck)
+    (is (= (:title (nth (-> @state :runner :deck) 0)) "Aniccam"))
+    (is (= (:title (nth (-> @state :runner :deck) 1)) "Bravado"))
+    (is (= (:title (nth (-> @state :runner :deck) 2)) "Councilman"))
+    (is (= (:title (nth (-> @state :runner :deck) 3)) "Deuces Wild"))
+    (is (= (:title (nth (-> @state :runner :deck) 4)) "Encore"))
+    ;; Stack is now from top to bottom: A B C D E
+    (play-from-hand state :runner "Customized Secretary")
+    (is (not (and (= (:title (nth (-> @state :runner :deck) 0)) "Aniccam")
+              (= (:title (nth (-> @state :runner :deck) 1)) "Bravado")
+              (= (:title (nth (-> @state :runner :deck) 2)) "Councilman")
+              (= (:title (nth (-> @state :runner :deck) 3)) "Deuces Wild")
+              (= (:title (nth (-> @state :runner :deck) 4)) "Encore"))))
+    (is (no-prompt? state :corp))))
+
 (deftest cyber-cypher
   (do-game
     (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
@@ -1827,14 +1979,14 @@
       (let [had (get-ice state :hq 1)
             iw (get-ice state :hq 0)
             d4 (get-program state 0)]
-        (is (= 3 (get-counters d4 :power)) "D4v1d installed with 3 power tokens")
+        (is (= 3 (get-counters d4 :power)) "D4v1d installed with 3 power counters")
         (run-on state :hq)
         (rez state :corp had)
         (run-continue state)
         (card-ability state :runner d4 0)
         (click-prompt state :runner "End the run")
         (click-prompt state :runner "End the run")
-        (is (= 1 (get-counters (refresh d4) :power)) "Used 2 power tokens from D4v1d to break")
+        (is (= 1 (get-counters (refresh d4) :power)) "Used 2 power counters from D4v1d to break")
         (run-continue state)
         (rez state :corp iw)
         (run-continue state)
@@ -2523,6 +2675,26 @@
         (is (refresh fae) "Faerie not trashed until encounter over")
         (run-continue state)
         (is (find-card "Faerie" (:discard (get-runner))) "Faerie trashed"))))
+
+(deftest faerie-trash-does-not-trigger-dummy-box
+    ;; Faerie trash doesn't trigger Dummy Box
+    (do-game
+      (new-game {:corp {:deck ["Caduceus"]}
+                 :runner {:deck [(qty "Faerie" 2) "Dummy Box"]}})
+      (play-from-hand state :corp "Caduceus" "Archives")
+      (take-credits state :corp)
+      (play-from-hand state :runner "Faerie")
+      (play-from-hand state :runner "Dummy Box")
+      (let [fae (get-program state 0)]
+        (run-on state :archives)
+        (rez state :corp (get-ice state :archives 0))
+        (run-continue state)
+        (card-ability state :runner fae 1)
+        (card-ability state :runner fae 0)
+        (click-prompt state :runner "Trace 3 - Gain 3 [Credits]")
+        (click-prompt state :runner "Trace 2 - End the run")
+        (run-continue state)
+        (is (no-prompt? state :runner) "Dummy Box not prompting to prevent trash"))))
 
 (deftest faerie-works-with-auto-pump-and-break
     ;; Works with auto-pump-and-break
@@ -3424,7 +3596,7 @@
         (card-ability state :runner inv 1)
         (card-ability state :runner inv 1)
         (card-ability state :runner inv 0)
-        (click-prompt state :runner "Trace 3 - Add 1 power counter")
+        (click-prompt state :runner "Trace 3 - Place 1 power counter")
         (run-continue state)
         (click-prompt state :runner "Yes")
         (click-card state :runner "Vanilla")
@@ -4025,7 +4197,28 @@
         (is (= 0 (count (remove :broken (:subroutines (get-ice state :hq 0))))) "Broken all subroutines")
         (core/continue state :corp nil)
         (run-jack-out state)
+        (is (no-prompt? state :runner) "Mayfly not prompting to resolve each of its events")
         (is (= 1 (count (:discard (get-runner)))) "Mayfly trashed when run ends"))))
+
+(deftest mayfly-trash-does-not-trigger-dummy-box
+  ;; Mayfly trash doesn't trigger Dummy Box
+  (do-game
+      (new-game {:corp {:deck ["Spiderweb"]
+                        :credits 20}
+                 :runner {:hand [(qty "Mayfly" 2) "Dummy Box"]
+                          :credits 20}})
+      (play-from-hand state :corp "Spiderweb" "HQ")
+      (rez state :corp (get-ice state :hq 0))
+      (take-credits state :corp)
+      (play-from-hand state :runner "Mayfly")
+      (play-from-hand state :runner "Dummy Box")
+      (let [mayfly (get-program state 0)]
+        (run-on state "HQ")
+        (run-continue state)
+        (core/play-dynamic-ability state :runner {:dynamic "auto-pump-and-break" :card (refresh mayfly)})
+        (core/continue state :corp nil)
+        (run-jack-out state)
+        (is (no-prompt? state :runner) "Dummy Box not prompting to prevent trash"))))
 
 (deftest mimic
   ;; Mimic
@@ -4736,6 +4929,7 @@
         (play-from-hand state :runner "Grimoire")
         (play-from-hand state :runner "Parasite")
         (click-card state :runner arch)
+        (click-prompt state :runner "Grimoire")
         (let [psite (first (:hosted (refresh arch)))]
           (is (= 1 (get-counters (refresh psite) :virus)) "Parasite has 1 counter")
           (take-credits state :runner)
@@ -4814,6 +5008,7 @@
         (play-from-hand state :runner "Grimoire")
         (play-from-hand state :runner "Parasite")
         (click-card state :runner enig)
+        (click-prompt state :runner "Grimoire")
         (let [psite (first (:hosted (refresh enig)))]
           (is (= 1 (get-counters (refresh psite) :virus)) "Parasite has 1 counter")
           (is (= 1 (get-strength (refresh enig))) "Enigma reduced to 1 strength")
@@ -5227,7 +5422,7 @@
      (run-on state "HQ")
      (rez state :corp anansi)
      (run-continue state)
-     ;; boost/break     
+     ;; boost/break
      (changes-val-macro
        -4 (:credit (get-runner))
        "Spent 4 credits matching Anansi strength"
@@ -5265,7 +5460,7 @@
        (click-prompt state :runner "Do 1 net damage")
        (click-prompt state :runner "Rearrange the top 5 cards of R&D")
        (click-prompt state :runner "Draw 1 card, runner draws 1 card"))
-     (run-continue state :movement)     
+     (run-continue state :movement)
      (run-jack-out state)
      (is (= 0 (count (:discard (get-runner)))) "0 cards in discard"))))
 
@@ -5301,7 +5496,98 @@
        "One card added to discard"
        (card-ability state :runner revolver 1)
        (click-prompt state :runner "Draw 1 card, runner draws 1 card"))
-     (run-continue state :movement)     
+     (run-continue state :movement)
+     (run-jack-out state)
+     (is (= 1 (count (:discard (get-runner)))) "1 cards (revolver) in discard"))))
+
+(deftest revolver-automatic-breaking
+  (do-game
+   (new-game {:corp {:hand ["Anansi"] :credits 10}
+              :runner {:hand ["Revolver" "Sure Gamble"] :credits 10}})
+   (play-from-hand state :corp "Anansi" "HQ")
+   (take-credits state :corp)
+   (play-from-hand state :runner "Revolver")
+   (let [anansi (get-ice state :hq 0)
+         revolver (get-program state 0)]
+     (is (= 6 (get-counters revolver :power)) "Starts with 6 counters")
+     (run-on state "HQ")
+     (rez state :corp anansi)
+     (run-continue state)
+     ;; boost/break
+     (changes-val-macro
+       -4 (:credit (get-runner))
+       "Spent 4 credits matching Anansi strength"
+       (changes-val-macro
+         -3 (get-counters (refresh revolver) :power)
+         "Used 3 counters from revolver"
+         (core/play-dynamic-ability state :runner {:dynamic "auto-pump-and-break" :card (refresh revolver)})
+         (core/continue state :corp nil)))
+     (is (= 0 (count (:discard (get-runner)))) "0 cards in discard"))))
+
+(deftest revolver-manual-breaking
+  (do-game
+   (new-game {:corp {:hand ["Anansi"] :credits 10}
+              :runner {:hand ["Revolver" "Sure Gamble"] :credits 10}})
+   (play-from-hand state :corp "Anansi" "HQ")
+   (take-credits state :corp)
+   (play-from-hand state :runner "Revolver")
+   (let [anansi (get-ice state :hq 0)
+         revolver (get-program state 0)]
+     (is (= 6 (get-counters revolver :power)) "Starts with 6 counters")
+     (run-on state "HQ")
+     (rez state :corp anansi)
+     (run-continue state)
+     ;; boost
+     (changes-val-macro
+       -4 (:credit (get-runner))
+       "Spent 4 credits matching Anansi strength"
+       (card-ability state :runner revolver 2)
+       (card-ability state :runner revolver 2))
+     ;; break
+     (changes-val-macro
+       -3 (get-counters (refresh revolver) :power)
+       "Used 3 counters from revolver"
+       (card-ability state :runner revolver 0)
+       (click-prompt state :runner "Do 1 net damage")
+       (click-prompt state :runner "Rearrange the top 5 cards of R&D")
+       (click-prompt state :runner "Draw 1 card, runner draws 1 card"))
+     (run-continue state :movement)
+     (run-jack-out state)
+     (is (= 0 (count (:discard (get-runner)))) "0 cards in discard"))))
+
+(deftest revolver-trash-ability
+  (do-game
+   (new-game {:corp {:hand ["Anansi"] :credits 10}
+              :runner {:hand ["Revolver" "Sure Gamble"] :credits 10}})
+   (play-from-hand state :corp "Anansi" "HQ")
+   (take-credits state :corp)
+   (play-from-hand state :runner "Revolver")
+   (let [anansi (get-ice state :hq 0)
+         revolver (get-program state 0)]
+     (is (= 6 (get-counters revolver :power)) "Starts with 6 counters")
+     (run-on state "HQ")
+     (rez state :corp anansi)
+     (run-continue state)
+     ;; boost
+     (changes-val-macro
+       -4 (:credit (get-runner))
+       "Spent 4 credits matching Anansi strength"
+       (card-ability state :runner revolver 2)
+       (card-ability state :runner revolver 2))
+     ;; break with counters
+     (changes-val-macro
+       -2 (get-counters (refresh revolver) :power)
+       "Used 2 counters from revolver"
+       (card-ability state :runner revolver 0)
+       (click-prompt state :runner "Do 1 net damage")
+       (click-prompt state :runner "Rearrange the top 5 cards of R&D")
+       (click-prompt state :runner "Done"))
+     (changes-val-macro
+       1 (count (:discard (get-runner)))
+       "One card added to discard"
+       (card-ability state :runner revolver 1)
+       (click-prompt state :runner "Draw 1 card, runner draws 1 card"))
+     (run-continue state :movement)
      (run-jack-out state)
      (is (= 1 (count (:discard (get-runner)))) "1 cards (revolver) in discard"))))
 
@@ -5727,6 +6013,28 @@
         (run-continue state)
         (is (not (:run @state)) "Switched to HQ and ended the run from Security Testing")
         (is (= 5 (:credit (get-runner))) "Sneakdoor switched to HQ and earned Security Testing credits"))))
+
+(deftest sneakdoor-beta-deflected-successful-run
+  ;;sneakdoor beta should not access hq when deflected from archives
+  (do-game
+   (new-game {:corp {:hand ["Mind Game"] :deck ["NGO Front"]}
+              :runner {:hand ["Sneakdoor Beta"]}})
+   (play-from-hand state :corp "Mind Game" "Archives")
+   (let [mindgame (get-ice state :archives 0)]
+     (rez state :corp mindgame)
+     (take-credits state :corp)
+     (play-from-hand state :runner "Sneakdoor Beta")
+     (let [sb (get-program state 0)]
+       (card-ability state :runner sb 0)
+       (run-continue state)
+       (fire-subs state (refresh mindgame))
+       (click-prompt state :corp "1 [Credits]")
+       (click-prompt state :runner "0 [Credits]")
+       (click-prompt state :corp "R&D")
+       (click-prompt state :runner "No")
+       (is (= :rd (get-in @state [:run :server 0])) "Run continues on R&D")
+       (run-continue state)
+       (is (= :rd (get-in @state [:run :server 0])) "Run continues on R&D (not HQ)")))))
 
 (deftest sneakdoor-beta-sneakdoor-beta-trashed-during-run
     ;; Sneakdoor Beta trashed during run

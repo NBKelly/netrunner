@@ -689,6 +689,17 @@
       (click-card state :corp (find-card "Urban Renewal" (:hand (get-corp))))
       (is (= "Urban Renewal" (:title (get-content state :remote1 0))) "Asa Group can install an asset in a remote")))
 
+(deftest asa-group-security-through-vigilance-asa-group-should-not-allow-installing-assets-on-central-servers
+    ;; Asa Group should not allow installing assets on central servers
+    (do-game
+      (new-game {:corp {:id "Asa Group: Security Through Vigilance"
+                        :deck ["Pup" "PAD Campaign" "Ben Musashi"]}})
+      (play-from-hand state :corp "Pup" "HQ")
+      (click-card state :corp (find-card "PAD Campaign" (:hand (get-corp))))
+      (is (empty? (get-content state :hq)) "Asa Group did not install asset on central server with its ability")
+      (click-card state :corp (find-card "Ben Musashi" (:hand (get-corp))))
+      (is (= "Ben Musashi" (:title (get-content state :hq 0))) "Asa Group can install an upgrade in a central server")))
+
 (deftest asa-group-security-through-vigilance-asa-group-ordering-correct-when-playing-mirrormorph
     ;; Asa Group ordering correct when playing Mirrormorph
     (do-game
@@ -706,7 +717,7 @@
         (click-card state :corp marilyn)
         (click-prompt state :corp "New remote")
         (is (= "Marilyn Campaign" (:title (get-content state :remote1 0))) "Marilyn is installed as first card")
-        (is (= "Choose a non-agenda in HQ to install" (:msg (prompt-map :corp))))
+        (is (= "Choose a non-agenda card in HQ to install" (:msg (prompt-map :corp))))
         (click-card state :corp herrings)
         (is (= "Red Herrings" (:title (get-content state :remote1 1))) "Red Herrings is installed in Server 1")
         (click-card state :corp vitruvius)
@@ -797,7 +808,7 @@
     (let [rs (get-content state :remote1 0)]
       (rez state :corp rs)
       (click-prompt state :corp "3")
-      (is (= 3 (get-counters (refresh rs) :power)) "Reduced Service should have 3 counters on it")
+      (is (= 3 (get-counters (refresh rs) :power)) "Reduced Service should have 3 counters on itself")
       (take-credits state :corp)
       (take-credits state :runner)
       (card-ability state :corp (get-in @state [:corp :identity]) 0)
@@ -805,7 +816,7 @@
       (is (nil? (refresh rs)) "Reduced Service is picked up")
       (is (find-card "Reduced Service" (:hand (get-corp))) "Reduced Service is now in HQ"))
     (play-from-hand state :corp "Reduced Service" "New remote")
-    (is (zero? (get-counters (get-content state :remote2 0) :power)) "Reduced Service should have 0 counters on it after reinstall")))
+    (is (zero? (get-counters (get-content state :remote2 0) :power)) "Reduced Service should have 0 counters on itself after reinstall")))
 
 (deftest captain-padma-isbister-intrepid-explorer
   (do-game
@@ -1178,23 +1189,23 @@
     (do-game
       (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
                         :hand ["Hedge Fund"]}
-                 :runner {:id "Esa Afontov: Eco-Insurrectionist"
+                 :runner {:id "Esâ Afontov: Eco-Insurrectionist"
                           :hand [(qty "Amped Up" 5)]}})
       (take-credits state :corp)
       (play-from-hand state :runner "Amped Up")
-      (is (last-log-contains? state "uses Esa Afontov: Eco-Insurrectionist to sabotage 2") "Sabotage happened")
+      (is (last-log-contains? state "uses Esâ Afontov: Eco-Insurrectionist to sabotage 2") "Sabotage happened")
       (is (prompt-is-type? state :corp :select) "Corp has sabotage prompt")))
   (testing "Does not trigger on second time"
     (do-game
       (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
                         :hand ["Hedge Fund"]}
-                 :runner {:id "Esa Afontov: Eco-Insurrectionist"
+                 :runner {:id "Esâ Afontov: Eco-Insurrectionist"
                           :hand [(qty "Amped Up" 5)]}})
       (take-credits state :corp)
       (play-from-hand state :runner "Amped Up")
-      (is (last-log-contains? state "uses Esa Afontov: Eco-Insurrectionist to sabotage 2") "Sabotage happened")
+      (is (last-log-contains? state "uses Esâ Afontov: Eco-Insurrectionist to sabotage 2") "Sabotage happened")
       (play-from-hand state :runner "Amped Up")
-      (is (not (last-log-contains? state "uses Esa Afontov: Eco-Insurrectionist to sabotage 2")) "Sabotage did not happen")
+      (is (not (last-log-contains? state "uses Esâ Afontov: Eco-Insurrectionist to sabotage 2")) "Sabotage did not happen")
       (is (empty (:prompt (get-corp))) "no Corp prompt"))))
 
 (deftest ele-smoke-scovak-cynosure-of-the-net-pay-credits-prompt
@@ -2098,7 +2109,7 @@
        (take-credits state :corp)
        (run-on state "R&D")
        (rez state :corp sm)
-       (is (changes-credits (get-corp) 1
+       (is (changes-credits (get-corp) 0
                             (run-continue state))) ;trigger slot machine
        (run-continue state :movement)
        (run-jack-out state)
@@ -3217,6 +3228,67 @@
        (click-prompt state :runner "Take 1 tag")
        (is (no-prompt? state :corp) "No prompt for the Corp for second tag"))))
 
+(deftest near-earth-hub
+  ;; NEH - draws a card when you install a card in a new remote
+  (do-game
+   (new-game {:corp {:id "Near-Earth Hub: Broadcast Center"
+                     :hand [(qty "Advanced Assembly Lines" 5) "PAD Campaign"]
+                     :deck [(qty "Advanced Assembly Lines" 5)]}})
+   (changes-val-macro
+    0 (count (:hand (get-corp)))
+    "Draw 1 card (net 0) with NEH"
+    (play-from-hand state :corp "Advanced Assembly Lines" "New remote"))
+   (changes-val-macro
+    -1 (count (:hand (get-corp)))
+    "NEH does not fire twice"
+    (play-from-hand state :corp "Advanced Assembly Lines" "New remote"))
+   (take-credits state :corp)
+   (rez state :corp (get-content state :remote1 0))
+   (changes-val-macro
+    0 (count (:hand (get-corp)))
+    "NEH on runner turn draws 1"
+    (card-ability state :corp (get-content state :remote1 0) 0)
+    (click-card state :corp "PAD Campaign")
+    (click-prompt state :corp "New remote"))))
+
+(deftest near-earth-hub-install-from-rnd
+  ;; NEH does not fail when installing from R&D
+  (do-game
+   (new-game {:corp {:id "Near-Earth Hub: Broadcast Center"
+                     :hand ["Architect" "Ballista" "Chum" "Drafter"
+                            "Eli 1.0" "Fenris" "Galahad"]}})
+   ;; just starting them in deck has them unordered - need to to it the hard way
+   (core/move state :corp (find-card "Ballista" (:hand (get-corp))) :deck)
+   (core/move state :corp (find-card "Chum" (:hand (get-corp))) :deck)
+   (core/move state :corp (find-card "Drafter" (:hand (get-corp))) :deck)
+   (core/move state :corp (find-card "Eli 1.0" (:hand (get-corp))) :deck)
+   (core/move state :corp (find-card "Fenris" (:hand (get-corp))) :deck)
+   (core/move state :corp (find-card "Galahad" (:hand (get-corp))) :deck)
+   (is (= ["Ballista" "Chum" "Drafter" "Eli 1.0" "Fenris" "Galahad"]
+          (map :title (:deck (get-corp)))) "DECK is BCDEFG")
+   (play-from-hand state :corp "Architect" "HQ")
+   (rez state :corp (get-ice state :hq 0))
+   (take-credits state :corp)
+   (run-on state :hq)
+   (run-continue state)
+   (fire-subs state (get-ice state :hq 0))
+   (changes-val-macro
+    1 (count (:hand (get-corp)))
+    "drew 1 card with neh"
+    (click-prompt state :corp "Ballista")
+    (click-prompt state :corp "New remote"))
+   (is (= ["Drafter" "Eli 1.0" "Fenris" "Galahad"]
+          (map :title (:deck (get-corp)))) "Deck is DEFG")
+   (is (= ["Chum"]
+          (map :title (:hand (get-corp)))) "Hand is chummy")
+   (changes-val-macro
+    -1 (count (:hand (get-corp)))
+    "installed 1 card with architect"
+    (click-card state :corp "Chum")
+    (click-prompt state :corp "New remote"))
+   (is (= "Chum" (:title (get-ice state :remote2 0))))
+   (is (= "Ballista" (:title (get-ice state :remote1 0))))))
+
 (deftest nero-severn-information-broker
   ;; Nero Severn: Information Broker
   (do-game
@@ -3440,8 +3512,8 @@
       (is (= "Trash a card in grip to lower ice strength by 2?" (:msg (prompt-map :runner))))
       (click-prompt state :runner "Yes")))
 
-(deftest nyusha-sable-sintashta
-  ;; Nyusha "Sable" Sintashta start of turn: mark server. First successful run on mark: gain click
+(deftest nyusha-sable-sintashta-symphonic-prodigy
+  ;; Nyusha "Sable" Sintashta = start of turn: mark server. First successful run on mark: gain click
   (do-game
     (new-game {:runner {:id "Nyusha \"Sable\" Sintashta: Symphonic Prodigy"}
                :corp {:hand ["Hedge Fund"] :deck ["Hedge Fund"] :discard ["Hedge Fund"]}})
@@ -3455,7 +3527,7 @@
 (deftest ob-logistics-basic-test
   ;; The ability works, and it works once per turn - depends on Extract to be correct
   (do-game
-   (new-game {:corp {:id "Ob Superheavy Logistics: Matter Made Easy"
+   (new-game {:corp {:id "Ob Superheavy Logistics: Extract. Export. Excel."
                      :hand [(qty "Extract" 3) (qty "Launch Campaign" 2) "PAD Campaign"]
                      :deck [(qty "Prisec" 2) "Anoetic Void" "Ice Wall"]
                      :credits 10}})
@@ -3489,7 +3561,7 @@
   ;; ob-logistics doesn't waive additional costs to rez (ie corp. town)
   (do-game
    ;; can't pay cost
-   (new-game {:corp {:id "Ob Superheavy Logistics: Matter Made Easy"
+   (new-game {:corp {:id "Ob Superheavy Logistics: Extract. Export. Excel."
                      :hand ["Extract" "PAD Campaign"]
                      :deck ["Corporate Town"]
                      :credits 10}})
@@ -3505,7 +3577,7 @@
    (is (not (rezzed? (get-content state :remote2 0))) "Did not rez C. Town"))
   (do-game
    ;; refuse to pay cost
-   (new-game {:corp {:id "Ob Superheavy Logistics: Matter Made Easy"
+   (new-game {:corp {:id "Ob Superheavy Logistics: Extract. Export. Excel."
                      :hand ["Extract" "PAD Campaign" "Hostile Takeover"]
                      :deck ["Corporate Town"]
                      :credits 10}})
@@ -3524,7 +3596,7 @@
    (is (not (rezzed? (get-content state :remote3 0))) "Did not rez C. Town"))
   (do-game
    ;; pay additional cost to rez
-   (new-game {:corp {:id "Ob Superheavy Logistics: Matter Made Easy"
+   (new-game {:corp {:id "Ob Superheavy Logistics: Extract. Export. Excel."
                      :hand ["Extract" "PAD Campaign" "Hostile Takeover"]
                      :deck ["Corporate Town"]
                      :credits 10}})
@@ -3786,6 +3858,8 @@
       (rez state :corp (refresh splicer))
       (is (not (rezzed? (refresh splicer))) "Gene Splicer did not rez")
       (take-credits state :corp)
+      (rez state :corp (refresh splicer))
+      (is (not (rezzed? (refresh splicer))) "Gene Splicer did not rez on the Runner's turn")
       (take-credits state :runner)
       (rez state :corp (refresh splicer))
       (is (rezzed? (refresh splicer)) "Gene Splicer now rezzed")

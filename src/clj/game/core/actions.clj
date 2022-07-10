@@ -20,7 +20,7 @@
     [game.core.prompts :refer [resolve-select]]
     [game.core.props :refer [add-counter add-prop set-prop]]
     [game.core.runs :refer [continue total-run-cost]]
-    [game.core.say :refer [play-sfx system-msg]]
+    [game.core.say :refer [play-sfx system-msg implementation-msg]]
     [game.core.servers :refer [name-zone unknown->kw zones->sorted-names]]
     [game.core.to-string :refer [card-str]]
     [game.core.toasts :refer [toast]]
@@ -558,6 +558,7 @@
         points (get-agenda-points c)]
     (system-msg state :corp (str "scores " (:title c)
                                  " and gains " (quantify points "agenda point")))
+    (implementation-msg state card)
     (set-prop state :corp (get-card state c) :advance-counter 0)
     (swap! state update-in [:corp :register :scored-agenda] #(+ (or % 0) points))
     (play-sfx state side "agenda-score")
@@ -577,17 +578,15 @@
            cost (merge-costs (mapv first additional-costs))
            cost-strs (build-cost-string cost)
            can-pay (can-pay? state side (make-eid state (assoc eid :additional-costs additional-costs)) card (:title card) cost)]
-       (if (string/blank? cost-strs)
-         (resolve-score state side eid card)         
-         (if-not can-pay
-           (effect-completed state side eid) ;; << TODO - toast that corp cannot pay;
-           (wait-for (pay state side (make-eid state
-                                               (assoc eid :additional-costs additional-costs :source card :source-type :corp-score))
-                          nil cost 0)
-                     (let [payment-result async-result]
-                       (if (string/blank? (:msg payment-result))
-                         (effect-completed state side eid)
-                         (do
-                           (system-msg state side (str (:msg payment-result) " to score " (:title card)))
-                           (resolve-score state side eid card)))))))))))
-         
+       (cond
+         (string/blank? cost-strs) (resolve-score state side eid card)
+         (not can-pay) (effect-completed state side eid)
+         :else (wait-for (pay state side (make-eid state
+                                                   (assoc eid :additional-costs additional-costs :source card :source-type :corp-score))
+                              nil cost 0)
+                         (let [payment-result async-result]
+                           (if (string/blank? (:msg payment-result))
+                             (effect-completed state side eid)
+                             (do
+                               (system-msg state side (str (:msg payment-result) " to score " (:title card)))
+                               (resolve-score state side eid card))))))))))
