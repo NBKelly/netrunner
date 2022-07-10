@@ -168,7 +168,8 @@
   "Single ability to break multiple types of ice
   (Greek/Philosopher suite: Adept, Sage, Savant)"
   [first-qty first-type second-qty second-type]
-  {:cost [:credit 2]
+  {:break-cost [:credit 2]
+   :cost [:credit 2]
    :req (req (and (active-encounter? state)
                   (or (and (has-subtype? current-ice first-type)
                            (<= first-qty (count (remove :broken (:subroutines current-ice)))))
@@ -2613,6 +2614,7 @@
   (let [break-req (:break-req (break-sub 1 1 "Code Gate"))]
     (auto-icebreaker {:abilities [{:label "Break X Code Gate subroutines"
                                    :cost [:x-credits]
+                                   :break-cost [:x-credits]
                                    :once :per-run
                                    :req (req (and (break-req state side eid card targets)
                                                   (<= (get-strength current-ice) (get-strength card))))
