@@ -1429,7 +1429,7 @@
         (is (nil? (refresh iw)) "Ice Wall should be trashed")
         (is (nil? (refresh chisel)) "Chisel should likewise be trashed"))))
 
-(deftest-pending cats-cradle
+(deftest cats-cradle
   ;; cats cradle: 1str decoder, 1/1 break, code gates cost 1 more
   (do-game
     (new-game {:corp {:hand [(qty "Enigma" 2)] :credits 20}
@@ -1910,18 +1910,12 @@
     (core/move state :runner (find-card "Cleaver" (:deck (get-runner))) :deck)
     (core/move state :runner (find-card "Deuces Wild" (:deck (get-runner))) :deck)
     (core/move state :runner (find-card "Encore" (:deck (get-runner))) :deck)
-    (is (= (:title (nth (-> @state :runner :deck) 0)) "Aniccam"))
-    (is (= (:title (nth (-> @state :runner :deck) 1)) "Bravado"))
-    (is (= (:title (nth (-> @state :runner :deck) 2)) "Cleaver"))
-    (is (= (:title (nth (-> @state :runner :deck) 3)) "Deuces Wild"))
-    (is (= (:title (nth (-> @state :runner :deck) 4)) "Encore"))
-    ;; Stack is now from top to bottom: A B C D E
-    (play-from-hand state :runner "Customized Secretary")
-    (click-prompt state :runner "Cleaver")
-    (is (not (and (= (:title (nth (-> @state :runner :deck) 0)) "Aniccam")
-              (= (:title (nth (-> @state :runner :deck) 1)) "Bravado")
-              (= (:title (nth (-> @state :runner :deck) 2)) "Deuces Wild")
-              (= (:title (nth (-> @state :runner :deck) 3)) "Encore"))))))
+    (changes-val-macro
+      1
+      (count (core/turn-events state :runner :runner-shuffle-deck))
+      "Runner stack is shuffled"
+      (play-from-hand state :runner "Customized Secretary")
+      (click-prompt state :runner "Cleaver"))))
 
 (deftest customized-secretary-shuffles-stack-when-no-program-is-hosted
   ;; Customized Secretary - shuffles the stack when no program is hosted
@@ -1935,18 +1929,11 @@
     (core/move state :runner (find-card "Councilman" (:deck (get-runner))) :deck)
     (core/move state :runner (find-card "Deuces Wild" (:deck (get-runner))) :deck)
     (core/move state :runner (find-card "Encore" (:deck (get-runner))) :deck)
-    (is (= (:title (nth (-> @state :runner :deck) 0)) "Aniccam"))
-    (is (= (:title (nth (-> @state :runner :deck) 1)) "Bravado"))
-    (is (= (:title (nth (-> @state :runner :deck) 2)) "Councilman"))
-    (is (= (:title (nth (-> @state :runner :deck) 3)) "Deuces Wild"))
-    (is (= (:title (nth (-> @state :runner :deck) 4)) "Encore"))
-    ;; Stack is now from top to bottom: A B C D E
-    (play-from-hand state :runner "Customized Secretary")
-    (is (not (and (= (:title (nth (-> @state :runner :deck) 0)) "Aniccam")
-              (= (:title (nth (-> @state :runner :deck) 1)) "Bravado")
-              (= (:title (nth (-> @state :runner :deck) 2)) "Councilman")
-              (= (:title (nth (-> @state :runner :deck) 3)) "Deuces Wild")
-              (= (:title (nth (-> @state :runner :deck) 4)) "Encore"))))
+    (changes-val-macro
+      1
+      (count (core/turn-events state :runner :runner-shuffle-deck))
+      "Runner stack is shuffled"
+      (play-from-hand state :runner "Customized Secretary"))
     (is (no-prompt? state :corp))))
 
 (deftest cyber-cypher
