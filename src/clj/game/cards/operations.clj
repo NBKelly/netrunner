@@ -1400,6 +1400,40 @@
                                     (str "gives the Runner " (- target (second targets)) " tags"))
                                   (gain-tags eid (- target (second targets))))}}}})
 
+(defcard "Mitosis"
+  (letfn [(mitosis-ability [state side card eid target-cards]
+            (wait-for (corp-install state side (first target-cards) "New remote" nil)
+                      (let [installed-card async-result]
+                        (add-prop state side installed-card :advance-counter 2 {:placed true})
+                        (register-turn-flag!
+                          state side
+                          card :can-rez
+                          (fn [state _ card]
+                            (if (same-card? card installed-card)
+                              ((constantly false) (toast state :corp "Cannot rez due to Mitosis." "Warning"))
+                              true)))
+                        (register-turn-flag!
+                          state side
+                          card :can-score
+                          (fn [state _ card]
+                            (if (same-card? card installed-card)
+                              ((constantly false) (toast state :corp "Cannot score due to Mitosis." "Warning"))
+                              true)))
+                        (if (seq (rest target-cards))
+                          (mitosis-ability state side card eid (rest target-cards))
+                          (effect-completed state side eid)))))]
+    {:on-play
+     {:prompt "Select cards to install in new remotes"
+      :choices {:card #(and (not (operation? %))
+                            (corp? %)
+                            (in-hand? %))
+                :max 2}
+      :msg (msg (if (= 2 (count targets))
+                  "install 2 cards from HQ in new remote servers, and place two advancements on each of them"
+                  "install a card from HQ in a new remote server, and place two advancements on it"))
+      :async true
+      :effect (req (mitosis-ability state side card eid targets))}}))
+
 (defcard "Mushin No Shin"
   {:on-play
    {:prompt "Choose a card to install from HQ"
