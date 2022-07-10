@@ -1209,6 +1209,15 @@
   {:subroutines [(corp-recur)
                  (install-from-hq-or-archives-sub {:ignore-all-cost true})]})
 
+(defcard "Echo"
+  {:events [{:event :rez
+             :req (req (and (has-subtype? (:card context) "Harmonic")
+                            (ice? (:card context))))
+             :effect (effect (add-counter card :power 1))}
+            {:event :counter-added
+             :req (req (same-card? card target))
+             :effect (effect (reset-variable-subs card (get-counters card :power) end-the-run {:variable true :front true}))}]})
+
 (defcard "Eli 1.0"
   {:subroutines [end-the-run
                  end-the-run]
