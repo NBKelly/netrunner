@@ -243,6 +243,16 @@
                                (do (flip-faceup state side target)
                                    (effect-completed state side eid))))}]})
 
+(defcard "August Ivanovsky"
+  {:events [{:event :runner-install
+             :req (req (and (virus-program? (:card context))
+                            (first-event? state side :runner-install #(virus-program? (:card (first %))))))
+             :async true
+             :effect (effect
+                       (continue-ability
+                         (sabotage-ability 1)
+                         card nil))}]})
+
 (defcard "Backstitching"
   ;; only fire the event for one backstitching per encounter (otherwise you have to press no 3x)
   (letfn [(is-min-index [state card]
