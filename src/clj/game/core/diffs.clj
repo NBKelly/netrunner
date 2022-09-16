@@ -251,15 +251,15 @@
     {}
     (:servers (:corp @state))))
 
+(defn prune-cards [cards]
+  (mapv #(select-non-nil-keys % card-keys) cards))
+
 (defn conspiracy-summary
   "Is the player's conspiracy publicly visible?"
   [conspiracy same-side? player]
   (if same-side?
     (prune-cards conspiracy)
     []))
-
-(defn prune-cards [cards]
-  (mapv #(select-non-nil-keys % card-keys) cards))
 
 (defn deck-summary
   "Is the player's deck publicly visible?"

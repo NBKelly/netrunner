@@ -17,7 +17,7 @@
     [game.core.servers :refer [get-server-type name-zone zone->name]]
     [game.core.update :refer [update!]]
     [game.utils :refer [quantify same-card?]]
-    [game.macros :refer [continue-ability req wait-for]]
+    [game.macros :refer [continue-ability req wait-for effect]]
     [jinteki.utils :refer [add-cost-to-label]]
     [clojure.set :as clj-set]
     [clojure.string :as string]))
@@ -1305,21 +1305,51 @@
               (unregister-floating-events state side :end-of-access)
               (effect-completed state side eid))))
 
+(defn breach-conspiracy
+  ([state side eid] (breach-conspiracy state side eid nil))
+  ([state side eid args]
+   (system-msg state side (str "breaches the conspiracy"))
+   (wait-for (trigger-event-sync state side :breach-server :conspiracy)
+             (let [args (clean-access-args args)]
+               (when (:run @state)
+                 (swap! state assoc-in [:run :did-access] true))
+               (wait-for (resolve-ability state side (access-card state side eid (first (get-in @state [:corp :conspiracy]))) nil nil)
+                         (wait-for (trigger-event-sync state side :end-breach-server {:from-server :conspiracy})
+                                   (unregister-floating-effects state side :end-of-access)
+                                   (unregister-floating-events state side :end-of-access)
+                                   (effect-completed state side eid)))))))
+
 (defn breach-server
   "Starts the breach routines for the run's server."
   ([state side eid server] (breach-server state side eid server nil))
   ([state side eid server args]
-   (system-msg state side (str "breaches " (zone->name server)))
-   (wait-for (trigger-event-sync state side :breach-server (first server))
-             (swap! state assoc :breach {:breach-server (first server) :from-server (first server)})
-             (let [args (clean-access-args args)
-                   access-amount (num-cards-to-access state side (first server) nil)]
-               (turn-archives-faceup state side server)
-               (when (:run @state)
-                 (swap! state assoc-in [:run :did-access] true))
-               (wait-for (resolve-ability state side (choose-access access-amount server (assoc args :server server)) nil nil)
-                         (wait-for (trigger-event-sync state side :end-breach-server (:breach @state))
-                                   (swap! state assoc :breach nil)
-                                   (unregister-floating-effects state side :end-of-access)
-                                   (unregister-floating-events state side :end-of-access)
-                                   (effect-completed state side eid)))))))
+   (if (and (= (zone->name server) "HQ")
+            (not (:declined-conspiracy args))
+            (> (count (get-in @state [:corp :conspiracy])) 0))
+     (wait-for (resolve-ability state side
+                                {:optional
+                                  {:async true
+                                  :player :runner
+                                  :prompt "Breach the conspiracy instead of breaching HQ?"
+                                  :waiting-prompt "Waiting for Runner to make a decision"
+                                   :no-ability {:effect (req (wait-for (breach-server state side server (assoc args :declined-conspiracy true))
+                                                                       (effect-completed state side eid)))}
+                                   :yes-ability {:effect (req (wait-for (breach-conspiracy state side args)
+                                                                        (effect-completed state side eid)))}}}
+                                nil nil)
+               (effect-completed state side eid))
+
+     (do (system-msg state side (str "breaches " (zone->name server)))
+         (wait-for (trigger-event-sync state side :breach-server (first server))
+                   (swap! state assoc :breach {:breach-server (first server) :from-server (first server)})
+                   (let [args (clean-access-args args)
+                         access-amount (num-cards-to-access state side (first server) nil)]
+                     (turn-archives-faceup state side server)
+                     (when (:run @state)
+                       (swap! state assoc-in [:run :did-access] true))
+                     (wait-for (resolve-ability state side (choose-access access-amount server (assoc args :server server)) nil nil)
+                               (wait-for (trigger-event-sync state side :end-breach-server (:breach @state))
+                                         (swap! state assoc :breach nil)
+                                         (unregister-floating-effects state side :end-of-access)
+                                         (unregister-floating-events state side :end-of-access)
+                                         (effect-completed state side eid)))))))))
