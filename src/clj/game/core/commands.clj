@@ -7,6 +7,7 @@
                            runner?]]
    [game.core.change-vals :refer [change]]
    [game.core.charge :refer [charge-card]]
+   [game.core.conspire :refer [conspire]]
    [game.core.damage :refer [damage]]
    [game.core.drawing :refer [draw]]
    [game.core.eid :refer [effect-completed make-eid]]
@@ -336,16 +337,7 @@
 (defn command-conspire
   [state side]
   (when (= :corp side)
-    (resolve-ability
-      state side
-      {:prompt "Choose the card to added to your conspiracy."
-       :choices {:card #(and (corp? %)
-                             (in-hand? %))}
-       :effect (req (system-msg "add a card from HQ to their conspiracy")
-                    (when-let [c (first (get-in @state [:corp :conspiracy]))]
-                      (trash state side eid c {:unpreventable true}))
-                    (move state side target :conspiracy))}
-      nil nil)))
+    (conspire state side)))
 
 (defn parse-command
   [text]
