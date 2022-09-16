@@ -9,7 +9,6 @@
    identity
    options
    basic-action-card
-   conspiracy
    deck
    deck-id
    hand
@@ -17,6 +16,9 @@
    scored
    rfg
    play-area
+   current
+   set-aside
+   set-aside-tracking
    servers
    click
    click-per-turn
@@ -43,11 +45,10 @@
      :identity c-identity
      :options options
      :basic-action-card nil
-     :conspiracy []
      :deck deck
      :deck-id deck-id
      :hand []
-     :discard [] :scored [] :rfg [] :play-area []
+     :discard [] :scored [] :rfg [] :play-area [] :current [] :set-aside [] :set-aside-tracking {}
      :servers (map->Servers {:hq {:content [] :ices []}
                              :rd {:content [] :ices []}
                              :archives {:content [] :ices []}})
@@ -73,6 +74,9 @@
    scored
    rfg
    play-area
+   current
+   set-aside
+   set-aside-tracking
    rig
    toast
    click
@@ -109,7 +113,7 @@
      :deck deck
      :deck-id deck-id
      :hand []
-     :discard [] :scored [] :rfg [] :play-area []
+     :discard [] :scored [] :rfg [] :play-area [] :current [] :set-aside [] :set-aside-tracking {}
      :rig (map->Rig {:facedown [] :hardware [] :program [] :resource []})
      :toast []
      :click 0 :click-per-turn 4

@@ -159,19 +159,19 @@
 (declare cards-summary)
 
 (defn card-summary [card state side]
-  (if (not (is-public? card side))
-    (-> (cond-> card
-          (:host card) (-> (dissoc-in [:host :hosted])
-                           (update :host card-summary state side))
-          (:hosted card) (update :hosted cards-summary state side))
-        (private-card))
+  (if (is-public? card side)
     (-> (cond-> card
           (:host card) (-> (dissoc-in [:host :hosted])
                            (update :host card-summary state side))
           (:hosted card) (update :hosted cards-summary state side))
         (playable? state side)
         (card-abilities-summary state side)
-        (select-non-nil-keys card-keys))))
+        (select-non-nil-keys card-keys))
+    (-> (cond-> card
+          (:host card) (-> (dissoc-in [:host :hosted])
+                           (update :host card-summary state side))
+          (:hosted card) (update :hosted cards-summary state side))
+        (private-card))))
 
 (defn cards-summary [cards state side]
   (when (seq cards)
@@ -211,6 +211,7 @@
    :rfg
    :play-area
    :current
+   :set-aside
    :click
    :credit
    :toast
@@ -230,12 +231,12 @@
       (update :play-area cards-summary state side)
       (update :rfg cards-summary state side)
       (update :scored cards-summary state side)
+      (update :set-aside cards-summary state side)
       (update :prompt-state prompt-summary same-side?)
       (select-non-nil-keys (into player-keys additional-keys))))
 
 (def corp-keys
-  [:conspiracy
-   :servers
+  [:servers
    :bad-publicity])
 
 (defn servers-summary
@@ -266,13 +267,6 @@
     (cards-summary hand state side)
     []))
 
-(defn conspiracy-summary
-  "Is the player's conspiracy publicly visible?"
-  [conspiracy same-side? player]
-  (if same-side?
-    (prune-cards conspiracy)
-    []))
-
 (defn discard-summary
   [discard state same-side? side player]
   (if (or same-side? (:openhand player))
@@ -287,11 +281,9 @@
         (update :deck deck-summary corp-player? corp)
         (update :hand hand-summary state corp-player? :corp corp)
         (update :discard discard-summary state corp-player? side corp)
-        (update :conspiracy conspiracy-summary corp-player? corp)
         (assoc
           :deck-count (count (:deck corp))
           :hand-count (count (:hand corp))
-          :conspiracy-count (count (:conspiracy corp))
           :servers (servers-summary state side))
         (cond-> (and corp-player? install-list) (assoc :install-list install-list)))))
 
@@ -410,7 +402,6 @@
    :sfx-current-id
    :start-date
    :stats
-   :subversion
    :trace
    :turn
    :typing

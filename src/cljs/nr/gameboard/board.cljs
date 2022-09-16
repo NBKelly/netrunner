@@ -7,9 +7,9 @@
    [cljs.core.async :refer [<! chan put!] :as async]
    [clojure.string :as s :refer [capitalize ends-with? join lower-case split
                            starts-with?]]
-   [game.core.card :refer [asset? condition-counter? corp? faceup?
-                           get-counters get-title has-subtype? ice? operation? rezzed?
-                           same-card?]]
+   [game.core.card :refer [active? asset? corp? facedown? faceup?
+                           get-counters get-title has-subtype? ice? rezzed?
+                           same-card? operation? condition-counter?]]
    [jinteki.cards :refer [all-cards]]
    [jinteki.utils :refer [add-cost-to-label is-tagged? select-non-nil-keys
                           str->int] :as utils]
@@ -535,47 +535,6 @@
                  (:fired sub) "✅")]])
        subroutines)]))
 
-;; TODO (2020-10-08): We're using json as the transport layer for server-client
-;; communication, so every non-key keyword is converted to a string, which blows.
-;; Until this is changed, it's better to redefine this stuff in here and just not
-;; worry about it.
-
-;; TODO (2021-04-24): If this ever gets fixed, remember to change functions in
-;; button-pane as well.
-(letfn
-  [(is-type?  [card value] (= value (:type card)))
-   (identity? [card] (or (is-type? card "Fake-Identity")
-                         (is-type? card "Identity")))
-   (get-nested-host [card] (if (:host card)
-                             (recur (:host card))
-                             card))
-   (get-zone [card] (:zone (get-nested-host card)))
-   (in-play-area? [card] (= (get-zone card) ["play-area"]))
-   (in-current? [card] (= (get-zone card) ["current"]))
-   (in-scored? [card] (= (get-zone card) ["scored"]))
-   (corp? [card] (= (:side card) "Corp"))
-   (installed? [card] (or (:installed card)
-                          (= "servers" (first (get-zone card)))))
-   (rezzed? [card] (:rezzed card))
-   (runner? [card] (= (:side card) "Runner"))
-   (condition-counter? [card] (is-type? card "Condition"))
-   (facedown? [card] (or (when (not (condition-counter? card))
-                           (= (get-zone card) ["rig" "facedown"]))
-                         (:facedown card)))]
-  (defn active?
-    "Checks if the card is active and should receive game events/triggers."
-    [card]
-    (or (identity? card)
-        (in-play-area? card)
-        (in-current? card)
-        (in-scored? card)
-        (and (corp? card)
-             (installed? card)
-             (rezzed? card))
-        (and (runner? card)
-             (installed? card)
-             (not (facedown? card))))))
-
 (defn card-abilities [card abilities subroutines]
   (let [actions (action-list card)]
     (when (and (= (:cid card) (:source @card-menu))
@@ -648,15 +607,15 @@
                        (:fired sub) "✅")]]))
            subroutines)])])))
 
-(defn face-down?
+(defn draw-facedown?
   "Returns true if the installed card should be drawn face down."
-  [{:keys [facedown host] :as card}]
-  (if (corp? card)
-    (and (not (operation? card))
-         (not (condition-counter? card))
-         (not (rezzed? card))
-         (not= (:side host) "Runner"))
-    facedown))
+  [{:keys [host] :as card}]
+  (or (facedown? card)
+      (and (corp? card)
+           (not (or (operation? card)
+                    (condition-counter? card)
+                    (faceup? card)
+                    (= (:side host) "Runner"))))))
 
 (defn card-view
   [{:keys [zone code type abilities counter
@@ -752,7 +711,7 @@
 
           (doall
            (for [card hosted]
-             (let [flipped (face-down? card)]
+             (let [flipped (draw-facedown? card)]
                ^{:key (:cid card)}
                [card-view card flipped]))))])]))
 
@@ -761,12 +720,12 @@
   (doall (apply concat (for [cards distinct-cards] ; apply concat for one-level flattening
                          (let [hosting (remove #(zero? (count (:hosted %))) cards) ; There are hosted cards on these
                                others (filter #(zero? (count (:hosted %))) cards)
-                               facedowns (filter face-down? others)
-                               others (remove face-down? others)]
+                               facedowns (filter draw-facedown? others)
+                               others (remove draw-facedown? others)]
                            [; Hosting
                             (for [c hosting]
                               ^{:key (:cid c)} [:div.card-wrapper {:class (when (playable? c) "playable")}
-                                                [card-view c (face-down? c)]])
+                                                [card-view c (draw-facedown? c)]])
                             ; Facedown
                             (for [c facedowns]
                               ^{:key (:cid c)} [:div.card-wrapper {:class (when (playable? c) "playable")}
@@ -775,7 +734,7 @@
                             (when (not-empty others)
                               (if (= 1 (count others))
                                 (let [c (first others)
-                                      flipped (face-down? c)]
+                                      flipped (draw-facedown? c)]
                                   ^{:key (:cid c)}
                                   [:div.card-wrapper {:class (when (playable? c) "playable")}
                                    [card-view c flipped]])
@@ -786,7 +745,7 @@
   [:div.stacked
    (doall
      (for [c cards]
-       (let [flipped (face-down? c)]
+       (let [flipped (draw-facedown? c)]
          ^{:key (:cid c)} [:div.card-wrapper {:class (when (playable? c) "playable")}
                            [card-view c flipped]])))])
 
@@ -886,7 +845,7 @@
        ; deck-count is only sent to live games and does not exist in the replay
        (let [deck-count-number (if (nil? @deck-count) (count @deck) @deck-count)]
          [:div.deck-container (drop-area title {})
-          [:div.blue-shade.deck {:on-click (when (= render-side player-side)
+          [:div.blue-shade.deck {:on-click (when (and (= render-side player-side) (not-spectator?))
                                              #(let [popup-display (-> (content-ref @board-dom) .-style .-display)]
                                                 (if (or (empty? popup-display)
                                                         (= "none" popup-display))
@@ -934,8 +893,7 @@
 (defn discard-view-corp [player-side discard]
   (let [s (r/atom {})]
     (fn [player-side discard]
-      (let [faceup? #(or (:seen %) (:rezzed %))
-            draw-card #(if (faceup? %1)
+      (let [draw-card #(if (faceup? %1)
                          [card-view %1 nil %2]
                          (if (or (= player-side :corp)
                                  (spectator-view-hidden?))
@@ -977,7 +935,6 @@
                              [:div [card-view card]]])
                           @cards))
            [label @cards {:opts {:name name}}]
-
            (when popup
              [:div.panel.blue-shade.popup {:ref #(swap! dom assoc :rfg-popup %)
                                            :class "opponent"}
@@ -1063,7 +1020,7 @@
         (doall
           (for [card content]
             (let [is-first (= card (first content))
-                  flipped (not (:rezzed card))]
+                  flipped (not (faceup? card))]
               [:div.server-card {:key (:cid card)
                                  :class (str (when central-view "central ")
                                              (when (or central-view
@@ -1103,7 +1060,7 @@
       [:div.stacked
        (doall (for [card content]
                 (let [is-first (= card (first content))
-                      flipped (not (:rezzed card))]
+                      flipped (not (faceup? card))]
                   [:div.server-card {:key (:cid card)
                                      :class (str (when (and (< 1 (count content)) (not is-first))
                                                    "shift"))}
@@ -1941,7 +1898,8 @@
         runner (r/cursor game-state [:runner])
         active-player (r/cursor game-state [:active-player])
         zoom-card (r/cursor app-state [:zoom])
-        background (r/cursor app-state [:options :background])]
+        background (r/cursor app-state [:options :background])
+        custom-bg-url (r/cursor app-state [:options :custom-bg-url])]
 
     (go (while true
           (let [zoom (<! zoom-channel)]
@@ -1987,7 +1945,6 @@
        :reagent-render
        (fn []
         (when (and @corp @runner @side true)
-                    (not-empty @game-state))
            (let [me-side (if (= :spectator @side) :corp @side)
                  op-side (utils/other-side me-side)
                  me (r/cursor game-state [me-side])
@@ -2007,9 +1964,6 @@
                  ;; discards
                  me-discard (r/cursor game-state [me-side :discard])
                  op-discard (r/cursor game-state [op-side :discard])
-                 ;; conspiracy
-                 conspiracy (r/cursor game-state [:corp :conspiracy])
-                 conspiracy-count (r/cursor game-state [:corp :conspiracy-count])
                  ;; user settings
                  me-user (r/cursor game-state [me-side :user])
                  op-user (r/cursor game-state [op-side :user])
@@ -2043,7 +1997,11 @@
                                  :runner (get-in @game-state [:runner :user :options :background] "lobby-bg")
                                  :corp (get-in @game-state [:corp :user :options :background] "lobby-bg")
                                  :spectator @background)
-                               @background)}]
+                               @background)
+                         :style (if (= @background "custom-bg")
+                                  {:background (str "url(\"" @custom-bg-url "\")")
+                                   :background-size "cover"}
+                                  {})}]
 
                [:div.right-pane
                 [card-zoom-view zoom-card]
@@ -2062,7 +2020,7 @@
 
                [:div.leftpane
                 [:div.opponent
-                 [hand-view op-side op-hand op-hand-size op-hand-count (atom nil) (= @side :spectator) "opponent"]]
+                 [hand-view op-side op-hand op-hand-size op-hand-count (atom nil) (= @side :spectator)]]
 
                 [:div.inner-leftpane
                  [audio-component sfx]
@@ -2077,9 +2035,11 @@
 
                  [:div.right-inner-leftpane
                   (let [op-rfg (r/cursor game-state [op-side :rfg])
+                        op-set-aside (r/cursor game-state [op-side :set-aside])
                         op-current (r/cursor game-state [op-side :current])
                         op-play-area (r/cursor game-state [op-side :play-area])
                         me-rfg (r/cursor game-state [me-side :rfg])
+                        me-set-aside (r/cursor game-state [me-side :set-aside])
                         me-current (r/cursor game-state [me-side :current])
                         me-play-area (r/cursor game-state [me-side :play-area])]
                     [:div
@@ -2087,14 +2047,12 @@
                        [starting-timestamp @start-date @timer])
                      [rfg-view op-rfg (tr [:game.rfg "Removed from the game"]) true]
                      [rfg-view me-rfg (tr [:game.rfg "Removed from the game"]) true]
+                     [rfg-view op-set-aside (tr [:game.set-aside "Set aside"]) true]
+                     [rfg-view me-set-aside (tr [:game.set-aside "Set aside"]) true]
                      [play-area-view op-user (tr [:game.play-area "Play Area"]) op-play-area]
                      [play-area-view me-user (tr [:game.play-area "Play Area"]) me-play-area]
                      [rfg-view op-current (tr [:game.current "Current"]) false]
-                     [rfg-view me-current (tr [:game.current "Current"]) false]
-                     [play-area-view me-user (tr [:game.conspiracy "Conspiracy"])
-                      (if (= @conspiracy-count (count @conspiracy)) ; Fill up conspiracy with facedowns if Runner
-                        conspiracy
-                        (r/atom [{:side "Corp"}]))]])
+                     [rfg-view me-current (tr [:game.current "Current"]) false]])
                   (when-not (= @side :spectator)
                     [button-pane {:side me-side :active-player active-player :run run :encounters encounters
                                   :end-turn end-turn :runner-phase-12 runner-phase-12
@@ -2102,7 +2060,7 @@
                                   :me me :opponent opponent :prompt-state prompt-state}])]]
 
                 [:div.me
-                 [hand-view me-side me-hand me-hand-size me-hand-count prompt-state true "me"]]]]
+                 [hand-view me-side me-hand me-hand-size me-hand-count prompt-state true]]]]
               (when (:replay @game-state)
                 [:div.bottompane
                  [replay-panel]])])))})))

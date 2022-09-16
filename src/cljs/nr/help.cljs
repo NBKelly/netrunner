@@ -15,6 +15,9 @@
    {:name "/card-info"
     :usage "/card-info"
     :help "display debug info about a card (player's own cards only)"}
+   {:name "/charge"
+    :usage "/charge"
+    :help "Charge an installed card"}
    {:name "/clear-win"
     :usage "/clear-win"
     :help "requests game to clear the current win state.  Requires both players to request it"}
@@ -78,6 +81,9 @@
     :has-args :required
     :usage "/link n"
     :help "Set your link to n"}
+   {:name "/mark"
+    :usage "/mark"
+    :help "Identify your mark"}
    {:name "/memory"
     :has-args :required
     :usage "/memory n"
@@ -121,12 +127,10 @@
     :has-args :required
     :usage "/roll n"
     :help "Roll an n-sided die"}
-   {:name "/save-replay"
-    :usage "/save-replay"
-    :help "Save a replay of the game"}
-   {:name "/show-hand"
-    :usage "/show-hand"
-    :help "Shows your hand in the chat log (does not proc reveal triggers)"}
+   {:name "/sabotage"
+    :has-args :required
+    :usage "/sabotage n"
+    :help "Sabotage n cards"}
    {:name "/save-replay"
     :usage "/save-replay"
     :help "Save a replay of the game"}
@@ -163,6 +167,9 @@
     :has-args :required
     :usage "/trace n"
     :help "Start a trace with base strength n (Corp only)"}
+   {:name "/trash"
+    :usage "/trash"
+    :help "Trash an installed card"}
    {:name "/undo-click"
     :usage "/undo-click"
     :help "Resets the game back to start of the click.  One click only retained. Only allowed for active player"}

@@ -143,6 +143,8 @@
      :confirm-delete "Confirm Delete"
      :edit "Edit"
      :delete "Delete"
+     :copy "Copy"
+     :deck-copy-suffix "copy"
      :clear-stats "Clear Stats"
      :create-game "Create Game"
      :deck-name "Deck name"
@@ -397,7 +399,7 @@
    :heap "Heap"
    :card-count (fn [[size]] (str size " card" (when (not= 1 size) "s") "."))
    :face-down-count (fn [[total face-up]] (str total " cards, " (- total face-up) " face-down."))
-   :up-down-count (fn [[total face-up]] (str face-up "↑ " (- total face-up) "↓"))
+   :up-down-count (fn [[total face-up]] (str face-up "↑ " (- total face-up) "↓"))
    :initiation "Initiation"
    :approach-ice "Approach ice"
    :encounter-ice "Encounter ice"
@@ -794,7 +796,7 @@
    :heap "堆阵"
    :card-count (fn [[size]] (str size "张卡牌。"))
    :face-down-count (fn [[total face-up]] (str total "张卡牌，" (- total face-up) "张牌面朝下。"))
-   :up-down-count (fn [[total face-up]] (str face-up "↑ " (- total face-up) "↓"))
+   :up-down-count (fn [[total face-up]] (str face-up "↑ " (- total face-up) "↓"))
    :initiation "发起潜袭"
    :approach-ice "接驳防火墙"
    :encounter-ice "遭遇防火墙"
@@ -1193,7 +1195,7 @@
    :heap "Eaphay"
    :card-count (fn [[size]] (str size " ardcay" (when (not= 1 size) "s") "."))
    :face-down-count (fn [[total face-up]] (str total " ardscay, " (- total face-up) " acefay-ownday."))
-   :up-down-count (fn [[total face-up]] (str face-up "↑ " (- total face-up) "↓"))
+   :up-down-count (fn [[total face-up]] (str face-up "↑ " (- total face-up) "↓"))
    :initiation "Initiationyay"
    :approach-ice "Approachyay iceyay"
    :encounter-ice "Encounteryay iceyay"
@@ -1621,7 +1623,7 @@
    :heap "Tas"
    :card-count (fn [[size]] (str size " carte" (when (not= 1 size) "s") "."))
    :face-down-count (fn [[total face-up]] (str total " cartes, " (- total face-up) " face cachée."))
-   :up-down-count (fn [[total face-up]] (str face-up "↑ " (- total face-up) "↓"))
+   :up-down-count (fn [[total face-up]] (str face-up "↑ " (- total face-up) "↓"))
    :initiation "Initiation"
    :approach-ice "Approcher la glace"
    :encounter-ice "Rencontrer la glace"
@@ -2486,7 +2488,7 @@
    :win-conceded (fn [[turn]] (str "wygrywa przez poddanie się przeciwnika w " turn " turze."))
    :win-claimed (fn [[turn]] (str "wygrywa przez zgłoszenie wygranej w " turn " turze."))
    :win-points (fn [[turn]] (str "wygrywa przez zdobycie punktów zwycięstwa w " turn " turze."))}
-   }
+   } 
    })
 
 (defn opts [] {:dict translation-dictionary})

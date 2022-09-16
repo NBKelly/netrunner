@@ -158,7 +158,7 @@
    (click-prompt state :corp "Enigma")
    (is (changes-credits (get-corp) 0
                         (click-prompt state :corp "New remote")))
-   (is (rezzed? (get-ice state :remote2 0)) "Enigma was installed and rezzed, both at no cost")
+   (is (faceup? (get-ice state :remote2 0)) "Enigma was installed and rezzed, both at no cost")
    (play-and-score state "Architect Deployment Test")
    (click-prompt state :corp "OK")
    (click-prompt state :corp "Cancel")
@@ -168,13 +168,13 @@
    (click-prompt state :corp "Rashida Jaheem")
    (is (changes-credits (get-corp) 0
                         (click-prompt state :corp "Server 2")))
-   (is (rezzed? (get-content state :remote2 0)) "Rashida Jaheem was installed and rezzed, both at no cost")
+   (is (faceup? (get-content state :remote2 0)) "Rashida Jaheem was installed and rezzed, both at no cost")
    (play-and-score state "Architect Deployment Test")
    (click-prompt state :corp "OK")
    (click-prompt state :corp "Oaktown Renovation")
    (click-prompt state :corp "New remote")
    (is (= "Oaktown Renovation" (:title (get-content state :remote6 0))) "Oaktown Renovation was installed")
-   (is (rezzed? (get-content state :remote6 0)) "Oaktown Renovation is installed faceup.")
+   (is (faceup? (get-content state :remote6 0)) "Oaktown Renovation is installed faceup.")
    (play-and-score state "Architect Deployment Test")
    (click-prompt state :corp "OK")
    (is (empty (:prompt (get-corp))) "No prompts if there is no ice")))
@@ -430,7 +430,7 @@
    (is (= 0 (count (:discard (get-corp)))) "Did not trashed PAD Campaign")
    (is (= 0 (count (:scored (get-corp)))) "Azef Protocol not scored")))
 
-(deftest-pending azef-protocol-cant-target-self
+(deftest ^:kaocha/pending azef-protocol-cant-target-self
   ;; Azef Protocol can't trash itself to pay its cost
   (do-game
    (new-game {:corp {:hand ["Azef Protocol", "PAD Campaign"]}
@@ -1160,6 +1160,14 @@
       (click-card state :corp (refresh iwall))
       (is (not (rezzed? (refresh iwall))) "ice wall was derezzed"))))
 
+(deftest elivagar-bifurcation-declined
+  ;; Élivágar Bifurcation score effect is optional
+  (do-game
+    (new-game {:corp {:hand ["Élivágar Bifurcation"]}})
+    (play-and-score state "Élivágar Bifurcation")
+    (click-prompt state :corp "Done")
+    (is (no-prompt? state :corp))))
+
 (deftest eden-fragment
   ;; Test that Eden Fragment ignores the install cost of the first ice
   (do-game
@@ -1448,8 +1456,8 @@
             dbs (get-content state :remote1 0)]
         (rez state :corp dbs)
         (card-ability state :corp fs 0)
-        (is (= (count (:hand (get-corp))) 3) "Drew 3 cards with DBS")
-        (click-card state :corp (find-card "Chiyashi" (:hand (get-corp))))
+        (is (= (count (:set-aside (get-corp))) 3) "Drew 3 cards with DBS")
+        (click-card state :corp (find-card "Chiyashi" (:set-aside (get-corp))))
         (is (= "Chiyashi" (:title (last (:deck (get-corp))))) "Chiyashi at the bottom")
         (click-card state :corp (find-card "Brainstorm" (:hand (get-corp))))
         (is (= "Brainstorm" (:title (first (:deck (get-corp))))) "Brainstorm now on top"))))
@@ -2469,7 +2477,7 @@
     (core/gain state :corp :click 3)
     (play-from-hand state :corp "Oaktown Renovation" "New remote")
     (let [oak (get-content state :remote1 0)]
-      (is (rezzed? (refresh oak)) "Oaktown installed face up")
+      (is (faceup? (refresh oak)) "Oaktown installed face up")
       (advance state oak)
       (is (= 6 (:credit (get-corp))) "Spent 1 credit to advance, gained 2 credits from Oaktown")
       (play-from-hand state :corp "Shipment from SanSan")
@@ -2824,7 +2832,7 @@
       (take-credits state :corp)
       (play-from-hand state :runner "Film Critic")
       (run-empty-server state :hq)
-      (is (= "You access Project Vacheron. Host it on Film Critic?" (:msg (prompt-map :runner))))
+      (is (= "Host Project Vacheron on Film Critic?" (:msg (prompt-map :runner))))
       (click-prompt state :runner "Yes") ; host on Film Critic
       (card-ability state :runner (get-resource state 0) 0)
       ;; remove counters
@@ -3276,6 +3284,23 @@
     (play-and-score state "Regenesis")
     (click-card state :corp "Obokata Protocol")
     (is (= 5 (:agenda-point (get-corp))) "3+1+1 agenda points from obo + regen + regen")))
+
+(deftest regenesis-extra-score-not-prevented-by-runner-discard
+  (do-game
+    (new-game {:corp {:deck [(qty "Regenesis" 6)]
+                      :hand ["Bio-Ethics Association"]
+                      :discard ["Obokata Protocol"]}
+               :runner {:deck [(qty "Sure Gamble" 5)]}})
+    (play-from-hand state :corp "Bio-Ethics Association" "New remote")
+    (rez state :corp (get-content state :remote1 0))
+    (take-credits state :corp)
+    (take-credits state :runner)
+    (is (= 1 (count (:discard (get-runner)))))
+    (play-and-score state "Regenesis")
+    (prompt-is-card? state :corp (get-content state :scored-area 0))
+    (prompt-is-type? state :corp :choice)
+    (click-card state :corp "Obokata Protocol")
+    (is (= 4 (:agenda-point (get-corp))) "3+1 agenda points from obo + regen")))
 
 (deftest remastered-edition
   ;; Remastered Edition
@@ -4310,8 +4335,8 @@
         (is (= :this-turn (:installed (get-resource state 1))))
         (is (= 2 (count (:hand (get-runner)))) "Runner doesn't take damage when scored")
         (take-credits state :corp)
-        (is (= 5 (count (:hand (get-runner)))) "Runner takes damage before resolving The Class Act")
-        (click-card state :runner (find-card "Sure Gamble" (:hand (get-runner))))
+        (is (= 5 (count (:set-aside (get-runner)))) "Runner takes damage before resolving The Class Act")
+        (click-card state :runner (find-card "Sure Gamble" (:set-aside (get-runner))))
         (is (= 4 (count (:hand (get-runner)))) "Runner draws from The Class Act after taking damage")))
     (testing "Scored on the runner's turn"
       (do-game
@@ -4330,9 +4355,9 @@
         (click-prompt state :runner "No action")
         (is (= 2 (count (:hand (get-runner)))) "Runner doesn't take damage when scored")
         (take-credits state :runner)
-        (is (= 5 (count (:hand (get-runner)))) "Runner doesn't take the damage until after resolving The Class Act")
-        (click-card state :runner (find-card "Sure Gamble" (:hand (get-runner))))
-        (is (= 5 (count (:hand (get-runner)))) "Runner takes damage at end of turn"))))
+        (is (= 3 (count (:set-aside (get-runner)))) "Runner doesn't take the damage until after resolving The Class Act")
+        (click-card state :runner (find-card "Sure Gamble" (:set-aside (get-runner))))
+        (is (= 0 (count (:hand (get-runner)))) "Runner takes damage at end of turn"))))
 
 (deftest voting-machine-initiative-voting-machine-initiative
     ;; Voting Machine Initiative

@@ -17,7 +17,7 @@
     [game.core.servers :refer [get-server-type name-zone zone->name]]
     [game.core.update :refer [update!]]
     [game.utils :refer [quantify same-card?]]
-    [game.macros :refer [continue-ability req wait-for effect]]
+    [game.macros :refer [continue-ability req wait-for]]
     [jinteki.utils :refer [add-cost-to-label]]
     [clojure.set :as clj-set]
     [clojure.string :as string]))
@@ -162,8 +162,8 @@
 (defn steal-cost-bonus
   "Applies a cost to the next steal attempt. costs can be a vector of [:key value] pairs,
   for example [:credit 2 :click 1]."
-  ([state side costs] (steal-cost-bonus state side costs nil))
-  ([state side costs source]
+  ([state _ costs] (steal-cost-bonus state nil costs nil))
+  ([state _ costs source]
     (swap! state update-in [:bonus :steal-cost] #(conj % [costs source]))))
 
 (defn steal-cost
@@ -328,6 +328,23 @@
     (assoc (ability-as-handler card acc)
            :condition :accessed)))
 
+(defn installed-access-trigger
+  "Effect for triggering ambush on access.
+  Ability is what happends upon access. If cost is specified Corp needs to pay that to trigger."
+  ([cost ability]
+   (let [ab (if (pos? cost) (assoc ability :cost [:credit cost]) ability)
+         prompt (if (pos? cost)
+                  (req (str "Pay " cost " [Credits] to use " (:title card) " ability?"))
+                  (req (str "Use " (:title card) " ability?")))]
+     (installed-access-trigger cost ab prompt)))
+  ([cost ability prompt]
+   (let [cost (if (number? cost) [:credit cost] cost)]
+     {:access {:optional
+               {:req (req (and installed (can-pay? state :corp eid card nil cost)))
+                :waiting-prompt (:waiting-prompt ability)
+                :prompt prompt
+                :yes-ability (dissoc ability :waiting-prompt)}}})))
+
 (defn- access-trigger-events
   "Trigger access effects, then move into trash/steal choice."
   [state side eid c title args]
@@ -360,13 +377,19 @@
 (defn access-cost-bonus
   "Applies a cost to the next access. costs can be a vector of [:key value] pairs,
   for example [:credit 2 :click 1]."
-  [state side costs]
+  [state _ costs]
   (swap! state update-in [:bonus :access-cost] #(merge-costs (concat % costs))))
 
 (defn access-cost
   "Gets a vector of costs for accessing the given card."
-  [state side]
+  [state _]
   (merge-costs (get-in @state [:bonus :access-cost])))
+
+(defn- refused-access-cost
+  "The runner refused to pay (or could not pay) to access"
+  [state side eid]
+  (swap! state dissoc :access)
+  (effect-completed state side eid))
 
 (defn- access-pay
   "Force the runner to pay any costs to access this card, if any, before proceeding with access."
@@ -395,11 +418,11 @@
            :choices choices
            :effect (req (if (or (= "OK" target)
                                 (= "No action" target))
-                          (access-end state side eid accessed-card)
+                          (refused-access-cost state side eid)
                           (wait-for (pay state side accessed-card cost)
                                     (if-let [payment-str (:msg async-result)]
                                       (access-trigger-events state side eid accessed-card title (assoc args :cost-msg payment-str))
-                                      (access-end state side eid accessed-card)))))})
+                                      (refused-access-cost state side eid)))))})
         nil nil)
       ;; There are no access costs
       :else
@@ -427,7 +450,7 @@
              (access-pay state side eid card title args))))
 
 (defn set-only-card-to-access
-  [state side card]
+  [state _ card]
   (swap! state assoc-in [:run :only-card-to-access] card))
 
 (defn get-only-card-to-access
@@ -443,7 +466,7 @@
 (defn get-all-content [content]
   (remove condition-counter? (concat content (get-all-hosted content))))
 
-(defn root-content
+(defn- root-content
   ([state server]
    (->> (get-in @state [:corp :servers server :content])
         get-all-content
@@ -453,7 +476,7 @@
 
 ;;; Methods for allowing user-controlled multi-access in servers.
 (defmulti must-continue?
-  (fn [state already-accessed-fn amount-access args]
+  (fn [_state _already-accessed-fn _amount-access args]
     (get-server-type (first (:server args)))))
 
 (defmethod must-continue? :remote
@@ -476,7 +499,6 @@
   (let [current-available (set (map :cid (root-content state (first server))))
         already-accessed (clj-set/intersection already-accessed current-available)
         already-accessed-fn (fn [card] (contains? already-accessed (:cid card)))
-
         available (root-content state (first server) already-accessed-fn)]
     (when (and (seq available) (must-continue? state already-accessed-fn access-amount args))
       (if (= 1 (count available))
@@ -504,7 +526,7 @@
 
 (defmulti choose-access
   ;; choose-access implements game prompts allowing the runner to choose the order of access
-  (fn [access-amount server args]
+  (fn [_access-amount server _args]
     (get-server-type (first server))))
 
 (defmethod choose-access :remote
@@ -546,7 +568,7 @@
     (f (get-in @state [:corp :deck]))))
 
 (defmethod must-continue? :rd
-  [state already-accessed-fn access-amount {:keys [no-root] :as args}]
+  [state already-accessed-fn access-amount {:keys [no-root]}]
   (let [max-access (:max-access (:run @state))
         total-mod (:total-mod access-amount 0)
         limit-reached? (when max-access
@@ -726,7 +748,7 @@
                     (effect-completed state side eid))))})
 
 (defmethod must-continue? :hq
-  [state already-accessed-fn access-amount {:keys [no-root] :as args}]
+  [state already-accessed-fn access-amount {:keys [no-root]}]
   (let [max-access (:max-access (:run @state))
         total-mod (:total-mod access-amount 0)
         limit-reached? (when max-access
@@ -986,7 +1008,7 @@
               (get-in @state [:corp :discard]))))
 
 (defmethod must-continue? :archives
-  [state already-accessed-fn access-amount {:keys [no-root] :as args}]
+  [state already-accessed-fn access-amount {:keys [no-root]}]
   (let [max-access (:max-access (:run @state))
         total-mod (:total-mod access-amount 0)
         limit-reached? (when max-access
@@ -1283,49 +1305,21 @@
               (unregister-floating-events state side :end-of-access)
               (effect-completed state side eid))))
 
-(defn breach-conspiracy
-  ([state side eid] (breach-conspiracy state side eid nil))
-  ([state side eid args]
-   (system-msg state side (str "breaches the conspiracy"))
-   (wait-for (trigger-event-sync state side :breach-server :conspiracy)
-             (let [args (clean-access-args args)]
-               (when (:run @state)
-                 (swap! state assoc-in [:run :did-access] true))
-               (wait-for (resolve-ability state side (access-card state side eid (first (get-in @state [:corp :conspiracy]))) nil nil)
-                         (wait-for (trigger-event-sync state side :end-breach-server {:from-server :conspiracy})
-                                   (unregister-floating-effects state side :end-of-access)
-                                   (unregister-floating-events state side :end-of-access)
-                                   (effect-completed state side eid)))))))
-
 (defn breach-server
   "Starts the breach routines for the run's server."
   ([state side eid server] (breach-server state side eid server nil))
-  ([state side eid server {:keys [no-root access-first declined-conspiracy] :as args}]
-   (if (and (= (zone->name server) "HQ")
-            (not declined-conspiracy)
-            (> (count (get-in @state [:corp :conspiracy])) 0))
-     (resolve-ability state side eid
-                      {:optional
-                       {:async true
-                        :player :runner
-                        :prompt "Breach the conspiracy instead of breaching HQ?"
-                        :waiting-prompt "Waiting for Runner to make a decision"
-                        :no-ability {:async true
-                                     :effect (effect (breach-server server eid (assoc args :declined-conspiracy true)))}
-                        :yes-ability {:async true
-                                      :effect (effect (breach-conspiracy eid args))}}}
-                      nil nil)
-     (do (system-msg state side (str "breaches " (zone->name server)))
-         (wait-for (trigger-event-sync state side :breach-server (first server))
-                   (swap! state assoc :breach {:breach-server (first server) :from-server (first server)})
-                   (let [args (clean-access-args args)
-                         access-amount (num-cards-to-access state side (first server) nil)]
-                     (turn-archives-faceup state side server)
-                     (when (:run @state)
-                       (swap! state assoc-in [:run :did-access] true))
-                     (wait-for (resolve-ability state side (choose-access access-amount server (assoc args :server server)) nil nil)
-                               (wait-for (trigger-event-sync state side :end-breach-server (:breach @state))
-                                         (swap! state assoc :breach nil)
-                                         (unregister-floating-effects state side :end-of-access)
-                                         (unregister-floating-events state side :end-of-access)
-                                         (effect-completed state side eid)))))))))
+  ([state side eid server args]
+   (system-msg state side (str "breaches " (zone->name server)))
+   (wait-for (trigger-event-sync state side :breach-server (first server))
+             (swap! state assoc :breach {:breach-server (first server) :from-server (first server)})
+             (let [args (clean-access-args args)
+                   access-amount (num-cards-to-access state side (first server) nil)]
+               (turn-archives-faceup state side server)
+               (when (:run @state)
+                 (swap! state assoc-in [:run :did-access] true))
+               (wait-for (resolve-ability state side (choose-access access-amount server (assoc args :server server)) nil nil)
+                         (wait-for (trigger-event-sync state side :end-breach-server (:breach @state))
+                                   (swap! state assoc :breach nil)
+                                   (unregister-floating-effects state side :end-of-access)
+                                   (unregister-floating-events state side :end-of-access)
+                                   (effect-completed state side eid)))))))

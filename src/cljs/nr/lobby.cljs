@@ -111,7 +111,7 @@
 (def closed-games-symbol "●")
 
 (defn room-count-str [open-count closed-count]
-  (str " (" @open-count open-games-symbol " " @closed-count closed-games-symbol ")"))
+  (str " (" @open-count open-games-symbol " " @closed-count closed-games-symbol ")"))
 
 (defn- room-tab
   "Creates the room tab for the specified room"
