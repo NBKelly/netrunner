@@ -1326,19 +1326,17 @@
    (if (and (= (zone->name server) "HQ")
             (not (:declined-conspiracy args))
             (> (count (get-in @state [:corp :conspiracy])) 0))
-     (wait-for (resolve-ability state side
-                                {:optional
-                                  {:async true
-                                  :player :runner
-                                  :prompt "Breach the conspiracy instead of breaching HQ?"
-                                  :waiting-prompt "Waiting for Runner to make a decision"
-                                   :no-ability {:effect (req (wait-for (breach-server state side server (assoc args :declined-conspiracy true))
-                                                                       (effect-completed state side eid)))}
-                                   :yes-ability {:effect (req (wait-for (breach-conspiracy state side args)
-                                                                        (effect-completed state side eid)))}}}
-                                nil nil)
-               (effect-completed state side eid))
-
+     (resolve-ability state side eid
+                      {:optional
+                       {:async true
+                        :player :runner
+                        :prompt "Breach the conspiracy instead of breaching HQ?"
+                        :waiting-prompt "Waiting for Runner to make a decision"
+                        :no-ability {:async true
+                                     :effect (effect (breach-server server eid (assoc args :declined-conspiracy true)))}
+                        :yes-ability {:async true
+                                      :effect (effect (breach-conspiracy eid args))}}}
+                      nil nil)
      (do (system-msg state side (str "breaches " (zone->name server)))
          (wait-for (trigger-event-sync state side :breach-server (first server))
                    (swap! state assoc :breach {:breach-server (first server) :from-server (first server)})
