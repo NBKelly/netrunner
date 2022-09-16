@@ -331,6 +331,24 @@
        :effect (effect (trash eid target {:unpreventable true}))}
       nil nil)))
 
+;; Temporary playtest commands start here
+
+(defn command-conspire
+  [state side]
+  (when (= :corp side)
+    (resolve-ability
+      state side
+      {:prompt "Choose the card to added to your conspiracy."
+       :choices {:card #(and (corp? %)
+                             (in-hand? %))}
+       :async true
+       :msg (msg "add a card from HQ to their conspiracy")
+       :effect (req
+                 (when-let [c (first (get-in @state [:corp :conspiracy]))]
+                   (trash state side eid c {:unpreventable true}))
+                 (move state side target :conspiracy))}
+      nil nil)))
+
 (defn parse-command
   [text]
   (let [[command & args] (safe-split text #" ")
@@ -361,6 +379,7 @@
         "/click"      #(swap! %1 assoc-in [%2 :click] (constrain-value value 0 1000))
         "/close-prompt" command-close-prompt
         "/counter"    #(command-counter %1 %2 args)
+        "/conspire"   #(command-conspire %1 %2)
         "/credit"     #(swap! %1 assoc-in [%2 :credit] (constrain-value value 0 1000))
         "/deck"       #(toast %1 %2 "/deck number takes the format #n")
         "/derez"      command-derez

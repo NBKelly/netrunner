@@ -236,7 +236,8 @@
       (select-non-nil-keys (into player-keys additional-keys))))
 
 (def corp-keys
-  [:servers
+  [:conspiracy
+   :servers
    :bad-publicity])
 
 (defn servers-summary
@@ -249,6 +250,13 @@
               :ices (cards-summary (:ices current-server) state side)}))
     {}
     (:servers (:corp @state))))
+
+(defn conspiracy-summary
+  "Is the player's conspiracy publicly visible?"
+  [conspiracy same-side? player]
+  (if same-side?
+    (prune-cards conspiracy)
+    []))
 
 (defn prune-cards [cards]
   (mapv #(select-non-nil-keys % card-keys) cards))
@@ -281,9 +289,11 @@
         (update :deck deck-summary corp-player? corp)
         (update :hand hand-summary state corp-player? :corp corp)
         (update :discard discard-summary state corp-player? side corp)
+        (update :conspiracy conspiracy-summary corp-player? corp)
         (assoc
           :deck-count (count (:deck corp))
           :hand-count (count (:hand corp))
+          :conspiracy-count (count (:conspiracy corp))
           :servers (servers-summary state side))
         (cond-> (and corp-player? install-list) (assoc :install-list install-list)))))
 

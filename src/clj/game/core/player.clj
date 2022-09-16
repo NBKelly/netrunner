@@ -9,6 +9,7 @@
    identity
    options
    basic-action-card
+   conspiracy
    deck
    deck-id
    hand
@@ -45,6 +46,7 @@
      :identity c-identity
      :options options
      :basic-action-card nil
+     :conspiracy []
      :deck deck
      :deck-id deck-id
      :hand []
