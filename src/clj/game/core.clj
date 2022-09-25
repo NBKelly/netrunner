@@ -52,6 +52,7 @@
     [game.core.sabotage]
     [game.core.say]
     [game.core.servers]
+    [game.core.set-aside]
     [game.core.set-up]
     [game.core.shuffling]
     [game.core.state]
@@ -93,6 +94,7 @@
    get-all-content
    get-all-hosted
    get-only-card-to-access
+   installed-access-trigger
    interactions
    max-access
    msg-handle-access
@@ -100,7 +102,6 @@
    no-trash-or-steal
    num-cards-central
    num-cards-to-access
-   root-content
    set-only-card-to-access
    steal
    steal-cost
@@ -177,6 +178,7 @@
    can-be-advanced?
    card-index
    condition-counter?
+   console?
    corp-installable-type?
    corp?
    event?
@@ -205,6 +207,7 @@
    in-play-area?
    in-rd-root?
    in-root?
+   in-set-aside?
    in-scored?
    in-server?
    installed?
@@ -220,6 +223,7 @@
    resource?
    rezzed?
    runner?
+   unique?
    upgrade?
    virus-program?])
 
@@ -346,7 +350,7 @@
    merge-costs-paid
    not-used-once?
    pay
-   prompt!
+   print-msg
    queue-event
    register-ability-type
    register-default-events
@@ -730,6 +734,7 @@
    total-cards-accessed
    total-run-cost])
 
+
 (expose-vars
   [game.core.sabotage
    sabotage-ability])
@@ -767,6 +772,14 @@
    zone->name
    zone->sort-key
    zones->sorted-names])
+
+(expose-vars
+  [game.core.set-aside
+   set-aside
+   set-aside-for-me
+   add-to-set-aside
+   swap-set-aside-cards
+   get-set-aside])
 
 (expose-vars
   [game.core.set-up

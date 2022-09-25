@@ -54,13 +54,6 @@
            (:additional-cost (card-def card))
            (get-effects state side card :score-additional-cost))))
 
-(defn score-additional-cost-bonus
-  [state side card]
-  (merge-costs
-   (concat (:additional-cost card)
-           (:additional-cost (card-def card))
-           (get-effects state side card :score-additional-cost))))
-
 (defn trash-cost
   "Returns the number of credits required to trash the given card."
   ([state side card] (trash-cost state side card nil))

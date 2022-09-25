@@ -647,7 +647,7 @@
         (take-credits state :runner)
         (let [enigma (get-ice state :hq 0)]
           (is (zero? (get-counters (refresh enigma) :advancement)) "Enigma has 0 counters to start")
-          (is (= "Place 1 advancement token on an ice protecting HQ" (:msg (prompt-map :corp))) "Correct server in prompt title")
+          (is (= "Place 1 advancement counter on an ice protecting HQ" (:msg (prompt-map :corp))) "Correct server in prompt title")
           (click-card state :corp enigma)
           (is (= 1 (get-counters (refresh enigma) :advancement)) "Enigma has 1 counter"))))
     (testing "1 ice in another server"
@@ -676,7 +676,7 @@
           (take-credits state :corp)
           (run-empty-server state :hq)
           (let [credits (:credit (get-runner))]
-            (is (= "Pay 0 [Credits] or end the run?" (:msg (prompt-map :runner))))
+            (is (= "Choose one" (:msg (prompt-map :runner))))
             (click-prompt state :runner "Pay 0 [Credits]")
             (is (= credits (:credit (get-runner))))
             (is (:run @state) "Run hasn't ended")))))
@@ -694,7 +694,7 @@
           (run-continue state)
           (run-continue state)
           (let [credits (:credit (get-runner))]
-            (is (= "Pay 0 [Credits] or end the run?" (:msg (prompt-map :runner))))
+            (is (= "Choose one" (:msg (prompt-map :runner))))
             (click-prompt state :runner "Pay 0 [Credits]")
             (is (= credits (:credit (get-runner))))
             (is (:run @state) "Run hasn't ended")))))
@@ -714,7 +714,7 @@
           (run-continue state)
           (run-continue state)
           (let [credits (:credit (get-runner))]
-            (is (= "Pay 2 [Credits] or end the run?" (:msg (prompt-map :runner))))
+            (is (= "Choose one" (:msg (prompt-map :runner))))
             (click-prompt state :runner "Pay 2 [Credits]")
             (is (= (- credits 2) (:credit (get-runner))))
             (is (:run @state) "Run hasn't ended")))))
@@ -737,7 +737,7 @@
           (run-on state :hq)
           (run-continue-until state :success)
           (let [credits (:credit (get-runner))]
-            (is (= "Pay 4 [Credits] or end the run?" (:msg (prompt-map :runner))))
+            (is (= "Choose one" (:msg (prompt-map :runner))))
             (click-prompt state :runner "Pay 4 [Credits]")
             (is (= (- credits 4) (:credit (get-runner))))
             (is (:run @state) "Run hasn't ended")))))
@@ -763,7 +763,7 @@
           (run-on state :hq)
           (run-continue-until state :success)
           (let [credits (:credit (get-runner))]
-            (is (= "Pay 6 [Credits] or end the run?" (:msg (prompt-map :runner))))
+            (is (= "Choose one" (:msg (prompt-map :runner))))
             (is (= ["End the run"] (prompt-buttons :runner)))
             (click-prompt state :runner "End the run")
             (is (= credits (:credit (get-runner))))
@@ -787,10 +787,10 @@
           (take-credits state :corp)
           (take-credits state :runner)
           (click-prompt state :corp cg1)
-          (is (= (:msg (prompt-map :corp)) "Place 1 advancement token on an ice protecting HQ")
+          (is (= (:msg (prompt-map :corp)) "Place 1 advancement counter on an ice protecting HQ")
               "Correct server in prompt title (HQ)")
           (click-card state :corp iw1)
-          (is (= (:msg (prompt-map :corp)) "Place 1 advancement token on an ice protecting Server 1")
+          (is (= (:msg (prompt-map :corp)) "Place 1 advancement counter on an ice protecting Server 1")
               "Correct server in prompt title (Server 1)")
           (click-card state :corp iw2)))))
 
@@ -938,6 +938,22 @@
        (is (:run @state) "Run initiated")
        (is (= 3 (:click (get-runner))) "No extra cost to run HQ")
        (is (= 2 (:credit (get-runner))) "No extra cost to run HQ"))))
+
+(deftest cold-site-server-run-event
+  (do-game
+    (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                      :hand ["Cold Site Server"]}
+               :runner {:deck ["Dirty Laundry"]}})
+     (core/gain state :corp :credit 10 :click 10)
+     (play-from-hand state :corp "Cold Site Server" "HQ")
+     (let [css (get-content state :hq 0)]
+       (rez state :corp (refresh css))
+       (card-ability state :corp css 0))
+     (take-credits state :corp)
+     (play-from-hand state :runner "Dirty Laundry")
+     (click-prompt state :runner "HQ")
+     (is (second-last-log-contains? state "Runner spends \\[Click\\] and pays 2 \\[Credits\\] to play Dirty Laundry."))
+     (is (last-log-contains? state "Runner spends \\[Click\\] and pays 1 \\[Credits\\] to make a run on HQ."))))
 
 (deftest corporate-troubleshooter
   ;; Corporate Troubleshooter - Pay X credits and trash to add X strength to a piece of rezzed ice
@@ -1689,12 +1705,12 @@
     (take-credits state :corp)
     (run-empty-server state "R&D")
     (is (= 0 (count-tags state)))
-    (click-prompt state :runner "Yes")
+    (click-prompt state :runner "Take 1 tag")
     (is (= 1 (count-tags state)) "Runner takes 1 tag to prevent Corp from removing 1 BP")
     (click-prompt state :runner "Pay 2 [Credits] to trash") ; trash
     (run-empty-server state "Archives")
     (is (= 1 (count-bad-pub state)))
-    (click-prompt state :runner "No")
+    (click-prompt state :runner "The Corp removes 1 bad publicity")
     (is (= 0 (count-bad-pub state)) "Runner declines to take tag, Corp removes 1 BP")))
 
 (deftest intake
@@ -1757,8 +1773,8 @@
       (is (= 3 (:credit (get-corp))) "Charged to install ice")
       (is (= 6 (count (get-in @state [:corp :servers :remote1 :ices]))) "6 pieces of ice protecting Remote1")))
 
-(deftest jinja-city-grid-drawing-non-ice-on-runner-s-turn
-    ;; Drawing non-ice on runner's turn
+(deftest jinja-city-grid-drawing-non-ice
+    ;; Drawing non-ice cards shows bogus prompt to the Runner
     (do-game
       (new-game {:corp {:deck [(qty "Hedge Fund" 3)]
                         :hand ["Jinja City Grid"]}
@@ -1766,9 +1782,13 @@
                           :deck ["Eden Shard"]}})
       (play-from-hand state :corp "Jinja City Grid" "HQ")
       (rez state :corp (get-content state :hq 0))
+      (click-draw state :corp)
+      (is (= :waiting (prompt-type :runner)) "Runner has wait prompt")
+      (is (= :bogus (prompt-type :corp)) "Corp has a bogus prompt to fake out the runner")
+      (click-prompt state :corp "Carry on!")
       (take-credits state :corp)
       (run-empty-server state :rd)
-      (is (= "Force the Corp to draw a card?" (:msg (prompt-map :runner))))
+      (is (= "Force the Corp to draw 1 card?" (:msg (prompt-map :runner))))
       (click-prompt state :runner "Yes")
       (is (= :waiting (prompt-type :runner)) "Runner has wait prompt")
       (is (= :bogus (prompt-type :corp)) "Corp has a bogus prompt to fake out the runner")
@@ -1871,6 +1891,7 @@
           (click-card state :corp remote-mvt)
           (is (not (no-prompt? state :corp)) "Clicking a card in a different remote does not clear the prompt")
           (is (zero? (get-counters (refresh remote-mvt) :advancement)) "Clicking a card in a different remote does not advance it"))
+        (click-prompt state :corp "Done")
         (play-from-hand state :corp "Mumbad Virtual Tour" "HQ")
         (let [[central-mvt] (get-content state :hq)]
           (take-credits state :corp)
@@ -1878,6 +1899,7 @@
           (click-card state :corp central-mvt)
           (is (not (no-prompt? state :corp)) "Clicking a card in a central does not clear the prompt")
           (is (zero? (get-counters (refresh central-mvt) :advancement)) "Clicking a card in a central does not advance it"))
+        (click-prompt state :corp "Done")
         (play-from-hand state :corp "Vanilla" "Server 1")
         (let [[vanilla] (get-ice state :remote1)]
           (take-credits state :corp)
@@ -1885,6 +1907,7 @@
           (click-card state :corp vanilla)
           (is (not (no-prompt? state :corp)) "Clicking an ice protecting La Costa Grid does not clear the prompt")
           (is (zero? (get-counters (refresh vanilla) :advancement)) "Clicking a an ice protecting La Costa Grid does not advance it"))
+        (click-prompt state :corp "Done")
         (play-from-hand state :corp "Vanilla" "Server 2")
         (let [[remote-vanilla] (get-ice state :remote2)]
           (take-credits state :corp)
@@ -1892,6 +1915,7 @@
           (click-card state :corp remote-vanilla)
           (is (not (no-prompt? state :corp)) "Clicking an ice protecting La Costa Grid does not clear the prompt")
           (is (zero? (get-counters (refresh remote-vanilla) :advancement)) "Clicking a an ice protecting La Costa Grid does not advance it"))
+        (click-prompt state :corp "Done")
         (play-from-hand state :corp "Vanilla" "HQ")
         (let [[central-vanilla] (get-ice state :hq)]
           (take-credits state :corp)
@@ -1932,10 +1956,10 @@
       (take-credits state :runner)
       (is (= "Choose a card in Server 2" (:msg (prompt-map :corp))))
       (click-card state :corp "Project Beale")
-      (last-log-contains? state "La Costa Grid to place an advancement token on a card in Server 2")
+      (is (last-n-log-contains? state 2 "La Costa Grid to place 1 advancement counter on a card in Server 2"))
       (is (= "Choose 1 card to add to the bottom of R&D" (:msg (prompt-map :corp))))
       (click-card state :corp "Ice Wall")
-      (last-log-contains? state "Daily Business Show to add 1 card to the bottom of R&D")
+      (is (last-log-contains? state "Daily Business Show to add"))
       (is (no-prompt? state :corp))
       (is (no-prompt? state :runner))))
 
@@ -2611,66 +2635,6 @@
     "Corp gained +2, even after mwanza was RFG'd"
     (click-prompt state :runner "[Salsette Slums] Remove card from game"))))
 
-(deftest mwanza-city-grid-multiple-breaches-correctness
-  ;; Test that mwanza acts correctly when we breach multiple times in a run
-  (do-game
-   (new-game {:corp {:hand ["Mwanza City Grid" "Shiro"]
-                     :deck ["Advanced Assembly Lines" "Biotic Labor" "Caduceus"
-                            "Death and Taxes" "Economic Warfare"]}
-              :runner {:hand ["Kongamato"]}})
-   (play-from-hand state :corp "Mwanza City Grid" "R&D")
-   (play-from-hand state :corp "Shiro" "R&D")
-   (take-credits state :corp)
-   (play-from-hand state :runner "Kongamato")
-   (rez state :corp (get-content state :rd 0))
-   (let [shiro (get-ice state :rd 0)]
-     (rez state :corp shiro)
-     (run-on state "R&D")
-     (run-continue state)
-     (card-ability state :runner (get-resource state 0) 0)
-     (fire-subs state (refresh shiro))
-     (click-prompt state :corp "No")
-     ;;first access - we should only see 4 cards
-     (is (:breach @state) "Currently breaching")
-     (click-prompt state :runner "No action")
-     (click-prompt state :runner "No action")
-     (click-prompt state :runner "No action")
-     (changes-val-macro
-      +8 (:credit (get-corp))
-      "Gained 6c from Mwanza City Grid"
-      (click-prompt state :runner "No action")
-      (is (not (:breach @state)) "Not currently breaching"))
-     ;; continue until access
-     (run-continue state :movement)
-     (run-continue state :success)
-     (is (:breach @state) "Currently breaching (for real)")
-     (click-prompt state :runner "Mwanza City Grid")
-     (click-prompt state :runner "No action")
-     ;; plus four cards from deck
-     (click-prompt state :runner "No action")
-     (click-prompt state :runner "No action")
-     (click-prompt state :runner "No action")
-     (changes-val-macro
-      +10 (:credit (get-corp))
-      "Five cards accessed, +10 credits"
-      (click-prompt state :runner "No action")
-      (is (not (:breach @state)) "Not currently breaching")))))
-
-(deftest mwanza-city-grid-salsette-slums
-  (do-game
-   (new-game {:corp {:hand ["Mwanza City Grid"]}
-              :runner {:hand ["Salsette Slums"] :credits 10}})
-   (play-from-hand state :corp "Mwanza City Grid" "HQ")
-   (rez state :corp (get-content state :hq 0))
-   (take-credits state :corp)
-   (play-from-hand state :runner "Salsette Slums")
-   (run-on state "HQ")
-   (run-continue state)
-   (changes-val-macro
-    +2 (:credit (get-corp))
-    "Corp gained +2, even after mwanza was RFG'd"
-    (click-prompt state :runner "[Salsette Slums] Remove card from game"))))
-
 (deftest mwanza-city-grid-interaction-with-kitsune
     ;; Regression test for #3469
     ;; interaction with Kitsune
@@ -2815,6 +2779,7 @@
       (is (= "You accessed Beanstalk Royalties." (:msg (prompt-map :runner)))
           "Runner accesses switched card")
       (click-prompt state :runner "No action")
+      (click-prompt state :runner "No action")
       (is (find-card "Accelerated Beta Test" (:hand (get-corp))))
       (is (find-card "Beanstalk Royalties" (:deck (get-corp))))
       (take-credits state :runner)
@@ -2838,7 +2803,7 @@
       (take-credits state :corp)
       (play-from-hand state :runner "RNG Key")
       (run-empty-server state "HQ")
-      (is (= "Fire RNG Key?" (:msg (prompt-map :runner))))
+      (is (= "Name a number?" (:msg (prompt-map :runner))))
       (click-prompt state :runner "Yes")
       (is (= "Guess a number" (:msg (prompt-map :runner))))
       (click-prompt state :runner "3")
@@ -3684,7 +3649,7 @@
     (click-prompt state :corp "0") ; trace
     (click-prompt state :runner "0")
     (is (= 1 (:brain-damage (get-runner))) "Runner starts with 1 brain damage")
-    (click-prompt state :runner "Take 1 brain damage")
+    (click-prompt state :runner "Suffer 1 brain damage")
     (is (= 2 (:brain-damage (get-runner))) "Runner took 1 brain damage")
     (click-prompt state :runner "No action") ; don't trash
     (run-on state "HQ")
@@ -3910,6 +3875,24 @@
           "Runner gained 1 credit from PAD Tap"
           (click-prompt state :corp "Gain 2 [Credits]")))))
 
+(deftest tranquility-home-grid-interaction-with-adt-and-agendas
+  ;;check tranquility fires at the right time when installing an agenda and failing to rez it, issue #6588
+  (do-game
+    (new-game {:corp {:deck [(qty "PAD Campaign" 3) (qty "Project Atlas" 2)]
+                      :hand ["Tranquility Home Grid" "Architect Deployment Test"]
+                      :credits 10}})
+    (play-from-hand state :corp "Tranquility Home Grid" "New remote")
+    (play-from-hand state :corp "Architect Deployment Test" "Server 1")
+    (rez state :corp (get-content state :remote1 0))
+    (let [adt (get-content state :remote1 1)]
+      (take-credits state :corp)
+      (take-credits state :runner)
+      (score-agenda state :corp (refresh adt))
+      (click-prompt state :corp "OK")
+      (click-prompt state :corp "Project Atlas")
+      (click-prompt state :corp "Server 1")
+      (click-prompt state :corp "Gain 2 [Credits]"))))
+
 (deftest underway-grid
   ;; Underway Grid - prevent expose of cards in server
   (do-game
@@ -3953,54 +3936,6 @@
         (is (= 4 (hand-size :runner)) "Valley Grids effect persists through trash")
         (take-credits state :runner)
         (is (= 5 (hand-size :runner)) "Runner max hand size back to normal"))))
-
-(deftest vladisibirsk-city-grid
-  ;; Vladisibirsk Grid: can't target self, once per turn, moves counters, same server
-  (do-game
-   (new-game  {:corp {:deck ["Vladisibirsk City Grid" "NGO Front" "NGO Front" "Dedication Ceremony" "Warroid Tracker"]
-                      :credits 10}})
-   (core/gain state :corp :click 10)
-   (play-from-hand state :corp "Vladisibirsk City Grid", "New remote")
-   (play-from-hand state :corp "NGO Front", "Server 1")
-   (play-from-hand state :corp "NGO Front", "New remote")
-   (play-from-hand state :corp "Warroid Tracker", "Server 1")
-   (let [vlad (get-content state :remote1 0)
-         ngo1 (get-content state :remote1 1)
-         war (get-content state :remote1 2)
-         ngo2 (get-content state :remote2 0)]
-     (rez state :corp (refresh vlad))
-     (play-from-hand state :corp "Dedication Ceremony")
-     (click-card state :corp vlad)
-     (is (= 3 (get-counters (refresh vlad) :advancement)) "Vladisibirsk City Grid has 3 counters on it")
-     (advance state (refresh vlad) 1)
-     (is (= 4 (get-counters (refresh vlad) :advancement)) "Vladisibirsk City Grid has 4 counters on it")
-     (card-ability state :corp (refresh vlad) 0)
-     (is (not (no-prompt? state :corp)) "Vlad Grid prompt is active")
-     ;; check it cant be used on itself
-     (click-card state :corp "Vladisibirsk City Grid")
-     (is (not (no-prompt? state :corp)) "Vlad Grid prompt still active")
-     (is (= 4 (get-counters (refresh vlad) :advancement)) "Vladisibirsk City Grid still has 4 counters on it")
-     ;; check it can't be used on cards that cannot be advanced
-     (click-card state :corp "Warroid Tracker")
-     (is (not (no-prompt? state :corp)) "ability not used, prompt still active")
-     (is (= 4 (get-counters (refresh vlad) :advancement)) "Vladisibirsk City Grid still has 4 counters on it")
-     (is (= 0 (get-counters (refresh war) :advancement)) "Warroid Tracker has no counters on it")
-     ;; check it works on cards that can be advanced
-     (click-card state :corp ngo1)
-     (is (= 2 (get-counters (refresh vlad) :advancement)) "Vladisibirsk City Grid has spent 2 counters")
-     (is (= 2 (get-counters (refresh ngo1) :advancement)) "NGO Front has gained 2 counters")
-     (is (no-prompt? state :corp) "ability used, prompt gone?")
-     ;;check it only works once per turn
-     (card-ability state :corp (refresh vlad) 0)
-     (is (no-prompt? state :corp) "Vlad Grid prompt is not active")
-     (take-credits state :corp)
-     ;;check it only works on cards installed in the same server
-     (card-ability state :corp (refresh vlad) 0)
-     (is (not (no-prompt? state :corp)) "Vlad Grid prompt is active")
-     (click-card state :corp ngo2)
-     (is (= 2 (get-counters (refresh vlad) :advancement)) "Vladisibirsk City Grid has not spent counters")
-     (is (= 0 (get-counters (refresh ngo2) :advancement)) "NGO Front 2 has gained no counters")
-     (is (not (no-prompt? state :corp)) "Vlad Grid prompt is still active"))))
 
 (deftest vladisibirsk-city-grid
   ;; Vladisibirsk Grid: can't target self, once per turn, moves counters, same server
@@ -4156,14 +4091,14 @@
       (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
                         :hand ["Warroid Tracker" "PAD Campaign"]
                         :credits 15}
-                 :runner {:hand ["Singularity" (qty "Self-modifying Code" 5)]
-                          :credits 15}})
+                 :runner {:hand ["Singularity" (qty "Akamatsu Mem Chip" 5)]
+                          :credits 100}})
       (play-from-hand state :corp "Warroid Tracker" "New remote")
       (play-from-hand state :corp "PAD Campaign" "Remote 1")
       (take-credits state :corp)
       (core/gain state :runner :click 10)
       (dotimes [_ 5]
-        (play-from-hand state :runner "Self-modifying Code"))
+        (play-from-hand state :runner "Akamatsu Mem Chip"))
       (rez state :corp (get-content state :remote1 0))
       (play-from-hand state :runner "Singularity")
       (click-prompt state :runner "Server 1")
@@ -4171,8 +4106,8 @@
       (is (= 2 (-> (get-corp) :discard count)) "Corp has both cards in discard")
       (click-prompt state :corp "0")
       (click-prompt state :runner "0") ; Corp wins trace
-      (click-card state :runner (get-program state 0))
-      (click-card state :runner (get-program state 1))
+      (click-card state :runner (get-hardware state 0))
+      (click-card-impl state :runner (get-hardware state 1))
       (is (no-prompt? state :corp) "Warroid Tracker can't trash anything else")
       (is (= 3 (-> (get-runner) :discard count)) "Runner should trash 2 installed cards")))
 

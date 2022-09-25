@@ -159,19 +159,19 @@
 (declare cards-summary)
 
 (defn card-summary [card state side]
-  (if (not (is-public? card side))
-    (-> (cond-> card
-          (:host card) (-> (dissoc-in [:host :hosted])
-                           (update :host card-summary state side))
-          (:hosted card) (update :hosted cards-summary state side))
-        (private-card))
+  (if (is-public? card side)
     (-> (cond-> card
           (:host card) (-> (dissoc-in [:host :hosted])
                            (update :host card-summary state side))
           (:hosted card) (update :hosted cards-summary state side))
         (playable? state side)
         (card-abilities-summary state side)
-        (select-non-nil-keys card-keys))))
+        (select-non-nil-keys card-keys))
+    (-> (cond-> card
+          (:host card) (-> (dissoc-in [:host :hosted])
+                           (update :host card-summary state side))
+          (:hosted card) (update :hosted cards-summary state side))
+        (private-card))))
 
 (defn cards-summary [cards state side]
   (when (seq cards)
@@ -211,6 +211,7 @@
    :rfg
    :play-area
    :current
+   :set-aside
    :click
    :credit
    :toast
@@ -230,6 +231,7 @@
       (update :play-area cards-summary state side)
       (update :rfg cards-summary state side)
       (update :scored cards-summary state side)
+      (update :set-aside cards-summary state side)
       (update :prompt-state prompt-summary same-side?)
       (select-non-nil-keys (into player-keys additional-keys))))
 
@@ -252,6 +254,13 @@
 (defn prune-cards [cards]
   (mapv #(select-non-nil-keys % card-keys) cards))
 
+(defn conspiracy-summary
+  "Is the player's conspiracy publicly visible?"
+  [conspiracy same-side? player]
+  (if same-side?
+    (prune-cards conspiracy)
+    []))
+
 (defn deck-summary
   "Is the player's deck publicly visible?"
   [deck same-side? player]
@@ -264,13 +273,6 @@
   [hand state same-side? side player]
   (if (or same-side? (:openhand player))
     (cards-summary hand state side)
-    []))
-
-(defn conspiracy-summary
-  "Is the player's conspiracy publicly visible?"
-  [conspiracy same-side? player]
-  (if same-side?
-    (prune-cards conspiracy)
     []))
 
 (defn discard-summary

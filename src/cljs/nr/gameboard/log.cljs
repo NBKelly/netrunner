@@ -278,8 +278,7 @@
                                                                     :msg (str "/access-bonus rd " amount)}]))
                             :key (str amount)}
              (str amount)])])]
-      [:div.group
-       (when (= :corp (get-side @game-state))
+      (when (= :corp (get-side @game-state))
          [:button {:on-click #(do (.preventDefault %)
                                   (ws/ws-send! [:game/say {:gameid (current-gameid app-state)
                                                            :msg "/conspire"}]))

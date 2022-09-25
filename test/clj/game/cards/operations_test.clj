@@ -136,7 +136,7 @@
       (play-from-hand state :corp "Accelerated Diagnostics")
       (click-prompt state :corp "OK")
       (click-prompt state :corp "24/7 News Cycle")
-      (is (= "Choose an agenda in your score area to trigger its \"when scored\" ability" (:msg (prompt-map :corp))))
+      (is (= "Choose an agenda in your score area" (:msg (prompt-map :corp))))
       (click-card state :corp "Breaking News")
       (click-prompt state :corp "BOOM!")))
 
@@ -456,6 +456,7 @@
     (is (= 5 (get-counters (get-content state :remote1 0) :advancement)))
     (click-prompt state :corp "Yes")
     (is (= 3 (:agenda-point (get-corp))) "Corp scored 3 points")
+    (is (zero? (count (:discard (get-corp)))) "Big Deal removed from the game")
     (is (no-prompt? state :corp))))
 
 (deftest big-deal-non-agenda
@@ -560,7 +561,7 @@
       (click-card state :corp (find-card "Improved Tracers" (:hand (get-corp))))
       (click-prompt state :corp "New remote")
       (let [imptrac (get-content state :remote1 0)]
-        (is (rezzed? (refresh imptrac)) "Improved Tracers is faceup")
+        (is (faceup? (refresh imptrac)) "Improved Tracers is faceup")
         (is (= 4 (get-strength (refresh hunter))) "Hunter hasn't gained strength")
         (play-from-hand state :corp "Casting Call")
         (click-card state :corp (find-card "Oaktown Renovation" (:hand (get-corp))))
@@ -612,13 +613,13 @@
       (play-from-hand state :corp "Cerebral Cast")
       (click-prompt state :corp "0 [Credits]")
       (click-prompt state :runner "1 [Credits]")
-      (click-prompt state :runner "1 brain damage")
+      (click-prompt state :runner "Suffer 1 brain damage")
       (is (= 1 (count (:discard (get-runner)))) "Runner took a brain damage")
       (is (zero? (count-tags state)) "Runner took no tags from brain damage choice")
       (play-from-hand state :corp "Cerebral Cast")
       (click-prompt state :corp "0 [Credits]")
       (click-prompt state :runner "1 [Credits]")
-      (click-prompt state :runner "1 tag")
+      (click-prompt state :runner "Take 1 tag")
       (is (= 1 (count (:discard (get-runner)))) "Runner took no additional damage")
       (is (= 1 (count-tags state)) "Runner took a tag from Cerebral Cast choice")))
 
@@ -900,7 +901,7 @@
       (is (= 3 (count (:discard (get-runner)))) "2 cards lost to brain damage")
       (is (= 3 (:brain-damage (get-runner))) "Brainchips didn't do additional brain dmg"))))
 
-(deftest-pending digital-rights-management
+(deftest digital-rights-management-cannot-score-agenda-installed-after-playing
   ;; Cannot score Agenda installed after playing DRM
   (do-game
     (new-game {:corp {:hand [(qty "Digital Rights Management" 2) "Project Vitruvius" (qty "Hedge Fund" 2)]
@@ -908,9 +909,15 @@
     (take-credits state :corp)
     (take-credits state :runner)
     (play-from-hand state :corp "Digital Rights Management")
-    (click-prompt state :corp "None")
-    (play-and-score state "Project Vitruvius")
-    (is (= 0 (count (get-scored state :corp))) "Beale was not scored")))
+    (click-prompt state :corp "Project Beale")
+    (click-card state :corp "Project Vitruvius")
+    (click-prompt state :corp "New remote")
+    ;; note - score-agenda fails if it finds the card wasn't scored,
+    ;; so we have to do this the hard way
+    (let [vit (get-content state :remote1 0)]
+      (core/add-prop state :corp (refresh vit) :advance-counter 3)
+      (core/process-action "score" state :corp {:card (refresh vit)}))
+    (is (= 0 (count (get-scored state :corp))) "Vitruvius was not scored")))
 
 (deftest digital-rights-management-drm-only-searches-for-agendas-in-r-d
     ;; DRM only searches for Agendas in R&D
@@ -1456,7 +1463,7 @@
       (is (= 3 (:click (get-corp))))
       (is (= 3 (:click-per-turn (get-corp))))))
 
-(deftest extract-full-test
+(deftest extract-trash-to-gain-9
   ;; trash a card to gain 9
   (do-game
    (new-game {:corp {:hand ["Extract" "PAD Campaign"]}})
@@ -1466,17 +1473,21 @@
     "Gains net 6 credits from Extract"
     (play-from-hand state :corp "Extract")
     (click-card state :corp "PAD Campaign"))
-   (is (= 2 (count (:discard (get-corp)))) "PAD and Extract trashed"))
+   (is (= 2 (count (:discard (get-corp)))) "PAD and Extract trashed")))
+
+(deftest extract-skip-trash
   ;; skip trash to gain 6
   (do-game
    (new-game {:corp {:hand ["Extract" "PAD Campaign"]}})
    (play-from-hand state :corp "PAD Campaign" "New remote")
    (changes-val-macro
     +3 (:credit (get-corp))
-    "Gains net 6 credits from Extract"
+    "Gains net 3 credits from Extract"
     (play-from-hand state :corp "Extract")
     (click-prompt state :corp "Done"))
-   (is (= 1 (count (:discard (get-corp)))) "Extract trashed, but not PAD"))
+   (is (= 1 (count (:discard (get-corp)))) "Extract trashed, but not PAD")))
+
+(deftest extract-nothing-to-trash
   ;; nothing to trash, gain 6
   (do-game
    (new-game {:corp {:hand ["Extract"]}})
@@ -1485,6 +1496,14 @@
     "Gained net 3c from Extract"
     (play-from-hand state :corp "Extract"))
    (is (no-prompt? state :corp) "No prompt because there are no cards to trash!")))
+
+(deftest extract-log-card-str
+  (do-game
+   (new-game {:corp {:hand ["Extract" "PAD Campaign"]}})
+   (play-from-hand state :corp "PAD Campaign" "New remote")
+   (play-from-hand state :corp "Extract")
+   (click-card state :corp "PAD Campaign")
+   (is (last-log-contains? state "trash a card in Server 1"))))
 
 (deftest fast-break
   ;; Fast Break
@@ -1883,17 +1902,6 @@
       (click-card state :corp "IPO")
       (is (= 10 (:credit (get-corp))) "Now at 10 credits")
       (is (= 2 (count (:discard (get-corp)))))))
-
-(deftest hansei-review-no-cards
-  ;; Hansei Review - with an empty hand, should not get a trash prompt
-  (do-game
-      (new-game {:corp {:hand ["Hansei Review"]}})
-      (is (= 5 (:credit (get-corp))) "Starting with 5 credits")
-      (play-from-hand state :corp "Hansei Review")
-      (is (zero? (:credit (get-corp))) "Now at 0 credits")
-      (is (no-prompt? state :corp) "Corp should have no prompt with no cards in hand")
-      (is (= 10 (:credit (get-corp))) "Now at 10 credits")
-      (is (= 1 (count (:discard (get-corp)))))))
 
 (deftest hansei-review-no-cards
   ;; Hansei Review - with an empty hand, should not get a trash prompt
@@ -2314,6 +2322,14 @@
         "Breaking News installed by Lateral Growth")
     (is (= 7 (:credit (get-corp))))))
 
+(deftest lateral-growth-no-installable-cards
+  (do-game
+    (new-game {:corp {:deck ["Lateral Growth" "Hedge Fund"]}})
+    (is (= 5 (:credit (get-corp))))
+    (play-from-hand state :corp "Lateral Growth")
+    (is (no-prompt? state :corp) "Corp should have no prompt")
+    (is (= 7 (:credit (get-corp))))))
+
 (deftest liquidation
   ;; Marilyn Campaign
   (do-game
@@ -2491,7 +2507,6 @@
     (play-from-hand state :corp "Breaking News" "New remote")
     (take-credits state :corp)
     (is (= 7 (:credit (get-corp))))
-    (let [bn (get-content state :remote1 0)]
       (run-empty-server state "Server 1")
       (click-prompt state :runner "Steal")
       (is (= 1 (:agenda-point (get-runner))) "Stole Breaking News")
@@ -2499,7 +2514,7 @@
       (play-from-hand state :corp "Midseason Replacements")
       (click-prompt state :corp "0") ; default trace
       (click-prompt state :runner "0") ; Runner won't match
-      (is (= 6 (count-tags state)) "Runner took 6 tags"))))
+    (is (= 6 (count-tags state)) "Runner took 6 tags")))
 
 (deftest mitosis
   ;; Mitosis - Install up to 2 cards in new remotes, placing 2 advancements on each
@@ -2536,8 +2551,6 @@
       (rez state :corp (refresh ronin))
       (is (not (rezzed? (refresh ronin))) "Ronin did not rez")
       (take-credits state :corp)
-      (rez state :corp (refresh ronin))
-      (is (not (rezzed? (refresh ronin))) "Ronin did not rez on the Runner's turn")
       (rez state :corp (refresh ronin))
       (is (not (rezzed? (refresh ronin))) "Ronin did not rez on the Runner's turn")
       (take-credits state :runner)
@@ -2687,18 +2700,6 @@
    (is (= 1 (count (:play-area (get-corp)))) "ONLY one NAC in play area")
    (is (= 0 (count (:discard (get-corp)))) "Discard is empty")))
 
-(deftest next-activation-command-lockdowns-restriction
-  ;; Can't play if there's an active lockdown
-  (do-game
-   (new-game {:corp {:hand ["NEXT Activation Command" "NEXT Activation Command"]}})
-   (is (= 0 (count (:play-area (get-corp)))) "Play area is empty")
-   (is (= 0 (count (:discard (get-corp)))) "Discard is empty")
-   (play-from-hand state :corp "NEXT Activation Command")
-   (is (= 1 (count (:play-area (get-corp)))) "NAC in play area")
-   (play-from-hand state :corp "NEXT Activation Command")
-   (is (= 1 (count (:play-area (get-corp)))) "ONLY one NAC in play area")
-   (is (= 0 (count (:discard (get-corp)))) "Discard is empty")))
-
 (deftest next-activation-command-get-trashed-at-start-of-next-corp-turn
     ;; Get trashed at start of next Corp turn
     (do-game
@@ -2766,14 +2767,19 @@
     (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
                       :hand [(qty "O₂ Shortage" 2)]
                       :credits 10}
-               :runner {:hand [(qty "Sure Gamble" 2)]}})
+               :runner {:hand ["Sure Gamble"]}})
     (play-from-hand state :corp "O₂ Shortage")
-    (click-prompt state :runner "Yes")
-    (is (= 1 (count (:discard (get-runner)))) "Runner should discard a single card")
+    (changes-val-macro
+      -1 (count (:hand (get-runner)))
+      "Runner discarded a single card"
+      (click-prompt state :runner "Trash 1 random card from the grip"))
     (play-from-hand state :corp "O₂ Shortage")
-    (let [clicks (:click (get-corp))]
-      (click-prompt state :runner "No")
-      (is (= (+ 2 clicks) (:click (get-corp))) "Corp should gain 2 clicks"))))
+    (is (= ["The Corp gains [Click][Click]"] (prompt-buttons :runner)) "Runner has no longer the option to trash from the grip")
+    (changes-val-macro
+      2 (:click (get-corp))
+      "Corp gained 2 clicks"
+      (click-prompt state :runner "The Corp gains [Click][Click]"))
+    (is (no-prompt? state :runner) "Runner should have no more prompt")))
 
 (deftest observe-and-destroy
   ;; Observe and Destroy
@@ -3369,7 +3375,7 @@
       (play-from-hand state :corp "Riot Suppression")
       (is (empty? (:discard (get-runner))) "Runner discard is empty")
       (is (zero? (:brain-damage (get-runner))) "Runner starts with no brain damage")
-      (click-prompt state :runner "Yes")
+      (click-prompt state :runner "Suffer 1 brain damage")
       (is (= 1 (count (:discard (get-runner)))) "1 card lost to brain damage")
       (is (= 1 (:brain-damage (get-runner))) "Runner took 1 brain damage")
       (is (= 1 (count (:discard (get-corp)))) "No corp cards trashed")
@@ -3389,11 +3395,11 @@
       (play-from-hand state :corp "Riot Suppression")
       (is (empty? (:discard (get-runner))) "Runner discard is empty")
       (is (zero? (:brain-damage (get-runner))) "Runner starts with no brain damage")
-      (click-prompt state :runner "No")
+      (click-prompt state :runner "Get 3 fewer [Click] on the next turn")
       (is (empty? (:discard (get-runner))) "Runner discard statys empty")
       (is (zero? (:brain-damage (get-runner))) "Runner takes no brain damage")
       (is (= 1 (count (:discard (get-corp)))) "No corp cards trashed")
-      (is (= 1 (count (:rfg (get-corp)))) "Riot Suppestion removed from game")
+      (is (= 1 (count (:rfg (get-corp)))) "Riot Suppression removed from game")
       (take-credits state :corp)
       (is (= 1 (:click (get-runner))) "Runner has 3 fewer clicks following turn")))
 
@@ -3495,6 +3501,7 @@
     (do-game
       (new-game {:corp {:deck ["Standoff" "Hostile Takeover" "Sacrifice"]}})
       (play-and-score state "Standoff")
+      (click-prompt state :runner "Done")
       (core/gain state :corp :bad-publicity 1)
       (play-from-hand state :corp "Sacrifice")
       (is (= 2 (count (:hand (get-corp)))) "Can not play Sacrifice with no 1+ agenda in score area")
@@ -4416,11 +4423,14 @@
       (gain-tags state :runner 1)
       (take-credits state :runner)
       (play-from-hand state :corp "The All-Seeing I")
-      (click-prompt state :runner "Done")
-      (click-prompt state :runner "Done")
-      (let  [fall-guy (find-card "Fall Guy" (core/all-active-installed state :runner))]
+      (is (= "Prevent the trashing of Off-Campus Apartment?"
+             (:msg (prompt-map :runner))))
+      (let [fall-guy (find-card "Fall Guy" (core/all-active-installed state :runner))]
         (card-ability state :runner fall-guy 0))
-      (click-prompt state :runner "Done") ;; This assumes hosted cards get put in trash-list before host
+      (click-prompt state :runner "Done")
+      (is (= "Prevent the trashing of Fall Guy?"
+             (:msg (prompt-map :runner))))
+      (click-prompt state :runner "Done")
       (is (= 1 (count (core/all-active-installed state :runner))) "One installed card (Off-Campus)")
       (is  (= 2 (count (:discard (get-runner)))) "Two cards in heap")))
 
@@ -4642,6 +4652,7 @@
     (take-credits state :corp)
     (play-from-hand state :runner "Wyrm")
     (run-empty-server state :remote1)
+    (click-prompt state :runner "No action")
     (take-credits state :runner)
     (is (zero? (-> (get-runner) :discard count)) "Runner should start with 0 cards in heap")
     (play-from-hand state :corp "Trojan Horse")
@@ -4652,53 +4663,58 @@
 
 (deftest trust-operation-happy
   (do-game
-   (new-game {:corp {:hand ["Trust Operation"]
-                     :discard ["Archer"]}
-              :runner {:hand ["Daily Casts"]}})
-   (take-credits state :corp)
-   (play-from-hand state :runner "Daily Casts")
-   (take-credits state :runner)
-   ;;can't play unless runner is tagged
-   (play-from-hand state :corp "Trust Operation")
-   (is (and (no-prompt? state :corp)
-            (= 1 (count (:hand (get-corp))))) "Trust Operation not played")
-   (gain-tags state :runner 1)
-   (play-from-hand state :corp "Trust Operation")
-   (click-card state :corp "Daily Casts")
-   (is (= 1 (count (:discard (get-runner)))) "Daily casts was trashed")
-   (click-card state :corp "Archer")
-   (click-prompt state :corp "HQ")
-   (let [archer (get-ice state :hq 0)]
-     (is (rezzed? (refresh archer)) "Archer is rezzed"))))
+    (new-game {:corp {:hand ["Trust Operation" "Ice Wall"]
+                      :discard ["Archer"]}
+               :runner {:hand ["Daily Casts"]}})
+    (play-from-hand state :corp "Ice Wall" "HQ")
+    (take-credits state :corp)
+    (play-from-hand state :runner "Daily Casts")
+    (take-credits state :runner)
+    ;;can't play unless runner is tagged
+    (play-from-hand state :corp "Trust Operation")
+    (is (no-prompt? state :corp))
+    (is (= 1 (count (:hand (get-corp)))) "Trust Operation not played")
+    (gain-tags state :runner 1)
+    (play-from-hand state :corp "Trust Operation")
+    (click-card state :corp "Daily Casts")
+    (is (= 1 (count (:discard (get-runner)))) "Daily casts was trashed")
+    (changes-val-macro
+      0 (:credit (get-corp))
+      "Spends nothing to install and rez Archer"
+      (click-card state :corp "Archer")
+      (click-prompt state :corp "HQ")
+      (let [archer (get-ice state :hq 1)]
+        (is (rezzed? (refresh archer)) "Archer is rezzed")))))
 
-(deftest trust-operation-no-trash
+(deftest trust-operation-decline-to-trash
   ;; decline to trash a card
   (do-game
-   (new-game {:corp {:hand ["Trust Operation"]
-                     :discard ["Archer"]}
-              :runner {:hand ["Daily Casts"]}})
-   (take-credits state :corp)
-   (play-from-hand state :runner "Daily Casts")
-   (take-credits state :runner)
-   (gain-tags state :runner 1)
-   (play-from-hand state :corp "Trust Operation")
-   (click-prompt state :corp "Done")
-   (is (= 0 (count (:discard (get-runner)))) "Daily casts was not trashed")
-   (click-card state :corp "Archer")
-   (click-prompt state :corp "HQ")
-   (let [archer (get-ice state :hq 0)]
-     (is (rezzed? (refresh archer)) "Archer is rezzed")))
-  ;; no card to trash
+    (new-game {:corp {:hand ["Trust Operation"]
+                      :discard ["Archer"]}
+               :runner {:hand ["Daily Casts"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Daily Casts")
+    (take-credits state :runner)
+    (gain-tags state :runner 1)
+    (play-from-hand state :corp "Trust Operation")
+    (click-prompt state :corp "Done")
+    (is (= 0 (count (:discard (get-runner)))) "Daily casts was not trashed")
+    (click-card state :corp "Archer")
+    (click-prompt state :corp "HQ")
+    (let [archer (get-ice state :hq 0)]
+      (is (rezzed? (refresh archer)) "Archer is rezzed"))))
+
+(deftest trust-operation-no-card-to-trash
   (do-game
-   (new-game {:corp {:hand ["Trust Operation"]
-                     :discard ["Archer"]}})
-   (gain-tags state :runner 1)
-   (play-from-hand state :corp "Trust Operation")
-   (click-prompt state :corp "Done")
-   (click-card state :corp "Archer")
-   (click-prompt state :corp "HQ")
-   (let [archer (get-ice state :hq 0)]
-     (is (rezzed? (refresh archer)) "Archer is rezzed"))))
+    (new-game {:corp {:hand ["Trust Operation"]
+                      :discard ["Archer"]}})
+    (gain-tags state :runner 1)
+    (play-from-hand state :corp "Trust Operation")
+    (click-prompt state :corp "Done")
+    (click-card state :corp "Archer")
+    (click-prompt state :corp "HQ")
+    (let [archer (get-ice state :hq 0)]
+      (is (rezzed? (refresh archer)) "Archer is rezzed"))))
 
 (deftest ultraviolet-clearance
   ;; Ultraviolet Clearance - Only allow agenda to be installed in remote servers

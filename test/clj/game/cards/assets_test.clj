@@ -1098,12 +1098,12 @@
       (take-credits state :corp)
       (is (= 1 (count (:hand (get-corp)))))
       (take-credits state :runner)
-      (is (= 5 (count (:hand (get-corp)))) "Drew an additional 3 cards with 3 DBS")
+      (is (= 4 (count (:set-aside (get-corp)))) "Drew an additional 3 cards with 3 DBS")
       (is (not-empty (:prompt (get-runner))) "Runner is waiting for Corp to use DBS")
       (click-card state :corp (find-card "Hedge Fund" (:hand (get-corp)))) ;invalid target
-      (click-card state :corp (find-card "Resistor" (:hand (get-corp))))
-      (click-card state :corp (find-card "Product Placement" (:hand (get-corp))))
-      (click-card state :corp (find-card "Breaking News" (:hand (get-corp))))
+      (click-card state :corp (find-card "Resistor" (:set-aside (get-corp))))
+      (click-card state :corp (find-card "Product Placement" (:set-aside (get-corp))))
+      (click-card state :corp (find-card "Breaking News" (:set-aside (get-corp))))
       (is (no-prompt? state :runner) "Runner prompt cleared")
       (is (= 2 (count (:hand (get-corp)))))
       (is (= "Hedge Fund" (:title (first (:hand (get-corp))))))
@@ -1134,8 +1134,8 @@
         ;; Use first Sensie
         (is (= 1 (count (:hand (get-corp)))))
         (card-ability state :corp sensie1 0)
-        (is (= 5 (count (:hand (get-corp)))) "Drew 3 cards with Sensie, +1 with DBS")
-        (click-card state :corp (find-card "Resistor" (:hand (get-corp)))) ; DBS target
+        (is (= 4 (count (:set-aside (get-corp)))) "Drew 3 cards with Sensie, +1 with DBS")
+        (click-card state :corp (find-card "Resistor" (:set-aside (get-corp)))) ; DBS target
         (click-card state :corp (find-card "Hedge Fund" (:hand (get-corp)))) ; Sensie target
         (is (= 3 (count (:hand (get-corp)))))
         (is (= "Hedge Fund" (:title (last (:deck (get-corp))))) "Hedge Fund last card in deck")
@@ -1177,9 +1177,9 @@
       (take-credits state :corp)
       (is (empty? (:hand (get-corp))) "Corp hand is empty")
       (play-from-hand state :runner "Fisk Investment Seminar")
-      (is (= 4 (count (:hand (get-corp)))) "Drew an additional card from FIS")
+      (is (= 4 (count (:set-aside (get-corp)))) "Drew an additional card from FIS")
       (is (not-empty (:prompt (get-runner))) "Runner is waiting for Corp to use DBS")
-      (click-card state :corp (find-card "Resistor" (:hand (get-corp))))
+      (click-card state :corp (find-card "Resistor" (:set-aside (get-corp))))
       (is (no-prompt? state :runner) "Runner prompt cleared")
       (is (= 3 (count (:hand (get-corp)))))))
 
@@ -1198,7 +1198,7 @@
       (card-ability state :corp (get-content state :remote2 0) 0)
       (click-prompt state :corp "Yes")
       (is (nil? (get-content state :remote2 0)) "Rashida is trashed")
-      (click-card state :corp (find-card "Hedge Fund" (:hand (get-corp))))
+      (click-card state :corp (find-card "Hedge Fund" (:set-aside (get-corp))))
       (end-phase-12 state :corp)
       (is (no-prompt? state :corp) "DBS doesn't trigger on mandatory draw")))
 
@@ -2145,8 +2145,8 @@
         (is (zero? (count (:hand (get-runner)))))
         ; use Mr. Li with 2 draws allowed
         (card-ability state :runner mrli 0)
-        (is (= 2 (count (:hand (get-runner)))))
-        (click-card state :runner (first (:hand (get-runner))))
+        (is (= 2 (count (:set-aside (get-runner)))))
+        (click-card state :runner (first (:set-aside (get-runner))))
         (is (= 1 (count (:hand (get-runner)))))
         ; use Mr. Li with 0 draws allowed
         (card-ability state :runner mrli 0)
@@ -2158,11 +2158,11 @@
         (is (= 2 (count (:hand (get-runner)))))
         ; use Mr. Li with 1 draw allowed - should draw 1, then insist it's put back
         (card-ability state :runner mrli 0)
-        (is (= 3 (count (:hand (get-runner)))))
+        (is (= 1 (count (:set-aside (get-runner)))))
         (click-card state :runner (first (:hand (get-runner)))) ; will fail
         (click-card state :runner (second (:hand (get-runner)))) ; will fail
-        (is (= 3 (count (:hand (get-runner)))) "Clicking invalid cards caused no discards")
-        (click-card state :runner (second (rest (:hand (get-runner)))))
+        (is (= 2 (count (:hand (get-runner)))) "Clicking invalid cards caused no discards")
+        (click-card state :runner (first (:set-aside (get-runner))))
         (is (= 2 (count (:hand (get-runner)))) "Clicking the single valid card did"))))
 
 (deftest genetics-pavilion-no-cards-in-stack-but-draw-effects-4192
@@ -2558,17 +2558,19 @@
       (do-game
         (new-game {:corp {:deck ["Jeeves Model Bioroids"]
                           :credits 10}
-                   :runner {:deck [(qty "Ghost Runner" 3)]}})
+                   :runner {:deck [(qty "Ghost Runner" 3)]
+                            :credits 10}})
         (play-from-hand state :corp "Jeeves Model Bioroids" "New remote")
         (rez state :corp (get-content state :remote1 0))
         (take-credits state :corp)
-        (dotimes [_ 3] (play-from-hand state :runner "Ghost Runner"))
+        (dotimes [_ 3]
+          (play-from-hand state :runner "Ghost Runner"))
         (take-credits state :runner)
         (gain-tags state :runner 1)
-        (dotimes [n 3]
+        (dotimes [_ 3]
           (trash-resource state)
-          (click-card state :corp (get-resource state 0))
-          (is (= (inc n) (count (:discard (get-runner)))) "Correct number of cards in Runner discard"))
+          (click-card state :corp (get-resource state 0)))
+        (is (= 3 (count (:discard (get-runner)))) "Correct number of cards in Runner discard")
         (is (= 1 (:click (get-corp))) "Jeeves triggered"))))
 
 (deftest jeeves-model-bioroids-cases-where-jeeves-should-not-trigger
@@ -2727,7 +2729,7 @@
         (is (= 3 (:agenda-point (get-corp))) "Gained 3 agenda points")
         (take-credits state :corp)
         (run-empty-server state "HQ")
-        (is (= "Choose a card to place 1 advancement token on" (:msg (prompt-map :corp))) "Puppet Master event fired"))))
+        (is (= "Choose a card that can be advanced to place 1 advancement token on" (:msg (prompt-map :corp))) "Puppet Master event fired"))))
 
 (deftest lakshmi-smartfabrics
   ;; Lakshmi Smartfabrics - Gain power counter when rezzing a card; use counters to protect agenda in HQ
@@ -3133,7 +3135,25 @@
     (click-card state :corp "Hostile Takeover")
     (click-card state :corp "Hostile Takeover")
     (score state :corp (get-content state :remote3 0))
-    (is (= 1 (count (:scored (get-corp)))) "Hostile was scored")))
+    (is (= 1 (count (:scored (get-corp)))) "Hostile was scored")
+    (is (find-card "Moon Pool" (:rfg (get-corp))) "Moon Pool is rfg'd")
+    (is (nil? (get-content state :remote1 0)))))
+
+(deftest moon-pool-rfg-when-no-cards-trashed-from-hq
+  (do-game
+    (new-game {:corp {:hand ["Moon Pool", (qty "Hedge Fund" 3)]
+                      :discard ["Longevity Serum"]}})
+    (play-from-hand state :corp "Moon Pool" "New remote")
+    (let [moon-pool (get-content state :remote1 0)]
+      (rez state :corp moon-pool)
+      (card-ability state :corp moon-pool 0)
+      (prompt-is-card? state :corp :moon-pool)
+      (click-prompt state :corp "Done")
+      (click-card state :corp "Longevity Serum")
+      (click-prompt state :corp "Done")
+      (no-prompt? state :corp)
+      (is (find-card "Moon Pool" (:rfg (get-corp))) "Moon Pool is rfg'd")
+      (is (nil? (get-content state :remote1 0))))))
 
 (deftest mr-stone
   ;; Mr Stone
@@ -3659,7 +3679,7 @@
       (click-prompt state :corp "New remote")
       (is (= "Oaktown Renovation" (:title (get-content state :remote3 0)))
           "Oaktown Renovation installed by Political Dealings")
-      (is (rezzed? (get-content state :remote3 0))
+      (is (faceup? (get-content state :remote3 0))
           "Oaktown Renovation installed face up")))
 
 (deftest prana-condenser
@@ -4010,7 +4030,7 @@
       (take-credits state :corp)
       (take-credits state :runner)
       (click-prompt state :corp "Yes")
-      (click-card state :corp (find-card "Ice Wall" (:hand (get-corp))))
+      (click-card state :corp (find-card "Ice Wall" (:set-aside (get-corp))))
       (click-card state :corp (find-card "Fire Wall" (:discard (get-corp))))
       (is (= "Fire Wall" (-> (get-corp) :hand first :title)))
       (is (= "Ice Wall" (-> (get-corp) :discard first :title)))
@@ -4950,6 +4970,23 @@
       "~ sells PAD Campaign before it triggers so only 3 credits gained"
       (click-card state :corp (refresh pad)))
      (is (= (refresh pad) nil) "PAD Campaign should be in Heap"))))
+
+(deftest syvatogor-excavator-card-str-6471
+  (do-game
+   (new-game {:corp {:hand ["Svyatogor Excavator" "PAD Campaign"]}})
+   (play-from-hand state :corp "PAD Campaign" "New remote")
+   (play-from-hand state :corp "Svyatogor Excavator" "New remote")
+   (let [pad (get-content state :remote1 0)
+         se (get-content state :remote2 0)]
+     (rez state :corp (refresh se))
+     (take-credits state :corp)
+     (take-credits state :runner)
+     (card-ability state :corp se 0)
+     (changes-val-macro
+      3 (:credit (get-corp))
+      "~ sells PAD Campaign before it triggers so only 3 credits gained"
+      (click-card state :corp (refresh pad)))
+     (is (last-log-contains? state "trash a card in Server 1")))))
 
 (deftest team-sponsorship-install-from-hq
     ;; Install from HQ

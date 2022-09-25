@@ -1,7 +1,8 @@
 (ns game.cards.identities-test
   (:require [game.core :as core]
-            [game.core.servers :refer [zone->name]]
+            [game.core.servers :refer [unknown->kw zone->name]]
             [game.core.card :refer :all]
+            [game.core.mark :refer [is-mark?]]
             [game.utils :as utils]
             [game.core-test :refer :all]
             [game.utils-test :refer :all]
@@ -91,8 +92,7 @@
       (click-card state :corp "Ice Wall")
       (click-prompt state :runner "Yes")
       (click-prompt state :corp "No")
-      (let [log (-> @state :log last :text)]
-        (is (= log "Runner exposes PAD Campaign in Server 1.")))))
+      (is (last-log-contains? state "exposes PAD Campaign in Server 1") "Installed card was exposed")))
 
 (deftest FourHundredAndNineTeen-amoral-scammer-419-vs-asa-group-double-install-runner-s-turn
     ;; 419 vs Asa Group double install, Runner's turn
@@ -111,8 +111,7 @@
       (click-prompt state :corp "New remote")
       (click-prompt state :runner "Yes")
       (click-prompt state :corp "No")
-      (let [log (-> @state :log last :text)]
-        (is (= log "Runner exposes PAD Campaign in Server 2.")))
+      (is (last-log-contains? state "exposes PAD Campaign in Server 2") "Installed card was exposed")
       (is (prompt-is-type? state :corp :select) "Corp should still have select prompt")))
 
 (deftest FourHundredAndNineTeen-amoral-scammer-interation-with-install-and-rez-effects-issue-4485
@@ -215,8 +214,9 @@
     ;; No tag on empty server
     (do-game
       (new-game {:corp {:id "Acme Consulting: The Truth You Need"
-                        :deck ["Vanilla" (qty "Hedge Fund" 5)]}})
+                      :deck ["Vanilla" (qty "Hedge Fund" 5)]}})
       (take-credits state :corp)
+      (click-card state :corp (first (:hand (get-corp))))
       (run-on state :archives)
       (is (not (is-tagged? state)) "No ice to encounter")))
 
@@ -619,6 +619,21 @@
       (end-phase-12 state :runner)
       (click-card state :runner (find-card "Heartbeat" (:hand (get-runner))))
       (is (= 1 (count (get-runner-facedown state))) "2nd console installed facedown")))
+
+(deftest apex-invasive-predator-allow-facedown-install-of-program-when-over-mu
+    ;; Allow facedown install of a program when MU is full
+    (do-game
+      (new-game {:runner {:id "Apex: Invasive Predator"
+                          :deck [(qty "Endless Hunger" 2)]}})
+      (take-credits state :corp)
+      (end-phase-12 state :runner)
+      (click-prompt state :runner "Done")
+      (play-from-hand state :runner "Endless Hunger")
+      (take-credits state :runner)
+      (take-credits state :corp)
+      (end-phase-12 state :runner)
+      (click-card state :runner (find-card "Endless Hunger" (:hand (get-runner))))
+      (is (= 1 (count (get-runner-facedown state))) "Endless Hunger installed facedown")))
 
 (deftest apex-invasive-predator-don-t-fire-events-when-installed-facedown-issue-4085
     ;; Don't fire events when installed facedown. Issue #4085
@@ -1193,6 +1208,7 @@
                           :hand [(qty "Amped Up" 5)]}})
       (take-credits state :corp)
       (play-from-hand state :runner "Amped Up")
+      (click-prompt state :runner "Yes")
       (is (last-log-contains? state "uses Esâ Afontov: Eco-Insurrectionist to sabotage 2") "Sabotage happened")
       (is (prompt-is-type? state :corp :select) "Corp has sabotage prompt")))
   (testing "Does not trigger on second time"
@@ -1203,7 +1219,13 @@
                           :hand [(qty "Amped Up" 5)]}})
       (take-credits state :corp)
       (play-from-hand state :runner "Amped Up")
+      (is (= "Draw 1 card?" (:msg (prompt-map :runner))))
+      (click-prompt state :runner "Yes")
+      (is (= "Choose up to 2 cards to trash from HQ. Remainder will be trashed from top of R&D."
+             (:msg (prompt-map :corp))))
       (is (last-log-contains? state "uses Esâ Afontov: Eco-Insurrectionist to sabotage 2") "Sabotage happened")
+      (click-card state :corp (first (:hand (get-corp))))
+      (click-prompt state :corp "Done")
       (play-from-hand state :runner "Amped Up")
       (is (not (last-log-contains? state "uses Esâ Afontov: Eco-Insurrectionist to sabotage 2")) "Sabotage did not happen")
       (is (empty (:prompt (get-corp))) "no Corp prompt"))))
@@ -2534,7 +2556,7 @@
                           :deck ["Eden Shard"]}})
       (take-credits state :corp)
       (run-empty-server state :rd)
-      (is (= "Force the Corp to draw a card?" (:msg (prompt-map :runner))))
+      (is (= "Force the Corp to draw 1 card?" (:msg (prompt-map :runner))))
       (click-prompt state :runner "Yes")
       (is (= "Choose a breach replacement ability" (:msg (prompt-map :runner))))
       (click-prompt state :runner "Eden Shard") ; Eden Shard's replacement ability
@@ -2897,10 +2919,13 @@
         (let [mcaap (get-content state :remote1 0)]
           (rez state :corp mcaap)
           (card-ability state :corp mcaap 0)
-          (dotimes [_ 2]
-            (take-credits state :corp)
-            (take-credits state :runner)
-            (card-ability state :corp mcaap 0))
+          (take-credits state :corp)
+          (click-prompt state :corp "Gain 1 [Credits]")
+          (take-credits state :runner)
+          (card-ability state :corp mcaap 0)
+          (take-credits state :corp)
+          (take-credits state :runner)
+          (card-ability state :corp mcaap 0)
           (click-credit state :corp)
           (card-ability state :corp mcaap 1)
           (changes-val-macro 1 (:credit (get-corp))
@@ -3401,11 +3426,12 @@
       (is (= 5 (count (:deck (get-corp)))) "Corp deck should contain 5 cards")
       (take-credits state :corp)
       (is (zero? (count (:discard (get-corp)))) "Archives started empty")
+      (click-card state :corp (first (:hand (get-corp))))
       (play-from-hand state :runner "Datasucker")
-      (is (= 1 (count (:discard (get-corp)))) "Playing virus should cause card to be trashed from R&D")
+      (is (= 2 (count (:discard (get-corp)))) "Playing virus should cause card to be trashed from R&D")
       (is (= 4 (count (:deck (get-corp)))) "Card trashed to Archives by Noise should come from R&D")
       (play-from-hand state :runner "Sure Gamble")
-      (is (= 1 (count (:discard (get-corp)))) "Playing non-virus should not cause card to be trashed from R&D")
+      (is (= 2 (count (:discard (get-corp)))) "Playing non-virus should not cause card to be trashed from R&D")
       (click-draw state :runner)
       (play-from-hand state :runner "Clone Chip")
       (play-from-hand state :runner "Clone Chip")
@@ -3419,7 +3445,7 @@
         (let [ds (get-program state 1)]
           (is (not (nil? ds)))
           (is (= (:title ds) "Cache"))))
-      (is (= 2 (count (:discard (get-corp)))) "Playing virus via Clone Chip on corp's turn should trigger Noise ability")
+    (is (= 3 (count (:discard (get-corp)))) "Playing virus via Clone Chip on corp's turn should trigger Noise ability")
       (is (= 2 (count (:deck (get-corp)))) "Card trashed to Archives by Noise should come from R&D")
       ;; playing non-virus via Clone Chip on Corp's turn should NOT trigger Noise ability
       (let [chip-2 (get-hardware state 0)]
@@ -3428,7 +3454,7 @@
         (let [ss (get-program state 2)]
           (is (not (nil? ss)))
           (is (= (:title ss) "Sharpshooter"))))
-      (is (= 2 (count (:discard (get-corp)))) "Playing non-virus via Clone Chip on corp's turn should not trigger Noise ability")))
+    (is (= 3 (count (:discard (get-corp)))) "Playing non-virus via Clone Chip on corp's turn should not trigger Noise ability")))
 
 (deftest noise-hacker-extraordinaire-noise-ar-enhanced-security-issue-5345
     ;; Noise + AR-Enhanced Security. Issue #5345
@@ -3503,17 +3529,17 @@
       (run-on state "HQ")
       (run-continue state)
       (is (prompt-is-type? state :corp :waiting) "Corp should now be waiting on Runner for Null ability")
-      (is (= "Trash a card in grip to lower ice strength by 2?" (:msg (prompt-map :runner))))
+      (is (not (no-prompt? state :runner)) "Null: Whistleblower prompt")
       (click-prompt state :runner "No")
       (fire-subs state (get-ice state :hq 0))
       (run-on state "HQ")
       (run-continue state)
       (is (prompt-is-type? state :corp :waiting) "Corp should now be again waiting on Runner for Null ability")
-      (is (= "Trash a card in grip to lower ice strength by 2?" (:msg (prompt-map :runner))))
+      (is (not (no-prompt? state :runner)) "Null: Whistleblower prompt")
       (click-prompt state :runner "Yes")))
 
-(deftest nyusha-sable-sintashta-symphonic-prodigy
-  ;; Nyusha "Sable" Sintashta = start of turn: mark server. First successful run on mark: gain click
+(deftest nyusha-sable-sintashta
+  ;; Nyusha "Sable" Sintashta start of turn: mark server. First successful run on mark: gain click
   (do-game
     (new-game {:runner {:id "Nyusha \"Sable\" Sintashta: Symphonic Prodigy"}
                :corp {:hand ["Hedge Fund"] :deck ["Hedge Fund"] :discard ["Hedge Fund"]}})
@@ -3524,7 +3550,23 @@
       "gained 1 click from running the mark"
       (run-continue state))))
 
-(deftest ob-logistics-basic-test
+(deftest nyusha-sable-sintashta-with-virtuoso
+  ;; Multiple cards setting a mark are idempotent
+  (do-game
+    (new-game {:runner {:id "Nyusha \"Sable\" Sintashta: Symphonic Prodigy" :hand ["Virtuoso"]}
+               :corp {:deck [(qty "Hedge Fund" 5)]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Virtuoso")
+    (take-credits state :runner)
+    (take-credits state :corp)
+    (let [virt (get-hardware state 0)
+          sable (get-in @state [:runner :identity])]
+      (is (= true (is-mark? state (unknown->kw (:card-target virt)))))
+      (is (= true (is-mark? state (unknown->kw (:card-target sable)))))
+      (is (last-log-contains? state "identifies their mark"))
+      (is (not (second-last-log-contains? state "identifies their mark"))))))
+
+(deftest ob-superheavy-logistics-basic-test
   ;; The ability works, and it works once per turn - depends on Extract to be correct
   (do-game
    (new-game {:corp {:id "Ob Superheavy Logistics: Extract. Export. Excel."
@@ -3557,8 +3599,8 @@
    (click-card state :corp (get-content state :remote3 0))
    (is (no-prompt? state :corp) "No prompt to use Ob again")))
 
-(deftest ob-logistics-additional-costs
-  ;; ob-logistics doesn't waive additional costs to rez (ie corp. town)
+(deftest ob-superheavy-logistics-additional-costs
+  ;; doesn't waive additional costs to rez (ie corp. town)
   (do-game
    ;; can't pay cost
    (new-game {:corp {:id "Ob Superheavy Logistics: Extract. Export. Excel."
@@ -3614,6 +3656,48 @@
    (is (no-prompt? state :corp) "No prompt to rez")
    (is (= "Corporate Town" (:title (get-content state :remote3 0))) "Installed C. Town in remote")
    (is (rezzed? (get-content state :remote3 0)) "rezzed C. Town")))
+
+(deftest ob-superheavy-logistics-fail-to-find
+  ;; If no cards in R&D match the search cost, ability can be declined
+  (do-game
+   (new-game {:corp {:id "Ob Superheavy Logistics: Extract. Export. Excel."
+                     :hand ["Extract" "PAD Campaign"]
+                     :deck ["Anoetic Void"]}})
+   (play-from-hand state :corp "PAD Campaign" "New remote")
+   (rez state :corp (get-content state :remote1 0))
+   (play-from-hand state :corp "Extract")
+   (click-card state :corp (get-content state :remote1 0))
+   (click-prompt state :corp "Yes")
+   (is (= ["No install"] (prompt-buttons :corp)) "Sole option available is Done")
+   (click-prompt state :corp "No install")))
+
+(deftest ob-superheavy-logistics-public-agendas
+  ;; If no cards in R&D match the search cost, ability can be declined
+  (do-game
+   (new-game {:corp {:id "Ob Superheavy Logistics: Extract. Export. Excel."
+                     :hand ["Oaktown Renovation" "Extract"]
+                     :deck ["Anoetic Void"]}})
+   (play-from-hand state :corp "Oaktown Renovation" "New remote")
+   (play-from-hand state :corp "Extract")
+   (click-card state :corp "Oaktown Renovation")
+   (is (empty? (:prompt (get-corp))) "No Ob prompt")
+   (is (find-card "Oaktown Renovation" (:discard (get-corp))) "Oaktown is trashed")))
+
+(deftest ob-superheavy-logistics-shuffle-with-rashida
+  ;; you can search for -1 cost cards as an excuse to shuffle your deck
+  (do-game
+    (new-game {:corp {:id "Ob Superheavy Logistics: Extract. Export. Excel."
+                      :hand ["Rashida Jaheem"]
+                      :deck [(qty "Hedge Fund" 15)]}})
+    (play-from-hand state :corp "Rashida Jaheem" "New remote")
+    (take-credits state :corp)
+    (rez state :corp (get-content state :remote1 0))
+    (take-credits state :runner)
+    (is (:corp-phase-12 @state) "Corp has opportunity to use Rashida")
+    (card-ability state :corp (get-content state :remote1 0) 0)
+    (click-prompt state :corp "Yes")
+    (click-prompt state :corp "Yes")
+    (is (second-last-log-contains? state "shuffle") "Ob superheavy should shuffle R&D")))
 
 (deftest omar-keung-conspiracy-theorist-make-a-successful-run-on-the-chosen-server-once-per-turn
     ;; Make a successful run on the chosen server once per turn
@@ -3735,7 +3819,7 @@
     (take-credits state :corp)
     (run-on state :hq)
     (run-continue state)
-    ;; fake prompt, doesn't give away that PAD cannot be advanced
+    (is (not (no-prompt? state :runner)) "Fake prompt is displayed to the Runner")
     (click-prompt state :corp "Done")))
 
 (deftest pravdivost-consulting-happy-path
@@ -4204,7 +4288,8 @@
     (gain-tags state :runner 1)
     (card-ability state :corp (get-in @state [:corp :identity]) 0)
     (swap! state assoc-in [:corp :credit] 0)
-    (changes-val-macro 0 (:credit (get-runner))
+    (changes-val-macro
+      0 (:credit (get-runner))
                        "Paid 0c to trash resource"
                        (trash-resource state)
                        (click-card state :corp (get-resource state 0)))

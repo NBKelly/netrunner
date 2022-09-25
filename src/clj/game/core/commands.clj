@@ -7,6 +7,7 @@
                            has-subtype? ice? in-hand? installed? map->Card rezzed?
                            runner?]]
    [game.core.change-vals :refer [change]]
+   [game.core.charge :refer [charge-card]]
    [game.core.conspire :refer [conspire]]
    [game.core.damage :refer [damage]]
    [game.core.drawing :refer [draw]]
@@ -17,6 +18,7 @@
    [game.core.identities :refer [disable-identity disable-card enable-card]]
    [game.core.initializing :refer [card-init deactivate make-card]]
    [game.core.installing :refer [corp-install runner-install]]
+   [game.core.mark :refer [identify-mark]]
    [game.core.moving :refer [move swap-ice swap-installed trash]]
    [game.core.prompt-state :refer [remove-from-prompt-queue]]
    [game.core.prompts :refer [show-prompt]]
@@ -24,6 +26,7 @@
    [game.core.psi :refer [psi-game]]
    [game.core.rezzing :refer [rez derez]]
    [game.core.runs :refer [end-run get-current-encounter jack-out]]
+   [game.core.sabotage :refer [sabotage-ability]]
    [game.core.say :refer [system-msg system-say unsafe-say]]
    [game.core.set-up :refer [build-card]]
    [game.core.to-string :refer [card-str]]
@@ -287,22 +290,6 @@
       (catch Exception ex
         (toast state side (str card-name " isn't a real card"))))))
 
-(defn command-reload-id
-  [state side]
-  (let [card-name (:title (get-in @state [side :identity]))]
-    (try
-      (let [s-card (server-card card-name)
-            card (when (and s-card (same-side? (:side s-card) side))
-                   (build-card s-card))]
-        (if card
-          (let [new-id (-> card :title server-card make-card (assoc :zone [:identity] :type "Identity"))]
-            (disable-identity state side)
-            (swap! state assoc-in [side :identity] new-id)
-            (card-init state side new-id {:resolve-effect true :init-data true}))
-          (toast state side (str card-name " isn't a valid card"))))
-      (catch Exception ex
-        (toast state side (str card-name " isn't a real card"))))))
-
 (defn command-replace-id
   [state side args]
   (let [card-name (string/join " " args)]
@@ -359,7 +346,6 @@
        :effect (effect (trash eid target {:unpreventable true}))}
       nil nil)))
 
-
 ;; Temporary playtest commands start here
 
 (defn command-conspire
@@ -374,11 +360,11 @@
         num   (if-let [n (-> args first (safe-split #"#") second string->num)] (dec n) 0)]
     (if (= (ffirst args) \#)
       (case command
+        "/access-bonus" #(command-access-bonus %1 %2 args)
         "/deck"       #(move %1 %2 (nth (get-in @%1 [%2 :hand]) num nil) :deck {:front true})
         "/discard"    #(move %1 %2 (nth (get-in @%1 [%2 :hand]) num nil) :discard)
         nil)
       (case command
-        "/access-bonus" #(command-access-bonus %1 %2 args)
         "/adv-counter" #(command-adv-counter %1 %2 value)
         "/bp"         #(swap! %1 assoc-in [%2 :bad-publicity :base] (constrain-value value -1000 1000))
         "/breach"     #(command-breach %1 %2 args)
@@ -389,6 +375,12 @@
                                                                           ": " (get-card state target))))
                                           :choices {:card (fn [t] (same-side? (:side t) %2))}}
                                         (map->Card {:title "/card-info command"}) nil)
+        "/charge"     #(resolve-ability %1 %2
+                                        {:prompt "Choose an installed card to charge"
+                                         :async true
+                                         :effect (req (charge-card %1 %2 eid target))
+                                         :choices {:card (fn [t] (same-side? (:side t) %2))}}
+                                        (map->Card {:title "/charge command"}) nil)
         "/clear-win"  clear-win
         "/click"      #(swap! %1 assoc-in [%2 :click] (constrain-value value 0 1000))
         "/close-prompt" command-close-prompt
@@ -419,6 +411,7 @@
         "/link"       (fn [state side]
                         (when (= side :runner)
                           (swap! state assoc-in [:runner :link] (constrain-value value 0 1000))))
+        "/mark"       #(when (= %2 :runner) (identify-mark %1))
         "/memory"     (fn [state side]
                         (when (= side :runner)
                           (swap! state assoc-in [:runner :memory :used] (constrain-value value -1000 1000))))
@@ -470,6 +463,7 @@
                                          :choices {:card (fn [t] (same-side? (:side t) %2))}}
                                         (map->Card {:title "/rfg command"}) nil)
         "/roll"       #(command-roll %1 %2 value)
+        "/sabotage"   #(when (= %2 :runner) (resolve-ability %1 %2 (sabotage-ability (constrain-value value 0 1000)) nil nil))
         "/save-replay" command-save-replay
         "/show-hand" #(resolve-ability %1 %2
                                          {:effect (effect (system-msg (str

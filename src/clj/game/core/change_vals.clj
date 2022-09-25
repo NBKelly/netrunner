@@ -98,6 +98,14 @@
               (str "sets their hand size to " (hand-size state side)
                    " (" (if (pos? delta) (str "+" delta) delta) ")")))
 
+(defn- change-generic
+  "Change a player's base generic property."
+  [state side key delta]
+  (if (neg? delta)
+    (deduct state side [key (- delta)])
+    (swap! state update-in [side key] (partial + delta)))
+  (change-msg state side key (get-in @state [side key]) delta))
+
 (defn- change-subversion
   "Change the game's subversion count"
   [state side subversion delta]
@@ -113,13 +121,7 @@
     (system-msg state side
                 (str "sets subversion \"" sub-name "\" to " (get-in @state [:subversion key])))))
 
-(defn- change-generic
-  "Change a player's base generic property."
-  [state side key delta]
-  (if (neg? delta)
-    (deduct state side [key (- delta)])
-    (swap! state update-in [side key] (partial + delta)))
-  (change-msg state side key (get-in @state [side key]) delta))
+
 
 (defn change
   "Increase/decrease a player's property (clicks, credits, MU, etc.) by delta."
@@ -131,9 +133,5 @@
     :bad-publicity (change-bad-pub state delta)
     :agenda-point (change-agenda-points state side delta)
     :link (change-link state side delta)
-    :subversion-a (change-subversion state side key delta)
-    :subversion-b (change-subversion state side key delta)
-    :subversion-c (change-subversion state side key delta)
-    :subversion-d (change-subversion state side key delta)
     ; else
     (change-generic state side key delta)))

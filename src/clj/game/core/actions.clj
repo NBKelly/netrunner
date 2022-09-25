@@ -30,7 +30,7 @@
 
 ;;; Neutral actions
 (defn- do-play-ability [state side card ability ability-idx targets]
-  (let [cost (card-ability-cost state side ability card targets)]
+  (let [cost (seq (card-ability-cost state side ability card targets))]
     (when (or (nil? cost)
               (can-pay? state side (make-eid state {:source card :source-type :ability :source-info {:ability-idx ability-idx}}) card (:title card) cost))
       (when-let [activatemsg (:activatemsg ability)]
@@ -143,14 +143,15 @@
           (:number choices))
       (if (number? choice)
         (do (remove-from-prompt-queue state side prompt)
-            (wait-for (maybe-pay state side card choices choice)
-                      (when (:counter choices)
-                        ;; :Counter prompts deduct counters from the card
-                        (add-counter state side card (:counter choices) (- choice)))
-                      ;; trigger the prompt's effect function
-                      (when effect
-                        (effect (or choice card)))
-                      (finish-prompt state side prompt card)))
+            (let [eid (make-eid state (:eid prompt))]
+              (wait-for (maybe-pay state side eid card choices choice)
+                        (when (:counter choices)
+                          ;; :Counter prompts deduct counters from the card
+                          (add-counter state side card (:counter choices) (- choice)))
+                        ;; trigger the prompt's effect function
+                        (when effect
+                          (effect (or choice card)))
+                        (finish-prompt state side prompt card))))
         (prompt-error "in an integer prompt" prompt args))
 
       ;; List of card titles for auto-completion

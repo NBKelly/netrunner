@@ -318,7 +318,7 @@
     (is (= 1 (count (:deck (get-runner)))) "1 card left in deck")))
 
 (deftest autoscripter
-  ;; Autoscripter - gain 1 [Click] first time Runner installs program from Grip during their turn.
+  ;; Autoscripter - gain [Click] first time Runner installs program from Grip during their turn.
   ;; Trash if unsuccessful run
   (do-game
     (new-game {:runner {:deck ["Autoscripter" (qty "Inti" 3) "Clone Chip"]}
@@ -393,6 +393,7 @@
       (new-game {:corp {:deck [(qty "Hedge Fund" 10)]}
                  :runner {:hand ["Bookmark" "Sure Gamble" "Daily Casts" "Brain Chip"]}})
       (take-credits state :corp)
+      (click-card state :corp (first (:hand (get-corp))))
       (play-from-hand state :runner "Bookmark")
       (let [bm (get-hardware state 0)]
         (card-ability state :runner bm 0)
@@ -409,8 +410,9 @@
     ;; Trash ability
     (do-game
       (new-game {:corp {:deck [(qty "Hedge Fund" 10)]}
-                 :runner {:hand ["Bookmark" "Sure Gamble" "Daily Casts" "Brain Chip"]}})
+                :runner {:hand ["Bookmark" "Sure Gamble" "Daily Casts" "Brain Chip"]}})
       (take-credits state :corp)
+      (click-card state :corp (first (:hand (get-corp))))
       (play-from-hand state :runner "Bookmark")
       (let [bm (get-hardware state 0)]
         (card-ability state :runner bm 0)
@@ -1518,6 +1520,26 @@
       (click-prompt state :runner "No action")
       (is (not (:run @state)))))
 
+(deftest ^:kaocha/pending doppelganger-inside-job
+  (do-game
+    (new-game {:corp {:hand ["Ice Wall"]}
+               :runner {:hand ["Doppelgänger" "Inside Job"]
+                        :credits 10}})
+    (play-from-hand state :corp "Ice Wall" "HQ")
+    (rez state :corp (get-ice state :hq 0))
+    (take-credits state :corp)
+    (play-from-hand state :runner "Doppelgänger")
+    (play-from-hand state :runner "Inside Job")
+    (click-prompt state :runner "HQ")
+    (run-continue state :movement)
+    (run-continue state)
+    (is (not (:run @state)) "Between the two runs")
+    (click-prompt state :runner "Yes")
+    (click-prompt state :runner "HQ")
+    (is (:run @state) "New run started")
+    (is (= [:hq] (:server (:run @state))) "Running on R&D")
+    (run-continue state)))
+
 (deftest dorm-computer
   ;; make a run and avoid all tags for the remainder of the run
   (do-game
@@ -1567,6 +1589,26 @@
         -3 (:credit (get-runner))
         "Pays 3 credit for second install"
         (play-from-hand state :runner "Aumakua"))))
+
+(deftest endurance
+  ;; Endurance
+  (do-game
+    (new-game {:runner {:hand ["Endurance"] :credits 10}
+               :corp {:hand ["Ice Wall"]}})
+    (play-from-hand state :corp "Ice Wall" "HQ")
+    (rez state :corp (get-ice state :hq 0))
+    (take-credits state :corp)
+    (play-from-hand state :runner "Endurance")
+    (let [end (get-hardware state 0)]
+      (is (= 3 (get-counters (refresh end) :power)) "starts with 3 counters")
+      (run-on state :hq)
+      (run-continue state)
+      (card-ability state :runner (refresh end) 0)
+      (click-prompt state :runner "End the run")
+      (is (= 1 (get-counters (refresh end) :power)) "spend 2 counters to break")
+      (run-continue state)
+      (run-continue state)
+      (is (= 2 (get-counters (refresh end) :power)) "gained 1 counter from a successful run"))))
 
 (deftest feedback-filter
   ;; Feedback Filter - Prevent net and brain damage
@@ -1826,11 +1868,12 @@
       (click-prompt state :runner "OK")
       (is (not-empty (:prompt (get-corp))) "Corp has waiting prompt")
       (is (= 1 (count (:discard (get-runner)))) "Gachapon in heap")
-      (is (= 6 (count (:deck (get-runner)))) "6 cards in deck")
+      (is (= 0 (count (:deck (get-runner)))) "0 cards in deck")
+      (is (= 6 (count (:set-aside (get-runner)))) "6 cards set-aside")
       (changes-val-macro -1 (:credit (get-runner))
                          "Paid 1c to install DDoS"
                          (click-prompt state :runner "DDoS"))
-      (is (= 5 (count (:deck (get-runner)))) "5 cards remain in deck")
+      (is (= 5 (count (:set-aside (get-runner)))) "5 cards remain set-aside")
       (click-prompt state :runner "Au Revoir")
       (click-prompt state :runner "Clone Chip")
       (click-prompt state :runner "Equivocation")
@@ -1887,8 +1930,8 @@
       (play-from-hand state :runner "Gachapon")
       (card-ability state :runner (get-hardware state 0) 0)
       (click-prompt state :runner "OK")
-      (is (= ["No action"] (prompt-buttons :runner)) "Runner can't choose ineligable cards")
-      (click-prompt state :runner "No action")
+      (is (= ["No install"] (prompt-buttons :runner)) "Runner can't choose ineligable cards")
+      (click-prompt state :runner "No install")
       (click-prompt state :runner "Acacia")
       (click-prompt state :runner "Blackmail")
       (click-prompt state :runner "Capstone")
@@ -1920,7 +1963,7 @@
         (click-prompt state :runner "OK")
         (is (not-empty (:prompt (get-corp))) "Corp has waiting prompt")
         (is (= 1 (count (:discard (get-runner)))) "Gachapon in heap")
-        (is (= 6 (count (:deck (get-runner)))) "6 cards in deck")
+        (is (= 6 (count (:set-aside (get-runner)))) "6 cards in deck")
         (click-prompt state :runner "DDoS")
         (click-card state :runner pp)
         (is (= 0 (:credit (get-runner))) "DDoS installed with 2c discount using only Paladin Poemu credits")
@@ -1952,7 +1995,7 @@
       (click-prompt state :runner "OK")
       (is (not-empty (:prompt (get-corp))) "Corp has waiting prompt")
       (is (= 1 (count (:discard (get-runner)))) "Gachapon in heap")
-      (is (= 6 (count (:deck (get-runner)))) "6 cards in deck")
+      (is (= 6 (count (:set-aside (get-runner)))) "6 cards in deck")
       (click-prompt state :runner "DDoS")
       (is (= "DDoS" (:title (get-resource state 0))) "DDoS is installed")))
 
@@ -2443,6 +2486,28 @@
                            (card-ability state :runner refr 1)
                            (click-card state :runner lp)))))
 
+(deftest lucky-charm-requires-hq-run
+  (do-game
+    (new-game {:runner {:hand ["Lucky Charm"]}
+               :corp {:hand ["Vanilla"]}})
+    (play-from-hand state :corp "Vanilla" "R&D")
+    (take-credits state :corp)
+    (let [vanilla (get-ice state :rd 0)]
+      (rez state :corp (refresh vanilla))
+      (play-from-hand state :runner "Lucky Charm")
+      (run-on state "R&D")
+      (run-continue state)
+      (card-subroutine state :corp (refresh vanilla) 0)
+      (is (= nil (:run @state)) "no run")
+      (is (no-prompt? state :runner) "no charm prompt")
+      (run-empty-server state "HQ")
+      (is (no-prompt? state :runner))
+      (run-on state "R&D")
+      (run-continue state :encounter-ice)
+      (card-subroutine state :corp (refresh vanilla) 0)
+      (is (:run @state) "Run not ended yet")
+      (is (seq (:prompt (get-runner))) "Runner prompted to ETR"))))
+
 (deftest lucky-charm-no-interference-with-runs-ending-successfully-or-by-jacking-out-and-batty-normal-etr-border-control-interaction
     ;; No interference with runs ending successfully or by jacking out, and Batty/normal ETR/Border Control interaction
     (do-game
@@ -2654,14 +2719,14 @@
       (click-prompt state :runner "Hayley Kaplan: Universal Scholar")
       (play-from-hand state :runner "The Class Act")
       (take-credits state :runner)
-      (card-ability state :runner (get-resource state 0) 0)
       (is (= 5 (count (:hand (get-runner)))) "Starts with 5 cards in hand")
+      (card-ability state :runner (get-resource state 0) 0)
+      (is (= 5 (count (:set-aside (get-runner)))) "Geist's draw triggers The Class Act, and street peddler has three set-aside cards")
+      (is (= "The Class Act" (:title (:card (prompt-map :runner)))))
+      ;; click the drawn card, which is last in the set-aside zone
+      (click-card state :runner (last (:set-aside (get-runner))))
       (is (= "Street Peddler" (:title (:card (prompt-map :runner)))))
       (click-prompt state :runner "Clone Chip")
-      (is (= 7 (count (:hand (get-runner)))) "Geist's draw triggers The Class Act")
-      (is (= "The Class Act" (:title (:card (prompt-map :runner)))))
-      ;; click the drawn card, which is last in the hand
-      (click-card state :runner (last (:hand (get-runner))))
       (is (= 6 (count (:hand (get-runner)))) "Geist draw finishes")
       (is (= "Choose a trigger to resolve" (:msg (prompt-map :runner))))
       (click-prompt state :runner "Masterwork (v37)")
@@ -2868,36 +2933,6 @@
       (click-prompt state :runner "Yes")
       (is (= "Scorched Earth" (:title (last (:deck (get-corp))))) "Maya moved the accessed card to the bottom of R&D")
       (is (:prompt (get-runner)) "Runner has next access prompt")))
-
-(deftest maya-triggers-only-on-rd-accesses
-    ;; Maya does not trigger on accesses out of R&D
-    (do-game
-      (new-game {:corp {:deck ["Anansi" "Brainstorm" "Chiyashi"]}
-                 :runner {:hand ["Maya" "Equivocation"]}})
-      (core/move state :corp (find-card "Anansi" (:hand (get-corp))) :deck)
-      (core/move state :corp (find-card "Brainstorm" (:hand (get-corp))) :deck)
-      (core/move state :corp (find-card "Chiyashi" (:hand (get-corp))) :deck)
-      (is (= (:title (nth (-> @state :corp :deck) 0)) "Anansi"))
-      (is (= (:title (nth (-> @state :corp :deck) 1)) "Brainstorm"))
-      (is (= (:title (nth (-> @state :corp :deck) 2)) "Chiyashi"))
-      ;; R&D is now from top to bottom: A B C
-      (take-credits state :corp)
-      (core/gain state :runner :click 1)
-      (play-from-hand state :runner "Maya")
-      (run-empty-server state :rd)
-      (click-prompt state :runner "No action")
-      (click-prompt state :runner "No")
-      (play-from-hand state :runner "Equivocation")
-      (run-empty-server state :rd)
-      (click-prompt state :runner "Yes") ; Equivocation prompt
-      (click-prompt state :runner "Yes") ; force the draw
-      (is (find-card "Anansi" (:hand (get-corp))) "Anansi added to HQ")
-      (click-prompt state :runner "No action")
-      (click-prompt state :runner "No") ; Maya prompt
-      (run-empty-server state :hq)
-      (click-prompt state :runner "No action")
-      (is (no-prompt? state :runner) "No more prompts for runner")
-      (is (not (:run @state)) "Run is ended")))
 
 (deftest maya-triggers-only-on-rd-accesses
     ;; Maya does not trigger on accesses out of R&D
@@ -3391,8 +3426,23 @@
       (is (= 1 (:credit (get-runner))) "Runner should still have 1c")
       (is (get-resource state 0) "Installed Film Critic")))
 
+(deftest patchwork-shouldn-t-trigger-credits-spent-from-cards-effects-issue-6462
+  ;; Patchwork's ability shouldn't count for "spend credits from an installed card" type effects
+  (do-game
+    (new-game {:runner {:deck ["Patchwork" "Paperclip" "Sure Gamble" "The Twinning"] :credits 10 }})
+    (take-credits state :corp)
+    (play-from-hand state :runner "The Twinning")
+    (play-from-hand state :runner "Patchwork")
+    (let [patchwork (get-hardware state 0)
+          twinning (get-resource state 0)
+          paperclip (find-card "Paperclip" (:hand (get-runner)))]
+      (play-from-hand state :runner "Sure Gamble")
+      (click-card state :runner patchwork)
+      (click-card state :runner paperclip)
+      (is (= 0 (get-counters (refresh twinning) :power)) "Twinning should not have gained a counter"))))
+
 (deftest pennyshaver
-  ;; Pennyshaver - Prevent meat damage
+  ;; Pennyshaver - Place credits on successful run and take credits from Pennyshaver
   (do-game
       (new-game {:corp {:deck ["Hedge Fund"]}
                  :runner {:deck ["Pennyshaver"]}})
@@ -3444,29 +3494,6 @@
                            (play-from-hand state :runner "Dirty Laundry")
                            (click-card state :runner ppvp)))))
 
-(deftest quianju-pt-activate-start-of-turn
-  (do-game
-    (new-game {:runner {:hand ["Qianju PT"] :credits 15}
-               :corp {:hand ["Public Trail" "Public Trail"]}})
-    (take-credits state :corp)
-    (play-from-hand state :runner "Qianju PT")
-    (take-credits state :runner)
-    (take-credits state :corp)
-    (is (:runner-phase-12 @state) "Runner in Step 1.2")
-    (let [pt (get-hardware state 0)]
-      (card-ability state :runner pt 0)
-      (end-phase-12 state :runner)
-      (is (= 3 (:click (get-runner))) "Spent 1 click on Qianju PT")
-      (run-empty-server state :hq)
-      (click-prompt state :runner "No action")
-      (take-credits state :runner)
-      (play-from-hand state :corp "Public Trail")
-      (click-prompt state :runner "Take 1 tag")
-      (is (= 0 (count-tags state)) "Avoided a tag")
-      (play-from-hand state :corp "Public Trail")
-      (click-prompt state :runner "Take 1 tag")
-      (is (= 1 (count-tags state)) "Took a tag (QPT expired)"))))
-
 (deftest prognostic-q-loop
   ;; Prognostic Q-Loop
   (do-game
@@ -3481,7 +3508,7 @@
       (play-from-hand state :runner "Prognostic Q-Loop")
       (run-on state :hq)
       (click-prompt state :runner "Yes")
-      (is (= "The top two cards of your Stack are Au Revoir, Bankroll." (:msg (prompt-map :runner))))
+      (is (= "The top 2 cards of the stack are Au Revoir, Bankroll." (:msg (prompt-map :runner))))
       (click-prompt state :runner "OK")
       (card-ability state :runner (get-hardware state 0) 1)
       (click-prompt state :runner "Yes")
@@ -3582,7 +3609,7 @@
       (is (= "Choose a trigger to resolve" (:msg (prompt-map :runner))))
       (click-prompt state :runner "Prognostic Q-Loop")
       (click-prompt state :runner "Yes")
-      (is (= "The top two cards of your Stack are Au Revoir, Bankroll." (:msg (prompt-map :runner))))))
+      (is (= "The top 2 cards of the stack are Au Revoir, Bankroll." (:msg (prompt-map :runner))))))
 
 (deftest prognostic-q-loop-are-the-correct-cards-shown-if-another-start-of-run-trigger-draws-a-card-issue-4973
     ;; Are the correct cards shown if another start of run trigger draws a card. Issue #4973
@@ -3607,7 +3634,7 @@
       (is (= "Look at top 2 cards of the stack?" (:msg (prompt-map :runner))))
       (click-prompt state :runner "Yes")
       ; Au Revoir drawn by Masterwork off it's own install, Q Loop prompt shows accurate info
-      (is (= "The top two cards of your Stack are Bankroll, Clone Chip." (:msg (prompt-map :runner))))))
+      (is (= "The top 2 cards of the stack are Bankroll, Clone Chip." (:msg (prompt-map :runner))))))
 
 (deftest prognostic-q-loop-works-with-paladin-poemu-5304
     ;; Works with Paladin Poemu #5304
@@ -3833,7 +3860,6 @@
       ; Recon Drone ability won't fire as we are not accessing HOK
       (card-ability state :runner rd2 0)
       (is (nil? (:number (:choices (prompt-map :runner)))) "No choice to prevent damage from HOK")
-      (click-prompt state :runner "Done")
       (is (= 4 (count (:hand (get-runner)))) "Runner took 1 net damage from HOK")
       (click-prompt state :corp "No")
       (click-prompt state :runner "No action")
@@ -3963,8 +3989,8 @@
       (play-from-hand state :runner "Respirocytes")
       (play-from-hand state :runner "Respirocytes")
       (is (= 2 (count (:discard (get-runner)))) "2 damage done")
-      (is (= ["Acacia" "Bankroll"] (map :title (:hand (get-runner)))) "First Respirocytes triggers The Class Act")
-      (is (= 2 (count (:hand (get-runner)))) "Runner hasn't drawn anything yet")
+      (is (= ["Acacia" "Bankroll"] (map :title (:set-aside (get-runner)))) "First Respirocytes triggers The Class Act")
+      (is (= 2 (count (:set-aside (get-runner)))) "Runner hasn't drawn anything yet")
       (click-card state :runner "Acacia")
       (is (= ["Bankroll" "Cache"] (->> (get-runner) :hand (map :title)))
           "Acacia is on the bottom of the deck so Runner drew Cache")))
@@ -4066,7 +4092,7 @@
       (run-on state "HQ")
       (run-continue state)
       (is (= 2 (:position (:run @state))))
-      (is (= "Use Şifr?" (:msg (prompt-map :runner))))
+      (is (not (no-prompt? state :corp)) "Şifr prompt")
       (click-prompt state :runner "Yes")
       (is (zero? (get-strength (refresh ip))))
       (run-continue-until state :encounter-ice)
@@ -4086,6 +4112,22 @@
       (is (seq (:prompt (get-runner))) "Modded choice prompt exists")
       (click-card state :runner "Şifr")
       (is (= 4 (get-strength (refresh ip))) "IP Block back to standard strength"))))
+
+(deftest sifr-works-with-chisel
+  (do-game
+    (new-game {:runner {:hand ["Şifr" "Chisel"] :credits 10}
+               :corp {:hand ["Assassin"] :credits 10}})
+    (play-from-hand state :corp "Assassin" "HQ")
+    (rez state :corp (get-ice state :hq 0))
+    (take-credits state :corp)
+    (play-from-hand state :runner "Chisel")
+    (click-card state :runner "Assassin")
+    (play-from-hand state :runner "Şifr")
+    (run-on state :hq)
+    (run-continue state)
+    (click-prompt state :runner "Şifr")
+    (click-prompt state :runner "Yes")
+    (is (= 1 (count (:discard (get-corp)))) "Trashed Assassin")))
 
 (deftest silencer-pay-credits-prompt
     ;; Pay-credits prompt
@@ -4422,26 +4464,6 @@
       (play-from-hand state :runner "T400 Memory Diamond")
       (is (= 6 (hand-size :runner)) "Increased hand size")
       (is (= 5 (core/available-mu state)) "Gain 1 memory")))
-
-(deftest endurance
-  ;; Endurance
-  (do-game
-    (new-game {:runner {:hand ["Endurance"] :credits 10}
-               :corp {:hand ["Ice Wall"]}})
-    (play-from-hand state :corp "Ice Wall" "HQ")
-    (rez state :corp (get-ice state :hq 0))
-    (take-credits state :corp)
-    (play-from-hand state :runner "Endurance")
-    (let [end (get-hardware state 0)]
-      (is (= 3 (get-counters (refresh end) :power)) "starts with 3 counters")
-      (run-on state :hq)
-      (run-continue state)
-      (card-ability state :runner (refresh end) 0)
-      (click-prompt state :runner "End the run")
-      (is (= 1 (get-counters (refresh end) :power)) "spend 2 counters to break")
-      (run-continue state)
-      (run-continue state)
-      (is (= 2 (get-counters (refresh end) :power)) "gained 1 counter from a successful run"))))
 
 (deftest the-gauntlet-doesn-t-give-additional-accesses-when-no-ice-are-broken
     ;; Doesn't give additional accesses when no ice are broken

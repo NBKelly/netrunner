@@ -1,7 +1,7 @@
 (ns game.core.turns
   (:require
     [game.core.agendas :refer [update-all-advancement-requirements]]
-    [game.core.board :refer [all-active all-active-installed all-installed]]
+    [game.core.board :refer [all-active all-active-installed all-installed all-installed-and-scored]]
     [game.core.card :refer [facedown? get-card has-subtype? in-hand? installed?]]
     [game.core.drawing :refer [draw]]
     [game.core.effects :refer [unregister-floating-effects any-effects]]
@@ -27,7 +27,7 @@
         hand (if (= side :runner) "their Grip" "HQ")
         cards (count (get-in @state [side :hand]))
         credits (get-in @state [side :credit])
-        text (str pre " their turn " (:turn @state) " with " credits " [Credit] and " cards " cards in " hand)]
+        text (str pre " their turn " (:turn @state) " with " credits " [Credit] and " (quantify cards "card") " in " hand)]
     (system-msg state side text {:hr (not start-of-turn)})))
 
 (defn end-phase-12
@@ -62,7 +62,7 @@
   (when (= side :corp)
     (swap! state update-in [:turn] inc))
 
-  (doseq [c (filter :new (all-installed state side))]
+  (doseq [c (filter :new (all-installed-and-scored state side))]
     (update! state side (dissoc c :new)))
 
   (swap! state assoc :active-player side :per-turn nil :end-turn false)

@@ -4,9 +4,9 @@
             [nr.gameboard.card-preview :refer [zoom-channel]]
             [nr.gameboard.log :refer [log-pane]]
             [nr.gameboard.replay :refer [notes-pane notes-shared-pane]]
-            [nr.gameboard.settings :refer [settings-pane]]
             [nr.gameboard.state :refer [game-state]]
             [nr.gameboard.subversion :refer [subversion-pane]]
+            [nr.gameboard.settings :refer [settings-pane]]
             [nr.translations :refer [tr]]
             [reagent.core :as r]))
 
