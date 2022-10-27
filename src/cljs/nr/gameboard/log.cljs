@@ -297,4 +297,4 @@
        ]]
      [log-messages]
      [log-typing]
-     [log-input]]))
+     [log-input]))
