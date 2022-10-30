@@ -2787,7 +2787,7 @@
   (do-game
     (new-game {:corp {:deck [(qty "Quandary" 5)]
                       :hand [(qty "Quandary" 5)]}
-               :runner {:hand ["Finality"]}})
+               :runner {:hand ["Finality" "Sure Gamble"]}})
     (take-credits state :corp)
     (play-run-event state "Finality" :rd)
     (is (= 1 (count (:discard (get-runner)))))
