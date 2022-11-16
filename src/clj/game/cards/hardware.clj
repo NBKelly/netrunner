@@ -2059,6 +2059,7 @@
     {:data {:counter {:power 1}}
      :req (req (some #{:hq :rd :archives} (:successful-run runner-reg)))
      :events [{:event :runner-turn-begins
+               :async true
                :effect (req (if (<= 3 (get-counters (get-card state card) :power))
                               (wait-for (trash state side card {:unpreventable :true
                                                                 :cause-card card})
