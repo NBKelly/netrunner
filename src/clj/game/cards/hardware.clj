@@ -52,7 +52,7 @@
                            get-current-encounter jack-out make-run
                            successful-run-replace-breach total-cards-accessed]]
    [game.core.say :refer [system-msg]]
-   [game.core.servers :refer [target-server]]
+   [game.core.servers :refer [is-central? target-server]]
    [game.core.shuffling :refer [shuffle!]]
    [game.core.tags :refer [gain-tags lose-tags tag-prevent]]
    [game.core.to-string :refer [card-str]]
@@ -2200,6 +2200,20 @@
              :async true
              :effect (effect (gain-credits :runner eid 1))
              :msg "gain 1 [Credits]"}]})
+
+(defcard "Zenit Chip JZ-2MJ"
+  {:on-install {:async true
+                :effect (effect (damage eid :brain 1 {:card card}))}
+   :events [{:event :successful-run
+             :async true
+             :req (req (and (is-central? (:server context))
+                            (first-event? state side :successful-run
+                                          (fn [targets]
+                                            (let [context (first targets)]
+                                              (is-central? (:server context)))))))
+             :msg "draw 1 card"
+             :effect (req (wait-for (draw state :runner 1)
+                                    (effect-completed state side eid)))}]})
 
 (defcard "Zer0"
   {:abilities [{:cost [:click 1 :net 1]
