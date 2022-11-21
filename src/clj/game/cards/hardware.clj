@@ -2212,8 +2212,7 @@
                                             (let [context (first targets)]
                                               (is-central? (:server context)))))))
              :msg "draw 1 card"
-             :effect (req (wait-for (draw state :runner 1)
-                                    (effect-completed state side eid)))}]})
+             :effect (req (draw state :runner eid 1))}]})
 
 (defcard "Zer0"
   {:abilities [{:cost [:click 1 :net 1]
