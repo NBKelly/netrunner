@@ -1210,6 +1210,17 @@
                                 :async true
                                 :effect (effect (end-run eid card))}}}]}))
 
+(defcard "Hypoxia"
+  {:on-play {:req (req tagged)
+             :msg "do 1 core damage and make the Runner lose [Click] when their next turn begins"
+             :rfg-instead-of-trashing true
+             :async true
+             :effect (effect (damage :runner eid :brain 1 {:card card}))}
+   :events [{:event :runner-turn-begins
+             :duration :until-runner-turn-begins
+             :msg "make the Runner lose [Click]"
+             :effect (effect (lose-clicks :runner 1))}]})
+
 (defcard "Interns"
   {:on-play
    {:prompt "Choose a card to install from Archives or HQ"
