@@ -1589,6 +1589,7 @@
                   :choices (req [(when-not (forced-to-avoid-tags? state side)
                                    "Take 1 tag")
                                  "End the run"])
+                  :waiting-prompt "Runner to make a choice"
                   :async true
                   :effect (req (if (= target "Take 1 tag")
                                  (do (system-msg state :runner "takes 1 tag on encountering Funhouse")
