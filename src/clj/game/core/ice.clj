@@ -258,7 +258,9 @@
                               :source-type :subroutine})]
      (resolve-subroutine! state side eid ice sub)))
   ([state side eid ice sub]
-   (update! state :corp (resolve-subroutine ice sub))
+   ;; this is for cards like marcus batty
+   (when-not (:exernal-trigger sub)
+     (update! state :corp (resolve-subroutine ice sub)))
    (resolve-ability state side eid (:sub-effect sub) (get-card state ice) nil)))
 
 (defn- resolve-next-unbroken-sub
