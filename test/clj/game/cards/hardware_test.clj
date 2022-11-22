@@ -4980,6 +4980,39 @@
     (click-card state :runner (get-ice state :archives 0))
     (is (= 3 (:credit (get-runner))) "Gained 1 more credit from exposing")))
 
+(deftest zenit-chip-jz-2-mj
+  ;; Zenit Chip JZ-2MJ
+  (do-game
+    (new-game {:runner {:deck [(qty "Sure Gamble" 3)]
+                        :hand [(qty "Zenit Chip JZ-2MJ" 2)]}
+               :corp {:hand ["PAD Campaign"]}})
+    (play-from-hand state :corp "PAD Campaign" "New remote")
+    (take-credits state :corp)
+    (core/gain state :runner :click 1)
+    (play-from-hand state :runner "Zenit Chip JZ-2MJ")
+    (is (= 1 (count (:discard (get-runner)))) "1 damage done")
+    (is (= 1 (:brain-damage (get-runner))))
+    (changes-val-macro 0 (count (:hand (get-runner)))
+      "Draw no card on successful run on remote server"
+      (run-empty-server state :remote1)
+      (click-prompt state :runner "No action"))
+    (changes-val-macro 1 (count (:hand (get-runner)))
+      "Draw 1 card on fist successful run"
+      (run-empty-server state "Archives"))
+    (changes-val-macro 0 (count (:hand (get-runner)))
+      "Draw no card on subsequent successful runs"
+      (run-empty-server state "Archives"))
+    (take-credits state :runner)
+    (take-credits state :corp)
+    (changes-val-macro 1 (count (:hand (get-runner)))
+      "Draw 1 card on successful run"
+      (run-empty-server state "R&D"))
+    (take-credits state :runner)
+    (take-credits state :corp)
+    (changes-val-macro 1 (count (:hand (get-runner)))
+      "Draw 1 card on successful run"
+      (run-empty-server state "HQ"))))
+
 (deftest zer0-basic-ability
     ;; Basic ability
     (do-game
