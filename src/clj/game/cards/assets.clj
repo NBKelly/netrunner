@@ -57,7 +57,7 @@
    [game.core.to-string :refer [card-str]]
    [game.core.toasts :refer [toast]]
    [game.core.update :refer [update!]]
-   [game.core.winning :refer [check-win-by-agenda]]
+   [game.core.winning :refer [check-win-by-agenda win]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [game.utils :refer :all]
    [jinteki.utils :refer :all]))
@@ -2270,6 +2270,22 @@
                        :req (req (and (event? target)
                                       (seq (filter #(= (:title %) (:title target)) (:discard runner)))))
                        :value [:credit 2]}]})
+
+(defcard "Superdeep Borehole"
+  ;; the "when it is empty" text is reliant on the card being loaded
+  {:on-rez {:effect (req (update! state side (assoc-in (get-card state card) [:special :borehole-valid] true))
+                         (add-counter state side card :bad-publicity 6))}
+   :events [{:event :corp-turn-begins
+             :msg (msg "take 1 bad publicity from " (:title card))
+             :async true
+             :effect (req (add-counter state side card :bad-publicity -1 nil)
+                          (gain-bad-publicity state :corp eid 1))}
+            {:event :counter-added
+             :req (req (and (same-card? card target)
+                            (not (pos? (get-counters card :power)))
+                            (:borehole-valid (:special card))))
+             :msg "win the game"
+             :effect (req (win state :corp "Superdeep Borehole extinction event"))}]})
 
 (defcard "Sundew"
   ; If this a run event then handle in :begin-run as we do not know the server
