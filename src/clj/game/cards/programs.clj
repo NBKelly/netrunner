@@ -9,7 +9,7 @@
                            get-nested-host get-zone hardware? has-subtype? ice? in-discard? in-hand? installed?
                            program? resource? rezzed? runner?]]
    [game.core.card-defs :refer [card-def]]
-   [game.core.charge :refer [can-charge charge-ability]]
+   [game.core.charge :refer [charge-ability]]
    [game.core.cost-fns :refer [all-stealth install-cost min-stealth rez-cost]]
    [game.core.costs :refer [total-available-credits]]
    [game.core.damage :refer [damage damage-prevent]]
@@ -1377,18 +1377,12 @@
   {:hosting {:card #(and (ice? %)
                          (can-host? %))}
     :events [{:event :subroutines-broken
-              :optional
-              {:prompt "Do you want to charge an installed card?"
-               :once :per-encounter
-               :req (req (and this-server
-                              (same-card? current-ice (:host card))
-                              (first-event? state side :subroutines-broken #(same-card? (first %) (:host card)))
-                              (can-charge state side)))
-               :yes-ability
-               {:effect (effect (continue-ability (charge-ability state side eid card) card nil))
-               :async true}
-               :no-ability
-               {:effect (effect (system-msg "declines to use Flux Capacitor to charge an installed card"))}}}]})
+              :once :per-encounter
+              :async true
+              :req (req (and this-server
+                             (first-event? state side :subroutines-broken #(same-card? (first %) (:host card)))
+                             (same-card? current-ice (:host card))))
+              :effect (effect (continue-ability (charge-ability state side eid card) card nil))}]})
 
 (defcard "Force of Nature"
   (auto-icebreaker {:abilities [(break-sub 2 2 "Code Gate")
