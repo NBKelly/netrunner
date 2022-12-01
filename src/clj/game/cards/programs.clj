@@ -1971,6 +1971,9 @@
   (auto-icebreaker {:abilities [(break-sub 1 1 "Sentry")
                                 (strength-pump 3 5)]}))
 
+(defcard "Num"
+  (auto-icebreaker {:abilities [(break-sub 2 1 "Sentry")]}))
+
 (defcard "Nyashia"
   {:data {:counter {:power 3}}
    :events [{:event :breach-server
