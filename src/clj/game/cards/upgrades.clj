@@ -30,7 +30,7 @@
                             register-persistent-flag! register-run-flag!]]
    [game.core.gaining :refer [gain-credits lose-clicks lose-credits]]
    [game.core.hand-size :refer [corp-hand-size+]]
-   [game.core.ice :refer [all-subs-broken? get-run-ices pump-ice
+   [game.core.ice :refer [all-subs-broken? get-run-ices pump-ice resolve-subroutine!
                           unbroken-subroutines-choice update-all-ice update-all-icebreakers]]
    [game.core.installing :refer [corp-install]]
    [game.core.moving :refer [mill move remove-from-currently-drawing
@@ -959,7 +959,7 @@
                                                                                         target "\") from " (:title ice))
                                       :async true
                                       :effect (req (let [sub (first (filter #(= target (make-label (:sub-effect %))) (:subroutines ice)))]
-                                                     (continue-ability state side (:sub-effect sub) ice nil)))})
+                                                     (resolve-subroutine! state side eid ice (assoc sub :external-trigger true))))})
                                    card nil))}}}]})
 
 (defcard "Mason Bellamy"
@@ -1650,3 +1650,29 @@
                             :effect (req (wait-for (trash state side card {:cause-card card})
                                                    (move state :runner target :deck)
                                                    (effect-completed state side eid)))}}}]})
+
+(defcard "ZATO City Grid"
+  {:constant-effects [{:type :gain-encounter-ability
+                       :req (req (and (protecting-same-server? card target)
+                                      (some #(:printed %) (:subroutines target))
+                                      (not (:disabled target))))
+                       :value (req {:async true
+                                    :ability-name "ZATO Ability"
+                                    :interactive (req true)
+                                    :optional
+                                    {:waiting-prompt "Corp to make a decision"
+                                     :prompt "Trash ice to fire a (printed) subroutine?"
+                                     :yes-ability {:msg (msg "trash " (card-str state (:ice context)))
+                                                   :async true
+                                                   :effect (req (let [target-ice (:ice context)]
+                                                                  (wait-for (trash state side target-ice {:cause-card target-ice})
+                                                                            (continue-ability
+                                                                              state side
+                                                                              {:prompt "Choose a subroutine to resolve"
+                                                                               :choices (req (unbroken-subroutines-choice target-ice))
+                                                                               :msg (msg "resolves the subroutine (\"[Subroutine] "
+                                                                                         target "\") from " (:title target-ice))
+                                                                               :async true
+                                                                               :effect (req (let [sub (first (filter #(= target (make-label (:sub-effect %))) (:subroutines target-ice)))]
+                                                                                              (resolve-subroutine! state side eid target-ice (assoc sub :external-trigger true))))}
+                                                                              card nil))))}}})}]})
