@@ -66,6 +66,7 @@
   [state]
   (when-let [encounter (get-current-encounter state)]
     (swap! state update :encounters pop)
+    (swap! state assoc :per-encounter nil)
     (effect-completed state nil (:eid encounter))))
 
 (defn set-phase
@@ -755,6 +756,7 @@
   (swap! state dissoc-in [:end-run :ended])
   (wait-for (checkpoint state nil (make-eid state eid) {:durations [:end-of-encounter :end-of-run]})
             (reset-all-ice state side)
+            (swap! state assoc :per-encounter nil)
             (clear-run-register! state)
             (effect-completed state side eid)))
 

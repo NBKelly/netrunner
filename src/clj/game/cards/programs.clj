@@ -1400,6 +1400,17 @@
                                  :effect (effect (derez current-ice))}
                                 (strength-pump 1 1)]}))
 
+(defcard "Flux Capacitor"
+  {:hosting {:card #(and (ice? %)
+                         (can-host? %))}
+    :events [{:event :subroutines-broken
+              :once :per-encounter
+              :async true
+              :req (req (and this-server
+                             (first-event? state side :subroutines-broken #(same-card? (first %) (:host card)))
+                             (same-card? current-ice (:host card))))
+              :effect (effect (continue-ability (charge-ability state side eid card) card nil))}]})
+
 (defcard "Force of Nature"
   (auto-icebreaker {:abilities [(break-sub 2 2 "Code Gate")
                                 (strength-pump 1 1)]}))
