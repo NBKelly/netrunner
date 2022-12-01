@@ -2655,6 +2655,7 @@
              :req (req (some #(= % :play-area) (:zone card)))
              :effect (effect (add-counter (get-card state card) :power 1))}
             {:event :run-ends
+             :async true
              :req (req this-card-run)
              :effect (req (let [cards-to-draw (get-counters (get-card state card) :power)]
                             (continue-ability
