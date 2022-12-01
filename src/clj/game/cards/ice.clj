@@ -24,12 +24,11 @@
                              trigger-event unregister-events]]
    [game.core.finding :refer [find-cid]]
    [game.core.flags :refer [can-rez? card-flag? prevent-draw prevent-jack-out
-                            register-run-flag! register-turn-flag!
-                            zone-locked?]]
+                            register-run-flag! register-turn-flag! run-flag? zone-locked?]]
    [game.core.gaining :refer [gain-credits lose-clicks lose-credits]]
    [game.core.hand-size :refer [hand-size]]
    [game.core.hosting :refer [host]]
-   [game.core.ice :refer [add-sub add-sub! break-sub ice-strength-bonus
+   [game.core.ice :refer [add-sub add-sub! any-subs-broken? break-sub ice-strength-bonus
                           remove-sub! remove-subs! resolve-subroutine
                           set-current-ice unbroken-subroutines-choice update-all-ice update-all-icebreakers
                           update-ice-strength]]
@@ -3722,6 +3721,37 @@
                                              (continue state :runner nil))
                                            (trash state side eid card {:cause :subroutine}))
                                  (lose-credits state :runner eid 1)))}]})
+
+(defcard "Unsmiling Tsarevna"
+  (let [on-rez-ability {:async true
+                        :msg (msg "let the Runner gain 2 [Credits] to"
+                                  " prevent them from breaking more than 1 subroutine"
+                                  " on this ice per encounter for the remainder of this run")
+                        :effect
+                        (req (wait-for (gain-credits state :runner 2)
+                                       (register-floating-effect
+                                         state side card
+                                         {:type :cannot-break-subs-on-ice
+                                          :duration :end-of-run
+                                          :req (req (same-card? card (:ice context)))
+                                          :value (req (any-subs-broken? (:ice context)))})
+                                       (effect-completed state side eid)))}]
+    {:subroutines [(give-tags 1)
+                   (do-net-damage 2)
+                   {:optional
+                    {:prompt "Draw 2 cards?"
+                     :msg "draw 2 cards"
+                     :yes-ability
+                     {:async true
+                      :effect (effect (draw eid 2))}}}]
+     :on-rez {:optional
+              {:prompt "Let the Runner gain 2 [Credits]?"
+               :waiting-prompt "Corp to make a decision"
+               :req (req (and run this-server))
+               :yes-ability {:async true
+                             :effect (effect (continue-ability on-rez-ability card nil))}
+               :no-ability
+               {:effect (effect (system-msg "declines to use Unsmiling Tsarevna"))}}}}))
 
 (defcard "Upayoga"
   {:subroutines [(do-psi {:label "Make the Runner lose 2 [Credits]"
