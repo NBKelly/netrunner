@@ -274,7 +274,8 @@
    (let [replacement (:replace-subroutine (get-current-encounter state))
          sub (or (when replacement (assoc replacement :index (:index sub))) sub)]
      (update-current-encounter state :replace-subroutine nil)
-     (resolve-ability state side eid (:sub-effect sub) (get-card state ice) nil))))
+     (resolve-ability state side eid (:sub-effect sub) (get-card state ice) nil)
+     (trigger-event state side :subroutine-fired sub ice))))
 
 (defn- resolve-next-unbroken-sub
   ([state side ice subroutines]
