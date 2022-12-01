@@ -804,6 +804,9 @@
               :async true
               :effect (req (gain-tags state :runner eid 1))}})
 
+(defcard "Freedom of Information"
+  {:advancement-requirement (req (- (count-tags state)))})
+
 (defcard "Genetic Resequencing"
   {:on-score {:choices {:card in-scored?}
               :msg (msg "place 1 agenda counter on " (:title target))
