@@ -1663,6 +1663,20 @@
      :abilities [ability]
      :events [(assoc ability :event :corp-turn-begins)]}))
 
+(defcard "Nightmare Archive"
+  {:flags {:rd-reveal (req true)}
+   :access {:async true
+            :msg (msg "force the Runner to " (decapitalize target))
+            :player :runner
+            :prompt "Choose one"
+            :choices ["Take 1 Core Damage" "Add Nightmare Archive to score area"]
+            :effect (req (if (= target (str "Add Nightmare Archive to score area"))
+                           (do (as-agenda state :runner card -1)
+                               (effect-completed state side eid))
+                           (do (wait-for (damage state :corp :brain 1 {:card card})
+                                         (move state :corp card :rfg)
+                                         (effect-completed state side eid)))))}})
+
 (defcard "Open Forum"
   {:events [{:event :corp-mandatory-draw
              :interactive (req true)
