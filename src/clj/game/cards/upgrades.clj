@@ -16,7 +16,7 @@
    [game.core.costs :refer [total-available-credits]]
    [game.core.damage :refer [damage]]
    [game.core.def-helpers :refer [corp-rez-toast defcard offer-jack-out
-                                  reorder-choice]]
+                                  reorder-choice x-fn]]
    [game.core.drawing :refer [draw]]
    [game.core.effects :refer [register-floating-effect]]
    [game.core.eid :refer [effect-completed make-eid]]
@@ -512,6 +512,13 @@
                                   (dhq 1 (count (:hand corp)))
                                   card nil))}}}}))
 
+(defcard "Djupstad Grid"
+  {:events [{:event :agenda-scored
+             :req (req (= (:previous-zone (:card context)) (get-zone card)))
+             :interactive (req true)
+             :async true
+             :effect (effect (damage eid :brain 1 {:card card}))}]})
+
 (defcard "Drone Screen"
   {:events [{:event :run
              :async true
@@ -848,7 +855,8 @@
                 :effect (effect (trash eid target {:cause-card card}))}]})
 
 (defcard "Khondi Plaza"
-  {:recurring (req (count (get-remotes state)))
+  {:x-fn (req (count (get-remotes state)))
+   :recurring x-fn
    :interactions {:pay-credits {:req (req (and (= :rez (:source-type eid))
                                                (ice? target)
                                                (= (card->server state card) (card->server state target))))
@@ -1021,6 +1029,35 @@
                                       this-server))
                        :value [:credit 1]}]})
 
+(defcard "Mr. Hendrik"
+  {:access {:interactive (req true)
+            :optional
+            {:req (req (and (installed? card)
+                            (can-pay? state :corp (assoc eid :source card :source-type :ability) card nil [:credit 2])))
+             :waiting-prompt "Corp to choose an option"
+             :prompt "Pay 2 [Credits]?"
+             :player :corp
+             :yes-ability
+             {:async true
+              :effect (req (wait-for (pay state :corp (make-eid state eid) card :credit 2)
+                                     (system-msg state side "pays 2 [Credits] to force the Runner to suffer 1 core damage or lose all remaining clicks")
+                                     (continue-ability
+                                       state side
+                                       {:player :runner
+                                        :prompt "Take 1 core damage, or lose all clicks?"
+                                        :waiting-prompt "Runner to choose an option"
+                                        :choices ["Take 1 core damage"
+                                                  (when (< 0 (:click runner))
+                                                    "Lose remaining clicks")]
+                                        :async true
+                                        :effect (req
+                                                  (system-msg state :runner (str "chooses to " target))
+                                                  (if (= target "Take 1 core damage")
+                                                       (damage state :corp eid :brain 1 {:card card})
+                                                       (do (lose-clicks state :runner (:click runner))
+                                                           (effect-completed state side eid))))}
+                                       card nil)))}}}})
+
 (defcard "Mumbad City Grid"
   {:events [{:event :pass-ice
              :req (req (and this-server (<= 2 (count run-ices))))
@@ -1099,6 +1136,32 @@
                              [(assoc (boost-access-when-trashed bonus-server)
                                      :event :breach-server
                                      :duration :end-of-run)])))}}))
+
+(defcard "Nanisivik Grid"
+  {:events [{:event :approach-server
+             :interactive (req true)
+             :prompt "Choose a facedown piece of ice in Archives"
+             :req (req (and this-server
+                            ;; not filtering ice only so that we don't reveal valuable information
+                            (seq (filter #(not (:seen %)) (:discard corp)))))
+             :show-discard true
+             :choices {:card #(and (ice? %)
+                                   (in-discard? %)
+                                   (not (:seen %)))}
+             :async true
+             :effect
+             (req (wait-for (reveal state side target)
+                            (update! state side (assoc target :seen true))
+                            (continue-ability
+                              state side
+                              (let [ice (get-card state target)]
+                                {:async true
+                                 :prompt "Choose a subroutine to resolve"
+                                 :choices (req (unbroken-subroutines-choice ice))
+                                 :msg (msg "resolve the subroutine (\"[subroutine] " target "\") from " (card-str state ice))
+                                 :effect (req (let [sub (first (filter #(= target (make-label (:sub-effect %))) (:subroutines ice)))]
+                                                (continue-ability state side (:sub-effect sub) ice nil)))})
+                              card nil)))}]})
 
 (defcard "Navi Mumbai City Grid"
   {:constant-effects [{:type :prevent-paid-ability
@@ -1651,6 +1714,33 @@
                                                    (move state :runner target :deck)
                                                    (effect-completed state side eid)))}}}]})
 
+(defcard "Yakov Erikovich Avdakov"
+  (letfn [(valid-target-fn [target card]
+            (and (same-server? card (:card target))
+                 (corp? (:card target))
+                 (installed? (:card target))))]
+    {:events [{:event :runner-trash
+               :async true
+               :once-per-instance false
+               :req (req (valid-target-fn target card))
+               :msg "gain 2 [Credits]"
+               :effect (effect (gain-credits eid 2))}
+              {:event :corp-trash
+               :interactive (req true)
+               :once-per-instance false
+               :req (req (let [cause (:cause target)
+                               cause-card (:cause-card target)]
+                           (and (or
+                                  (corp? (:source eid))
+                                  (= :ability-cost cause)
+                                  (= :subroutine cause)
+                                  (and (corp? cause-card) (not= cause :opponent-trashes))
+                                  (and (runner? cause-card) (= cause :forced-to-trash)))
+                                (valid-target-fn target card))))
+               :async true
+               :msg "gain 2 [Credits]"
+               :effect (effect (gain-credits eid 2))}]}))
+               
 (defcard "ZATO City Grid"
   {:constant-effects [{:type :gain-encounter-ability
                        :req (req (and (protecting-same-server? card target)

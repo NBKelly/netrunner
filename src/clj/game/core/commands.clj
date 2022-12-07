@@ -110,7 +110,7 @@
                         (not counter-type)
                         (toast state side
                                (str "Could not infer what counter type you mean. Please specify one manually, by typing "
-                                    "'/counter TYPE " value "', where TYPE is advance, agenda, credit, power, or virus.")
+                                    "'/counter TYPE " value "', where TYPE is advance, agenda, credit, power, bad publicity, or virus.")
                                "error" {:time-out 0 :close-button true})
 
                         :else
@@ -142,6 +142,7 @@
           one-letter (if (<= 1 (.length typestr)) (.substring typestr 0 1) "")
           two-letter (if (<= 2 (.length typestr)) (.substring typestr 0 2) one-letter)
           counter-type (cond (= "v" one-letter) :virus
+                             (= "b" one-letter) :bad-publicity
                              (= "p" one-letter) :power
                              (= "c" one-letter) :credit
                              (= "ag" two-letter) :agenda
@@ -389,9 +390,19 @@
         "/credit"     #(swap! %1 assoc-in [%2 :credit] (constrain-value value 0 1000))
         "/deck"       #(toast %1 %2 "/deck number takes the format #n")
         "/derez"      command-derez
+        "/disable-card" #(resolve-ability %1 %2
+                                          {:prompt "Choose a card to disable"
+                                           :effect (req (disable-card state side target))
+                                           :choices {:card (fn [t] (same-side? (:side t) %2))}}
+                                          (map->Card {:title "/disable-card command"}) nil)
         "/discard"    #(toast %1 %2 "/discard number takes the format #n")
         "/discard-random" #(move %1 %2 (rand-nth (get-in @%1 [%2 :hand])) :discard)
         "/draw"       #(draw %1 %2 (make-eid %1) (constrain-value value 0 1000))
+        "/enable-card" #(resolve-ability %1 %2
+                                         {:prompt "Choose a card to enable"
+                                          :effect (req (enable-card state side target))
+                                          :choices {:card (fn [t] (same-side? (:side t) %2))}}
+                                         (map->Card {:title "/enable-card command"}) nil)
         "/end-run"    (fn [state side]
                         (when (and (= side :corp)
                                     (:run @state))

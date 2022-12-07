@@ -345,6 +345,18 @@
       (run-jack-out state)
       (is (= "Autoscripter" (:title (last (:discard (get-runner))))) "Autoscripter was trashed after successful run"))))
 
+(deftest basilar-synth
+  (do-game
+    (new-game {:runner {:hand ["Basilar Synthgland 2KVJ" (qty "Sure Gamble" 4)]}})
+    (take-credits state :corp)
+    (is (= 4 (:click (get-runner))) "4 base clicks")
+    (play-from-hand state :runner "Basilar Synthgland 2KVJ")
+    (is (= 2 (:brain-damage (get-runner))) "2 damage taken")
+    (is (= 3 (:click (get-runner))))
+    (take-credits state :runner)
+    (take-credits state :corp)
+    (is (= 5 (:click (get-runner))) "4+1  base clicks")))
+
 (deftest blackguard
   ;; Blackguard - +2 MU, forced rez of exposed ice
   (do-game
@@ -2323,6 +2335,24 @@
       (click-prompt state :runner "End the run")
       (is (no-prompt? state :runner) "No Hippo prompt on later ice")))
 
+(deftest hippocampic-mechanocytes
+  ;; Hippocampic Mechanocytes
+  (do-game
+    (new-game {:runner {:hand ["Hippocampic Mechanocytes" (qty "Stoneship Chart Room" 2)]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Hippocampic Mechanocytes")
+    (is (= 1 (count (:discard (get-runner)))) "Suffered 1 meat damage")
+    (let [hm (get-hardware state 0)]
+      (is (= 2 (get-counters (refresh hm) :power)))
+      (is (= 7 (hand-size :runner)))
+      (play-from-hand state :runner "Stoneship Chart Room")
+      (card-ability state :runner (get-resource state 0) 1)
+      (click-card state :runner hm)
+      (is (= 8 (hand-size :runner)))
+      (core/add-counter state :runner (refresh hm) :power -3)
+      (core/update-hand-size state :runner)
+      (is (= 5 (hand-size :runner))))))
+
 (deftest keiko
   ;; Keiko
   (do-game
@@ -3481,6 +3511,49 @@
       (card-ability state :runner plas 0)
       (is (= 1 (count (:hand (get-runner)))) "All meat damage prevented")
       (is (empty? (get-hardware state)) "Plascrete depleted and trashed"))))
+
+(deftest poison-vial
+  ;; Poison Vial
+  (do-game
+    (new-game {:corp {:deck ["Spiderweb"]}
+               :runner {:id "Quetzal: Free Spirit"
+                        :deck ["Poison Vial"]}})
+    (play-from-hand state :corp "Spiderweb" "HQ")
+    (take-credits state :corp)
+    (play-from-hand state :runner "Poison Vial")
+    (let [pvial (get-hardware state 0)
+          spiderweb (get-ice state :hq 0)
+          q (get-in @state [:runner :identity])]
+      (is (= 3 (get-counters pvial :power)) "3 counters on install")
+      (run-on state :hq)
+      (rez state :corp spiderweb)
+      (run-continue state)
+      (card-ability state :runner pvial 0)
+      (is (no-prompt? state :runner) "Can use ability only after breaking at least 1 sub")
+      (card-ability state :runner q 0)
+      (click-prompt state :runner "End the run")
+      (changes-val-macro
+        -1 (get-counters (refresh pvial) :power)
+        "Spent 1 counter"
+        (card-ability state :runner pvial 0)
+        (click-prompt state :runner "End the run")
+        (click-prompt state :runner "End the run"))
+      (is (= 3 (count (filter :broken (:subroutines (refresh spiderweb))))) "Spiderweb has all of its subroutines broken")
+      (run-continue state :movement)
+      (run-jack-out state)
+      (take-credits state :runner)
+      (take-credits state :corp)
+      (run-on state :hq)
+      (run-continue state)
+      (card-ability state :runner q 0)
+      (click-prompt state :runner "End the run")
+      (changes-val-macro
+        -1 (get-counters (refresh pvial) :power)
+        "Spent 1 counter"
+        (card-ability state :runner pvial 0)
+        (click-prompt state :runner "End the run")
+        (click-prompt state :runner "Done"))
+      (is (= 2 (count (filter :broken (:subroutines (refresh spiderweb))))) "Spiderweb has 2 out of 3 subroutines broken"))))
 
 (deftest prepaid-voicepad-pay-credits-prompt
     ;; Pay-credits prompt
@@ -4664,6 +4737,30 @@
                            (click-card state :runner tt)
                            (click-card state :runner tt)))))
 
+(deftest time-bomb
+  (do-game
+    (new-game {:runner {:hand ["Time Bomb"]}
+               :corp {:hand ["Hedge Fund" "IPO" "Restructure" "Beanstalk Royalties"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Time Bomb")
+    (is (= 1 (count (:hand (get-runner)))) "Time Bomb not played because of no run")
+    (run-empty-server state "HQ")
+    (click-prompt state :runner "No action")
+    (play-from-hand state :runner "Time Bomb")
+    (is (zero? (count (:hand (get-runner)))) "Able to play time bomb")
+    (take-credits state :runner)
+    (take-credits state :corp)
+    (is (= 2 (get-counters (get-hardware state 0) :power)))
+    (take-credits state :runner)
+    (take-credits state :corp)
+    (is (= 3 (get-counters (get-hardware state 0) :power)))
+    (take-credits state :runner)
+    (take-credits state :corp)
+    (click-card state :corp "Hedge Fund")
+    (click-card state :corp "IPO")
+    (click-card state :corp "Restructure")
+    (is (no-prompt? state :corp))))
+
 (deftest titanium-ribs
   ;; Titanium Ribs - Choose cards lost to damage, but not on Corp turn against Chronos Protocol
   (do-game
@@ -4890,6 +4987,34 @@
     (click-prompt state :runner "Pay 1 [Credits] to trash")
     (is (no-prompt? state :runner))))
 
+(deftest wake-implant-v2a-jrj
+  ;; WAKE Implant v2A-JRJ
+  (do-game
+    (new-game {:corp {:deck [(qty "Ice Wall" 10)]
+                      :hand ["Hedge Fund"]}
+               :runner {:hand ["WAKE Implant v2A-JRJ" "Sure Gamble"]}})
+    (take-credits state :corp)
+    (core/gain state :runner :click 6)
+    (play-from-hand state :runner "WAKE Implant v2A-JRJ")
+    (is (= 1 (count (:discard (get-runner)))) "1 damage done")
+    (let [wi (get-hardware state 0)]
+      (dotimes [_ 6]
+        (changes-val-macro
+          1 (get-counters (refresh wi) :power)
+          "1 counter added"
+          (run-empty-server state :hq)
+          (click-prompt state :runner "No action")))
+      (dotimes [c 3]
+        (changes-val-macro
+          (- c) (get-counters (refresh wi) :power)
+          (str c " counters spent")
+          (run-empty-server state :rd)
+          (click-prompt state :runner (str c))
+          (is (= c (core/access-bonus-count state :runner :rd)) (str "Runner should access " c " additional cards"))
+          (click-prompt state :runner "No action")
+          (dotimes [_ c]
+            (click-prompt state :runner "No action")))))))
+
 (deftest zamba
   ;; Zamba - Whenever corp card is exposed you may gain 1 credit
   (do-game
@@ -4908,6 +5033,39 @@
     (click-prompt state :runner "Expose a card")
     (click-card state :runner (get-ice state :archives 0))
     (is (= 3 (:credit (get-runner))) "Gained 1 more credit from exposing")))
+
+(deftest zenit-chip-jz-2-mj
+  ;; Zenit Chip JZ-2MJ
+  (do-game
+    (new-game {:runner {:deck [(qty "Sure Gamble" 3)]
+                        :hand [(qty "Zenit Chip JZ-2MJ" 2)]}
+               :corp {:hand ["PAD Campaign"]}})
+    (play-from-hand state :corp "PAD Campaign" "New remote")
+    (take-credits state :corp)
+    (core/gain state :runner :click 1)
+    (play-from-hand state :runner "Zenit Chip JZ-2MJ")
+    (is (= 1 (count (:discard (get-runner)))) "1 damage done")
+    (is (= 1 (:brain-damage (get-runner))))
+    (changes-val-macro 0 (count (:hand (get-runner)))
+      "Draw no card on successful run on remote server"
+      (run-empty-server state :remote1)
+      (click-prompt state :runner "No action"))
+    (changes-val-macro 1 (count (:hand (get-runner)))
+      "Draw 1 card on fist successful run"
+      (run-empty-server state "Archives"))
+    (changes-val-macro 0 (count (:hand (get-runner)))
+      "Draw no card on subsequent successful runs"
+      (run-empty-server state "Archives"))
+    (take-credits state :runner)
+    (take-credits state :corp)
+    (changes-val-macro 1 (count (:hand (get-runner)))
+      "Draw 1 card on successful run"
+      (run-empty-server state "R&D"))
+    (take-credits state :runner)
+    (take-credits state :corp)
+    (changes-val-macro 1 (count (:hand (get-runner)))
+      "Draw 1 card on successful run"
+      (run-empty-server state "HQ"))))
 
 (deftest zer0-basic-ability
     ;; Basic ability

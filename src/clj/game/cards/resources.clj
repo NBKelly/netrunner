@@ -11,8 +11,8 @@
    [game.core.board :refer [all-active all-active-installed all-installed card->server
                             server->zone]]
    [game.core.card :refer [agenda? asset? assoc-host-zones card-index corp?
-                           event? facedown? get-agenda-points get-card
-                           get-counters get-zone hardware? has-subtype? ice? identity? in-discard? in-hand?
+                           event? facedown? get-agenda-points get-card get-counters
+                           get-title get-zone hardware? has-subtype? ice? identity? in-discard? in-hand?
                            installed? is-type? program? resource? rezzed? runner? upgrade? virus-program?]]
    [game.core.card-defs :refer [card-def]]
    [game.core.charge :refer [can-charge charge-ability]]
@@ -47,7 +47,7 @@
    [game.core.installing :refer [install-locked? runner-can-install? runner-can-pay-and-install?
                                  runner-install]]
    [game.core.link :refer [get-link link+]]
-   [game.core.mark :refer [identify-mark-ability]]
+   [game.core.mark :refer [identify-mark-ability is-mark?]]
    [game.core.memory :refer [available-mu]]
    [game.core.moving :refer [as-agenda flip-faceup forfeit mill move
                              remove-from-currently-drawing trash trash-cards
@@ -299,6 +299,44 @@
                 :effect (effect (trigger-event :searched-stack nil)
                                 (shuffle! :deck)
                                 (runner-install eid target nil))}]})
+
+(defcard "Asmund Pudlat"
+  (letfn [(search-and-host [x]
+            {:prompt (msg "Choose a virus or weapon card (" x " remaining)")
+             :choices (req (cancellable (filter
+                                          #(and (not (contains? (:hosted card) %))
+                                                (or (has-subtype? % "Virus")
+                                                    (has-subtype? % "Weapon")))
+                                          (:deck runner)) :sorted))
+             :async true
+             :msg (msg "host " (get-title target) " on itself")
+             :effect (req (host state side card target)
+                          (if (> x 1)
+                            (continue-ability state side (search-and-host (dec x)) card nil)
+                            (effect-completed state side eid)))})]
+    {:on-install {:msg "shuffle the stack"
+                  :async true
+                  :effect (req (wait-for (resolve-ability state side
+                                                          (make-eid state eid) 
+                                                          (search-and-host 2)
+                                                          card nil)
+                                         (trigger-event state side :searched-stack nil)
+                                         (shuffle! state side :deck)
+                                         (effect-completed state side eid)))}
+      :events [{:event :runner-turn-begins
+                :label "Add a hosted card to the grip (start of turn)"
+                :prompt "Choose a hosted card to move to the grip"
+                :choices {:req (req (same-card? card (:host target)))}
+                :msg (msg "add " (get-title target) " to the grip")
+                :once :per-turn
+                :cancel-effect (effect (system-msg (str "declines to use " (get-title card)))
+                                       (effect-completed eid))
+                :async true
+                :effect (req (move state side target :hand)
+                             (if-not (empty? (:hosted (get-card state card)))
+                               (effect-completed state side eid)
+                               (do (system-msg state side (str "trashes " (get-title card)))
+                                   (trash state side eid card {:unpreventable true :source-card card}))))}]}))
 
 (defcard "Assimilator"
   {:abilities [{:label "Turn a facedown card faceup"
@@ -1051,6 +1089,16 @@
                                              (resolve-ability state :runner (:reactivate (card-def c)) (get-card state c) nil))}])
                             (effect-completed state side eid)))}]})
 
+(defcard "Dr. Nuka Vrolyck"
+  {:data {:counter {:power 2}}
+   :abilities [{:msg "draw 3 cards"
+                :cost [:click 1 :power 1]
+                :async true
+                :effect (req (wait-for (draw state :runner 3)
+                                       (if (pos? (get-counters (get-card state card) :power))
+                                         (effect-completed state side eid)
+                                         (trash state :runner eid card {:unpreventable true :cause-card card}))))}]})
+
 (defcard "DreamNet"
   {:events [{:event :successful-run
              :async true
@@ -1468,6 +1516,15 @@
                        :req (req (and (get-current-encounter state)
                                       (same-card? current-ice target)))
                        :value -1}]})
+
+(defcard "Info Bounty"
+  {:events [(assoc identify-mark-ability :event :runner-turn-begins)
+            {:event :end-breach-server
+              :async true
+              :interactive (req true)
+              :req (req (first-event? state side :end-breach-server #(is-mark? state (:from-server (first %)))))
+              :msg "gain 2 [Credits]"
+              :effect (effect (gain-credits :runner eid 2))}]})
 
 (defcard "Inside Man"
   {:recurring 2

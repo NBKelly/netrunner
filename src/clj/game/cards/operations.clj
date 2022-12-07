@@ -8,7 +8,7 @@
    [game.core.board :refer [all-active-installed all-installed
                             get-all-installed get-remote-names get-remotes
                             installable-servers server->zone]]
-   [game.core.card :refer [agenda? asset? can-be-advanced? card-index corp? corp-installable-type?
+   [game.core.card :refer [active? agenda? asset? can-be-advanced? card-index corp? corp-installable-type?
                            event? facedown? faceup? get-advancement-requirement
                            get-card get-counters get-zone hardware? has-subtype? ice? identity? in-discard?
                            in-hand? installed? is-type? operation? program? resource? rezzed? runner?
@@ -18,7 +18,7 @@
    [game.core.costs :refer [total-available-credits]]
    [game.core.damage :refer [damage damage-bonus]]
    [game.core.def-helpers :refer [corp-recur defcard do-brain-damage
-                                  reorder-choice]]
+                                  reorder-choice x-fn]]
    [game.core.drawing :refer [draw]]
    [game.core.effects :refer [register-floating-effect]]
    [game.core.eid :refer [effect-completed make-eid make-result]]
@@ -636,6 +636,13 @@
       :effect (req (wait-for (gain-credits state :runner 2)
                              (continue-ability state side trash-from-hq card nil)))}}))
 
+(defcard "Distributed Tracing"
+  {:on-play
+   {:req (req (last-turn? state :runner :stole-agenda))
+    :msg "give the runner a tag"
+    :async true
+    :effect (req (gain-tags state :corp eid 1))}})
+
 (defcard "Diversified Portfolio"
   (letfn [(number-of-non-empty-remotes [state]
             (count (filter seq (map #(:content (second %)) (get-remotes state)))))]
@@ -711,6 +718,13 @@
     :effect (req (wait-for (trash-cards state side (get-in @state [:corp :hand]) {:cause-card card})
                            (draw state side eid 5)))}})
 
+(defcard "End of the Line"
+  {:on-play
+   {:additional-cost [:tag 1]
+    :msg "do 4 meat damage"
+    :async true
+    :effect (effect (damage eid :meat 4 {:card card}))}})
+
 (defcard "Enforced Curfew"
   {:on-play {:msg "reduce the Runner's maximum hand size by 1"}
    :constant-effects [(runner-hand-size+ -1)]})
@@ -777,15 +791,15 @@
                              card nil)))}})
 
 (defcard "Fast Break"
-  {:on-play
+  {:x-fn (req (-> runner :scored count))
+   :on-play
    {:req (req (-> runner :scored count pos?))
     :async true
     :effect
-    (req (let [X (-> runner :scored count)
-               draw {:async true
+    (req (let [draw {:async true
                      :prompt "Draw how many cards?"
-                     :choices {:number (req X)
-                               :max (req X)
+                     :choices {:number x-fn
+                               :max x-fn
                                :default (req 1)}
                      :msg (msg "draw " (quantify target "card"))
                      :effect (effect (draw eid target))}
@@ -799,14 +813,14 @@
                                 :effect (req (wait-for
                                                (corp-install state side target server nil)
                                                (let [server (remote->name (second (:zone async-result)))]
-                                                 (if (< n X)
+                                                 (if (< n (x-fn state side eid card targets))
                                                    (continue-ability state side (install-cards server (inc n)) card nil)
                                                    (effect-completed state side eid)))))})
                select-server {:async true
                               :prompt "Install cards in which server?"
                               :choices (req (conj (vec (get-remote-names state)) "New remote"))
                               :effect (effect (continue-ability (install-cards target 1) card nil))}]
-           (wait-for (gain-credits state :corp X)
+           (wait-for (gain-credits state :corp (x-fn state side eid card targets))
                      (wait-for (resolve-ability state side draw card nil)
                                (continue-ability state side select-server card nil)))))}})
 
@@ -1210,6 +1224,17 @@
                                 :async true
                                 :effect (effect (end-run eid card))}}}]}))
 
+(defcard "Hypoxia"
+  {:on-play {:req (req tagged)
+             :msg "do 1 core damage and make the Runner lose [Click] when their next turn begins"
+             :rfg-instead-of-trashing true
+             :async true
+             :effect (effect (damage :runner eid :brain 1 {:card card}))}
+   :events [{:event :runner-turn-begins
+             :duration :until-runner-turn-begins
+             :msg "make the Runner lose [Click]"
+             :effect (effect (lose-clicks :runner 1))}]})
+
 (defcard "Interns"
   {:on-play
    {:prompt "Choose a card to install from Archives or HQ"
@@ -1604,6 +1629,21 @@
                                          (:break ability))))
                         :value true}]}))
 
+(defcard "Nonequivalent Exchange"
+  {:on-play
+   {:optional
+    {:prompt "Let the Runner gain 2 [Credits]?"
+     :waiting-prompt "Corp to make a decision"
+     :async true
+     :yes-ability
+     {:msg "gain 7 [Credits]. The Runner gains 2 [Credits]"
+      :async true
+      :effect (req (wait-for (gain-credits state side 7)
+                             (gain-credits state :runner eid 2)))}
+     :no-ability
+     {:msg "gain 5 [Credits]"
+      :async true
+      :effect (effect (gain-credits eid 5))}}}})
 
 (defcard "O₂ Shortage"
   {:on-play
@@ -2318,6 +2358,23 @@
     :msg (msg "place 2 advancement tokens on " (card-str state target))
     :effect (effect (add-prop target :advance-counter 2 {:placed true}))}})
 
+(defcard "Shipment from Vladisibirsk"
+  (letfn [(ability [x]
+            {:prompt (msg "Choose an installed card to place advancement counters on (" x " remaining)")
+             :async true
+             :choices {:card #(and (corp? %)
+                                   (installed? %))}
+             :msg (msg "place 1 advancement counter on " (card-str state target))
+             :effect (req (wait-for (add-prop state side target :advance-counter 1 {:placed true})
+                                    (if (> x 1)
+                                      (continue-ability state side (ability (dec x)) card nil)
+                                      (effect-completed state side eid))))})]
+    {:on-play
+     {:async true
+      :req (req (<= 2 (count-tags state)))
+      :msg "trash all cards in HQ"
+      :effect (effect (continue-ability (ability 4) card nil))}}))
+
 (defcard "Shoot the Moon"
   (letfn [(rez-helper [ice]
             (when (seq ice)
@@ -2334,6 +2391,30 @@
                                        0 (flatten (seq (:servers corp))))))}
       :async true
       :effect (effect (continue-ability (rez-helper targets) card nil))}}))
+
+(defcard "Simulation Reset"
+  {:on-play
+   {:rfg-instead-of-trashing true
+    :prompt "Choose up to 5 cards in HQ to trash"
+    :choices {:max (req 5)
+              :card #(and (corp? %)
+                          (in-hand? %))}
+    :async true
+    :msg (msg "trash " (quantify (count targets) "card") " from HQ")
+    :effect (req (let [n (count targets)
+                       t targets]
+                   (wait-for (resolve-ability state side
+                                              {:async true
+                                               :effect
+                                               (req (wait-for (trash-cards state side t
+                                                                           {:unpreventable true :cause-card card})
+                                                              (shuffle-into-rd-effect state side eid card (count t) true)))}
+                                              card nil)
+                             (continue-ability state side
+                                               {:msg (msg "draw " (quantify n "card"))
+                                                :async true
+                                                :effect (effect (draw eid n))}
+                                               card nil))))}})
 
 (defcard "Snatch and Grab"
   {:on-play

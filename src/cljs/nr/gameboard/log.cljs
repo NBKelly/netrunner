@@ -293,8 +293,7 @@
                                 (ws/ws-send! [:game/say {:gameid (current-gameid app-state)
                                                          :msg "/breach rd"}]))
                  :key "/breach rd"}
-        "Breach R&D"]
-       ]]
+        "Breach R&D"]]
      [log-messages]
      [log-typing]
      [log-input]]))

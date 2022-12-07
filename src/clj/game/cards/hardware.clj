@@ -6,7 +6,7 @@
                              get-only-card-to-access]]
    [game.core.actions :refer [play-ability]]
    [game.core.board :refer [all-active all-active-installed all-installed]]
-   [game.core.card :refer [corp? event? facedown? get-card get-counters
+   [game.core.card :refer [active? corp? event? facedown? get-card get-counters
                            get-zone hardware? has-subtype? ice? in-deck? in-discard?
                            in-hand? installed? program? resource? rezzed? runner? virus-program? faceup?]]
    [game.core.card-defs :refer [card-def]]
@@ -15,7 +15,7 @@
    [game.core.damage :refer [chosen-damage damage damage-prevent
                              enable-runner-damage-choice runner-can-choose-damage?]]
    [game.core.def-helpers :refer [breach-access-bonus defcard offer-jack-out
-                                  reorder-choice trash-on-empty]]
+                                  reorder-choice trash-on-empty x-fn]]
    [game.core.drawing :refer [draw]]
    [game.core.effects :refer [register-floating-effect
                               unregister-effects-for-card unregister-floating-effects]]
@@ -33,8 +33,8 @@
                               lose-credits]]
    [game.core.hand-size :refer [hand-size runner-hand-size+]]
    [game.core.hosting :refer [host]]
-   [game.core.ice :refer [all-subs-broken? break-sub pump reset-all-ice
-                          update-all-ice update-all-icebreakers
+   [game.core.ice :refer [all-subs-broken? any-subs-broken? break-sub pump
+                          reset-all-ice update-all-ice update-all-icebreakers
                           update-breaker-strength]]
    [game.core.installing :refer [install-locked? runner-can-install?
                                  runner-can-pay-and-install? runner-install]]
@@ -52,7 +52,7 @@
                            get-current-encounter jack-out make-run
                            successful-run-replace-breach total-cards-accessed]]
    [game.core.say :refer [system-msg]]
-   [game.core.servers :refer [target-server]]
+   [game.core.servers :refer [is-central? target-server]]
    [game.core.shuffling :refer [shuffle!]]
    [game.core.tags :refer [gain-tags lose-tags tag-prevent]]
    [game.core.to-string :refer [card-str]]
@@ -162,6 +162,11 @@
              :msg "trash itself"
              :effect (effect (trash eid card {:cause-card card}))}]})
 
+(defcard "Basilar Synthgland 2KVJ"
+  {:on-install {:async true
+                :effect (effect (damage eid :brain 2 {:card card}))}
+   :in-play [:click-per-turn 1]})
+
 (defcard "Blackguard"
   {:constant-effects [(mu+ 2)]
    :events [{:event :expose
@@ -267,12 +272,12 @@
                 :effect (effect (damage eid :brain 1 {:card card}))}})
 
 (defcard "Brain Chip"
-  (let [runner-points (fn [s] (max (get-in @s [:runner :agenda-point] 0) 0))]
-    {:constant-effects [(mu+
-                          (req (pos? (runner-points state)))
-                          ;; [:regular N] is needed to make the mu system work
-                          (req [:regular (runner-points state)]))
-                        (runner-hand-size+ (req (runner-points state)))]}))
+  {:x-fn (req (max (get-in @state [:runner :agenda-point] 0) 0))
+   :constant-effects [(mu+
+                        (req (pos? (x-fn state side eid card targets)))
+                        ;; [:regular N] is needed to make the mu system work
+                        (req [:regular (x-fn state side eid card targets)]))
+                      (runner-hand-size+ x-fn)]})
 
 (defcard "Buffer Drive"
   (let [grip-or-stack-trash?
@@ -1026,6 +1031,13 @@
                                  (move card :rfg)
                                  (trash eid target {:cause-card card}))}}}]}))
 
+(defcard "Hippocampic Mechanocytes"
+  {:on-install {:async true
+                :msg "suffer 1 meat damage"
+                :effect (effect (damage eid :meat 1 {:unboostable true :card card}))}
+   :data {:counter {:power 2}}
+   :constant-effects [(runner-hand-size+ (req (get-counters card :power)))]})
+
 (defcard "HQ Interface"
   {:events [(breach-access-bonus :hq 1)]})
 
@@ -1176,8 +1188,9 @@
              :effect (effect (draw eid 1))}]})
 
 (defcard "Māui"
-  {:constant-effects [(mu+ 2)]
-   :recurring (req (count (get-in corp [:servers :hq :ices])))
+  {:x-fn (req (count (get-in corp [:servers :hq :ices])))
+   :constant-effects [(mu+ 2)]
+   :recurring x-fn
    :interactions {:pay-credits {:req (req (= [:hq] (get-in @state [:run :server])))
                                 :type :recurring}}})
 
@@ -1517,6 +1530,11 @@
    :abilities [{:cost [:power 1]
                 :msg "prevent 1 meat damage"
                 :effect (req (damage-prevent state side :meat 1))}]})
+
+(defcard "Poison Vial"
+  {:data {:counter {:power 3}}
+   :events [(trash-on-empty :power)]
+   :abilities [(break-sub [:power 1] 2 "All" {:req (req (any-subs-broken? current-ice))})]})
 
 (defcard "Polyhistor"
   (let [abi {:optional
@@ -2051,6 +2069,22 @@
                                                (has-subtype? target "Icebreaker")))
                                 :type :recurring}}})
 
+(defcard "Time Bomb"
+  {:data {:counter {:power 1}}
+   :req (req (some #{:hq :rd :archives} (:successful-run runner-reg)))
+   :events [{:event :runner-turn-begins
+             :async true
+             :effect (req (if (<= 3 (get-counters (get-card state card) :power))
+                            (wait-for (trash state side card {:unpreventable :true
+                                                              :cause-card card})
+                                      (system-msg state side (str "uses " (:title card) " to sabotage 3"))
+                                      (continue-ability state side
+                                                        (sabotage-ability 3)
+                                                        card nil))
+                            (do (system-msg state side (str "adds 1 power counter to " (:title card)))
+                                (add-counter state side card :power 1)
+                                (effect-completed state side eid))))}]})
+
 (defcard "Titanium Ribs"
   {:on-install {:async true
                 :msg "suffer 2 meat damage"
@@ -2187,6 +2221,32 @@
                                     :effect (req (breach-server state :runner eid [:hq] nil))}])
                                 (effect-completed state side eid))))}]})
 
+(defcard "WAKE Implant v2A-JRJ"
+  {:on-install {:async true
+                :msg "suffer 1 meat damage"
+                :effect (effect (damage eid :meat 1 {:unboostable true :card card}))}
+   :events [{:event :successful-run
+             :async true
+             :req (req (= :hq (target-server context)))
+             :msg "place 1 power counter on itself"
+             :effect (req (add-counter state :runner card :power 1 {:placed true})
+                          (effect-completed state side eid))}
+            {:event :breach-server
+             :async true
+             :req (req (and (= :rd target)
+                            (pos? (get-counters card :power))))
+             :effect (req (continue-ability
+                            state side
+                            {:prompt "How many additional R&D accesses do you want to make?"
+                             :choices {:number (req (min 3 (get-counters card :power)))
+                                       :default (req (min 3 (get-counters card :power)))}
+                             :msg (msg "access " (quantify target "additional card") " from R&D")
+                             :async true
+                             :effect (effect (access-bonus :rd (max 0 target))
+                                             (add-counter :runner card :power (- target) {:placed true})
+                                             (effect-completed eid))}
+                            card nil))}]})
+
 (defcard "Window"
   {:abilities [{:cost [:click 1]
                 :keep-menu-open :while-clicks-left
@@ -2200,6 +2260,19 @@
              :async true
              :effect (effect (gain-credits :runner eid 1))
              :msg "gain 1 [Credits]"}]})
+
+(defcard "Zenit Chip JZ-2MJ"
+  {:on-install {:async true
+                :effect (effect (damage eid :brain 1 {:card card}))}
+   :events [{:event :successful-run
+             :async true
+             :req (req (and (is-central? (:server context))
+                            (first-event? state side :successful-run
+                                          (fn [targets]
+                                            (let [context (first targets)]
+                                              (is-central? (:server context)))))))
+             :msg "draw 1 card"
+             :effect (req (draw state :runner eid 1))}]})
 
 (defcard "Zer0"
   {:abilities [{:cost [:click 1 :net 1]
