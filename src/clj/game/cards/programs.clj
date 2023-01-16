@@ -13,7 +13,7 @@
    [game.core.cost-fns :refer [all-stealth install-cost min-stealth rez-cost]]
    [game.core.costs :refer [total-available-credits]]
    [game.core.damage :refer [damage damage-prevent]]
-   [game.core.def-helpers :refer [breach-access-bonus defcard offer-jack-out]]
+   [game.core.def-helpers :refer [breach-access-bonus defcard offer-jack-out trash-on-empty]]
    [game.core.drawing :refer [draw]]
    [game.core.effects :refer [register-floating-effect
                               unregister-effects-for-card]]
@@ -41,7 +41,7 @@
    [game.core.memory :refer [available-mu update-mu]]
    [game.core.moving :refer [flip-facedown mill move swap-cards swap-ice trash
                              trash-prevent]]
-   [game.core.optional :refer [get-autoresolve set-autoresolve]]
+   [game.core.optional :refer [get-autoresolve set-autoresolve never?]]
    [game.core.payment :refer [build-cost-label can-pay? cost-target cost-value]]
    [game.core.prompts :refer [cancellable]]
    [game.core.props :refer [add-counter add-icon remove-icon]]
@@ -49,6 +49,7 @@
    [game.core.rezzing :refer [derez get-rez-cost rez]]
    [game.core.runs :refer [active-encounter? bypass-ice continue
                            get-current-encounter make-run successful-run-replace-breach]]
+   [game.core.sabotage :refer [sabotage-ability]]
    [game.core.say :refer [system-msg]]
    [game.core.servers :refer [is-central? is-remote? target-server zone->name]]
    [game.core.shuffling :refer [shuffle!]]
