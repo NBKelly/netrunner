@@ -223,75 +223,84 @@
                  @log)))})))
 
 (defn log-pane []
-  (fn []
-    [:div.log
-     [angel-arena-log/inactivity-pane]
-     [:div.playtest-buttons
-      [:div.group
-       (doall (for [token ["power" "virus" "credit"]]
-                ^{:key (keyword token)}
-                [:div
-                 (string/capitalize token) " tokens: "
-                 (for [amount (if (= "credit" token)
-                                (range 13)
-                                (range 10))]
-                   ^{:key (keyword (str token "-" amount))}
-                   [:button.small {:on-click #(do (.preventDefault %)
-                                                  (ws/ws-send! [:game/say {:gameid (current-gameid app-state)
-                                                                           :msg (str "/counter " token " " amount)}]))
-                                   :key (str amount)}
-                    (str amount)])]))]
-      [:div.group
-       [:div
-        "Draw: "
-        (for [amount (range 8)]
-          ^{:key (keyword (str "draw-" amount))}
-          [:button.small {:on-click #(do (.preventDefault %)
-                                         (ws/ws-send! [:game/say {:gameid (current-gameid app-state)
-                                                                  :msg (str "/draw " amount)}]))
-                          :key (str amount)}
-           (str amount)])]
-       [:div
-        "Random discard: "
-        (for [amount (range 8)]
-          ^{:key (keyword (str "discard-" amount))}
-          [:button.small {:on-click #(do (.preventDefault %)
-                                         (dotimes [_ amount]
-                                           (ws/ws-send! [:game/say {:gameid (current-gameid app-state)
-                                                                    :msg "/discard-random"}])))
-                          :key (str amount)}
-           (str amount)])]]
-      [:div.group
-       (when (= :runner (get-side @game-state))
+  (let [playtest-buttons-open (r/atom true)]
+    (fn []
+      [:div.log
+       [angel-arena-log/inactivity-pane]
+       [:div.playtest-buttons {:style {:display (if @playtest-buttons-open "" "none")}}
+        [:div.group
+         (doall (for [token ["power" "virus" "credit"]]
+                  ^{:key (keyword token)}
+                  [:div
+                   (string/capitalize token) " tokens: "
+                   (for [amount (if (= "credit" token)
+                                  (range 13)
+                                  (range 10))]
+                     ^{:key (keyword (str token "-" amount))}
+                     [:button.small {:on-click #(do (.preventDefault %)
+                                                    (ws/ws-send! [:game/say {:gameid (current-gameid app-state)
+                                                                             :msg (str "/counter " token " " amount)}]))
+                                     :key (str amount)}
+                      (str amount)])]))]
+        [:div.group
          [:div
-          "Bonus HQ: "
+          "Draw: "
           (for [amount (range 8)]
-            ^{:key (keyword (str "bonus-hq-" amount))}
+            ^{:key (keyword (str "draw-" amount))}
             [:button.small {:on-click #(do (.preventDefault %)
                                            (ws/ws-send! [:game/say {:gameid (current-gameid app-state)
-                                                                    :msg (str "/access-bonus hq " amount)}]))
+                                                                    :msg (str "/draw " amount)}]))
                             :key (str amount)}
-             (str amount)])])
-       (when (= :runner (get-side @game-state))
+             (str amount)])]
          [:div
-          "Bonus R&D: "
+          "Random discard: "
           (for [amount (range 8)]
-            ^{:key (keyword (str "bonus-rd-" amount))}
+            ^{:key (keyword (str "discard-" amount))}
             [:button.small {:on-click #(do (.preventDefault %)
-                                           (ws/ws-send! [:game/say {:gameid (current-gameid app-state)
-                                                                    :msg (str "/access-bonus rd " amount)}]))
+                                           (dotimes [_ amount]
+                                             (ws/ws-send! [:game/say {:gameid (current-gameid app-state)
+                                                                      :msg "/discard-random"}])))
                             :key (str amount)}
-             (str amount)])])]
-      [:button {:on-click #(do (.preventDefault %)
-                               (ws/ws-send! [:game/say {:gameid (current-gameid app-state)
-                                                        :msg "/breach hq"}]))
-                :key "/breach hq"}
-       "Breach HQ"]
-      [:button {:on-click #(do (.preventDefault %)
-                               (ws/ws-send! [:game/say {:gameid (current-gameid app-state)
-                                                        :msg "/breach rd"}]))
-                :key "/breach rd"}
-        "Breach R&D"]]
-     [log-messages]
-     [log-typing]
-     [log-input]]))
+             (str amount)])]]
+        [:div.group
+         (when (= :runner (get-side @game-state))
+           [:div
+            "Bonus HQ: "
+            (for [amount (range 8)]
+              ^{:key (keyword (str "bonus-hq-" amount))}
+              [:button.small {:on-click #(do (.preventDefault %)
+                                             (ws/ws-send! [:game/say {:gameid (current-gameid app-state)
+                                                                      :msg (str "/access-bonus hq " amount)}]))
+                              :key (str amount)}
+               (str amount)])])
+         (when (= :runner (get-side @game-state))
+           [:div
+            "Bonus R&D: "
+            (for [amount (range 8)]
+              ^{:key (keyword (str "bonus-rd-" amount))}
+              [:button.small {:on-click #(do (.preventDefault %)
+                                             (ws/ws-send! [:game/say {:gameid (current-gameid app-state)
+                                                                      :msg (str "/access-bonus rd " amount)}]))
+                              :key (str amount)}
+               (str amount)])])]
+        [:button {:on-click #(do (.preventDefault %)
+                                 (ws/ws-send! [:game/say {:gameid (current-gameid app-state)
+                                                          :msg "/breach hq"}]))
+                  :key "/breach hq"}
+         "Breach HQ"]
+        [:button {:on-click #(do (.preventDefault %)
+                                 (ws/ws-send! [:game/say {:gameid (current-gameid app-state)
+                                                          :msg "/breach rd"}]))
+                  :key "/breach rd"}
+         "Breach R&D"]]
+       [:div.hidemenu
+        [:button {:on-click #(do
+                               (swap! playtest-buttons-open not)
+                               (reset! should-scroll {:update true :send-msg true})
+                               ; Hack to force log update
+                               (swap! game-state assoc :log (into [] (conj (:log @game-state) (last (:log @game-state)))))
+                               (swap! game-state assoc :log (into [] (drop-last (:log @game-state)))))}
+         (if @playtest-buttons-open "∧" "∨")]]
+      [log-messages]
+      [log-typing]
+      [log-input]])))
