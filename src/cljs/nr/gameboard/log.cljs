@@ -7,7 +7,7 @@
    [nr.gameboard.actions :refer [send-command]]
    [nr.gameboard.card-preview :refer [card-preview-mouse-out
                                       card-preview-mouse-over zoom-channel]]
-   [nr.gameboard.state :refer [game-state not-spectator?]]
+   [nr.gameboard.state :refer [game-state get-side not-spectator?]]
    [nr.help :refer [command-info]]
    [nr.translations :refer [tr]]
    [nr.utils :refer [influence-dot player-highlight-option-class
@@ -226,6 +226,72 @@
   (fn []
     [:div.log
      [angel-arena-log/inactivity-pane]
+     [:div.playtest-buttons
+      [:div.group
+       (doall (for [token ["power" "virus" "credit"]]
+                ^{:key (keyword token)}
+                [:div
+                 (string/capitalize token) " tokens: "
+                 (for [amount (if (= "credit" token)
+                                (range 13)
+                                (range 10))]
+                   ^{:key (keyword (str token "-" amount))}
+                   [:button.small {:on-click #(do (.preventDefault %)
+                                                  (ws/ws-send! [:game/say {:gameid (current-gameid app-state)
+                                                                           :msg (str "/counter " token " " amount)}]))
+                                   :key (str amount)}
+                    (str amount)])]))]
+      [:div.group
+       [:div
+        "Draw: "
+        (for [amount (range 8)]
+          ^{:key (keyword (str "draw-" amount))}
+          [:button.small {:on-click #(do (.preventDefault %)
+                                         (ws/ws-send! [:game/say {:gameid (current-gameid app-state)
+                                                                  :msg (str "/draw " amount)}]))
+                          :key (str amount)}
+           (str amount)])]
+       [:div
+        "Random discard: "
+        (for [amount (range 8)]
+          ^{:key (keyword (str "discard-" amount))}
+          [:button.small {:on-click #(do (.preventDefault %)
+                                         (dotimes [_ amount]
+                                           (ws/ws-send! [:game/say {:gameid (current-gameid app-state)
+                                                                    :msg "/discard-random"}])))
+                          :key (str amount)}
+           (str amount)])]]
+      [:div.group
+       (when (= :runner (get-side @game-state))
+         [:div
+          "Bonus HQ: "
+          (for [amount (range 8)]
+            ^{:key (keyword (str "bonus-hq-" amount))}
+            [:button.small {:on-click #(do (.preventDefault %)
+                                           (ws/ws-send! [:game/say {:gameid (current-gameid app-state)
+                                                                    :msg (str "/access-bonus hq " amount)}]))
+                            :key (str amount)}
+             (str amount)])])
+       (when (= :runner (get-side @game-state))
+         [:div
+          "Bonus R&D: "
+          (for [amount (range 8)]
+            ^{:key (keyword (str "bonus-rd-" amount))}
+            [:button.small {:on-click #(do (.preventDefault %)
+                                           (ws/ws-send! [:game/say {:gameid (current-gameid app-state)
+                                                                    :msg (str "/access-bonus rd " amount)}]))
+                            :key (str amount)}
+             (str amount)])])]
+      [:button {:on-click #(do (.preventDefault %)
+                               (ws/ws-send! [:game/say {:gameid (current-gameid app-state)
+                                                        :msg "/breach hq"}]))
+                :key "/breach hq"}
+       "Breach HQ"]
+      [:button {:on-click #(do (.preventDefault %)
+                               (ws/ws-send! [:game/say {:gameid (current-gameid app-state)
+                                                        :msg "/breach rd"}]))
+                :key "/breach rd"}
+        "Breach R&D"]]
      [log-messages]
      [log-typing]
      [log-input]]))
