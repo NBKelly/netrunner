@@ -483,7 +483,7 @@
       (changes-val-macro
         0 (:credit (get-corp))
         "Corp gains 0 credits"
-        (click-prompt state :runner "Take 1 brain damage"))
+        (click-prompt state :runner "Take 1 core damage"))
       (is (get-run) "Run has ended")
       (is (get-content state :remote1) "Black Level Clearance has not been trashed")))
 
@@ -1020,7 +1020,7 @@
       (core/play-dynamic-ability state :runner {:dynamic "auto-pump-and-break" :card (get-program state 0)})
       (core/continue state :corp nil)
       (run-continue state)
-      (is (seq (:prompt (get-runner))) "The Gauntlet has a prompt")))
+      (is (not (no-prompt? state :runner)) "The Gauntlet has a prompt")))
 
 (deftest crisium-grid-crisium-grid-prevents-first-successful-run-abilities-issue-5092
     ;; Crisium Grid prevents first successful run abilities. Issue #5092
@@ -1106,7 +1106,7 @@
         (run-empty-server state "Archives")
         (click-prompt state :runner "Cyberdex Virus Suite")
         (click-prompt state :corp "Yes")
-        (is (pos? (count (:prompt (get-runner)))) "CVS purge did not interrupt archives access")
+        (is (not (no-prompt? state :runner)) "CVS purge did not interrupt archives access")
         ;; purged counters
         (is (zero? (get-counters (refresh cache) :virus))
             "Cache has no counters"))))
@@ -1183,7 +1183,9 @@
         (changes-val-macro 0 (:credit (get-corp))
                            "Used 3 credits from Dedicated Technician Team"
                            (play-from-hand state :corp "Enigma" "Server 1")
-                           (click-card state :corp dtt)))))
+                           (click-card state :corp (refresh dtt))
+                           (click-card state :corp (refresh dtt)))
+        (is (zero? (get-counters (refresh dtt) :recurring)) "Took 2 credits from Dedicated Technician Team"))))
 
 (deftest defense-construct
   (do-game
@@ -1250,7 +1252,7 @@
     (play-from-hand state :corp "Project Atlas" "Server 1")
     (rez state :corp (get-content state :remote1 0))
     (score-agenda state :corp (get-content state :remote1 1))
-    (is (= 1 (:brain-damage (get-runner))) "Did 1 brain damage")))
+    (is (= 1 (:brain-damage (get-runner))) "Did 1 core damage")))
 
 (deftest drone-screen
   ;; Drone Screen
@@ -1451,7 +1453,7 @@
      (run-continue state)
      (run-continue state)
      (is (last-log-contains? state "Runner accesses Ganked!") "Ganked! message printed to log")
-     (is (= "You accessed Ganked!." (:msg (prompt-map :runner))) "Runner has normal access prompt")
+     (is (accessing state "Ganked!") "Runner has normal access prompt")
      (click-prompt state :runner "No action")
      (is (not (get-run)) "Run has been ended")
      (is (no-prompt? state :corp) "No more prompts")
@@ -1526,7 +1528,7 @@
         (click-card state :runner nm)
         (click-card state :runner nm)
         (click-card state :runner nm)
-        (click-prompt state :runner "Place 1 [Credits]")
+        (click-prompt state :runner "Place 1 [Credits] on Net Mercur")
         (click-prompt state :runner "No action"))))
 
 (deftest giordano-memorial-field-ending-the-run-doesn-t-mark-the-run-as-unsuccessful-issue-4223
@@ -2303,7 +2305,7 @@
      (is (= ["Ice Wall"] (map :title (:hand (get-corp))))
          "Ice Wall has been added to hand")
      (is (= "Jack out?" (:msg (prompt-map :runner))) "Runner offered to Jack out")
-     (is (= :waiting (:prompt-type (prompt-map :corp))) "Corp waiting for Runner to jack out")
+     (is (prompt-is-type? state :corp :waiting) "Corp waiting for Runner to jack out")
      (click-prompt state :runner "Yes")
      (is (empty? (:run @state)))
      (is (no-prompt? state :runner) "No open runner prompts")
@@ -2373,7 +2375,7 @@
     (run-empty-server state "Server 1")
     (changes-val-macro
       0 (:credit (get-corp))
-      "spent nothing declining hendrik"
+      "spent 0 credits declining hendrik"
       (click-prompt state :corp "No"))
     (is (= 0 (:brain-damage (get-runner))) "Did 0 core damage")
     (is (= 3 (:click (get-runner))))
@@ -2389,10 +2391,10 @@
     (run-empty-server state "Server 1")
     (changes-val-macro
       -2 (:credit (get-corp))
-      "spent nothing declining hendrik"
+      "spent 2 credits on hendrik"
       (click-prompt state :corp "Yes"))
     (is (= 3 (:click (get-runner))))
-    (click-prompt state :runner "Take 1 core damage")
+    (click-prompt state :runner "Suffer 1 core damage")
     (is (= 1 (:brain-damage (get-runner))) "Did 1 core damage")
     (click-prompt state :runner "No action")
     (is (not (:run @state)) "Run ended")))
@@ -2406,10 +2408,10 @@
     (run-empty-server state "Server 1")
     (changes-val-macro
       -2 (:credit (get-corp))
-      "spent nothing declining hendrik"
+      "spent 2 credits on hendrik"
       (click-prompt state :corp "Yes"))
     (is (= 3 (:click (get-runner))))
-    (click-prompt state :runner "Lose remaining clicks")
+    (click-prompt state :runner "Lose all remaining [Click]")
     (is (= 0 (:brain-damage (get-runner))) "Did 0 core damage")
     (is (= 0 (:click (get-runner))) "lost remaining clicks")
     (click-prompt state :runner "No action")
@@ -2428,7 +2430,7 @@
       -2 (:credit (get-corp))
       "spent nothing declining hendrik"
       (click-prompt state :corp "Yes"))
-    (click-prompt state :runner "Take 1 core damage")
+    (click-prompt state :runner "Suffer 1 core damage")
     (is (= 1 (:brain-damage (get-runner))) "Did 1 core damage")
     (click-prompt state :runner "No action")
     (is (not (:run @state)) "Run ended")))
@@ -2740,7 +2742,6 @@
         ;; Access 3 more cards from HQ
         (dotimes [_ 3]
           (click-prompt state :runner "No action"))
-        (run-continue state :movement)
         (run-jack-out state)
         (run-on state "R&D")
         (rez state :corp k-rd)
@@ -2753,7 +2754,6 @@
         ;; Access 3 more cards from HQ
         (dotimes [_ 3]
           (click-prompt state :runner "No action"))
-        (run-continue state :movement)
         (run-jack-out state)
         (is (= 2 (-> (get-corp) :discard count)) "Two Kitsunes trashed after resolving their subroutines"))))
 
@@ -2846,13 +2846,13 @@
       (click-card state :corp nis)
       (is (= 2 (get-counters (refresh nis) :advancement)) "2 advancements on agenda")
       (is (= 4 (:credit (get-corp))) "Gained 1 credit")
-      (core/advance state :corp {:card (refresh nis)})
+      (click-advance state :corp (refresh nis))
       (is (= 3 (get-counters (refresh nis) :advancement)) "3 advancements on agenda")
       (is (= 3 (:credit (get-corp))) "No credit gained")
       (take-credits state :corp)
       (take-credits state :runner)
       (play-from-hand state :corp "Ice Wall" "Server 1")
-      (core/advance state :corp {:card (refresh (get-ice state :remote1 0))})
+      (click-advance state :corp (refresh (get-ice state :remote1 0)))
       (is (= 2 (:credit (get-corp))) "No credit gained from advancing ice"))))
 
 (deftest nihongai-grid
@@ -2879,8 +2879,7 @@
       (click-prompt state :corp "Accelerated Beta Test")
       (click-card state :corp "Beanstalk Royalties")
       (click-prompt state :runner "Card from deck")
-      (is (= "You accessed Beanstalk Royalties." (:msg (prompt-map :runner)))
-          "Runner accesses switched card")
+      (is (accessing state "Beanstalk Royalties") "Runner accesses switched card")
       (click-prompt state :runner "No action")
       (click-prompt state :runner "No action")
       (is (find-card "Accelerated Beta Test" (:hand (get-corp))))
@@ -3034,7 +3033,7 @@
       (rez state :corp (get-content state :hq 0))
       (score-agenda state :corp (get-content state :remote1 0))
       ;; Gang sign fires
-      (is (= "You accessed Project Beale." (:msg (prompt-map :runner))))
+      (is (accessing state "Project Beale"))
       (is (= ["No action"] (prompt-buttons :runner)))
       (click-prompt state :runner "No action")
       (is (zero? (count (:scored (get-runner)))) "No stolen agendas")))
@@ -3434,7 +3433,7 @@
     (rez state :corp (get-content state :hq 0))
     (take-credits state :corp)
     (is (= 7 (count (:hand (get-corp)))) "+3 cards, 2 of Research Station and +1 of ID")
-    (is (nil? (get-prompt state :corp)) "No prompt asking to discard cards from hand")
+    (is (no-prompt? state :corp) "No prompt asking to discard cards from hand")
     (take-credits state :runner)
     (is (= 8 (count (:hand (get-corp)))) "Double check that you start next turn with 8 cards")))
 
@@ -3518,7 +3517,7 @@
       (run-on state :hq)
       (card-ability state :corp ryon 0)
       (is (zero? (:click (get-runner))))
-      (is (= 1 (:brain-damage (get-runner))) "Did 1 brain damage")
+      (is (= 1 (:brain-damage (get-runner))) "Did 1 core damage")
       (is (= 1 (count (:discard (get-corp)))) "Ryon trashed"))))
 
 (deftest sansan-city-grid
@@ -3636,11 +3635,11 @@
         (rez state :corp sd)
         (changes-val-macro 0 (:credit (get-corp))
                            "Used 1 credit from Simone Diego to advance Ice Wall"
-                           (core/advance state :corp {:card (refresh iw)})
+                           (click-advance state :corp (refresh iw))
                            (click-card state :corp sd))
         (changes-val-macro 0 (:credit (get-corp))
                            "Used 1 credit from Simone Diego to advance Project Junebug"
-                           (core/advance state :corp {:card (refresh pj)})
+                           (click-advance state :corp (refresh pj))
                            (click-card state :corp sd)))))
 
 (deftest strongbox
@@ -3737,23 +3736,24 @@
     (run-on state "Server 1")
     (run-continue state)
     (click-prompt state :corp "0") ; trace
-    (is (zero? (:brain-damage (get-runner))) "Runner starts with 0 brain damage")
+    (is (zero? (:brain-damage (get-runner))) "Runner starts with 0 core damage")
     (click-prompt state :runner "0")
-    (is (= 1 (:brain-damage (get-runner))) "Runner took 1 brain damage")
+    (click-prompt state :runner "Suffer 1 core damage")
+    (is (= 1 (:brain-damage (get-runner))) "Runner took 1 core damage")
     (click-prompt state :runner "Pay 0 [Credits] to trash") ; trash
     (take-credits state :runner)
     (take-credits state :corp)
     (run-on state "Archives")
     (run-continue state)
-    (is (= 1 (:brain-damage (get-runner))) "Runner takes no brain damage")
+    (is (= 1 (:brain-damage (get-runner))) "Runner takes no core damage")
     (is (= 3 (:click (get-runner))) "Runner loses no clicks")
     (run-on state "HQ")
     (run-continue state)
     (click-prompt state :corp "0") ; trace
     (click-prompt state :runner "0")
-    (is (= 1 (:brain-damage (get-runner))) "Runner starts with 1 brain damage")
-    (click-prompt state :runner "Suffer 1 brain damage")
-    (is (= 2 (:brain-damage (get-runner))) "Runner took 1 brain damage")
+    (is (= 1 (:brain-damage (get-runner))) "Runner starts with 1 core damage")
+    (click-prompt state :runner "Suffer 1 core damage")
+    (is (= 2 (:brain-damage (get-runner))) "Runner took 1 core damage")
     (click-prompt state :runner "No action") ; don't trash
     (run-on state "HQ")
     (run-continue state)
@@ -3825,7 +3825,7 @@
         (click-prompt state :runner "Suffer 1 net damage")
         (click-prompt state :runner "Done")
         (click-prompt state :corp "Yes")
-        (is (= 2 (count (:discard (get-runner)))) "1 brain damage suffered")
+        (is (= 2 (count (:discard (get-runner)))) "1 core damage suffered")
         (is (= 1 (:brain-damage (get-runner)))))))
 
 (deftest tori-hanzo-with-hokusai-grid-issue-2702
@@ -3847,15 +3847,15 @@
         (click-prompt state :runner "Hokusai Grid")
         (click-prompt state :runner "No action")
         (click-prompt state :runner "No action")
-        (is (and (empty (:prompt (get-runner))) (not (:run @state))) "No prompts, run ended")
+        (is (no-prompt? state :corp) "No prompts, run ended")
         (run-empty-server state "Archives")
         (click-prompt state :corp "Yes") ; Tori prompt to pay 2c to replace 1 net with 1 brain
         (is (= 2 (count (:discard (get-runner)))))
-        (is (= 1 (:brain-damage (get-runner))) "1 brain damage suffered")
+        (is (= 1 (:brain-damage (get-runner))) "1 core damage suffered")
         (click-prompt state :runner "Hokusai Grid")
         (click-prompt state :runner "No action")
         (click-prompt state :runner "No action")
-        (is (and (empty (:prompt (get-runner))) (not (:run @state))) "No prompts, run ended"))))
+        (is (no-prompt? state :corp) "No prompts, run ended"))))
 
 (deftest tori-hanzo-breaking-subsequent-net-damage-issue-3176
     ;; breaking subsequent net damage: Issue #3176
@@ -3874,7 +3874,7 @@
         (card-subroutine state :corp pup 0)
         (click-prompt state :runner "Suffer 1 net damage")
         (click-prompt state :corp "Yes") ; pay 2c to replace 1 net with 1 brain
-        (is (= 1 (count (:discard (get-runner)))) "1 brain damage suffered")
+        (is (= 1 (count (:discard (get-runner)))) "1 core damage suffered")
         (is (= 1 (:brain-damage (get-runner))))
         (run-continue state :movement)
         (run-jack-out state)
@@ -4230,8 +4230,8 @@
         (play-from-hand state :runner "Dyson Mem Chip")
         (run-empty-server state :hq)
         (click-prompt state :runner "Pay 4 [Credits] to trash")
-        (is (some? (:prompt (get-corp))) "Corp has prompt")
-        (is (some? (:prompt (get-runner))) "Runner has prompt"))))
+        (is (not (no-prompt? state :corp)))
+        (is (not (no-prompt? state :runner))))))
 
 (deftest warroid-tracker-should-trigger-when-trashed-card-is-in-root-of-central-server
     ;; Should trigger when trashed card is in root of central server.
@@ -4308,78 +4308,6 @@
        (is (empty? (get-program state)) "Corroder uninstalled")
        (is (= "Corroder" (:title (last (:deck (get-runner))))) "GoCorroderrdian on bottom of Stack"))))
 
-(deftest yakov-game-trash
-  (do-game
-    (new-game {:corp {:hand ["Yakov Erikovich Avdakov" "NGO Front"]}})
-    (core/gain state :corp :click 5)
-    (play-from-hand state :corp "Yakov Erikovich Avdakov" "New remote")
-    (play-from-hand state :corp "NGO Front" "Server 1")
-    (let [yakov (get-content state :remote1 0)]
-      (rez state :corp yakov)
-      (changes-val-macro
-        0 (:credit (get-corp))
-        "hard trash doesn't trigger"
-        (trash state :corp (refresh yakov))))))
-
-(deftest yakov-corp-trash
-  (do-game
-    (new-game {:corp {:hand ["Yakov Erikovich Avdakov" "NGO Front"]}})
-    (core/gain state :corp :click 5)
-    (play-from-hand state :corp "Yakov Erikovich Avdakov" "New remote")
-    (play-from-hand state :corp "NGO Front" "Server 1")
-    (let [yakov (get-content state :remote1 0)
-          ngo (get-content state :remote1 1)]
-      (advance state (refresh ngo))
-      (rez state :corp yakov)
-      (rez state :corp (refresh ngo))
-      (changes-val-macro
-        +7 (:credit (get-corp))
-        "5 + 2 from ngo/yakov"
-        (card-ability state :corp (refresh ngo) 0)))))
-
-(deftest yakov-runner-trash-multiple
-  (do-game
-    (new-game {:corp {:hand ["Yakov Erikovich Avdakov" "NGO Front"
-                             "Prisec" "Mutually Assured Destruction"]
-                    :credits 15}
-               :runner {:hand ["Apocalypse"]}})
-    (core/gain state :corp :click 5)
-    (play-from-hand state :corp "Yakov Erikovich Avdakov" "New remote")
-    (play-from-hand state :corp "NGO Front" "Server 1")
-    (play-from-hand state :corp "Prisec" "Server 1")
-    (take-credits state :corp)
-    (run-empty-server state "Archives")
-    (run-empty-server state "R&D")
-    (run-empty-server state "HQ")
-    (changes-val-macro
-      +6 (:credit (get-corp))
-      "+6 from 3 trashes"
-      (play-from-hand state :runner "Apocalypse"))))
-
-(deftest yakov-multiple-trashed
-  (do-game
-    (new-game {:corp {:hand ["Yakov Erikovich Avdakov" "NGO Front"
-                             "Prisec" "Mutually Assured Destruction"]
-                      :credits 15}})
-    (core/gain state :corp :click 5)
-    (play-from-hand state :corp "Yakov Erikovich Avdakov" "New remote")
-    (play-from-hand state :corp "NGO Front" "Server 1")
-    (play-from-hand state :corp "Prisec" "Server 1")
-    (rez state :corp (get-content state :remote1 0))
-    (rez state :corp (get-content state :remote1 1))
-    (rez state :corp (get-content state :remote1 2))
-    (changes-val-macro
-      -3 (:click (get-corp))
-      "Spent 3 clicks to go MAD"
-      (play-from-hand state :corp "Mutually Assured Destruction"))
-    (changes-val-macro
-      +6 (:credit (get-corp))
-      "trashed 3 cards"
-      (click-card state :corp (get-content state :remote1 0))
-      (click-card state :corp (get-content state :remote1 1))
-      (click-card state :corp (get-content state :remote1 2))
-      (click-prompt state :corp "Done"))))
-      
 (deftest zato-basic
   (do-game
     (new-game {:corp {:hand ["ZATO City Grid" "Vanilla"] :credits 10}})
@@ -4414,4 +4342,97 @@
     (click-prompt state :corp "Funhouse")
     (click-prompt state :runner "End the run")
     (is (not (:run @state)) "Run ended")
+    (is (no-prompt? state :corp))))
+
+(deftest yakov-game-trash
+  (do-game
+    (new-game {:corp {:hand ["Yakov Erikovich Avdakov" (qty "NGO Front" 2)]}})
+    (core/gain state :corp :click 5)
+    (play-from-hand state :corp "Yakov Erikovich Avdakov" "New remote")
+    (play-from-hand state :corp "NGO Front" "Server 1")
+    (let [yakov (get-content state :remote1 0)]
+      (rez state :corp yakov)
+      (changes-val-macro
+        0 (:credit (get-corp))
+        "hard trash doesn't trigger"
+        (play-from-hand state :corp "NGO Front" "Server 1")
+        (click-prompt state :corp "OK")))))
+
+(deftest yakov-corp-trash
+  (do-game
+    (new-game {:corp {:hand ["Yakov Erikovich Avdakov" "NGO Front"]}})
+    (core/gain state :corp :click 5)
+    (play-from-hand state :corp "Yakov Erikovich Avdakov" "New remote")
+    (play-from-hand state :corp "NGO Front" "Server 1")
+    (let [yakov (get-content state :remote1 0)
+          ngo (get-content state :remote1 1)]
+      (advance state (refresh ngo))
+      (rez state :corp yakov)
+      (rez state :corp (refresh ngo))
+      (changes-val-macro
+        +7 (:credit (get-corp))
+        "5 + 2 from ngo/yakov"
+        (card-ability state :corp (refresh ngo) 0)))))
+
+(deftest yakov-runner-trash
+  (do-game
+    (new-game {:corp {:hand ["Yakov Erikovich Avdakov"]}
+               :runner {:hand ["Pinhole Threading"]}})
+    (play-from-hand state :corp "Yakov Erikovich Avdakov" "New remote")
+    (rez state :corp (get-content state :remote1 0))
+    (take-credits state :corp)
+    (play-from-hand state :runner "Pinhole Threading")
+    (click-prompt state :runner "Archives")
+    (run-continue state)
+    (changes-val-macro
+      +2 (:credit (get-corp))
+      "+2 credits from Yakov been trashed"
+      (click-card state :runner "Yakov Erikovich Avdakov")
+      (click-prompt state :runner "Pay 2 [Credits] to trash"))
+    (is (no-prompt? state :corp))))
+
+(deftest yakov-runner-trash-multiple
+  (do-game
+    (new-game {:corp {:hand ["Yakov Erikovich Avdakov" "NGO Front" "Prisec"]}
+               :runner {:hand ["Apocalypse"]}})
+    (play-from-hand state :corp "Yakov Erikovich Avdakov" "New remote")
+    (play-from-hand state :corp "NGO Front" "Server 1")
+    (play-from-hand state :corp "Prisec" "Server 1")
+    (rez state :corp (get-content state :remote1 0))
+    (take-credits state :corp)
+    (run-empty-server state "Archives")
+    (run-empty-server state "R&D")
+    (run-empty-server state "HQ")
+    (changes-val-macro
+      +6 (:credit (get-corp))
+      "+6 from 3 trashes"
+      (play-from-hand state :runner "Apocalypse")
+      (click-prompt state :corp "Yakov Erikovich Avdakov")
+      (click-prompt state :corp "Yakov Erikovich Avdakov"))
+    (is (no-prompt? state :corp))))
+
+(deftest yakov-multiple-trashed
+  (do-game
+    (new-game {:corp {:hand ["Yakov Erikovich Avdakov" "NGO Front"
+                             "Prisec" "Mutually Assured Destruction"]
+                      :credits 15}})
+    (core/gain state :corp :click 5)
+    (play-from-hand state :corp "Yakov Erikovich Avdakov" "New remote")
+    (play-from-hand state :corp "NGO Front" "Server 1")
+    (play-from-hand state :corp "Prisec" "Server 1")
+    (rez state :corp (get-content state :remote1 0))
+    (rez state :corp (get-content state :remote1 1))
+    (rez state :corp (get-content state :remote1 2))
+    (changes-val-macro
+      -3 (:click (get-corp))
+      "Spent 3 clicks to go MAD"
+      (play-from-hand state :corp "Mutually Assured Destruction"))
+    (changes-val-macro
+      +6 (:credit (get-corp))
+      "trashed 3 cards"
+      (click-card state :corp (get-content state :remote1 0))
+      (click-card state :corp (get-content state :remote1 1))
+      (click-card state :corp (get-content state :remote1 2))
+      (click-prompt state :corp "Yakov Erikovich Avdakov")
+      (click-prompt state :corp "Yakov Erikovich Avdakov"))
     (is (no-prompt? state :corp))))

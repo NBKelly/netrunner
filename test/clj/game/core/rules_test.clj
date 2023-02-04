@@ -177,7 +177,7 @@
       ;; Trying to score without any tokens does not do anything
       (is (not (find-card "Ancestral Imager" (:scored (get-corp)))) "AI not scored")
       (is (not (nil? (get-content state :remote1 0))))
-      (core/advance state :corp {:card (refresh ai)})
+      (click-advance state :corp (refresh ai))
       (score state :corp (refresh ai))
       (is (not (nil? (get-content state :remote1 0)))))))
 
@@ -305,7 +305,7 @@
             (is (not-empty (filter #(= (:title %) "Mimic") all-installed)) "Mimic is in all-installed")
             (is (not-empty (filter #(= (:title %) "Omni-drive") all-installed)) "Omni-drive is in all-installed")
             (is (not-empty (filter #(= (:title %) "Knight") all-installed)) "Knight is in all-installed")
-            (is (empty (filter #(= (:title %) "Corroder") all-installed)) "Corroder is not in all-installed")))))))
+            (is (empty? (filter #(= (:title %) "Corroder") all-installed)) "Corroder is not in all-installed")))))))
 
 (deftest log-accessed-names
   ;; Check that accessed card names are logged - except those on R&D, and no logs on archives
@@ -593,8 +593,7 @@
        (toggle-sso "Always")
        (take-credits state :corp)
        (is (= "Choose a piece of ice with no advancement tokens to place 1 advancement token on"
-              (-> @state :corp :prompt first :msg))
-           "SSO autoresolved first prompt")
+              (:msg (get-prompt state :corp))) "SSO autoresolved first prompt")
        (click-card state :corp (get-ice state :remote2 0))
        (is (= 1 (get-counters (get-ice state :remote2 0) :advancement)) "A token was added")
        (is (no-prompt? state :corp) "No prompt displaying")

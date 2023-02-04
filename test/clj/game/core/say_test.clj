@@ -1,6 +1,7 @@
 (ns game.core.say-test
   (:require [game.core :as core]
             [game.core.card :refer :all]
+            [game.core.mark :refer :all]
             [game.core-test :refer :all]
             [game.utils-test :refer :all]
             [game.macros-test :refer :all]
@@ -212,6 +213,25 @@
         (click-prompt state :corp "Done")
         (is (= 2 (count (:discard (get-corp)))) "Archives has 2 card"))))
 
+  (testing "/set-mark"
+    (let [user {:username "Runner"}]
+      (testing "Setting the mark to a central server"
+        (do-game
+          (new-game)
+          (core/command-parser state :runner {:user user :text "/set-mark HQ"})
+          (is (is-mark? state :hq))))
+      (testing "Setting the mark overrides previous mark, if any"
+        (do-game
+          (new-game)
+          (set-mark state :rd)
+          (core/command-parser state :runner {:user user :text "/set-mark Archives"})
+          (is (is-mark? state :archives))))
+      (testing "Setting the mark doesn't work on remote servers"
+        (do-game
+          (new-game)
+          (core/command-parser state :runner {:user user :text "/set-mark Server 1"})
+          (is (nil? (:mark @state)))))))
+
   (testing "/summon"
     (let [user {:username "Runner"}]
       (testing "Add card with short title"
@@ -249,16 +269,16 @@
         (core/command-parser state :runner {:user user :text "/tag 99999999999999999999999999999999999999999999"})
         (is (= 1000 (:base (:tag (get-runner)))) "Runner has 1000 tags"))))
 
-  (testing "/take-brain"
+  (testing "/take-core"
     (let [user {:username "Runner"}]
       (do-game
         (new-game)
-        (core/command-parser state :runner {:user user :text "/take-brain 3"})
-        (is (= 3 (:brain-damage (get-runner))) "Runner gains 3 brain")
-        (core/command-parser state :runner {:user user :text "/take-brain -5"})
-        (is (= 3 (:brain-damage (get-runner))) "Runner gains 0 brain")
-        (core/command-parser state :runner {:user user :text "/take-brain 99999999999999999999999999999999999999999999"})
-        (is (= 1003 (:brain-damage (get-runner))) "Runner gains 1000 brain"))))
+        (core/command-parser state :runner {:user user :text "/take-core 3"})
+        (is (= 3 (:brain-damage (get-runner))) "Runner gains 3 core")
+        (core/command-parser state :runner {:user user :text "/take-core -5"})
+        (is (= 3 (:brain-damage (get-runner))) "Runner gains 0 core")
+        (core/command-parser state :runner {:user user :text "/take-core 99999999999999999999999999999999999999999999"})
+        (is (= 1003 (:brain-damage (get-runner))) "Runner gains 1000 core"))))
 
   (testing "/trace"
     (let [user {:username "Corp"}]

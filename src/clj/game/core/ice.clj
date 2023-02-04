@@ -268,16 +268,22 @@
                               :source-type :subroutine})]
      (resolve-subroutine! state side eid ice sub)))
   ([state side eid ice sub]
-   (wait-for (trigger-event-simult state side :pre-resolve-subroutine nil sub ice)
+   (wait-for (trigger-event-simult state side (make-eid state eid) :pre-resolve-subroutine nil sub ice)
+             ;; this is for cards like marcus batty
              (when-not (:exernal-trigger sub)
                (update! state :corp (resolve-subroutine ice sub)))
              ;; TODO - need a way to interact with multiple replacement effects.
              (let [replacement (:replace-subroutine (get-current-encounter state))
-                   sub (or (when replacement (assoc replacement :index (:index sub))) sub)]
+                   sub (or (when replacement (assoc replacement :index (:index sub))) sub)
+                   prevent (:prevent-subroutine (get-current-encounter state))]
                (update-current-encounter state :replace-subroutine nil)
-               (wait-for (resolve-ability state side (:sub-effect sub) (get-card state ice) nil)
-                         (queue-event state :subroutine-fired {:sub sub :ice ice})
-                         (checkpoint state nil eid))))))
+               (update-current-encounter state :prevent-subroutine nil)
+               (if prevent
+                 (checkpoint state nil eid)
+                 ;; see if there are any effects which can prevent this subroutine
+                 (wait-for (resolve-ability state side (make-eid state eid) (:sub-effect sub) (get-card state ice) nil)
+                           (queue-event state :subroutine-fired {:sub sub :ice ice})
+                           (checkpoint state nil eid)))))))
 
 (defn- resolve-next-unbroken-sub
   ([state side ice subroutines]

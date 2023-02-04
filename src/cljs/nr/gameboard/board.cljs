@@ -621,7 +621,7 @@
   [{:keys [zone code type abilities counter
            subtypes strength current-strength selected hosted
            side facedown card-target icon new runner-abilities subroutines
-           corp-abilities]
+           subtype-target corp-abilities]
     :as card} flipped disable-click]
   (let [title (get-title card)]
     [:div.card-frame.menu-container
@@ -680,6 +680,7 @@
         [:div.darkbg.strength (or current-strength strength)])
       (when-let [{:keys [char color]} icon] [:div.darkbg.icon {:class color} char])
       (when card-target [:div.darkbg.card-target card-target])
+      (when subtype-target [:div.darkbg.subtype-target subtype-target])
       (when (active? card)
         (let [server-card (get @all-cards title)]
           [:div.darkbg.additional-subtypes
@@ -1964,9 +1965,6 @@
                  ;; discards
                  me-discard (r/cursor game-state [me-side :discard])
                  op-discard (r/cursor game-state [op-side :discard])
-                 ;; conspiracy
-                 conspiracy (r/cursor game-state [:corp :conspiracy])
-                 conspiracy-count (r/cursor game-state [:corp :conspiracy-count])
                  ;; user settings
                  me-user (r/cursor game-state [me-side :user])
                  op-user (r/cursor game-state [op-side :user])
@@ -2055,11 +2053,7 @@
                      [play-area-view op-user (tr [:game.play-area "Play Area"]) op-play-area]
                      [play-area-view me-user (tr [:game.play-area "Play Area"]) me-play-area]
                      [rfg-view op-current (tr [:game.current "Current"]) false]
-                     [rfg-view me-current (tr [:game.current "Current"]) false]
-                     [play-area-view me-user (tr [:game.conspiracy "Conspiracy"])
-                      (if (= @conspiracy-count (count @conspiracy)) ; Fill up conspiracy with facedowns if Runner
-                        conspiracy
-                        (r/atom [{:side "Corp"}]))]])
+                     [rfg-view me-current (tr [:game.current "Current"]) false]])
                   (when-not (= @side :spectator)
                     [button-pane {:side me-side :active-player active-player :run run :encounters encounters
                                   :end-turn end-turn :runner-phase-12 runner-phase-12

@@ -40,7 +40,7 @@
       (is (= [[:credit 1] [:net 1]] (core/merge-costs [[:net 1 :credit 1]]))))
     (testing "Damage is combined"
       (is (= [[:net 2]] (core/merge-costs [[:net 1 :net 1]]))))
-    (testing "Net, meat, and brain damage are recognized"
+    (testing "Net, meat, and core damage are recognized"
       (is (= [[:net 1] [:meat 1] [:brain 1]]
              (core/merge-costs [[:net 1] [:meat 1] [:brain 1]]))))))
 
@@ -100,7 +100,7 @@
         (is (= 2 (get-strength (refresh cor))) "Corroder starts at 2 strength")
         (core/play-dynamic-ability state :runner {:dynamic "auto-pump" :card (refresh cor)})
         (click-card state :runner clo)
-        (click-prompt state :runner "Place 1 [Credits]")
+        (click-prompt state :runner "Place 1 [Credits] on Net Mercur")
         (is (= 5 (get-strength (refresh cor))) "Corroder is at 5 strength")
         (is (= (- cre 2) (:credit (get-runner))) "Spent 2 (+1 from Cloak) to pump")))))
 

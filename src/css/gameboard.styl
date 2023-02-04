@@ -199,16 +199,42 @@
         height: 24px
         width: 24px
 
-        &.blue
+        &.neutral
+            background-color: black-solid
+
+        // Corps
+        &.haas-bioroid
+            background-color: purple-core
+
+        &.jinteki
+            background-color: crimson-core
+
+        &.nbn
+            background-color: yellow-core
+
+        &.weyland-consortium
+            background-color: green-dark
+
+        // Runners
+        &.adam
+            background-color: yellow-dark
+
+        &.anarch
+            background-color: orange-core
+
+        &.apex
+            background-color: red-dark
+
+        &.criminal
             background-color: blue-core
 
-        &.red
-            background-color: red-core
-
-        &.green
+        &.shaper
             background-color: green-core
 
-    .card-target, .additional-subtypes
+        &.sunny-lebeau
+            background-color: gray-core
+
+    .card-target, .additional-subtypes, .subtype-target
         position: absolute
         z-index: 10
         padding: 0
@@ -1056,24 +1082,6 @@
                                 color: gold-base
                                 cursor: pointer
 
-.subversions
-    .subversion
-        margin-top: .5rem
-
-        .stat-controls
-            font-size: .875rem
-            font-weight: bold
-
-        .sub-controls
-            display:inline
-            position: absolute
-            left: 5rem
-            margin-left: 1rem
-
-        .explanation
-            margin-top: .25rem
-            margin-left: .5rem
-
 .playtest-buttons
     font-size: .875rem
     font-weight: bold
@@ -1084,3 +1092,20 @@
 
     .group
         margin-bottom: .75rem
+
+.hidemenu
+
+    display-flex()
+    flex-direction(row)
+    justify-content(center)
+
+    button
+        width: 1.5rem
+        height: 1.5rem
+        border-top-right-radius: 0rem
+        border-top-left-radius: 0rem
+        border-bottom-left-radius: 2rem
+        border-bottom-right-radius: 2rem
+        margin: 0
+        padding: 0
+        padding-bottom: 0.25rem
