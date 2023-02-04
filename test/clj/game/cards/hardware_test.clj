@@ -528,7 +528,7 @@
         (rez state :corp icew)
         (run-continue state)
         (card-ability state :runner (refresh boom) 0)
-        (is (not-empty (:prompt (get-runner))) "Can use Boomerang on ice"))))
+        (is (not (no-prompt? state :runner)) "Can use Boomerang on ice"))))
 
 (deftest boomerang-update-card-target-on-ice-swap
     ;; Update card-target on ice swap
@@ -884,7 +884,7 @@
       (trash-from-hand state :runner "Corroder")
       (click-prompt state :runner "Corroder")
       (trash-from-hand state :runner "Yog.0")
-      (is empty? (:prompt (get-runner)))))
+      (is (no-prompt? state :runner))))
 
 (deftest buffer-drive-trashing-a-corp-card-must-not-trigger-buffer-drive
     ;; Trashing a corp card must not trigger Buffer Drive
@@ -1138,7 +1138,8 @@
 (deftest chop-bot-3000
   ;; Chop Bot 3000 - when your turn begins trash 1 card, then draw or remove tag
   (do-game
-    (new-game {:runner {:deck ["Chop Bot 3000" (qty "Spy Camera" 3)]}})
+    (new-game {:runner {:deck ["Sure Gamble"]
+                        :hand ["Chop Bot 3000" (qty "Spy Camera" 4)]}})
     (core/gain state :runner :tag 2)
     (take-credits state :corp)
     (play-from-hand state :runner "Chop Bot 3000")
@@ -1161,7 +1162,22 @@
       (click-prompt state :runner "Remove 1 tag")
       (is (find-card "Spy Camera" (:discard (get-runner))) "Spy Camera trashed")
       (is (= 1 (count-tags state)) "Runner lost 1 tag")
-      (end-phase-12 state :runner))))
+      (play-from-hand state :runner "Spy Camera")
+      (take-credits state :runner)
+      (take-credits state :corp)
+      (card-ability state :runner chop-bot 0)
+      (click-card state :runner (find-card "Spy Camera" (get-hardware state)))
+      (changes-val-macro
+        1 (count (:hand (get-runner)))
+        "Draws 1 card"
+        (click-prompt state :runner "Draw 1 card"))
+      (take-credits state :runner)
+      (take-credits state :corp)
+      (is (true? (:runner-phase-12 @state)))
+      (card-ability state :runner chop-bot 0)
+      (click-card state :runner (find-card "Spy Camera" (get-hardware state)))
+      (is (zero? (count (:deck (get-runner)))))
+      (click-prompt state :runner "Draw 1 card"))))
 
 (deftest clone-chip
   ;; Test clone chip usage- outside and during run
@@ -1516,11 +1532,11 @@
       (play-from-hand state :runner "Doppelgänger")
       (play-from-hand state :runner "The Maker's Eye")
       (run-continue state)
-      (is (= "You accessed Quandary." (-> (get-runner) :prompt first :msg)) "1st quandary")
+      (is (accessing state "Quandary"))
       (click-prompt state :runner "No action")
-      (is (= "You accessed Quandary." (-> (get-runner) :prompt first :msg)) "2nd quandary")
+      (is (accessing state "Quandary"))
       (click-prompt state :runner "No action")
-      (is (= "You accessed Quandary." (-> (get-runner) :prompt first :msg)) "3rd quandary")
+      (is (accessing state "Quandary"))
       (click-prompt state :runner "No action")
       (is (not (:run @state)))
       (click-prompt state :runner "Yes")
@@ -1528,7 +1544,7 @@
       (is (:run @state) "New run started")
       (run-continue state)
       (is (= [:rd] (:server (:run @state))) "Running on R&D")
-      (is (= "You accessed Quandary." (-> (get-runner) :prompt first :msg)) "1st quandary")
+      (is (accessing state "Quandary"))
       (click-prompt state :runner "No action")
       (is (not (:run @state)))))
 
@@ -1648,12 +1664,11 @@
         (is (= 3 (count (:hand (get-runner)))) "1 net damage prevented")
         (is (= 4 (:credit (get-runner))))
         (run-continue state)
-        (run-continue state)
         (click-prompt state :corp "Yes") ; pay 3 to fire Overwriter
         (card-ability state :runner ff 1)
         (click-prompt state :runner "Done")
         (click-prompt state :runner "Pay 0 [Credits] to trash") ; trash Overwriter for 0
-        (is (= 1 (:brain-damage (get-runner))) "2 of the 3 brain damage prevented")
+        (is (= 1 (:brain-damage (get-runner))) "2 of the 3 core damage prevented")
         (is (= 2 (count (:hand (get-runner)))))
         (is (empty? (get-hardware state)) "Feedback Filter trashed")))))
 
@@ -1875,10 +1890,10 @@
       (play-from-hand state :runner "Gachapon")
       (card-ability state :runner (get-hardware state 0) 0)
       (is (= (:msg (prompt-map :runner))
-             "The set aside cards are: Au Revoir, Bankroll, Clone Chip, DDoS, Equivocation, Falsified Credentials")
+             "The set aside cards are: Au Revoir, Bankroll, Clone Chip, DDoS, Equivocation, and Falsified Credentials")
           "Shown correct six cards")
       (click-prompt state :runner "OK")
-      (is (not-empty (:prompt (get-corp))) "Corp has waiting prompt")
+      (is (not (no-prompt? state :corp)) "Corp has waiting prompt")
       (is (= 1 (count (:discard (get-runner)))) "Gachapon in heap")
       (is (= 0 (count (:deck (get-runner)))) "0 cards in deck")
       (is (= 6 (count (:set-aside (get-runner)))) "6 cards set-aside")
@@ -1914,7 +1929,7 @@
       (play-from-hand state :runner "Gachapon")
       (card-ability state :runner (get-hardware state 0) 0)
       (click-prompt state :runner "OK")
-      (is (not-empty (:prompt (get-corp))) "Corp has waiting prompt")
+      (is (not (no-prompt? state :corp)) "Corp has waiting prompt")
       (changes-val-macro 0 (:credit (get-runner))
                          "Paid 0c to install Bankroll"
                          (click-prompt state :runner "Bankroll"))
@@ -1969,11 +1984,11 @@
         (core/add-counter state :runner (refresh pp) :credit 2)
         (play-from-hand state :runner "Gachapon")
         (card-ability state :runner (get-hardware state 0) 0)
-        (is (= (-> (get-runner) :prompt first :msg)
-              "The set aside cards are: Au Revoir, Bankroll, Clone Chip, DDoS, Equivocation, Falsified Credentials")
+        (is (= (:msg (get-prompt state :runner))
+              "The set aside cards are: Au Revoir, Bankroll, Clone Chip, DDoS, Equivocation, and Falsified Credentials")
             "Shown correct six cards")
         (click-prompt state :runner "OK")
-        (is (not-empty (:prompt (get-corp))) "Corp has waiting prompt")
+        (is (not (no-prompt? state :corp)) "Corp has waiting prompt")
         (is (= 1 (count (:discard (get-runner)))) "Gachapon in heap")
         (is (= 6 (count (:set-aside (get-runner)))) "6 cards in deck")
         (click-prompt state :runner "DDoS")
@@ -2001,11 +2016,11 @@
       (card-ability state :runner (get-hardware state 0) 0)
       (is (= 1 (count (:hand (get-runner)))))
       (is (= "Au Revoir" (:title (first (:hand (get-runner))))) "Runner drew from Reaver")
-      (is (= (-> (get-runner) :prompt first :msg)
-             "The set aside cards are: Bankroll, Clone Chip, DDoS, Equivocation, Falsified Credentials, Golden")
+      (is (= (:msg (get-prompt state :runner))
+             "The set aside cards are: Bankroll, Clone Chip, DDoS, Equivocation, Falsified Credentials, and Golden")
           "Shown correct six cards")
       (click-prompt state :runner "OK")
-      (is (not-empty (:prompt (get-corp))) "Corp has waiting prompt")
+      (is (prompt-is-type? state :corp :waiting))
       (is (= 1 (count (:discard (get-runner)))) "Gachapon in heap")
       (is (= 6 (count (:set-aside (get-runner)))) "6 cards in deck")
       (click-prompt state :runner "DDoS")
@@ -2536,7 +2551,7 @@
       (run-continue state :encounter-ice)
       (card-subroutine state :corp (refresh vanilla) 0)
       (is (:run @state) "Run not ended yet")
-      (is (seq (:prompt (get-runner))) "Runner prompted to ETR"))))
+      (is (not (no-prompt? state :runner)) "Runner prompted to ETR"))))
 
 (deftest lucky-charm-no-interference-with-runs-ending-successfully-or-by-jacking-out-and-batty-normal-etr-border-control-interaction
     ;; No interference with runs ending successfully or by jacking out, and Batty/normal ETR/Border Control interaction
@@ -2580,7 +2595,7 @@
        (run-continue state)
        (card-subroutine state :corp (refresh iw) 0)
        (is (:run @state) "Run not ended yet")
-       (is (seq (:prompt (get-runner))) "Runner prompted to ETR")
+       (is (not (no-prompt? state :runner)) "Runner prompted to ETR")
        (click-prompt state :runner "Done")
        (is (not (:run @state)) "Run ended yet")
        (is (no-prompt? state :runner) "Prevent prompt gone")
@@ -2589,7 +2604,7 @@
        (run-continue state)
        (card-subroutine state :corp (refresh bc) 1)
        (is (:run @state) "Run not ended yet")
-       (is (seq (:prompt (get-runner))) "Runner prompted to ETR")
+       (is (not (no-prompt? state :runner)) "Runner prompted to ETR")
        (card-ability state :runner (get-hardware state 0) 0)
        (click-prompt state :runner "Done")
        (is (= 1 (count (:rfg (get-runner)))) "Lucky Charm RFGed")
@@ -2600,7 +2615,7 @@
        (card-ability state :corp (refresh bc) 0)
        (is (= 1 (count (:discard (get-corp)))) "Border Control trashed")
        (is (:run @state) "Run not ended yet")
-       (is (seq (:prompt (get-runner))) "Runner prompted to ETR")
+       (is (not (no-prompt? state :runner)) "Runner prompted to ETR")
        (card-ability state :runner (get-hardware state 0) 0)
        (click-prompt state :runner "Done")
        (is (= 2 (count (:rfg (get-runner)))) "2nd Lucky Charm RFGed")
@@ -2612,7 +2627,7 @@
        (click-prompt state :runner "0 [Credits]")
        (card-subroutine state :corp (refresh iw) 0)
        (is (:run @state) "Run not ended yet")
-       (is (seq (:prompt (get-runner))) "Runner prompted to ETR")
+       (is (not (no-prompt? state :runner)) "Runner prompted to ETR")
        (card-ability state :runner (get-hardware state 0) 0)
        (click-prompt state :runner "Done")
        (is (:run @state) "Run prevented from ending"))))
@@ -2713,7 +2728,7 @@
       (click-prompt state :runner "No action")
       (run-on state "HQ")
       (is (= :waiting (prompt-type :corp)) "Corp should be waiting on Runner")
-      (is (seq (:prompt (get-runner))) "Runner should get a prompt every run")))
+      (is (not (no-prompt? state :runner)) "Runner should get a prompt every run")))
 
 (deftest masterwork-v37-should-only-grant-bonus-on-the-first-hardware-install-issue-4097
     ;; Should only grant bonus on the first Hardware install. Issue #4097
@@ -2925,7 +2940,7 @@
       (take-credits state :corp)
       (play-from-hand state :runner "Maya")
       (run-empty-server state "R&D")
-      (is (= "You accessed Hostile Takeover." (:msg (prompt-map :runner))))
+      (is (accessing state "Hostile Takeover"))
       (click-prompt state :runner "Steal")
       (is (= "Move Hostile Takeover to the bottom of R&D?" (:msg (prompt-map :runner))))
       (click-prompt state :runner "Yes")
@@ -2938,7 +2953,7 @@
       (run-empty-server state "R&D")
       (click-prompt state :corp "Yes")
       (is (zero? (count (:hand (get-runner)))) "Runner took Snare! net damage")
-      (is (= "You accessed Snare!." (:msg (prompt-map :runner))))
+      (is (accessing state "Snare!"))
       (click-prompt state :runner "Pay 0 [Credits] to trash")
       (click-prompt state :runner "Yes")
       (is (no-prompt? state :runner) "No more prompts for runner")
@@ -2958,11 +2973,11 @@
       (play-from-hand state :runner "Maya")
       (play-from-hand state :runner "R&D Interface")
       (run-empty-server state :rd)
-      (is (= "You accessed Scorched Earth." (:msg (prompt-map :runner))) "Accessing the top card of R&D")
+      (is (accessing state "Scorched Earth") "Accessing the top card of R&D")
       (click-prompt state :runner "No action")
       (click-prompt state :runner "Yes")
       (is (= "Scorched Earth" (:title (last (:deck (get-corp))))) "Maya moved the accessed card to the bottom of R&D")
-      (is (:prompt (get-runner)) "Runner has next access prompt")))
+      (is (not (no-prompt? state :runner)) "Runner has next access prompt")))
 
 (deftest maya-triggers-only-on-rd-accesses
     ;; Maya does not trigger on accesses out of R&D
@@ -3412,7 +3427,7 @@
       (click-card state :runner (get-hardware state 0))
       (click-card state :runner "Cyberfeeder")
       (is (find-card "Cyberfeeder" (:play-area (get-runner))) "Cyberfeeder is on the table")
-      (is (not-empty (:prompt (get-runner))) "Prompt still open")))
+      (is (not (no-prompt? state :runner)) "Prompt still open")))
 
 (deftest patchwork-used-when-runner-credit-pool-is-under-printed-cost-issue-4563
     ;; Used when runner credit pool is under printed cost. Issue #4563
@@ -3581,7 +3596,7 @@
       (play-from-hand state :runner "Prognostic Q-Loop")
       (run-on state :hq)
       (click-prompt state :runner "Yes")
-      (is (= "The top 2 cards of the stack are Au Revoir, Bankroll." (:msg (prompt-map :runner))))
+      (is (= "The top 2 cards of the stack are Au Revoir and Bankroll" (:msg (prompt-map :runner))))
       (click-prompt state :runner "OK")
       (card-ability state :runner (get-hardware state 0) 1)
       (click-prompt state :runner "Yes")
@@ -3629,10 +3644,10 @@
                 (click-prompt state :runner "OK")
                 (is (no-prompt? state :runner) "Look prompt closed"))
             "Ask"
-            (do (is (not-empty (:prompt (get-runner))) "Does show trigger prompt")
+            (do (is (not (no-prompt? state :runner)) "Does show trigger prompt")
                 (click-prompt state :runner "Yes")
                 (last-log-contains? state "Runner uses Prognostic Q-Loop to look at the top 2 cards of the stack.")
-                (is (not-empty (:prompt (get-runner))) "Does show look prompt")
+                (is (not (no-prompt? state :runner)) "Does show look prompt")
                 (click-prompt state :runner "OK")
                 (is (no-prompt? state :runner) "Look prompt closed")))
           (run-jack-out state)
@@ -3682,7 +3697,7 @@
       (is (= "Choose a trigger to resolve" (:msg (prompt-map :runner))))
       (click-prompt state :runner "Prognostic Q-Loop")
       (click-prompt state :runner "Yes")
-      (is (= "The top 2 cards of the stack are Au Revoir, Bankroll." (:msg (prompt-map :runner))))))
+      (is (= "The top 2 cards of the stack are Au Revoir and Bankroll" (:msg (prompt-map :runner))))))
 
 (deftest prognostic-q-loop-are-the-correct-cards-shown-if-another-start-of-run-trigger-draws-a-card-issue-4973
     ;; Are the correct cards shown if another start of run trigger draws a card. Issue #4973
@@ -3707,7 +3722,7 @@
       (is (= "Look at top 2 cards of the stack?" (:msg (prompt-map :runner))))
       (click-prompt state :runner "Yes")
       ; Au Revoir drawn by Masterwork off it's own install, Q Loop prompt shows accurate info
-      (is (= "The top 2 cards of the stack are Bankroll, Clone Chip." (:msg (prompt-map :runner))))))
+      (is (= "The top 2 cards of the stack are Bankroll and Clone Chip" (:msg (prompt-map :runner))))))
 
 (deftest prognostic-q-loop-works-with-paladin-poemu-5304
     ;; Works with Paladin Poemu #5304
@@ -3857,7 +3872,6 @@
               "Ramujan did log trashed card names")
           (is (= 2 (count (:hand (get-runner)))) "1 net damage prevented")
           (run-continue state)
-          (run-continue state)
           (click-prompt state :corp "No")
           (click-prompt state :runner "No action")
           (take-credits state :runner)
@@ -3867,7 +3881,7 @@
           (click-prompt state :corp "Yes")
           (card-ability state :runner rr2 0)
           (click-prompt state :runner "3")
-          (is (second-last-log-contains? state "Sure Gamble, Sure Gamble, Sure Gamble")
+          (is (second-last-log-contains? state "Sure Gamble, Sure Gamble, and Sure Gamble")
               "Ramujan did log trashed card names")
           (is (= 1 (count (:hand (get-runner)))) "3 net damage prevented")))))
 
@@ -3964,7 +3978,7 @@
       (click-prompt state :corp "Yes")
       (card-ability state :runner rd4 0)
       (click-prompt state :runner "1")
-      (is (= 2 (count (:hand (get-runner)))) "Runner took no brain damage"))))
+      (is (= 2 (count (:hand (get-runner)))) "Runner took no core damage"))))
 
 (deftest record-reconstructor
   ;; Record Reconstructor
@@ -4172,9 +4186,9 @@
       (is (= 1 (:position (:run @state))))
       (is (= 2 (count (:hand (get-runner))))) ; pre archangel
       (card-subroutine state :corp arch 0) ; fire archangel
-      (is (seq (:prompt (get-corp))) "Archangel trace prompt - corp")
+      (is (not (no-prompt? state :corp)) "Archangel trace prompt - corp")
       (click-prompt state :corp "0")
-      (is (seq (:prompt (get-runner))) "Archangel trace prompt - runner")
+      (is (not (no-prompt? state :runner)) "Archangel trace prompt - runner")
       (click-prompt state :runner "0")
       (click-card state :corp sifr)
       (is (= 3 (count (:hand (get-runner))))) ; sifr got lifted to hand
@@ -4182,7 +4196,7 @@
       (run-jack-out state)
       (is (= 4 (get-strength (refresh ip))) "IP Block back to standard strength")
       (play-from-hand state :runner "Modded")
-      (is (seq (:prompt (get-runner))) "Modded choice prompt exists")
+      (is (not (no-prompt? state :runner)) "Modded choice prompt exists")
       (click-card state :runner "Şifr")
       (is (= 4 (get-strength (refresh ip))) "IP Block back to standard strength"))))
 
@@ -4396,7 +4410,7 @@
         (card-subroutine state :corp cad 0)
         (click-prompt state :corp "0")
         (click-prompt state :runner "0")
-        (is (= 1 (:brain-damage (get-runner))) "Took 1 brain damage")
+        (is (= 1 (:brain-damage (get-runner))) "Took 1 core damage")
         (is (= 1 (count (:discard (get-runner)))))
         (is (= 4 (hand-size :runner)) "Reduced hand size"))))
 
@@ -5033,39 +5047,6 @@
     (click-prompt state :runner "Expose a card")
     (click-card state :runner (get-ice state :archives 0))
     (is (= 3 (:credit (get-runner))) "Gained 1 more credit from exposing")))
-
-(deftest zenit-chip-jz-2-mj
-  ;; Zenit Chip JZ-2MJ
-  (do-game
-    (new-game {:runner {:deck [(qty "Sure Gamble" 3)]
-                        :hand [(qty "Zenit Chip JZ-2MJ" 2)]}
-               :corp {:hand ["PAD Campaign"]}})
-    (play-from-hand state :corp "PAD Campaign" "New remote")
-    (take-credits state :corp)
-    (core/gain state :runner :click 1)
-    (play-from-hand state :runner "Zenit Chip JZ-2MJ")
-    (is (= 1 (count (:discard (get-runner)))) "1 damage done")
-    (is (= 1 (:brain-damage (get-runner))))
-    (changes-val-macro 0 (count (:hand (get-runner)))
-      "Draw no card on successful run on remote server"
-      (run-empty-server state :remote1)
-      (click-prompt state :runner "No action"))
-    (changes-val-macro 1 (count (:hand (get-runner)))
-      "Draw 1 card on fist successful run"
-      (run-empty-server state "Archives"))
-    (changes-val-macro 0 (count (:hand (get-runner)))
-      "Draw no card on subsequent successful runs"
-      (run-empty-server state "Archives"))
-    (take-credits state :runner)
-    (take-credits state :corp)
-    (changes-val-macro 1 (count (:hand (get-runner)))
-      "Draw 1 card on successful run"
-      (run-empty-server state "R&D"))
-    (take-credits state :runner)
-    (take-credits state :corp)
-    (changes-val-macro 1 (count (:hand (get-runner)))
-      "Draw 1 card on successful run"
-      (run-empty-server state "HQ"))))
 
 (deftest zer0-basic-ability
     ;; Basic ability

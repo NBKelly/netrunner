@@ -39,7 +39,6 @@
    stack
    start-date
    stats
-   subversion
    trace
    trash
    turn

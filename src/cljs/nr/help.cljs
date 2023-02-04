@@ -134,6 +134,10 @@
    {:name "/save-replay"
     :usage "/save-replay"
     :help "Save a replay of the game"}
+   {:name "/set-mark"
+    :has-args :required
+    :usage "/set-mark n"
+    :help "Set the central server n as your mark (Runner only)"}
    {:name "/show-hand"
     :usage "/show-hand"
     :help "Shows your hand in the chat log (does not proc reveal triggers)"}
@@ -151,10 +155,10 @@
     :has-args :required
     :usage "/tag n"
     :help "Set your tags to n"}
-   {:name "/take-brain"
+   {:name "/take-core"
     :has-args :required
-    :usage "/take-brain n"
-    :help "Take n brain damage (Runner only)"}
+    :usage "/take-core n"
+    :help "Take n core damage (Runner only)"}
    {:name "/take-meat"
     :has-args :required
     :usage "/take-meat n"

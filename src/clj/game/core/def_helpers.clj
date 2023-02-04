@@ -17,7 +17,7 @@
     [game.core.to-string :refer [card-str]]
     [game.core.toasts :refer [toast]]
     [game.macros :refer [continue-ability effect msg req wait-for]]
-    [game.utils :refer [remove-once same-card? server-card to-keyword]]
+    [game.utils :refer [enumerate-str remove-once same-card? server-card to-keyword]]
     [jinteki.utils :refer [other-side]]))
 
 (defn combine-abilities
@@ -75,9 +75,9 @@
   ([reorder-side wait-side chosen original dest]
    {:prompt (if (= dest "bottom")
               (str "The bottom cards of " (if (= reorder-side :corp) "R&D" "your Stack")
-                   " will be " (str/join  ", " (map :title (reverse chosen))) ".")
+                   " will be " (enumerate-str (map :title (reverse chosen))) ".")
               (str "The top cards of " (if (= reorder-side :corp) "R&D" "your Stack")
-                   " will be " (str/join  ", " (map :title chosen)) "."))
+                   " will be " (enumerate-str (map :title chosen)) "."))
    :choices ["Done" "Start over"]
    :async true
    :effect (req
@@ -135,11 +135,11 @@
    :effect (effect (damage eid :meat dmg {:card card}))})
 
 (defn do-brain-damage
-  "Do specified amount of brain damage."
+  "Do specified amount of core damage."
   [dmg]
-  {:label (str "Do " dmg " brain damage")
+  {:label (str "Do " dmg " core damage")
    :async true
-   :msg (str "do " dmg " brain damage")
+   :msg (str "do " dmg " core damage")
    :effect (effect (damage eid :brain dmg {:card card}))})
 
 (defn trash-on-empty
@@ -187,11 +187,18 @@
                  true))
      :once once
      :prompt "Jack out?"
-     :waiting-prompt "Runner to make a decison"
+     :waiting-prompt true
      :yes-ability {:async true
                    :effect (effect (system-msg :runner (str "uses " (:title card) " to jack out"))
                                    (jack-out eid))}
      :no-ability {:effect (effect (system-msg :runner (str "uses " (:title card) " to continue the run")))}}}))
+
+(defn get-x-fn []
+  (fn get-x-fn-inner
+    [state side eid card targets]
+    (if-let [x-fn (and (not (:disabled card)) (:x-fn card))]
+      (x-fn state side eid card targets)
+      0)))
 
 (defn make-current-event-handler
   [title ability]
@@ -223,6 +230,7 @@
   ([pred]
    {:label "add card from Archives to HQ"
     :prompt "Choose a card to add to HQ"
+    :waiting-prompt true
     :show-discard true
     :choices {:card #(and (corp? %)
                        (in-discard? %)
@@ -231,13 +239,6 @@
     :effect (effect (move :corp target :hand))}))
 
 (def card-defs-cache (atom {}))
-
-;;; Helper for x-fn cards
-(def x-fn
-  (req
-    (if-let [x-fn (and (not (:disabled card)) (:x-fn card))]
-      (x-fn state side eid card targets)
-      0)))
 
 (defmacro defcard
   [title ability]

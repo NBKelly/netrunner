@@ -106,23 +106,6 @@
     (swap! state update-in [side key] (partial + delta)))
   (change-msg state side key (get-in @state [side key]) delta))
 
-(defn- change-subversion
-  "Change the game's subversion count"
-  [state side subversion delta]
-  (if (get-in @state [:subversion subversion])
-    (swap! state update-in [:subversion subversion] (partial + delta))
-    (swap! state assoc-in [:subversion subversion] delta))
-  (let [sub-name (case key
-                   :a "Repress"
-                   :b "Isolate"
-                   :c "Starve"
-                   :d "Tax"
-                   "????")]
-    (system-msg state side
-                (str "sets subversion \"" sub-name "\" to " (get-in @state [:subversion key])))))
-
-
-
 (defn change
   "Increase/decrease a player's property (clicks, credits, MU, etc.) by delta."
   [state side {:keys [key delta]}]

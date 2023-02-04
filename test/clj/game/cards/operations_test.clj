@@ -450,7 +450,7 @@
   (do-game
     (new-game {:corp {:hand ["SDS Drone Deployment" "Big Deal"] :credits 20}})
     (play-from-hand state :corp "SDS Drone Deployment" "New remote")
-    (core/advance state :corp {:card (get-content state :remote1 0)})
+    (click-advance state :corp (get-content state :remote1 0))
     (play-from-hand state :corp "Big Deal")
     (click-card state :corp "SDS Drone Deployment")
     (is (= 5 (get-counters (get-content state :remote1 0) :advancement)))
@@ -567,7 +567,7 @@
         (click-card state :corp (find-card "Oaktown Renovation" (:hand (get-corp))))
         (click-prompt state :corp "New remote")
         (let [oak (get-content state :remote2 0)]
-          (core/advance state :corp {:card (refresh oak)})
+          (click-advance state :corp (refresh oak))
           (is (= 5 (:credit (get-corp))) "Events on Public agenda work; gained 2 credits from advancing")
           (take-credits state :corp)
           (run-empty-server state "Server 2")
@@ -613,9 +613,9 @@
       (play-from-hand state :corp "Cerebral Cast")
       (click-prompt state :corp "0 [Credits]")
       (click-prompt state :runner "1 [Credits]")
-      (click-prompt state :runner "Suffer 1 brain damage")
-      (is (= 1 (count (:discard (get-runner)))) "Runner took a brain damage")
-      (is (zero? (count-tags state)) "Runner took no tags from brain damage choice")
+      (click-prompt state :runner "Suffer 1 core damage")
+      (is (= 1 (count (:discard (get-runner)))) "Runner took a core damage")
+      (is (zero? (count-tags state)) "Runner took no tags from core damage choice")
       (play-from-hand state :corp "Cerebral Cast")
       (click-prompt state :corp "0 [Credits]")
       (click-prompt state :runner "1 [Credits]")
@@ -692,12 +692,12 @@
       (play-from-hand state :corp "Complete Image")
       (is (-> (get-runner) :discard count zero?) "Runner's heap should be empty")
       (click-prompt state :corp "Sure Gamble")
-      (is (seq (:prompt (get-corp))) "Corp guessed right so should have another choice")
+      (is (not (no-prompt? state :corp)) "Corp guessed right so should have another choice")
       (click-prompt state :corp "Sure Gamble")
       (click-prompt state :corp "Sure Gamble")
       (click-prompt state :corp "Sure Gamble")
       (click-prompt state :corp "Sure Gamble")
-      (is (seq (:prompt (get-corp))) "Even when the runner has no cards in hand, Corp must choose again")
+      (is (not (no-prompt? state :corp)) "Even when the runner has no cards in hand, Corp must choose again")
       (click-prompt state :corp "Sure Gamble")
       (is (no-prompt? state :corp) "Runner is flatlined so no more choices")
       (is (= 5 (-> (get-runner) :discard count)) "Runner's heap should have 5 cards")))
@@ -764,13 +764,13 @@
       (play-from-hand state :corp "Complete Image")
       (is (-> (get-runner) :discard count zero?) "Runner's heap should be empty")
       (click-prompt state :corp "Sure Gamble") ;; Complete Image
-      (is (seq (:prompt (get-corp))) "Corp guessed right so should have another choice")
+      (is (not (no-prompt? state :corp)) "Corp guessed right so should have another choice")
       (click-prompt state :corp "Yes") ;; Chronos Protocol
       (click-prompt state :corp "Sure Gamble") ;; Chronos Protocol
       (click-prompt state :corp "Sure Gamble") ;; Complete Image
       (click-prompt state :corp "Sure Gamble") ;; Complete Image
       (click-prompt state :corp "Sure Gamble") ;; Complete Image
-      (is (seq (:prompt (get-corp))) "Even when the runner has no cards in hand, Corp must choose again")
+      (is (not (no-prompt? state :corp)) "Even when the runner has no cards in hand, Corp must choose again")
       (click-prompt state :corp "Sure Gamble") ;; Complete Image
       (click-prompt state :corp "Sure Gamble") ;; Complete Image
       (is (no-prompt? state :corp) "Runner is flatlined so no more choices")
@@ -895,10 +895,10 @@
       (rez state :corp vik)
       (run-continue state)
       (card-subroutine state :corp vik 0)
-      (is (= 2 (count (:discard (get-runner)))) "2 cards lost to brain damage")
+      (is (= 2 (count (:discard (get-runner)))) "2 cards lost to core damage")
       (is (= 2 (:brain-damage (get-runner))) "Brainchips dealt 1 additional brain dmg")
       (card-subroutine state :corp vik 0)
-      (is (= 3 (count (:discard (get-runner)))) "2 cards lost to brain damage")
+      (is (= 3 (count (:discard (get-runner)))) "2 cards lost to core damage")
       (is (= 3 (:brain-damage (get-runner))) "Brainchips didn't do additional brain dmg"))))
 
 (deftest digital-rights-management-cannot-score-agenda-installed-after-playing
@@ -910,14 +910,17 @@
     (take-credits state :runner)
     (play-from-hand state :corp "Digital Rights Management")
     (click-prompt state :corp "Project Beale")
-    (click-card state :corp "Project Vitruvius")
+    (click-prompt state :corp "Done")
+    (play-from-hand state :corp "Project Vitruvius")
     (click-prompt state :corp "New remote")
-    ;; note - score-agenda fails if it finds the card wasn't scored,
-    ;; so we have to do this the hard way
+    (core/gain state :corp :click 2)
     (let [vit (get-content state :remote1 0)]
-      (core/add-prop state :corp (refresh vit) :advance-counter 3)
-      (core/process-action "score" state :corp {:card (refresh vit)}))
-    (is (= 0 (count (get-scored state :corp))) "Vitruvius was not scored")))
+      (dotimes [_ 3] (click-advance state :corp (refresh vit)))
+      (score state :corp (refresh vit))
+      (is (= 0 (count (get-scored state :corp))) "Project Vitruvius was not scored")
+      (take-credits state :corp)
+      (take-credits state :runner)
+      (score state :corp (refresh vit)))))
 
 (deftest digital-rights-management-drm-only-searches-for-agendas-in-r-d
     ;; DRM only searches for Agendas in R&D
@@ -940,7 +943,7 @@
       (click-prompt state :corp "New remote")
       (core/gain state :corp :click 1)
       (let [beale (get-content state :remote1 0)]
-        (dotimes [_ 3] (core/advance state :corp {:card (refresh beale)}))
+        (dotimes [_ 3] (click-advance state :corp (refresh beale)))
         (score state :corp (refresh beale))
         (is (= 0 (count (get-scored state :corp))) "Beale was not scored")
         (take-credits state :corp)
@@ -974,7 +977,7 @@
       (click-prompt state :corp "New remote")
       (core/gain state :corp :click 1)
       (let [beale (get-content state :remote1 0)]
-        (dotimes [_ 3] (core/advance state :corp {:card (refresh beale)}))
+        (dotimes [_ 3] (click-advance state :corp (refresh beale)))
         (score state :corp (refresh beale))
         (is (= 0 (count (get-scored state :corp))) "Beale was not scored")
         (take-credits state :corp)
@@ -992,7 +995,7 @@
       (core/gain state :corp :click 3)
       (play-from-hand state :corp "Project Beale" "New remote")
       (let [beale (get-content state :remote1 0)]
-        (dotimes [_ 3] (core/advance state :corp {:card (refresh beale)}))
+        (dotimes [_ 3] (click-advance state :corp (refresh beale)))
         (play-from-hand state :corp "Digital Rights Management")
         (click-prompt state :corp "None")
         (click-prompt state :corp "Done")
@@ -1178,6 +1181,25 @@
     (take-credits state :runner)
     (play-from-hand state :corp "Economic Warfare")
     (is (= 3 (:credit (get-runner))) "Runner has 3 credits")))
+
+(deftest economic-warfare-ignoring-net-mercur-credits
+  ;; Economic Warfare should ignore Net Mercur credits
+  (do-game
+    (new-game {:corp {:hand ["Economic Warfare"]}
+               :runner {:hand ["Net Mercur" "Mantle" "Marjanah"]}})
+    (take-credits state :corp)
+    (core/gain state :runner :credit 2)
+    (play-from-hand state :runner "Marjanah")
+    (play-from-hand state :runner "Mantle")
+    (play-from-hand state :runner "Net Mercur")
+    (run-on state :archives)
+    (card-ability state :runner (get-program state 0) 1)
+    (click-card state :runner (get-program state 1))
+    (click-prompt state :runner "Place 1 [Credits] on Net Mercur")
+    (run-continue state)
+    (take-credits state :runner)
+    (play-from-hand state :corp "Economic Warfare")
+    (is (= 3 (:credit (get-runner))) "Runner has still 3 credits")))
 
 (deftest election-day
   (do-game
@@ -1989,7 +2011,7 @@
     (click-prompt state :runner "0")
     (click-card state :corp (get-resource state 0))
     (is (empty? (:hand (get-runner))) "Can't choose virtual card")
-    (is (seq (:prompt (get-corp))))
+    (is (not (no-prompt? state :corp)))
     (click-card state :corp (get-program state 0))
     (is (= 1 (count (:hand (get-runner)))) "Upya returned to grip")))
 
@@ -2192,7 +2214,7 @@
     (click-prompt state :runner "Take 1 tag")
     (play-from-hand state :corp "Hypoxia")
     (is (= 1 (count (:rfg (get-corp)))) "Hypoxia removed from game")
-    (is (= 1 (:brain-damage (get-runner))) "Runner should get 1 brain damage from Hypoxia")
+    (is (= 1 (:brain-damage (get-runner))) "Runner should get 1 core damage from Hypoxia")
     (take-credits state :corp)
     (is (= 3 (:click (get-runner))) "Runner should lose 1 click start of turn")))
 
@@ -2265,7 +2287,7 @@
       (click-prompt state :corp "Done")
       (is (empty? (remove #(not (:seen %)) (:discard (get-corp)))) "Cards in Archives are turned facedown")
       (click-card state :corp (find-card "Hedge Fund" (:discard (get-corp))))
-      (is (not-empty (:prompt (get-corp))) "Could not choose operation to install")
+      (is (not (no-prompt? state :corp)) "Could not choose operation to install")
       (click-card state :corp (find-card "Project Junebug" (:discard (get-corp))))
       (is (= 0 (count (:rfg (get-corp)))) "Kakurenbo was not yet removed from game")
       (click-prompt state :corp "New remote")
@@ -2327,17 +2349,17 @@
     (new-game {:corp {:deck ["Kill Switch" (qty "Hostile Takeover" 2)]}})
     (play-from-hand state :corp "Kill Switch")
     (play-from-hand state :corp "Hostile Takeover" "New remote")
-    (is (zero? (:brain-damage (get-runner))) "Runner should start with 0 brain damage")
+    (is (zero? (:brain-damage (get-runner))) "Runner should start with 0 core damage")
     (play-and-score state "Hostile Takeover")
     (click-prompt state :corp "Hostile Takeover")
     (click-prompt state :corp "0")
     (click-prompt state :runner "0")
-    (is (= 1 (:brain-damage (get-runner))) "Runner should get 1 brain damage from Kill Switch after Corp scores an agenda")
+    (is (= 1 (:brain-damage (get-runner))) "Runner should get 1 core damage from Kill Switch after Corp scores an agenda")
     (take-credits state :corp)
     (run-empty-server state :remote1)
     (click-prompt state :corp "0")
     (click-prompt state :runner "0")
-    (is (= 2 (:brain-damage (get-runner))) "Runner should get 1 brain damage from Kill Switch after accecssing an agenda")))
+    (is (= 2 (:brain-damage (get-runner))) "Runner should get 1 core damage from Kill Switch after accecssing an agenda")))
 
 (deftest lag-time
   (do-game
@@ -2420,7 +2442,7 @@
     (play-from-hand state :corp "Manhunt")
     (take-credits state :corp)
     (run-empty-server state "HQ")
-    (is (:prompt (get-corp)) "Manhunt trace initiated")
+    (is (not (no-prompt? state :corp)) "Manhunt trace initiated")
     (click-prompt state :corp "0")
     (click-prompt state :runner "0")
     (is (= 1 (count-tags state)) "Runner took 1 tag")
@@ -2484,9 +2506,9 @@
     (play-from-hand state :corp "Ice Wall" "R&D")
     (play-from-hand state :corp "Ice Wall" "Archives")
     (take-credits state :runner)
-    (core/advance state :corp {:card (refresh (get-ice state :hq 0))})
-    (core/advance state :corp {:card (refresh (get-ice state :archives 0))})
-    (core/advance state :corp {:card (refresh (get-ice state :rd 0))})
+    (click-advance state :corp (refresh (get-ice state :hq 0)))
+    (click-advance state :corp (refresh (get-ice state :archives 0)))
+    (click-advance state :corp (refresh (get-ice state :rd 0)))
     (take-credits state :runner)
     (play-from-hand state :corp "Mass Commercialization")
     (is (= 8 (:credit (get-corp))) "Gained 6 for 3 advanced ice from Mass Commercialization")))
@@ -2692,7 +2714,7 @@
       (play-from-hand state :corp "NAPD Cordon")
       (play-from-hand state :corp "Project Atlas" "New remote")
       (let [atlas (get-content state :remote1 0)]
-        (dotimes [_ 2] (core/advance state :corp {:card (refresh atlas)}))
+        (dotimes [_ 2] (click-advance state :corp (refresh atlas)))
         (take-credits state :corp)
         (run-empty-server state :remote1)
         (changes-val-macro -8 (:credit (get-runner))
@@ -3194,7 +3216,7 @@
   (do-game
     (new-game {:corp {:hand [(qty "Public Trail" 2)]}})
     (play-from-hand state :corp "Public Trail")
-    (is (nil? (get-prompt state :corp)))
+    (is (no-prompt? state :corp))
     (is (not (is-tagged? state)))
     (take-credits state :corp)
     (run-empty-server state :hq)
@@ -3432,14 +3454,32 @@
       (take-credits state :runner)
       (play-from-hand state :corp "Riot Suppression")
       (is (empty? (:discard (get-runner))) "Runner discard is empty")
-      (is (zero? (:brain-damage (get-runner))) "Runner starts with no brain damage")
-      (click-prompt state :runner "Suffer 1 brain damage")
-      (is (= 1 (count (:discard (get-runner)))) "1 card lost to brain damage")
-      (is (= 1 (:brain-damage (get-runner))) "Runner took 1 brain damage")
+      (is (zero? (:brain-damage (get-runner))) "Runner starts with no core damage")
+      (click-prompt state :runner "Suffer 1 core damage")
+      (is (= 1 (count (:discard (get-runner)))) "1 card lost to core damage")
+      (is (= 1 (:brain-damage (get-runner))) "Runner took 1 core damage")
       (is (= 1 (count (:discard (get-corp)))) "No corp cards trashed")
       (is (= 1 (count (:rfg (get-corp)))) "Riot Suppestion removed from game")
       (take-credits state :corp)
       (is (= 4 (:click (get-runner))) "Runner has all clicks the following turn")))
+
+(deftest riot-suppression-damage-cannot-be-prevented
+    ;; Take 1 brain damage
+    (do-game
+      (new-game {:corp {:deck ["Riot Suppression" "Adonis Campaign"]}
+                 :runner {:hand ["Caldera"]
+                          :credits 20}})
+      (play-from-hand state :corp "Adonis Campaign" "New remote")
+      (take-credits state :corp)
+      (play-from-hand state :runner "Caldera")
+      (run-empty-server state "Server 1")
+      (click-prompt state :runner "Pay 3 [Credits] to trash")
+      (take-credits state :runner)
+      (play-from-hand state :corp "Riot Suppression")
+      (is (empty? (:discard (get-runner))) "Runner discard is empty")
+      (is (zero? (:brain-damage (get-runner))) "Runner starts with no core damage")
+      (click-prompt state :runner "Suffer 1 core damage")
+      (is (no-prompt? state :runner) "Cannot use Caldera to prevent core damage")))
 
 (deftest riot-suppression-lose-3-clicks
     ;; Lose 3 clicks
@@ -3452,10 +3492,10 @@
       (take-credits state :runner)
       (play-from-hand state :corp "Riot Suppression")
       (is (empty? (:discard (get-runner))) "Runner discard is empty")
-      (is (zero? (:brain-damage (get-runner))) "Runner starts with no brain damage")
+      (is (zero? (:brain-damage (get-runner))) "Runner starts with no core damage")
       (click-prompt state :runner "Get 3 fewer [Click] on the next turn")
       (is (empty? (:discard (get-runner))) "Runner discard statys empty")
-      (is (zero? (:brain-damage (get-runner))) "Runner takes no brain damage")
+      (is (zero? (:brain-damage (get-runner))) "Runner takes no core damage")
       (is (= 1 (count (:discard (get-corp)))) "No corp cards trashed")
       (is (= 1 (count (:rfg (get-corp)))) "Riot Suppression removed from game")
       (take-credits state :corp)
@@ -4114,11 +4154,10 @@
       (take-credits state :runner)
       (play-from-hand state :corp "Subcontract")
       (click-card state :corp (find-card "Scorched Earth" (:hand (get-corp))))
-      (is (and (= 1 (count (:prompt (get-corp))))
-               (= :waiting (prompt-type :corp)))
+      (is (prompt-is-type? state :corp :waiting)
           "Corp does not have Subcontract prompt until damage prevention completes")
       (click-prompt state :runner "Done")
-      (is (not-empty (:prompt (get-corp))) "Corp can now play second Subcontract operation")))
+      (is (not (no-prompt? state :corp)) "Corp can now play second Subcontract operation")))
 
 (deftest subcontract-interaction-with-terminal-operations
     ;; interaction with Terminal operations
@@ -4270,7 +4309,7 @@
       (core/gain state :corp :click 15)
       (let [napd (get-content state :remote1 0)
             beale (get-content state :remote2 0)]
-        (dotimes [_ 13] (core/advance state :corp {:card (refresh napd)}))
+        (dotimes [_ 13] (click-advance state :corp (refresh napd)))
         (is (= 13 (get-counters (refresh napd) :advancement)))
         (score state :corp (refresh napd))
         (is (= 2 (:agenda-point (get-corp))))
@@ -4593,7 +4632,7 @@
       (is (= "Threat Assessment" (:title (first (:rfg (get-corp))))) "Threat Assessment removed from game")
       (play-from-hand state :corp "Threat Assessment")
       (click-card state :corp (find-card "Corroder" (-> (get-runner) :rig :program)))
-      (click-prompt state :runner "Move Corroder")
+      (click-prompt state :runner "Add Corroder to the top of the Stack")
       (is (= 2 (count-tags state)) "Runner didn't take tags")
       (is (= "Corroder" (:title (first (:deck (get-runner))))) "Moved Corroder to the deck")
       (is (= 2 (count (:rfg (get-corp)))))
@@ -4626,7 +4665,7 @@
       (take-credits state :runner)
       (play-from-hand state :corp "Threat Assessment")
       (click-card state :corp "Corroder")
-      (click-prompt state :runner "Move Corroder")
+      (click-prompt state :runner "Add Corroder to the top of the Stack")
       (is (zero? (count-tags state)) "Runner didn't take tags")
       (is (no-prompt? state :corp))))
 
@@ -4998,8 +5037,8 @@
           "Wetwork Refit is hosted on Eli 1.0")
       (is (= 3 (count (:subroutines (refresh eli))))
           "Eli 1.0 has 2 different subroutines")
-      (is (= "[Wetwork Refit] Do 1 brain damage" (:label (first (:subroutines (refresh eli)))))
-          "Eli 1.0 has a brain damage subroutine as his first subroutine")
+      (is (= "[Wetwork Refit] Do 1 core damage" (:label (first (:subroutines (refresh eli)))))
+          "Eli 1.0 has a core damage subroutine as his first subroutine")
       (core/move state :corp (first (:hosted (refresh eli))) :hand)
       (is (empty? (:hosted (refresh eli))) "No cards are hosted on Eli 1.0")
       (is (= 2 (count (:subroutines (refresh eli))))

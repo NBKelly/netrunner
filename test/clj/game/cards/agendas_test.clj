@@ -92,7 +92,7 @@
         (is (= (inc cards) (count (:hand (get-corp)))) (str "Corp should have " (inc cards) " card in hand"))
         (run-continue state)
         (run-on state :archives)
-        (is (empty (:prompt (get-corp))) "No prompt as it's once per turn")
+        (is (no-prompt? state :corp) "No prompt as it's once per turn")
         (run-jack-out state)))
     (take-credits state :runner)
     (take-credits state :corp)
@@ -104,7 +104,7 @@
         (is (= (inc credits) (:credit (get-corp))) (str "Corp should have " (inc credits) " credits"))
         (run-continue state)
         (run-on state :archives)
-        (is (empty (:prompt (get-corp))) "No prompt as it's once per turn")))))
+        (is (no-prompt? state :corp) "No prompt as it's once per turn")))))
 
 (deftest ancestral-imager
   ;; Ancestral Imager
@@ -162,7 +162,7 @@
    (play-and-score state "Architect Deployment Test")
    (click-prompt state :corp "OK")
    (click-prompt state :corp "Cancel")
-   (is (empty (:prompt (get-corp))) "No more prompts if cancel is clicked")
+   (is (no-prompt? state :corp) "No more prompts if cancel is clicked")
    (play-and-score state "Architect Deployment Test")
    (click-prompt state :corp "OK")
    (click-prompt state :corp "Rashida Jaheem")
@@ -176,8 +176,7 @@
    (is (= "Oaktown Renovation" (:title (get-content state :remote6 0))) "Oaktown Renovation was installed")
    (is (faceup? (get-content state :remote6 0)) "Oaktown Renovation is installed faceup.")
    (play-and-score state "Architect Deployment Test")
-   (click-prompt state :corp "OK")
-   (is (empty (:prompt (get-corp))) "No prompts if there is no ice")))
+   (is (no-prompt? state :corp) "No prompt if R&D is empty")))
 
 (deftest armed-intimidation
   ;; Armed Intimidation
@@ -460,7 +459,7 @@
       (click-prompt state :corp "Done")
       (click-prompt state :corp (first (:deck (get-corp))))
       (click-prompt state :corp "Done")
-      (is (empty (:prompt (get-corp))) "Bacterial Programming prompts finished")
+      (is (no-prompt? state :corp) "Bacterial Programming prompts finished")
       (is (not (:run @state)) "No run is active")))
 
 (deftest bacterial-programming-removing-all-cards-from-r-d-should-not-freeze-for-runner-nor-give-an-extra-access
@@ -481,8 +480,8 @@
       (click-prompt state :corp "Done") ; Finished with trashing
       (click-prompt state :corp "Done") ; Finished with move-to-hq (no cards to move)
       ;; Run and prompts should be over now
-      (is (empty (:prompt (get-corp))) "Bacterial Programming prompts finished")
-      (is (empty (:prompt (get-runner))) "Bacterial Programming prompts finished")
+      (is (no-prompt? state :corp) "Bacterial Programming prompts finished")
+      (is (no-prompt? state :runner) "Bacterial Programming prompts finished")
       (is (not (:run @state)))))
 
 (deftest bellona
@@ -576,13 +575,13 @@
     (let [blood (get-content state :remote1 0)]
       (core/add-prop state :corp blood :advance-counter 2)
       (score state :corp (refresh blood))
-      (is (= 0 (:agenda-point (get-corp))) "Can't score regenesis (X = 4)")
+      (is (= 0 (:agenda-point (get-corp))) "Can't score Blood in the Water (X = 4)")
       (damage state :corp :net 1)
       (score state :corp (refresh blood))
-      (is (= 0 (:agenda-point (get-corp))) "Can't score regenesis (X = 3)")
+      (is (= 0 (:agenda-point (get-corp))) "Can't score Blood in the Water (X = 3)")
       (damage state :corp :net 1)
       (score state :corp (refresh blood))
-      (is (= 2 (:agenda-point (get-corp))) "Scored regenesis when runner had 2 cards"))))
+      (is (= 2 (:agenda-point (get-corp))) "Scored Blood in the Water when runner had 2 cards"))))
 
 (deftest brain-rewiring
   ;; Brain Rewiring
@@ -778,8 +777,8 @@
                :runner {:deck [(qty "Sure Gamble" 4)]}})
     (play-from-hand state :corp "City Works Project" "New remote")
     (let [cwp (get-content state :remote1 0)]
-      (core/advance state :corp {:card (refresh cwp)})
-      (core/advance state :corp {:card (refresh cwp)}))
+      (click-advance state :corp (refresh cwp))
+      (click-advance state :corp (refresh cwp)))
     (take-credits state :corp)
     (run-empty-server state "Server 1")
     (click-prompt state :runner "Steal")
@@ -901,9 +900,9 @@
       (click-prompt state :corp "1 [Credits]")
       (click-prompt state :runner "Card from hand")
       (click-card state :corp "Hedge Fund")
-      (is (= "You accessed Hedge Fund." (:msg (prompt-map :runner))))
+      (is (accessing state "Hedge Fund"))
       (click-prompt state :runner "No action")
-      (is (= "You accessed Caprice Nisei." (:msg (prompt-map :runner))))
+      (is (accessing state "Caprice Nisei"))
       (click-prompt state :runner "No action")
       (is (not (:run @state)) "Run completed")))
 
@@ -1601,7 +1600,7 @@
         (is (= 1 (count (:hosted (refresh gs-scored)))))
         (take-credits state :runner)
         (card-ability state :corp (refresh gs-scored) 0)
-        (is (not-empty (:prompt (get-corp))))
+        (is (= "Choose a card to host" (:msg (get-prompt state :corp))))
         (click-card state :corp "Enigma")
         (is (find-card "Enigma" (:hosted (refresh gs-scored))))))
     (testing "Can't take a card if only a runner card is hosted"
@@ -1623,7 +1622,7 @@
         (card-ability state :corp (refresh gs-scored) 0)
         (click-card state :corp "Enigma")
         (card-ability state :corp (refresh gs-scored) 1)
-        (is (not-empty (:prompt (get-corp))))
+        (is (= "Choose a hosted card" (:msg (get-prompt state :corp))))
         (click-card state :corp "Enigma")
         (is (find-card "Enigma" (:hand (get-corp))))))))
 
@@ -1791,7 +1790,8 @@
 (deftest hybrid-release
     ;; Hybrid Release
     (do-game
-      (new-game {:corp {:deck ["Hybrid Release" (qty "Hansei Review" 2) "PAD Campaign" "Hedge Fund"]
+      (new-game {:corp {:id "Sportsmetal: Go Big or Go Home"
+                        :deck ["Hybrid Release" (qty "Hansei Review" 2) "PAD Campaign" "Hedge Fund"]
                         :discard ["Obokata Protocol"]}})
       (take-credits state :corp)
       (run-empty-server state "Archives")
@@ -1803,13 +1803,27 @@
       (play-from-hand state :corp "Hansei Review")
       (click-card state :corp "Hedge Fund")
       (play-and-score state "Hybrid Release")
+      (click-prompt state :corp "Sportsmetal: Go Big or Go Home")
+      (click-prompt state :corp "Gain 2 [Credits]")
       (click-card state :corp (find-card "Obokata Protocol" (:discard (get-corp))))
       (is (= "Choose a facedown card in Archives to install" (:msg (prompt-map :corp))) "Cannot select faceup cards in Archives")
       (click-card state :corp (find-card "Hedge Fund" (:discard (get-corp))))
       (is (= "Choose a facedown card in Archives to install" (:msg (prompt-map :corp))) "Cannot install operations")
       (click-card state :corp (find-card "PAD Campaign" (:discard (get-corp))))
       (click-prompt state :corp "New remote")
+      (is (no-prompt? state :runner))
       (is (= "PAD Campaign" (:title (get-content state :remote2 0))) "Installed PAD Campaign in remote")))
+
+(deftest hybrid-release-no-prompt-when-no-facedown-card-in-archives
+    ;; Hybrid Release - skip prompt when all cards in Archives are faceup
+    (do-game
+      (new-game {:corp {:hand ["Hybrid Release"]
+                        :discard ["Ice Wall"]}})
+      (take-credits state :corp)
+      (run-empty-server state "Archives")
+      (take-credits state :runner)
+      (play-and-score state "Hybrid Release")
+      (is (no-prompt? state :corp))))
 
 (deftest hyperloop-extension-score
     ;; Score
@@ -1932,7 +1946,7 @@
       (run-on state "HQ")
       (run-continue state)
       (fire-subs state nh)
-      (is (= 1 (-> (get-corp) :prompt first :bonus)) "Should gain 1 bonus trace strength")
+      (is (= 1 (:bonus (get-prompt state :corp))) "Should gain 1 bonus trace strength")
       (click-prompt state :corp "0")
       (click-prompt state :runner "0")
       (is (= 1 (count-tags state)))
@@ -1941,7 +1955,7 @@
       (run-on state "HQ")
       (run-continue state)
       (fire-subs state nh)
-      (is (= 1 (-> (get-corp) :prompt first :bonus))
+      (is (= 1 (:bonus (get-prompt state :corp)))
           "Should gain only 1 bonus trace strength regardless of number of runs in a turn")
       (click-prompt state :corp "0")
       (click-prompt state :runner "0")
@@ -1951,7 +1965,7 @@
       (run-on state "R&D")
       (run-continue state)
       (fire-subs state io)
-      (is (zero? (-> (get-corp) :prompt first :bonus)) "Should gain 0 bonus trace strength, as it's an encounter ability"))))
+      (is (zero? (:bonus (get-prompt state :corp))) "Should gain 0 bonus trace strength, as it's an encounter ability"))))
 
 (deftest jumon
   ;; Jumon
@@ -2133,19 +2147,19 @@
       (play-from-hand state :corp "Afshar" "HQ")
       (play-from-hand state :corp "Enigma" "R&D")
       (play-and-score state "Longevity Serum")
-      (is (= :waiting (:prompt-type (prompt-map :runner))) "Runner is waiting")
+      (is (prompt-is-type? state :runner :waiting))
       (is (= 4 (count (:discard (get-corp)))))
       (click-card state :corp (find-card "Hedge Fund" (:hand (get-corp))))
       (click-card state :corp (find-card "IPO" (:hand (get-corp))))
       (is (= 6 (count (:discard (get-corp)))) "Corp trashes two cards from HQ")
-      (is (= :waiting (:prompt-type (prompt-map :runner))) "Runner is still waiting")
+      (is (prompt-is-type? state :runner :waiting))
       (click-card state :corp "Ice Wall")
       (click-card state :corp "Fire Wall")
       (click-card state :corp "Prisec")
       (is (find-card "Fire Wall" (:deck (get-corp))))
       (is (find-card "Ice Wall" (:deck (get-corp))))
       (is (find-card "Prisec" (:deck (get-corp))))
-      (is (= :waiting (:prompt-type (prompt-map :corp))) "Corp is now waiting")
+      (is (prompt-is-type? state :corp :waiting))
       (click-prompt state :runner "No")))
 
 (deftest luminal-transubstantiation
@@ -2453,13 +2467,13 @@
       (is (= 1 (get-link state)) "Runner has 1 link")
       (core/init-trace state :corp (map->Card {:title "/trace command" :side :corp}) {:base 1})
       (click-prompt state :corp "0")
-      (is (zero? (-> (get-runner) :prompt first :link)) "Runner has 0 link during first trace")
+      (is (zero? (:link (get-prompt state :runner))) "Runner has 0 link during first trace")
       (click-prompt state :runner "3")
       (is (= (inc credits) (:credit (get-corp))) "Corp gained a credit from NQ")
       ; second trace of turn - no link reduction
       (core/init-trace state :corp (map->Card {:title "/trace command" :side :corp}) {:base 1})
       (click-prompt state :corp "0")
-      (is (= 1 (-> (get-runner) :prompt first :link)) "Runner has 1 link during later traces")
+      (is (= 1 (:link (get-prompt state :runner))) "Runner has 1 link during later traces")
       (click-prompt state :runner "2")
       (is (= (+ credits 2) (:credit (get-corp))) "Corp gained a credit from NQ"))))
 
@@ -2490,23 +2504,23 @@
   ;; NEXT Wave 2
   (do-game
       (new-game {:corp {:deck [(qty "NEXT Wave 2" 2) "NEXT Bronze"]}})
-      (is (zero? (:brain-damage (get-runner))) "Runner should start with 0 brain damage")
+      (is (zero? (:brain-damage (get-runner))) "Runner should start with 0 core damage")
       (play-from-hand state :corp "NEXT Bronze" "HQ")
       (let [nxbr (get-ice state :hq 0)]
         (rez state :corp nxbr))
       (play-and-score state "NEXT Wave 2")
       (click-prompt state :corp "No")
-      (is (zero? (:brain-damage (get-runner))) "Runner should stay at 0 brain damage")
+      (is (zero? (:brain-damage (get-runner))) "Runner should stay at 0 core damage")
       (play-and-score state "NEXT Wave 2")
       (click-prompt state :corp "Yes")
-      (is (= 1 (:brain-damage (get-runner))) "Runner should gain 1 brain damage")))
+      (is (= 1 (:brain-damage (get-runner))) "Runner should gain 1 core damage")))
 
 (deftest next-wave-2-stealing-doesn-t-do-anything
     ;; Stealing doesn't do anything
     (do-game
       (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
                         :hand ["NEXT Wave 2" "NEXT Bronze"]}})
-      (is (zero? (:brain-damage (get-runner))) "Runner should start with 0 brain damage")
+      (is (zero? (:brain-damage (get-runner))) "Runner should start with 0 core damage")
       (play-from-hand state :corp "NEXT Bronze" "HQ")
       (let [nxbr (get-ice state :hq 0)]
         (rez state :corp nxbr))
@@ -2516,7 +2530,7 @@
       (run-continue state)
       (run-continue state)
       (click-prompt state :runner "Steal")
-      (is (zero? (:brain-damage (get-runner))) "Runner should still have 0 brain damage")))
+      (is (zero? (:brain-damage (get-runner))) "Runner should still have 0 core damage")))
 
 (deftest nisei-mk-ii
   ;; Nisei MK II - Remove hosted counter to ETR, check this works in 4.3
@@ -2595,11 +2609,11 @@
       (advance state conj 2)
       (score state :corp (refresh conj))
       (is (some? (get-content state :remote1 0))
-          "Corp can't score with 2 advancements because of no brain damage")
+          "Corp can't score with 2 advancements because of no core damage")
       (damage state :corp :brain 2)
       (score state :corp (refresh conj))
       (is (not (some? (get-content state :remote1 0)))
-          "Corp can score with 2 advancements because of 2 brain damage"))))
+          "Corp can score with 2 advancements because of 2 core damage"))))
 
 (deftest orbital-superiority
   ;; Orbital Superiority
@@ -3358,7 +3372,6 @@
       (is (= 2 (count (:hand (get-corp)))))
       (is (= 1 (count (:hand (get-runner)))))))
 
-
 (deftest regenesis
   ;; Regenesis - if no cards have been added to discard, reveal a face-down agenda
   ;; and add it to score area
@@ -3373,6 +3386,20 @@
     (play-and-score state "Regenesis")
     (click-card state :corp "Obokata Protocol")
     (is (= 5 (:agenda-point (get-corp))) "3+1+1 agenda points from obo + regen + regen")))
+
+(deftest regenesis-not-affected-by-subliminal-messaging
+  ;; Regenesis - Leaving Subliminal Messaging in Archives doesn't interfere
+  (do-game
+    (new-game {:corp {:hand ["Regenesis" "Hansei Review" "Obokata Protocol" "Subliminal Messaging"]}})
+    (play-from-hand state :corp "Subliminal Messaging")
+    (play-from-hand state :corp "Hansei Review")
+    (click-card state :corp "Obokata Protocol")
+    (take-credits state :corp)
+    (take-credits state :runner)
+    (click-prompt state :corp "No")
+    (play-and-score state "Regenesis")
+    (click-card state :corp "Obokata Protocol")
+    (is (= 4 (:agenda-point (get-corp))) "3+1 agenda points from obo + regen")))
 
 (deftest regenesis-extra-score-not-prevented-by-runner-discard
   (do-game
@@ -3510,7 +3537,7 @@
       (click-prompt state :corp (find-card "Archer" (:deck (get-corp))))
       (click-prompt state :corp "Server 2")
       (is (= (dec N) (:credit (get-corp))) "Installing Archer cost a credit")
-      (is (not-empty (:prompt (get-corp))) "Corp prompted to forfeit an agenda for Archer")
+      (is (not (no-prompt? state :corp)) "Corp prompted to forfeit an agenda for Archer")
       (is (= (dec N) (:credit (get-corp))) "Rezzing Archer didn't cost any credits"))))
 
 (deftest research-grant
@@ -3779,7 +3806,7 @@
       (new-game {:corp {:deck ["SSL Endorsement"]}})
       (play-and-score state "SSL Endorsement")
       (take-credits state :runner)
-      (is (not-empty (:prompt (get-corp))) "Corp prompted to take credits")
+      (is (not (no-prompt? state :corp)) "Corp prompted to take credits")
       (is (= 5 (:credit (get-corp))) "Corp starts with 5 credits")
       (click-prompt state :corp "Yes")
       (is (= 8 (:credit (get-corp))) "Corp gains 3 credits")
@@ -3807,7 +3834,7 @@
       (run-empty-server state "Server 1")
       (click-prompt state :runner "Steal")
       (take-credits state :runner)
-      (is (not-empty (:prompt (get-corp))) "Corp prompted to take credits")
+      (is (not (no-prompt? state :corp)) "Corp prompted to take credits")
       (is (= 7 (:credit (get-corp))) "Corp starts with 7 credits")
       (click-prompt state :corp "Yes")
       (is (= 10 (:credit (get-corp))) "Corp gains 3 credits")
@@ -3841,7 +3868,7 @@
       (click-prompt state :runner "Yes")
       (click-card state :runner (find-card "SSL Endorsement" (:scored (get-corp))))  ;; Swap BN with SSL
       (take-credits state :runner)
-      (is (not-empty (:prompt (get-corp))) "Corp prompted to take credits")
+      (is (not (no-prompt? state :corp)) "Corp prompted to take credits")
       (is (= 6 (:credit (get-corp))) "Corp starts with 7 credits")
       (click-prompt state :corp "Yes")
       (is (= 9 (:credit (get-corp))) "Corp gains 3 credits from Turntable'd SSL Endorsement")))
@@ -3857,7 +3884,7 @@
       (run-empty-server state "Server 1")
       (click-prompt state :runner "Steal")
       (take-credits state :runner)
-      (is (not-empty (:prompt (get-corp))) "Corp prompted to take credits")
+      (is (not (no-prompt? state :corp)) "Corp prompted to take credits")
       (is (= 6 (:credit (get-corp))) "Corp starts with 6 credits")
       (click-prompt state :corp "Yes")
       (is (= 9 (:credit (get-corp))) "Corp gains 3 credits")
@@ -4251,7 +4278,8 @@
                            (click-prompt state :runner "HQ")
                            (card-ability state :corp (refresh tm) 0)
                            (run-continue state)
-                           (click-prompt state :runner "No action")) ; accessed Hedge Fund
+                           (is (accessing state "Hedge Fund"))
+                           (click-prompt state :runner "No action"))
         (changes-val-macro 3 (:credit (get-runner))
                            "Gained 5c from DL"
                            (play-from-hand state :runner "Dirty Laundry")
@@ -4291,7 +4319,7 @@
         (card-ability state :corp (refresh tm) 0)
         (run-continue state)
         (is (empty? (-> (get-runner) :register :successful-run)))
-        (is (= "You accessed Hedge Fund." (:msg (prompt-map :runner))) "No stargate prompt")
+        (is (accessing state "Hedge Fund") "No stargate prompt")
         (click-prompt state :runner "No action"))))
 
 (deftest transport-monopoly-successful-runs-bugs-issue-4735
@@ -4334,7 +4362,7 @@
       (is (= 1 (count (:discard (get-runner)))) "No Runner mills; advancements were placed")
       (advance state ur)
       (is (= 4 (get-counters (refresh ur) :advancement)))
-      (is (last-log-contains? state "Sure Gamble, Sure Gamble")
+      (is (last-log-contains? state "Sure Gamble and Sure Gamble")
           "Underway Renovation trashed card name is in log")
       (is (= 3 (count (:discard (get-runner)))) "2 cards milled from Runner Stack; 4+ advancements"))))
 
@@ -4492,7 +4520,7 @@
           (vmi-test vmi-scored "No" 2)
           (vmi-test vmi-scored "Yes" 2)
           (vmi-test vmi-scored "Yes" 1)
-          (is (empty (:prompt (get-corp))) "No prompt as there are no agenda counters left")))))
+          (is (no-prompt? state :corp) "No prompt as there are no agenda counters left")))))
 
 (deftest vulcan-coverup
   ;; Vulcan Coverup

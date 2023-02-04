@@ -5,20 +5,15 @@
             [nr.gameboard.log :refer [log-pane]]
             [nr.gameboard.replay :refer [notes-pane notes-shared-pane]]
             [nr.gameboard.state :refer [game-state]]
-            [nr.gameboard.subversion :refer [subversion-pane]]
             [nr.gameboard.settings :refer [settings-pane]]
             [nr.translations :refer [tr]]
             [reagent.core :as r]))
 
 (defonce loaded-tabs (r/atom {}))
-(def available-tabs
+(defonce available-tabs
   {:log
    {:hiccup [log-pane]
     :label (tr [:log.game-log "Game Log"])}
-
-   :subversion
-   {:hiccup [subversion-pane]
-    :label (tr [:log.subversion "Subversion"])}
 
    :notes
    {:hiccup [notes-pane]
@@ -98,7 +93,6 @@
     (clear-tabs)
     (doseq [tab tabs]
       (load-tab tab))
-    (load-tab :subversion) ; ToDo: make this dynamic once playtest cards are implemented
     (reset! selected-tab (first tabs))
     (r/create-class
       {:display-name "content-pane"

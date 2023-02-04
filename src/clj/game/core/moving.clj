@@ -9,7 +9,7 @@
     [game.core.eid :refer [complete-with-result effect-completed make-eid make-result]]
     [game.core.engine :as engine :refer [checkpoint dissoc-req register-pending-event queue-event register-default-events register-events should-trigger? trigger-event unregister-events]]
     [game.core.finding :refer [get-scoring-owner]]
-    [game.core.flags :refer [can-trash? card-flag? cards-can-prevent? get-prevent-list untrashable-while-resources? untrashable-while-rezzed?]]
+    [game.core.flags :refer [can-trash? card-flag? cards-can-prevent? get-prevent-list untrashable-while-resources? untrashable-while-rezzed? zone-locked?]]
     [game.core.hosting :refer [remove-from-host]]
     [game.core.ice :refer [get-current-ice set-current-ice update-breaker-strength]]
     [game.core.initializing :refer [card-init deactivate reset-card]]
@@ -188,7 +188,7 @@
                       (some #(same-card? card %) (get-in @state (cons :runner (vec zone))))
                       (some #(same-card? card %) (get-in @state (cons :corp (vec zone)))))
                   (or force
-                      (empty? (get-in @state [(to-keyword (:side card)) :locked (-> card :zone first)]))))
+                      (not (zone-locked? state (to-keyword (:side card)) (first (get-zone card))))))
          (when-not suppress-event
            (trigger-event state side :pre-card-moved card src-zone target-zone))
          (let [dest (if (sequential? to) (vec to) [to])
@@ -243,7 +243,7 @@
 (defn move-zone
   "Moves all cards from one zone to another, as in Chronos Project."
   [state side server to]
-  (when-not (seq (get-in @state [side :locked server]))
+  (when-not (zone-locked? state side server)
     (doseq [card (get-in @state [side server])]
       (move state side card to))))
 
@@ -322,7 +322,7 @@
 
 (defn get-trash-effect
   "Criteria for abilities that trigger when the card is trashed"
-  [state side eid card {:keys [accessed cause host-trashed]}]
+  [state side eid card {:keys [accessed cause cause-card host-trashed]}]
   (let [trash-effect (:on-trash (card-def card))]
     (when (and card
                (not (:disabled card))
@@ -337,6 +337,7 @@
                (should-trigger? state side eid card
                                 [{:card card
                                   :cause cause
+                                  :cause-card cause-card
                                   :accessed accessed}]
                                 trash-effect))
       (let [once-per (:once-per-instance trash-effect)]
@@ -446,15 +447,19 @@
         (update-installed-card-indices state :corp (:zone b))
         (doseq [new-card [a-new b-new]]
           (unregister-events state side new-card)
+          (unregister-constant-effects state side new-card)
           (when (rezzed? new-card)
-            (register-default-events state side new-card))
+            (do (register-default-events state side new-card)
+                (register-constant-effects state side new-card)))
           (doseq [h (:hosted new-card)]
             (let [newh (-> h
                            (assoc-in [:zone] '(:onhost))
                            (assoc-in [:host :zone] (:zone new-card)))]
               (update! state side newh)
               (unregister-events state side h)
-              (register-default-events state side newh))))
+              (register-default-events state side newh)
+              (unregister-constant-effects state side h)
+              (register-constant-effects state side newh))))
         (trigger-event state side :swap a-new b-new)))))
 
 (defn swap-ice

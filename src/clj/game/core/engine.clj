@@ -16,7 +16,7 @@
     [game.core.update :refer [update!]]
     [game.core.winning :refer [check-win-by-agenda]]
     [game.macros :refer [continue-ability req wait-for]]
-    [game.utils :refer [dissoc-in distinct-by in-coll? remove-once same-card? server-cards side-str to-keyword]]
+    [game.utils :refer [dissoc-in distinct-by enumerate-str in-coll? remove-once same-card? server-cards side-str to-keyword]]
     [jinteki.utils :refer [other-side]]
     [game.core.memory :refer [update-mu]]
     [game.core.to-string :refer [card-str]]))
@@ -386,11 +386,14 @@
       {:eid (select-keys eid [:eid])
        :card card
        :prompt-type :waiting
-       :msg (str "Waiting for " waiting-prompt)}))
+       :msg (str "Waiting for " 
+                 (if (true? waiting-prompt)
+                   (str (side-str side) " to make a decision")
+                   waiting-prompt))}))
   (if (seq cost)
     ;; Ensure that any costs can be paid
     (wait-for (pay state side (make-eid state eid) card cost {:action (:cid card)})
-              (if (:msg async-result)
+              (if (:cost-paid async-result)
                 ;; If the cost can be and is paid, perform the ablity
                 (do-paid-ability state side ability card targets async-result)
                 (effect-completed state side eid)))
@@ -1134,12 +1137,6 @@
     (wait-for (handler (first costs) state side (make-eid state eid) card actions)
               (pay-next state side eid (rest costs) card actions (conj msgs async-result)))))
 
-(defn- sentence-join
-  [strings]
-  (if (<= (count strings) 2)
-    (str/join " and " strings)
-    (str (apply str (interpose ", " (butlast strings))) ", and " (last strings))))
-
 (defn pay
   "Same as pay, but awaitable."
   [state side eid card & args]
@@ -1156,7 +1153,7 @@
                               state side eid
                               {:msg (->> payment-result
                                          (keep :msg)
-                                         sentence-join)
+                                         enumerate-str)
                                :cost-paid (->> payment-result
                                                (keep #(not-empty (select-keys % [:type :targets :value])))
                                                (reduce

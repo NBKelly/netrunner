@@ -42,7 +42,7 @@
 (defn sabotage-ability
   [n]
   (let [choosing-ab (fn [forced-hq]
-                      {:waiting-prompt "Corp to choose an option"
+                      {:waiting-prompt true
                        :player :corp
                        :prompt (choosing-prompt-req n)
                        :choices {:min forced-hq
@@ -57,7 +57,7 @@
                                     (let [cards-rd (count (:deck corp))
                                           cards-hq (count (:hand corp))
                                           forced-hq (- n cards-rd)]
-                                      (if (> forced-hq cards-hq)
+                                      (if (>= n (+ cards-rd cards-hq))
                                         ((trash-selected-req n) state :corp eid card (:hand corp))
                                         (continue-ability state side
                                                           (choosing-ab forced-hq)
