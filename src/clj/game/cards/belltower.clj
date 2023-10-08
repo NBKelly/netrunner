@@ -11,11 +11,12 @@
    [game.core.checkpoint :refer [fake-checkpoint]]
    [game.core.cost-fns :refer [trash-cost install-cost play-cost rez-cost]]
    [game.core.damage :refer [damage damage-prevent]]
-   [game.core.def-helpers :refer [breach-access-bonus corp-recur corp-rez-toast defcard do-brain-damage do-net-damage trash-on-empty]]
+   [game.core.def-helpers :refer [breach-access-bonus corp-recur corp-rez-toast defcard do-brain-damage do-net-damage trash-on-empty x-fn]]
+   [game.core.diffs :refer [playable?]]
    [game.core.drawing :refer [draw]]
    [game.core.eid :refer [effect-completed make-eid]]
    [game.core.effects :refer [any-effects register-lingering-effect]]
-   [game.core.engine :refer [checkpoint not-used-once? pay register-default-events register-events register-once register-suppress resolve-ability trigger-event unregister-events unregister-suppress-by-uuid]]
+   [game.core.engine :refer [checkpoint not-used-once? pay register-default-events register-events register-once register-suppress resolve-ability should-trigger? trigger-event unregister-events unregister-suppress-by-uuid]]
    [game.core.events :refer [first-event? first-run-event? no-event? run-events last-turn?]]
    [game.core.expend :refer [expend]]
    [game.core.finding :refer [find-cid]]
@@ -28,7 +29,7 @@
    [game.core.memory :refer [mu+]]
    [game.core.moving :refer [as-agenda flip-facedown flip-faceup mill move swap-cards trash trash-cards]]
    [game.core.payment :refer [can-pay?]]
-   [game.core.play-instants :refer [play-instant]]
+   [game.core.play-instants :refer [can-play-instant? play-instant]]
    [game.core.prompts :refer [cancellable]]
    [game.core.props :refer [add-counter add-prop set-prop]]
    [game.core.purging :refer [purge]]
@@ -57,6 +58,54 @@
   "The breakers which rely on an event having happened"
   [keyword fn]
   {:req (req (not (no-event? state side keyword fn)))})
+
+(defn return-to-top
+  "returns a set of cards to the top of the deck"
+  ([set-aside-cards] (return-to-top set-aside-cards false))
+  ([set-aside-cards reveal]
+   {:prompt "choose a card to put ontop of R&D"
+    :req (req (not (zero? (count set-aside-cards))))
+    :choices {:all true
+              :max 1
+              :req (req (some #(same-card? % target) set-aside-cards))}
+    :async true
+    :waiting-prompt "corp to return cards to R&D"
+    :msg (msg "place " (if reveal (:title target) "a card") " ontop of R&D")
+    :effect (req (move state :corp target :deck {:front true})
+                 (let [rem (seq (filter #(not (same-card? target %)) set-aside-cards))]
+                   (if (not (empty? rem))
+                     (continue-ability state side
+                                       (return-to-top rem reveal)
+                                       card nil)
+                     (effect-completed state side eid))))}))
+
+(defn return-to-top-or-bottom
+  "returns a set of cards to the top or the bottom of the deck"
+  ([set-aside-cards] (return-to-top-or-bottom set-aside-cards false))
+  ([set-aside-cards reveal]
+   {:prompt "choose a card to place on the top or bottom of R&D"
+    :req (req (not (zero? (count set-aside-cards))))
+    :choices {:all true
+              :max 1
+              :req (req (some #(same-card? % target) set-aside-cards))}
+    :async true
+    :waiting-prompt "corp to return cards to R&D"
+    :effect (req (let [chosen-card target]
+                   (continue-ability
+                     state side
+                     {:choices ["top of R&D" "bottom of R&D"]
+                      :prompt (msg "place " (:title chosen-card) " where?")
+                      :msg (msg "place " (if reveal (:title target) "a card") " on the " target)
+                      :effect (req (move state :corp chosen-card :deck {:front (= target "top of R&D")})
+                                   (let [rem (seq (filter #(not (same-card? chosen-card %))
+                                                          set-aside-cards))]
+                                     (if (not (empty? rem))
+                                       (continue-ability
+                                         state side
+                                         (return-to-top-or-bottom rem reveal)
+                                         card nil)
+                                       (effect-completed state side eid))))}
+                     card nil)))}))
 
 (defn trojan-auto-hosts?
   [card]
@@ -1542,7 +1591,266 @@
 
 ;; NBN CARDS
 
+(defcard "[Fine Print Project]"
+  ;; When you score this agenda, you may look at the top 3 cards of R&D;
+  ;; from among those 3 cards or from HQ,
+  ;; you may score an agenda with 1 or less printed agenda points.
+  ;; Return the remaining looked at cards to the top of R&D in any order."
+  {:implementation "2v3"
+   :on-score
+   {:optional
+    {:prompt "Look at the top 3?"
+     :yes-ability
+     {:msg (msg "set aside top 3 cards of R&D")
+      :async true
+      :effect (req (set-aside-for-me state :corp eid (take 3 (:deck corp)))
+                   (let [top-3 (get-set-aside state :corp eid)]
+                     (continue-ability
+                       state side
+                       {:prompt "select an agenda worth 1 or less points"
+                        :req (req true)
+                        :async true
+                        :choices {:req (req (and (agenda? target)
+                                                 (>= 1 (:agendapoints target))
+                                                 (or (some #{:hand} (:zone target))
+                                                     (some #(same-card? % target) top-3))))}
+                        :cancel-effect (req (continue-ability
+                                              state side
+                                              (return-to-top top-3)
+                                              card nil))
+                        :effect (req (wait-for (score state :corp (make-eid state eid) target {:no-req true})
+                                               (let [rem (filter #(not (same-card? target %)) top-3)]
+                                                 (if (not (empty? rem))
+                                                   (continue-ability
+                                                     state side
+                                                     (return-to-top rem)
+                                                     card nil)
+                                                   (effect-completed state side eid)))))}
+                       card nil)))}}}})
 
+(defcard "[Policy Coordination]"
+  ;; When you score this agenda, place 1 agenda counter on it for every advancement counter past 3.
+  ;; Hosted agenda counter: Look at the top 3 cards of R&D and choose 1 of them;
+  ;; install it or add it to HQ.
+  ;; Return the remaining looked at cards to the top and/or bottom of R&D in any order.
+  ;; Use this ability only during your turn."
+  {:on-score {:silent (req true)
+              :effect (effect (add-counter card :agenda (- (get-counters (:card context) :advancement) 3)))}
+   :implementation "2v3"
+   :abilities [{:cost [:agenda 1]
+                :label "look at the top 3 cards"
+                :msg (msg "set aside top 3 cards of R&D")
+                :async true
+                :effect (req (set-aside-for-me state :corp eid (take 3 (:deck corp)))
+                             (let [top-3 (get-set-aside state :corp eid)]
+                               (continue-ability
+                                 state side
+                                 {:prompt "Choose a card"
+                                  :req (req true)
+                                  :async true
+                                  :choices {:req (req (some #(same-card? % target) top-3))}
+                                  :cancel-effect (effect (continue-ability (return-to-top-or-bottom top-3) card nil))
+                                  :effect (req
+                                            (let [chosen-card target
+                                                  rem (filter #(not (same-card? chosen-card %)) top-3)]
+                                              (continue-ability
+                                                state side
+                                                {:prompt (msg "Install " (:title target) " or add it to HQ?")
+                                                 :choices (req ["Add to HQ" (when-not (operation? chosen-card) (str "Install " (:title chosen-card)))])
+                                                 :async true
+                                                 :effect (req (if (= target "Add to HQ")
+                                                                (do (system-msg state side "moves a card to HQ")
+                                                                    (move state :corp (get-card state chosen-card) :hand)
+                                                                    (continue-ability
+                                                                      state side
+                                                                      (return-to-top-or-bottom rem)
+                                                                      card nil))
+                                                                (do (wait-for (corp-install state :corp chosen-card nil)
+                                                                              (continue-ability
+                                                                                state side
+                                                                                (return-to-top-or-bottom rem)
+                                                                                card nil)))))}
+                                                card nil)))}
+                                 card nil)))}]})
+
+(defcard "Theoretical Economist"
+  ;; When your turn begins, place 3{credit} on this asset.
+  ;; {click}: Take all credits from this asset. Add this asset to HQ. Then, you may install a card."
+  (let [ability {:label "Place 3 credits (start of turn)"
+                 :once :per-turn
+                 :msg "place 3 credits on itself"
+                 :effect (effect (add-counter card :credit 3 {:placed true}))}]
+    {:derezzed-events [corp-rez-toast]
+     :implementation "2v3"
+     :flags {:corp-phase-12 (req true)}
+     :events [(assoc ability :event :corp-turn-begins)]
+     :abilities [ability
+                 {:cost [:click 1]
+                  :label "take all credits and add to HQ"
+                  :async true
+                  :msg (msg "take " (get-counters (get-card state card) :credit) " credits and add itself to HQ")
+                  :effect (req (wait-for (gain-credits state side (make-eid state eid)
+                                                       (get-counters (get-card state card) :credit))
+                                         (move state :corp card :hand)
+                                         (continue-ability
+                                           state side
+                                           {:async true
+                                            :prompt "Choose a card to install from HQ"
+                                            :choices {:card #(and (not (operation? %))
+                                                                  (in-hand? %)
+                                                                  (corp? %))}
+                                            :msg (msg (corp-install-msg target))
+                                            :effect (effect (corp-install eid target nil nil))}
+                                           card nil)))}]}))
+
+(defcard "Doomsday Clock"
+  ;; When the Runner encounters this ice, they must either lose 3{credit},
+  ;; take 2 net damage, or take 1 tag.
+  ;; {sub} The Runner loses 3{credit}.
+  ;; {sub} Do 2 net damage.
+  ;; {sub} The Runner takes 1 tag."
+  (let [encounter-ab
+        {:prompt "choose one"
+         :player :runner
+         :choices ["lose 3 credits" "take 2 net damage" "gain 1 tag"]
+         :msg (msg "force the runner to " target)
+         :effect (req (cond
+                        (= "lose 3 credits" target) (lose-credits state :runner eid 3)
+                        (= "take 2 net damage" target) (damage state :corp eid :net 2 {:card card})
+                        (= "gain 1 tag" target) (gain-tags state :corp eid 1)))}]
+    {:on-encounter encounter-ab
+     :implementation "2v3"
+     :subroutines [(runner-loses-credits 3)
+                   (do-net-damage 2)
+                   (give-tags 1)]}))
+
+(defcard "Ultra High Frequency"
+  ;; {sub} You may draw 1 or 2 cards.
+  ;; {sub} Do 1 net damage.
+  ;; {sub} If there are more cards in HQ than cards in the grip, end the run."
+  {:implementation "2v3"
+   :subroutines [{:async true
+                  :label "Draw up yo 2 cards"
+                  :prompt "Draw how many cards?"
+                  :choices {:number (req 2)
+                            :max (req 2)
+                            :min (req 0)
+                            :default (req 2)}
+                  :msg (msg "draw " (quantify target "card"))
+                  :effect (effect (draw eid target))}
+                 (do-net-damage 1)
+                 {:label "End run HQ > Grip"
+                  :async true
+                  :effect (req (let [hq (count (:hand corp))
+                                     grip (count (:hand runner))]
+                                 (continue-ability
+                                   state side
+                                   (if (> hq grip)
+                                     {:msg "end the run"
+                                      :async true
+                                      :effect (req (end-run state :corp eid card))}
+                                     {:msg "do nothing"})
+                                   card nil)))}]})
+
+(defcard "Capacitor"
+  ;; This ice gains +1 strength for each tag the Runner has.
+  ;; {sub} Gain 1{credit} for each tag the Runner has.
+  ;; {sub} End the run."
+  {:implementation "2v3"
+   :constant-effects [(ice-strength-bonus (req (count-tags state)))]
+   :subroutines [{:label "Gain 1 [Credits] for each tag"
+                  :async true
+                  :msg (msg "Gain " (count-tags state) " [Credits]")
+                  :effect (effect (gain-credits :corp eid (count-tags state)))}
+                 end-the-run]})
+
+(defcard "[Creative Business Practices]"
+  ;; Set aside the top 3 cards of R&D facedown. You can look at those cards.
+  ;; You may play 1 non-terminal operation from among the set-aside cards, paying 3{c} less.
+  ;; Threat 4 -> You may play any number of other non-terminal operations from among
+  ;; the set-aside cards.
+  ;; Arrange the remaining set-aside cards in any order and add them to the top of R&D."
+  (letfn [(maybe-play-op [set-aside discount]
+          {:prompt (msg "Choose a non-terminal operation to play " (when discount (str "paying " discount "[Credits] less")))
+           :choices (req (conj (filter #(and (operation? %)
+                                             (not (has-subtype? % "Terminal"))
+                                             (should-trigger? state :corp (assoc eid :source % :source-type :play) % nil (or (:on-play (card-def %)) {}))
+                                             (can-pay? state side (assoc eid :source % :source-type :play) % nil [:credit (play-cost state side % {:cost-bonus discount})]))
+                                       set-aside)
+                               "Done"))
+           :async true
+           :effect (req
+                     (if (= target "Done")
+                       (continue-ability
+                         state side
+                         (return-to-top set-aside)
+                         card nil)
+                       (wait-for (play-instant state side (assoc (make-eid state eid) :source target :source-type :play) target
+                                               {:cost-bonus [:credit discount]})
+                                 (let [rem (filter #(not (same-card? % target)) set-aside)]
+                                   (continue-ability
+                                     state side
+                                     (if (and (threat-level 4 state) (not (zero? (count rem))))
+                                       (maybe-play-op rem 0)
+                                       (return-to-top rem))
+                                     card nil)))))})]
+  {:implementation "2v3"
+   :on-play {:msg (msg "set aside the top 3 cards of R&D facedown")
+             :async true
+             :effect (req (set-aside-for-me state :corp eid (take 3 (:deck corp)))
+                          (let [top-3 (get-set-aside state :corp eid)]
+                            (continue-ability
+                              state side
+                              (maybe-play-op top-3 -3)
+                              card nil)))}}))
+
+(defcard "[Holo Man]"
+  ;; Persistent → Whenever the Runner accesses another card in the root of this server,
+  ;; you may install the accessed card in the root of another new or existing server.
+  ;; (It is no longer being accessed.)
+  ;; When your turn ends, you may move this upgrade to the root of another server.
+  (let [abi
+        {:event :access
+         :interactive (req true)
+         :req (req (and (not (same-card? target card))
+                        (installed? target)
+                        (same-server? target card)))
+         :async true
+         :effect (req (let [accessed-card target]
+                        (continue-ability
+                          state side
+                          {:optional
+                           {:prompt (msg "Install " (:title accessed-card) " in the root of another server?")
+                            :async true
+                            :waiting-prompt "corp to use Holo Man"
+                            :yes-ability {:prompt (str "Choose a location to install " (:title target))
+                                          :waiting-prompt "corp to use Holo Man"
+                                          :choices (req (remove #(= (zone->name (second (get-zone accessed-card))) %) (corp-install-list state accessed-card)))
+                                          :async true
+                                          :msg (msg (corp-install-msg accessed-card))
+                                          :effect (req
+                                                    (swap! state dissoc :access)
+                                                    (corp-install state side eid accessed-card target nil))}}}
+                          card nil)))}]
+    {:implementation "2v3"
+     :on-trash {:req (req (and (= :runner side)
+                                (:run @state)))
+                :effect (req (register-events
+                              state side card
+                              [(assoc abi :req (req (and (installed? target) (= (get-zone target) (:previous-zone card)))) :duration :end-of-run)]))}
+     :events [abi
+              {:event :corp-turn-ends
+               :optional {:prompt (msg "move " (:title card) " to another server?")
+                          :yes-ability {:async true
+                                        :effect (effect (continue-ability
+                                                          {:prompt "Choose a server"
+                                                           :choices (server-list state)
+                                                           :msg (msg "move to " target)
+                                                           :effect (req (let [c (move state side card
+                                                                                      (conj (server->zone state target) :content))]
+                                                                          (unregister-events state side card)
+                                                                          (register-default-events state side c)))}
+                                                          card nil))}}}]}))
 
 ;; WEYLAND CARDS
 
