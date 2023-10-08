@@ -7,6 +7,7 @@
    [game.core.agendas :refer [update-all-agenda-points]]
    [game.core.board :refer [all-active-installed all-installed get-all-cards get-remotes get-remote-names card->server  server->zone server-list]]
    [game.core.card-defs :refer [card-def]]
+   [game.core.card :refer [active? agenda? can-be-advanced? card-index console? corp? corp-installable-type? event? facedown? faceup? get-card get-counters get-zone hardware? has-subtype? ice? installed? in-discard? in-hand? in-deck? is-type? operation? program? rezzed? resource? runner?]]
    [game.core.checkpoint :refer [fake-checkpoint]]
    [game.core.cost-fns :refer [trash-cost install-cost play-cost rez-cost]]
    [game.core.damage :refer [damage damage-prevent]]
@@ -776,7 +777,7 @@
                 :effect (effect (host target card))}]
    :on-install {:msg (msg "make " (card-str state (:host card))
                           " gain Barrier, Code Gate and Sentry subtypes")}
-   :constant-effects [{:type :gain-subtype
+   :static-abilities [{:type :gain-subtype
                        :req (req (same-card? target (:host card)))
                        :value ["Barrier" "Code Gate" "Sentry"]}]})
 
@@ -789,7 +790,7 @@
                     :x-fn (req (if (threat-level 4 state) 2 0))
                     :abilities [(break-sub 1 1 "Barrier")
                                 (strength-pump 2 1)]
-                    :constant-effects [(breaker-strength-bonus x-fn)]}))
+                    :static-abilities [(breaker-strength-bonus x-fn)]}))
 
 (defcard "Brownie"
   ;; When you install this program, search your stack, heap, or grip for 1 icebreaker, trojan,
@@ -1104,7 +1105,7 @@
                                 card nil))))})]
     {:on-rez {:effect (effect (continue-ability (curare-choice ["Barrier" "Code Gate" "Sentry" "Done"]) card nil))}
      :implementation "2v3"
-     :constant-effects [{:type :gain-subtype
+     :static-abilities [{:type :gain-subtype
                          :req (req (and (same-card? card target) (:subtype-target card)))
                          :value (req (:subtype-target card))}]
      :events [{:event :runner-turn-ends
