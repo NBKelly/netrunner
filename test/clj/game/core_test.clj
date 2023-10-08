@@ -3,6 +3,7 @@
             [clojure.java.io :as io]
             [clojure.test :refer :all]
             [game.core :as core]
+            [game.core.board :refer [server-list]]
             [game.core.card :refer [get-card installed? rezzed? active? get-counters get-title]]
             [game.core.ice :refer [active-ice?]]
             [game.utils :as utils :refer [server-card]]
@@ -203,6 +204,19 @@
   [state side card ability & targets]
   `(error-wrapper (card-ability-impl ~state ~side ~card ~ability ~@targets)))
 
+(defn expend-impl
+  [state side card]
+  (let [card (get-card state card)]
+    (is' (some? card) (str (:title card) " exists"))
+    (when (some? card)
+      (is' (core/process-action "expend" state side {:card card}))
+      true)))
+
+(defmacro expend
+  "Trigger an Expendable card's ability."
+  [state side card]
+  `(error-wrapper (expend-impl ~state ~side ~card)))
+
 (defn card-subroutine-impl
   [state _ card ability]
   (let [ice (get-card state card)]
@@ -321,6 +335,9 @@
   (let [card (find-card title (get-in @state [side :hand]))]
     (ensure-no-prompts state)
     (is' (some? card) (str title " is in the hand"))
+    (when server
+      (is' (some #{server} (concat (server-list state) ["New remote"]))
+           (str server " is not a valid server.")))
     (when (some? card)
       (is' (core/process-action "play" state side {:card card :server server}))
       true)))
@@ -682,6 +699,10 @@
   ([state side n] (draw state side n nil))
   ([state side n args]
    (core/draw state side (core/make-eid state) n args)))
+
+(defn purge
+  [state side]
+  (core/purge state side (core/make-eid state)))
 
 (defn print-log [state]
   (->> (:log @state)

@@ -82,10 +82,10 @@
   ([input commands]
    (when (= "/" (first input))
      (->> commands
-       (map (fn [target] {:match target :score (fuzzy-match-score input target)}))
-       (filter :score)
-       (sort-by :score)
-       (map :match)))))
+          (map (fn [target] {:match target :score (fuzzy-match-score input target)}))
+          (filter :score)
+          (sort-by :score)
+          (map :match)))))
 
 (defn show-command-menu? [s]
   (seq (:command-matches s)))
@@ -148,8 +148,8 @@
                                        (reset-command-menu state)
                                        (.focus @!input-ref))}
 
-                          (get-in command-info-map [match :usage])]])
-                      (:command-matches @state)))]]))
+                   (get-in command-info-map [match :usage])]])
+               (:command-matches @state)))]]))
 
 (defn log-input []
   (let [current-game (r/cursor app-state [:current-game])
@@ -205,7 +205,8 @@
          (into [:div.messages {:class [(when (:replay @game-state)
                                          "panel-bottom")]
                                :on-mouse-over #(card-preview-mouse-over % zoom-channel)
-                               :on-mouse-out #(card-preview-mouse-out % zoom-channel)}]
+                               :on-mouse-out #(card-preview-mouse-out % zoom-channel)
+                               :aria-live "polite"}]
                (map
                  (fn [{:keys [user text timestamp]}]
                    ^{:key timestamp}
@@ -293,10 +294,10 @@
         [:button {:on-click #(do
                                (swap! playtest-buttons-open not)
                                (reset! should-scroll {:update true :send-msg true})
-                               ; Hack to force log update
+                                        ; Hack to force log update
                                (swap! game-state assoc :log (into [] (conj (:log @game-state) (last (:log @game-state)))))
                                (swap! game-state assoc :log (into [] (drop-last (:log @game-state)))))}
          (if @playtest-buttons-open "∧" "∨")]]
-      [log-messages]
-      [log-typing]
-      [log-input]])))
+       [log-messages]
+       [log-typing]
+       [log-input]])))

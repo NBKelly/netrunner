@@ -3,16 +3,17 @@
     [clojure.string :as string]
     [game.core.agendas :refer [update-all-agenda-points]]
     [game.core.board :refer [all-active-installed]]
-    [game.core.card :refer [active? card-index condition-counter? convert-to-agenda corp? facedown? fake-identity? get-card get-title get-zone has-subtype? ice? in-hand? in-play-area? installed? resource? rezzed? runner?]]
+    [game.core.card :refer [active? card-index condition-counter? convert-to-agenda corp? facedown? fake-identity? get-card get-title get-zone has-subtype? ice? in-hand? in-play-area? installed? program? resource? rezzed? runner?]]
     [game.core.card-defs :refer [card-def]]
-    [game.core.effects :refer [register-constant-effects unregister-constant-effects]]
+    [game.core.effects :refer [register-static-abilities unregister-static-abilities]]
     [game.core.eid :refer [complete-with-result effect-completed make-eid make-result]]
-    [game.core.engine :as engine :refer [checkpoint dissoc-req register-pending-event queue-event register-default-events register-events should-trigger? trigger-event unregister-events]]
+    [game.core.engine :as engine :refer [checkpoint dissoc-req register-pending-event queue-event register-default-events register-events should-trigger? trigger-event trigger-event-sync unregister-events]]
     [game.core.finding :refer [get-scoring-owner]]
     [game.core.flags :refer [can-trash? card-flag? cards-can-prevent? get-prevent-list untrashable-while-resources? untrashable-while-rezzed? zone-locked?]]
     [game.core.hosting :refer [remove-from-host]]
     [game.core.ice :refer [get-current-ice set-current-ice update-breaker-strength]]
     [game.core.initializing :refer [card-init deactivate reset-card]]
+    [game.core.memory :refer [init-mu-cost]]
     [game.core.prompts :refer [clear-wait-prompt show-prompt show-wait-prompt]]
     [game.core.say :refer [enforce-msg system-msg]]
     [game.core.servers :refer [is-remote? target-server type->rig-zone]]
@@ -68,8 +69,10 @@
                           (when (active? newh)
                             (unregister-events state side h)
                             (register-default-events state side newh)
-                            (unregister-constant-effects state side h)
-                            (register-constant-effects state side newh))
+                            (unregister-static-abilities state side h)
+                            (register-static-abilities state side newh)
+                            (when (program? newh)
+                              (init-mu-cost state newh)))
                           [newh]))
         hosted (seq (mapcat (if same-zone? update-hosted trash-hosted) (:hosted card)))
         ;; Set :seen correctly
@@ -143,7 +146,7 @@
     (swap! state assoc :effects
            (->> (:effects @state)
                 (remove #(and (same-card? card (:card %))
-                              (= :constant (:duration %))))
+                              (= :while-active (:duration %))))
                 (into [])))))
 
 (defn update-installed-card-indices
@@ -447,10 +450,10 @@
         (update-installed-card-indices state :corp (:zone b))
         (doseq [new-card [a-new b-new]]
           (unregister-events state side new-card)
-          (unregister-constant-effects state side new-card)
+          (unregister-static-abilities state side new-card)
           (when (rezzed? new-card)
             (do (register-default-events state side new-card)
-                (register-constant-effects state side new-card)))
+                (register-static-abilities state side new-card)))
           (doseq [h (:hosted new-card)]
             (let [newh (-> h
                            (assoc-in [:zone] '(:onhost))
@@ -458,12 +461,14 @@
               (update! state side newh)
               (unregister-events state side h)
               (register-default-events state side newh)
-              (unregister-constant-effects state side h)
-              (register-constant-effects state side newh))))
+              (unregister-static-abilities state side h)
+              (register-static-abilities state side newh)
+              (when (program? newh)
+                (init-mu-cost state newh)))))
         (trigger-event state side :swap a-new b-new)))))
 
 (defn swap-ice
-  "Swaps two pieces of ice."
+  "Swaps 2 pieces of ice."
   [state side a b]
   (let [pred? (every-pred corp? installed? ice?)]
     (when (and (pred? a)
@@ -497,7 +502,11 @@
                         {:keep-server-alive true
                          :index (card-index state a)
                          :suppress-event true
-                         :swap true})]
+                         :swap true})
+          ;; under the new nsg rules, swapping a card into play triggers an install event
+          ;; TODO - quote exactly where
+          install-event (or (and (installed? a) (not (installed? b)))
+                            (and (installed? b) (not (installed? a))))]
       (trigger-event state side :swap moved-a moved-b)
       (when (and (:run @state)
                  (or (ice? a)
@@ -510,6 +519,24 @@
         (when (in-hand? moved-b) (add-to-currently-drawing state b-side moved-b)))
       [(get-card state moved-a) (get-card state moved-b)])))
 
+(defn swap-cards-async
+  "Swaps two cards when one or both aren't installed"
+  [state side eid a b]
+  (let [async-result (swap-cards state side a b)
+        moved-a (first async-result)
+        moved-b (second async-result)
+        install-event (= 1 (count (filter installed? [moved-a moved-b])))]
+    ;; todo - we might need behaviour for runner swap installs down the line, depending on future cards
+    ;; that's a problem for another day
+    (if (and install-event (= :corp side))
+      (do (queue-event
+            state :corp-install
+            {:card (get-card state (if (installed? moved-a) moved-a moved-b))
+             :install-state (:install-state (card-def (if (installed? moved-a) moved-a moved-b)))})
+          (wait-for (checkpoint state nil (make-eid state eid))
+                    (complete-with-result state side eid async-result)))
+      (complete-with-result state side eid async-result))))
+
 (defn swap-agendas
   "Swaps the two specified agendas, first one scored (on corp side), second one stolen (on runner side).
   Returns the first agenda now in runner score area and second agenda now in corp score area."
@@ -517,9 +544,9 @@
   (let [new-stolen (move state :runner scored :scored)
         new-scored (move state :corp stolen :scored)]
     (unregister-events state side stolen)
-    (unregister-constant-effects state side stolen)
+    (unregister-static-abilities state side stolen)
     (register-default-events state side new-scored)
-    (register-constant-effects state side new-scored)
+    (register-static-abilities state side new-scored)
     (when-not (card-flag? scored :has-events-when-stolen true)
       (deactivate state :corp new-stolen))
     (trigger-event state side :swap new-stolen new-scored)
