@@ -13,12 +13,12 @@
    [game.core.def-helpers :refer [breach-access-bonus corp-recur corp-rez-toast defcard do-brain-damage do-net-damage trash-on-empty]]
    [game.core.drawing :refer [draw]]
    [game.core.eid :refer [effect-completed make-eid]]
-   [game.core.effects :refer [any-effects register-floating-effect]]
+   [game.core.effects :refer [any-effects register-lingering-effect]]
    [game.core.engine :refer [checkpoint not-used-once? pay register-default-events register-events register-once register-suppress resolve-ability trigger-event unregister-events unregister-suppress-by-uuid]]
    [game.core.events :refer [first-event? first-run-event? no-event? run-events last-turn?]]
    [game.core.expend :refer [expend]]
    [game.core.finding :refer [find-cid]]
-   [game.core.flags :refer [register-turn-flag! register-run-flag! can-host? zone-locked? prevent-run-on-server enable-run-on-server]]
+   [game.core.flags :refer [register-turn-flag! register-run-flag! can-host? zone-locked?]]
    [game.core.gaining :refer [gain-clicks gain-credits lose-clicks lose-credits]]
    [game.core.hand-size :refer [hand-size runner-hand-size+]]
    [game.core.hosting :refer [host]]
@@ -161,7 +161,7 @@
   ;; Threat 3 - [trash]: Trash currently encountered ice with strength 0 or less.
   ;; Use this ability only during encounters with ice hosting trojans.
   {:implementation "2v2"
-   :constant-effects [{:type :ice-strength
+   :static-abilities [{:type :ice-strength
                        :req (req (and (get-current-encounter state)
                                       (same-card? current-ice target)))
                        :value (req (count (filter #(has-subtype? % "trojan")
@@ -183,7 +183,7 @@
   ;; The Corp removes one from the game. Host the other on this hardware (it is not installed).
   ;;
   ;; The first time each turn you remove a tag, you may add a hosted card to the grip.
-  {:constant-effects [(mu+ 1)]
+  {:static-abilities [(mu+ 1)]
    :events [{:event :runner-lose-tag
              :req (req (first-event? state side :runner-lose-tag))
              :async true
