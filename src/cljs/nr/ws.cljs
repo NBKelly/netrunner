@@ -3,6 +3,7 @@
    [nr.ajax :refer [?csrf-token]]
    [nr.appstate :refer [app-state current-gameid]]
    [nr.utils :refer [non-game-toast]]
+   [reagent.core :as r]
    [taoensso.sente  :as sente :refer [start-client-chsk-router!]]))
 
 (defonce lock (atom false))
@@ -20,6 +21,10 @@
     (defn ws-send!
       ([ev] (send-fn ev))
       ([ev ?timeout ?cb] (send-fn ev ?timeout ?cb)))))
+
+(defn chsk-reconnect!
+  []
+  (sente/chsk-reconnect! chsk))
 
 (defmulti event-msg-handler
   "Multimethod to handle Sente `event-msg`s"
@@ -70,3 +75,12 @@
           (start-client-chsk-router!
             ch-chsk
             event-msg-handler-wrapper)))
+
+(def lobby-updates-state (r/atom true))
+(defn lobby-updates-pause! []
+  (ws-send! [:lobby/pause-updates])
+  (reset! lobby-updates-state false))
+
+(defn lobby-updates-continue! []
+  (ws-send! [:lobby/continue-updates])
+  (reset! lobby-updates-state true))

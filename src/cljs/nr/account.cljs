@@ -292,10 +292,11 @@
                             {:name "Français" :ref "fr"}
                             {:name "Deutsch" :ref "de"}
                             {:name "Italiano" :ref "it"}
-                            {:name "日本語" :ref "jp"}
+                            {:name "日本語" :ref "ja"}
                             {:name "한국어" :ref "ko"}
                             {:name "Polski" :ref "pl"}
-                            {:name "Igpay Atinlay" :ref "la-pig"}]]
+                            {:name "Igpay Atinlay" :ref "la-pig"}
+                            {:name "Português" :ref "pt"}]]
                 [:option {:value (:ref option) :key (:ref option)} (:name option)]))]]
           [:section
            [:h3 (tr [:settings.sounds "Sounds"])]
@@ -406,7 +407,7 @@
 
           [:section
            [:h3  (tr [:settings.card-backs "Card backs"])]
-           (doall (for [option [{:name (tr [:settings.nisei "NISEI"]) :ref "nisei"}
+           (doall (for [option [{:name (tr [:settings.nsg "NSG"]) :ref "nsg"}
                                 {:name (tr [:settings.ffg "FFG"]) :ref "ffg"}]]
                     [:div.radio {:key (:name option)}
                      [:label [:input {:type "radio"

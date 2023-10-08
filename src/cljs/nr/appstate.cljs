@@ -17,7 +17,7 @@
                                   "eternal"
                                   "snapshot"
                                   "snapshot-plus"
-                                  "classic"
+                                  "neo"
                                   "casual"}
         serialized (get-local-value "visible-formats" "")]
     (if (empty? serialized) default-visible-formats (set (.parse js/JSON serialized)))))
@@ -27,8 +27,8 @@
   (r/atom {:active-page "/"
            :user (js->clj js/user :keywordize-keys true)
            :options (merge {:background "lobby-bg"
-                            :custom-bg-url (get-local-value "custom_bg_url" "https://nisei.net/wp-content/uploads/2022/07/Mechanics-of-Midnight-Sun-Header.png")
-                            :card-back (get-local-value "card-back" "nisei")
+                            :custom-bg-url (get-local-value "custom_bg_url" "https://nullsignal.games/wp-content/uploads/2022/07/Mechanics-of-Midnight-Sun-Header.png")
+                            :card-back (get-local-value "card-back" "nsg")
                             :card-zoom (get-local-value "card-zoom" "image")
                             :pin-zoom (get-local-value "pin-zoom" false)
                             :pronouns "none"

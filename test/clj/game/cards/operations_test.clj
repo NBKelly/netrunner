@@ -234,6 +234,37 @@
                          "Runner took no meat damage on unprotected server"
                          (run-empty-server state :rd))))
 
+(deftest armed-asset-protection-empty-archives
+  (do-game
+    (new-game {:corp {:hand ["Armed Asset Protection"]}})
+    (play-from-hand state :corp "Armed Asset Protection")
+    (is (= 6 (:credit (get-corp))) "Corp gained 3 credits")))
+
+(deftest armed-asset-protection-no-agendas-in-archives
+  (do-game
+    (new-game {:corp {:hand ["Armed Asset Protection" "Ice Wall"]
+                      :discard ["Hedge Fund" "NGO Front" "Prisec"]}})
+    (take-credits state :corp)
+    (run-empty-server state :archives)
+    (take-credits state :runner)
+    (core/move state :corp (find-card "Ice Wall" (:hand (get-corp))) :discard)
+    (play-from-hand state :corp "Armed Asset Protection")
+    (is (= 12 (:credit (get-corp))) "Corp gained 3 credits + 1 credit per card type (not counting facedown cards)")))
+
+(deftest armed-asset-protection-agendas-in-archives
+  (do-game
+    (new-game {:corp {:hand ["Armed Asset Protection"]
+                      :discard ["Hedge Fund" (qty "Bellona" 2)]}})
+    (take-credits state :corp)
+    (run-empty-server state :archives)
+    (click-prompt state :runner "Bellona")
+    (click-prompt state :runner "No action")
+    (click-prompt state :runner "Bellona")
+    (click-prompt state :runner "No action")
+    (take-credits state :runner)
+    (play-from-hand state :corp "Armed Asset Protection")
+    (is (= 13 (:credit (get-corp))) "Corp gained 3 credits + 1 credit per card type + 2 credits for the agendas")))
+
 (deftest ark-lockdown-happy-path
     ;; Happy Path
     (do-game
@@ -690,7 +721,7 @@
       (click-prompt state :runner "Steal")
       (take-credits state :runner)
       (play-from-hand state :corp "Complete Image")
-      (is (-> (get-runner) :discard count zero?) "Runner's heap should be empty")
+      (is (-> (get-runner) :discard count zero?) "heap should be empty")
       (click-prompt state :corp "Sure Gamble")
       (is (not (no-prompt? state :corp)) "Corp guessed right so should have another choice")
       (click-prompt state :corp "Sure Gamble")
@@ -700,7 +731,7 @@
       (is (not (no-prompt? state :corp)) "Even when the runner has no cards in hand, Corp must choose again")
       (click-prompt state :corp "Sure Gamble")
       (is (no-prompt? state :corp) "Runner is flatlined so no more choices")
-      (is (= 5 (-> (get-runner) :discard count)) "Runner's heap should have 5 cards")))
+      (is (= 5 (-> (get-runner) :discard count)) "heap should have 5 cards")))
 
 (deftest complete-image-incorrectly-guessing
     ;; Incorrectly guessing
@@ -714,10 +745,10 @@
       (click-prompt state :runner "Steal")
       (take-credits state :runner)
       (play-from-hand state :corp "Complete Image")
-      (is (-> (get-runner) :discard count zero?) "Runner's heap should be empty")
+      (is (-> (get-runner) :discard count zero?) "heap should be empty")
       (click-prompt state :corp "Easy Mark")
       (is (no-prompt? state :corp) "Corp guessed incorrectly so shouldn't have another choice")
-      (is (= 1 (-> (get-runner) :discard count)) "Runner's heap should have 1 card")))
+      (is (= 1 (-> (get-runner) :discard count)) "heap should have 1 card")))
 
 (deftest complete-image-not-enough-agenda-points
     ;; Not enough agenda points
@@ -762,7 +793,7 @@
       (click-prompt state :runner "Steal")
       (take-credits state :runner)
       (play-from-hand state :corp "Complete Image")
-      (is (-> (get-runner) :discard count zero?) "Runner's heap should be empty")
+      (is (-> (get-runner) :discard count zero?) "heap should be empty")
       (click-prompt state :corp "Sure Gamble") ;; Complete Image
       (is (not (no-prompt? state :corp)) "Corp guessed right so should have another choice")
       (click-prompt state :corp "Yes") ;; Chronos Protocol
@@ -774,7 +805,7 @@
       (click-prompt state :corp "Sure Gamble") ;; Complete Image
       (click-prompt state :corp "Sure Gamble") ;; Complete Image
       (is (no-prompt? state :corp) "Runner is flatlined so no more choices")
-      (is (= 5 (-> (get-runner) :discard count)) "Runner's heap should have 5 cards")))
+      (is (= 5 (-> (get-runner) :discard count)) "heap should have 5 cards")))
 
 (deftest consulting-visit
   ;; Consulting Visit - Only show single copies of operations corp can afford as choices. Play chosen operation
@@ -1687,7 +1718,7 @@
       (play-from-hand state :corp "Focus Group")
       (is (= 5 (:credit (get-corp))))
       (click-prompt state :corp "Hardware")
-      (is (no-prompt? state :corp) "No hardware in Runner's Grip so just end the interaction")
+      (is (no-prompt? state :corp) "No hardware in the grip so just end the interaction")
       (is (= 5 (:credit (get-corp))))))
 
 (deftest focus-group-can-t-afford-to-pay-to-place-advancement-tokens-gracefully-end
@@ -1906,6 +1937,24 @@
       5 (:credit (get-corp)) "Corp gains 15 credits"
       (play-from-hand state :corp "Government Subsidy"))))
 
+(deftest greasing-the-palm
+  (do-game
+    (new-game {:corp {:hand [(qty "Greasing the Palm" 2) "NGO Front" "PAD Campaign"]}})
+    (play-from-hand state :corp "Greasing the Palm")
+    (click-card state :corp "PAD Campaign")
+    (click-prompt state :corp "New remote")
+    (is (= "PAD Campaign" (:title (get-content state :remote1 0))))
+    (is (= 7 (:credit (get-corp))) "Corp gained a net of 2 credits")
+    (gain-tags state :runner 1)
+    (play-from-hand state :corp "Greasing the Palm")
+    (click-card state :corp "NGO Front")
+    (click-prompt state :corp "New remote")
+    (changes-val-macro
+      -1 (count-tags state)
+      "Remvoed 1 tag to pay Greasing the Palm cost"
+      (click-prompt state :corp "Yes"))
+    (is (= 1 (get-counters (refresh (get-content state :remote2 0)) :advancement)))))
+
 (deftest green-level-clearance
   ;; Green Level Clearance
   (do-game
@@ -2061,7 +2110,7 @@
       (run-empty-server state :remote1)
       (click-prompt state :runner "Pay 3 [Credits] to trash")
       (take-credits state :runner)
-      (is (zero? (-> (get-runner) :discard count)) "Runner's heap should be empty")
+      (is (zero? (-> (get-runner) :discard count)) "heap should be empty")
       (play-from-hand state :corp "Hellion Beta Test")
       (click-prompt state :corp "0")
       (click-prompt state :runner "0")
@@ -2579,6 +2628,24 @@
       (click-prompt state :runner "0") ; Runner won't match
     (is (= 6 (count-tags state)) "Runner took 6 tags")))
 
+(deftest mindscaping
+  (do-game
+    (new-game {:corp {:hand [(qty "Mindscaping" 2)]
+                      :deck ["Hedge Fund" "NGO Front"]}
+               :runner {:hand [(qty "Sure Gamble" 3)]}})
+    (gain-tags state :runner 5)
+    (play-from-hand state :corp "Mindscaping")
+    (changes-val-macro
+      -3 (count (:hand (get-runner)))
+      "Runner got 3 damage"
+      (click-prompt state :corp "Do 1 net damage per tag (up to 3)"))
+    (play-from-hand state :corp "Mindscaping")
+    (click-prompt state :corp "Gain 4 [Credits] and draw 2 cards")
+    (click-card state :corp "NGO Front")
+    (is (= 5 (:credit (get-corp))) "Corp gained a net of 2 credits")
+    (is (= 1 (count (:hand (get-corp)))))
+    (is (= "NGO Front" (-> (get-corp) :deck first :title)))))
+
 (deftest mitosis
   ;; Mitosis - Install up to 2 cards in new remotes, placing 2 advancements on each
   ;; prevent rez/score of those cards the rest of the turn
@@ -2803,7 +2870,7 @@
         (card-side-ability state :runner eli 0)
         (is (no-prompt? state :runner) "Can't use break ability on Eli")
         (card-ability state :runner smc 0) ; Can still use SMC
-        (click-prompt state :runner "No install")
+        (click-prompt state :runner "Done")
         (changes-val-macro -6 (:credit (get-runner))
                            "Paid 4+2 to pump and break 6 strength Eli"
                            (core/play-dynamic-ability state :runner {:dynamic "auto-pump-and-break" :card (refresh cor)})))))
@@ -2876,6 +2943,71 @@
     (click-card state :corp "Kati Jones")
     (is (zero? (count-tags state)) "Runner should lose 1 tag")
     (is (not (get-resource state 0)) "Kati should be trashed")))
+
+(deftest oppo-research
+  (do-game
+    (new-game {:corp {:hand [(qty "Oppo Research" 3) "Project Beale" "Rashida Jaheem"]
+                      :credits 10}})
+    (play-from-hand state :corp "Project Beale" "New remote")
+    (play-from-hand state :corp "Rashida Jaheem" "New remote")
+    (take-credits state :corp)
+    (run-empty-server state "Server 1")
+    (click-prompt state :runner "Steal")
+    (take-credits state :runner)
+    (changes-val-macro
+      2 (count-tags state)
+      "Runner got 2 tags"
+      (play-from-hand state :corp "Oppo Research"))
+    (take-credits state :corp)
+    (run-empty-server state "Server 2")
+    (click-prompt state :runner "Pay 1 [Credits] to trash")
+    (take-credits state :runner)
+    (play-from-hand state :corp "Oppo Research")
+    (take-credits state :corp)
+    (run-empty-server state "Archives")
+    (take-credits state :runner)
+    (changes-val-macro
+      0 (count-tags state)
+      "Runner got no tags"
+      (play-from-hand state :corp "Oppo Research"))))
+
+(deftest oppo-research-threat-ability
+  (do-game
+    (new-game {:corp {:hand ["Oppo Research" "Salvo Testing"]
+                      :credits 10}})
+    (play-from-hand state :corp "Salvo Testing" "New remote")
+    (take-credits state :corp)
+    (run-empty-server state "Server 1")
+    (click-prompt state :runner "Steal")
+    (take-credits state :runner)
+    (changes-val-macro
+      4 (count-tags state)
+      "Runner got 4 tags"
+      (play-from-hand state :corp "Oppo Research")
+      (click-prompt state :corp "Yes"))
+    (is (= 5 (:credit (get-corp))) "Corp spent 5 additional credits")))
+
+(deftest oppo-research-threat-ability-tag-prevention
+  (do-game
+    (new-game {:corp {:hand ["Oppo Research" "Salvo Testing"]
+                      :credits 10}
+               :runner {:hand ["No One Home"]}})
+    (play-from-hand state :corp "Salvo Testing" "New remote")
+    (take-credits state :corp)
+    (play-from-hand state :runner "No One Home")
+    (run-empty-server state "Server 1")
+    (click-prompt state :runner "Steal")
+    (take-credits state :runner)
+    (changes-val-macro
+      2 (count-tags state)
+      "Runner prevented 2 tag"
+      (play-from-hand state :corp "Oppo Research")
+      (is (not (no-prompt? state :runner)) "Runner prompted to avoid tag")
+      (card-ability state :runner (get-resource state 0) 0)
+      (click-prompt state :corp "0")
+      (click-prompt state :runner "0")
+      (click-prompt state :runner "Done")
+      (click-prompt state :corp "Yes"))))
 
 (deftest oversight-ai-rez-at-no-cost
     ;; Rez at no cost
@@ -2964,6 +3096,48 @@
     (rez state :corp (get-ice state :remote1 0))
     (play-from-hand state :corp "Peak Efficiency")
     (is (= 7 (:credit (get-corp))) "Gained 3 credits for 3 rezzed pieces of ice; unrezzed ice ignored")))
+
+(deftest pivot-gets-operations
+  (do-game
+      (new-game {:corp {:hand ["Pivot"]
+                        :deck ["Hedge Fund" "PAD Campaign" "Project Atlas"]}})
+      (changes-val-macro
+        -2 (:click (get-corp))
+        "Pivot is a double operation"
+        (play-from-hand state :corp "Pivot")
+        (is (= ["Hedge Fund" "Project Atlas"] (prompt-titles :corp)))
+        (click-prompt state :corp "Hedge Fund"))
+      (is (= (:title (first (-> @state :corp :hand))) "Hedge Fund"))))
+
+(deftest pivot-gets-agendas
+  (do-game
+      (new-game {:corp {:hand ["Pivot"]
+                        :deck ["Hedge Fund" "PAD Campaign" "Project Atlas"]}})
+      (play-from-hand state :corp "Pivot")
+      (is (= ["Hedge Fund" "Project Atlas"] (prompt-titles :corp)))
+      (click-prompt state :corp "Project Atlas")
+      (is (= (:title (first (-> @state :corp :hand))) "Project Atlas"))))
+
+(deftest pivot-threat-ability-to-install
+  (do-game
+      (new-game {:corp {:hand ["Pivot" "City Works Project" "NGO Front"]
+                        :deck ["Subliminal Messaging" "PAD Campaign"]}})
+      (play-and-score state "City Works Project")
+      (play-from-hand state :corp "Pivot")
+      (is (= ["Subliminal Messaging"] (prompt-titles :corp)))
+      (click-prompt state :corp "Subliminal Messaging")
+      (click-card state :corp "NGO Front")
+      (click-prompt state :corp "New remote")))
+
+(deftest pivot-threat-ability-to-play-operations
+  (do-game
+      (new-game {:corp {:hand ["Pivot" "City Works Project" "NGO Front"]
+                        :deck ["Subliminal Messaging" "PAD Campaign"]}})
+      (play-and-score state "City Works Project")
+      (play-from-hand state :corp "Pivot")
+      (is (= ["Subliminal Messaging"] (prompt-titles :corp)))
+      (click-prompt state :corp "Subliminal Messaging")
+      (click-card state :corp "Subliminal Messaging")))
 
 (deftest power-grid-overload
   ;; Power Grid Overload
@@ -3183,6 +3357,7 @@
     (starting-hand state :corp ["Psychokinesis" "Psychokinesis" "Psychokinesis"])
     ;; Test installing an Upgrade
     (play-from-hand state :corp "Psychokinesis")
+    (click-prompt state :corp "OK")
     (is (not-any? #{"Mwanza City Grid"} (prompt-buttons :corp))
         "Mwanza City Grid is not on the list of installable cards")
     (click-prompt state :corp (find-card "Caprice Nisei" (:deck (get-corp))))
@@ -3192,6 +3367,7 @@
     ;; Test installing an Asset
     (core/gain state :corp :click 1)
     (play-from-hand state :corp "Psychokinesis")
+    (click-prompt state :corp "OK")
     (click-prompt state :corp (find-card "Adonis Campaign" (:deck (get-corp))))
     (click-prompt state :corp "New remote")
     (is (= "Adonis Campaign" (:title (get-content state :remote2 0)))
@@ -3199,15 +3375,17 @@
     ;; Test installing an Agenda
     (core/gain state :corp :click 1)
     (play-from-hand state :corp "Psychokinesis")
+    (click-prompt state :corp "OK")
     (click-prompt state :corp (find-card "Global Food Initiative" (:deck (get-corp))))
     (click-prompt state :corp "New remote")
     (is (= "Global Food Initiative" (:title (get-content state :remote3 0)))
         "Global Food Initiative installed by Psychokinesis")
-    ;; Test selecting "None"
+    ;; Test selecting "Cancel"
     (core/gain state :corp :click 1)
     (core/move state :corp (find-card "Psychokinesis" (:discard (get-corp))) :hand)
     (play-from-hand state :corp "Psychokinesis")
-    (click-prompt state :corp "None")
+    (click-prompt state :corp "OK")
+    (click-prompt state :corp "Cancel")
     (is (nil? (:title (get-content state :remote4 0)))
         "Nothing is installed by Psychokinesis")))
 
@@ -4069,7 +4247,7 @@
     (click-prompt state :runner "0")
     (click-card state :corp (get-resource state 0))
     (click-prompt state :runner "No")
-    (is (= 1 (-> (get-runner) :discard count)) "Scrubber should be in Runner's heap after losing Snatch and Grab trace")))
+    (is (= 1 (-> (get-runner) :discard count)) "Scrubber should be in heap after losing Snatch and Grab trace")))
 
 (deftest special-report
   ;; NGO Front
@@ -4898,6 +5076,19 @@
     (is (= 1 (count (:discard (get-runner)))) "Runner has 1 trashed card")
     (is (= 1 (count-bad-pub state)) "Corp takes 1 bad pub")))
 
+(deftest under-the-bus-under-the-bus-can-be-played-with-no-connections
+  ;; Under the Bus
+  (do-game
+    (new-game {:corp {:deck ["Under the Bus"]}})
+    (take-credits state :corp)
+    (run-empty-server state :hq)
+    (click-prompt state :runner "No action")
+    (take-credits state :runner)
+    (is (zero? (count-bad-pub state)) "Corp has no bad pub")
+    (play-from-hand state :corp "Under the Bus")
+    (click-prompt state :corp "Done")
+    (is (= 1 (count-bad-pub state)) "Corp takes 1 bad pub")))
+
 (deftest under-the-bus-with-replacement-effects
     ;; With replacement effects
     (do-game
@@ -5058,3 +5249,9 @@
                       :bad-pub 3}})
     (play-from-hand state :corp "Witness Tampering")
     (is (= 1 (count-bad-pub state)) "Corp should lose 2 bad pub")))
+
+(deftest your-digital-life
+  (do-game
+    (new-game {:corp {:hand [(qty "Your Digital Life" 5)]}})
+    (play-from-hand state :corp "Your Digital Life")
+    (is (= 7 (:credit (get-corp))) "Corp gained 4 credits")))
