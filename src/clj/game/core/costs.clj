@@ -222,11 +222,12 @@
   (wait-for (reveal state :corp (make-eid state eid) [card])
             (wait-for (trash state :corp (make-eid state eid)
                              (assoc (get-card state card) :seen true))
-                      (complete-with-result state side eid
-                                            {:msg (str "trashes " (:title card) " from HQ")
-                                             :type :expend
-                                             :value 1
-                                             :targets [card]}))))
+                      (wait-for (trigger-event-sync state side :expended card)
+                                (complete-with-result state side eid
+                                                      {:msg (str "trashes " (:title card) " from HQ")
+                                                       :type :expend
+                                                       :value 1
+                                                       :targets [card]})))))
 
 ;; Trash
 (defmethod cost-name :trash-can [_] :trash-can)
