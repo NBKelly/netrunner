@@ -1227,7 +1227,8 @@
   ;; If you do, the rezzed ice gains +X strength for the remainder of the run.
   ;; X is the printed rez cost of the derezzed card. Use this ability only once per run.
   ;; Limit 1 region per server."
-  {:events [{:event :rez
+  {:implementation "2v3"
+   :events [{:event :rez
              :req (req (and (ice? (:card context))
                             this-server run
                             (some #(and (ice? %)
