@@ -11,7 +11,7 @@
    [game.core.checkpoint :refer [fake-checkpoint]]
    [game.core.cost-fns :refer [trash-cost install-cost play-cost rez-cost]]
    [game.core.damage :refer [damage damage-prevent]]
-   [game.core.def-helpers :refer [breach-access-bonus corp-recur corp-rez-toast defcard do-brain-damage do-net-damage trash-on-empty x-fn]]
+   [game.core.def-helpers :refer [breach-access-bonus corp-recur corp-rez-toast defcard do-brain-damage do-net-damage trash-on-empty get-x-fn]]
    [game.core.diffs :refer [playable?]]
    [game.core.drawing :refer [draw]]
    [game.core.eid :refer [effect-completed make-eid]]
@@ -863,7 +863,7 @@
                     :x-fn (req (if (threat-level 4 state) 2 0))
                     :abilities [(break-sub 1 1 "Barrier")
                                 (strength-pump 2 1)]
-                    :static-abilities [(breaker-strength-bonus x-fn)]}))
+                    :static-abilities [(breaker-strength-bonus (get-x-fn))]}))
 
 (defcard "Brownie"
   ;; When you install this program, search your stack, heap, or grip for 1 icebreaker, trojan,
@@ -1420,7 +1420,7 @@
                                                    card nil)))}
                  {:label "Give +2 strength to all ice for the remainder of the run"
                   :msg "give +2 strength to all ice for the remainder of the run"
-                  :effect (effect (register-floating-effect
+                  :effect (effect (register-lingering-effect
                                     card
                                     {:type :ice-strength
                                      :duration :end-of-run
@@ -1447,7 +1447,7 @@
   ;; {sub} You may trash 1 card from HQ to end the run.
   ;; {sub} You may trash 1 card from HQ to end the run."
   {:implementation "2v3"
-   :constant-effects [(ice-strength-bonus (req (if (threat-level 4 state) 2 0)))]
+   :static-abilities [(ice-strength-bonus (req (if (threat-level 4 state) 2 0)))]
    :subroutines [(do-net-damage 2)
                  {:label "trash a card from HQ to end the run"
                   :optional {:prompt "trash a card from HQ to end the run?"
@@ -1761,7 +1761,7 @@
   ;; {sub} Gain 1{credit} for each tag the Runner has.
   ;; {sub} End the run."
   {:implementation "2v3"
-   :constant-effects [(ice-strength-bonus (req (count-tags state)))]
+   :static-abilities [(ice-strength-bonus (req (count-tags state)))]
    :subroutines [{:label "Gain 1 [Credits] for each tag"
                   :async true
                   :msg (msg "Gain " (count-tags state) " [Credits]")
@@ -2057,7 +2057,7 @@
   ;;
   ;; {sub} Gain 2{credit}. End the run."
   {:implementation "2v3"
-   :constant-effects [(ice-strength-bonus (req (if (threat-level 3 state)
+   :static-abilities [(ice-strength-bonus (req (if (threat-level 3 state)
                                                  (faceup-archives-types corp)
                                                  0)))]
    :subroutines [{:msg "gain 2 [Credits]. End the run"
@@ -2126,7 +2126,7 @@
                         :effect (effect (add-prop target :advance-counter 1 {:placed true}))})
                      card nil))}]
     {:implementation "2v3"
-     :constant-effects [{:type :ice-strength
+     :static-abilities [{:type :ice-strength
                          :req (req (and (ice? target)
                                         (= (card->server state card) (card->server state target))))
                          :value (req (if (pos? (get-counters target :advancement)) 2 0))}]
