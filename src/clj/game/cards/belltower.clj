@@ -150,7 +150,7 @@
                              :effect (effect (runner-install (assoc eid :source card :source-type :runner-install) target {:cost-bonus -2}))}
                             card nil))}]})
 
-(defcard "[Eye for an Eye]"
+(defcard "Eye for an Eye"
   ;; Play only if you are not tagged.
   ;; Run archives. If successful, instead of breaching Archives,
   ;; take 1 tag and the corp trashes 1 of their install cards.
@@ -197,7 +197,7 @@
                                                    card nil)
                                                  (effect-completed state side eid)))))))}})]}))
 
-(defcard "[HQ Occupation]"
+(defcard "HQ Occupation"
   ;; Play only if you are not tagged.
   ;; Run HQ. If successful, take 1 tag and access 2 additional cards when you breach HQ.
   {:implementation "2v3"
@@ -224,28 +224,29 @@
                                    card [(breach-access-bonus :hq 1 {:duration :end-of-run})])
                                  (effect-completed state side eid)))}]})
 
-(defcard "[Achaean Crew]"
+(defcard "Achaean Crew"
   ;; Each piece of ice gets -1 strength for each trojan it hosts.
   ;;
   ;; Threat 3 - [trash]: Trash currently encountered ice with strength 0 or less.
   ;; Use this ability only during encounters with ice hosting trojans.
   {:implementation "2v2"
    :static-abilities [{:type :ice-strength
-                       :req (req (and (get-current-encounter state)
-                                      (same-card? current-ice target)))
-                       :value (req (count (filter #(has-subtype? % "trojan")
-                                                  (:hosted (get-card state target)))))}]
+                       :req (req (and
+                                   (get-current-encounter state)
+                                   (= (:cid target) (:cid current-ice))))
+                       :value (req (* -1 (count (filter #(has-subtype? % "Trojan")
+                                                         (:hosted (get-card state current-ice))))))}]
    :abilities [{:req (req (and (get-current-encounter state)
                                (threat-level 3 state)
                                (not (pos? (ice-strength state side current-ice)))
-                               (pos? (count (filter #(has-subtype? % "trojan")
+                               (pos? (count (filter #(has-subtype? % "Trojan")
                                                     (:hosted current-ice))))))
                 :label "trash encountered ice"
                 :msg (msg "trash " (str current-ice))
                 :cost [:trash-can]
                 :effect (effect (trash eid current-ice {:cause-card card}))}]})
 
-(defcard "[Onion]"
+(defcard "Onion"
   ;; +1 mu
   ;;
   ;; When your turn begins, if you are tagged, you may choose 2 cards in the heap.
@@ -382,7 +383,7 @@
              :effect (req (wait-for (trash-cards state :corp (make-eid state eid) (take 2 (shuffle (:hand corp))) {:cause-card card})
                                     (trash state :runner eid card {:cause :purge :cause-card card})))}]})
 
-(defcard "[Raccoon]"
+(defcard "Raccoon"
   ;; If you trashed one of your installed cards this turn,
   ;; paid abilities on this icebreaker cost 1{credit} less to activate.
   ;;
@@ -436,7 +437,7 @@
 
 ;; CRIMINAL CARDS
 
-(defcard "[Power Outage]"
+(defcard "Power Outage"
   ;; Derez a piece of ice protecting any server, then run that server.
   ;;When that run ends, the Corp may rez that ice, ignoring all costs.
   {:makes-run true
@@ -480,7 +481,7 @@
                                                    (effect-completed state side eid)))}
               :no-ability {:msg "declines to use ."}}})
 
-(defcard "[Wipe Down]"
+(defcard "Wipe Down"
   ;; Resolve 1 of the following:
   ;;  remove up to 2 tags
   ;;  Draw 3 cards. Add 1 card from the grip to the top or bottom of the stack.
@@ -522,7 +523,7 @@
                                                            card nil)))})
                                card nil))}})
 
-(defcard "[Alarm Clock]"
+(defcard "Alarm Clock"
   ;; When your turn begins, you may run HQ
   (let [ability {:once :per-turn
                  :req (req (:runner-phase-12 @state))
@@ -567,7 +568,7 @@
              :effect (req (trash state :runner eid card {:cause :purge
                                                          :cause-card card}))}]})
 
-(defcard "[Parrots]"
+(defcard "Parrots"
   ;;When you install this program, load 3 power counters onto it. When it is empty, trash it.
   ;; Whenever you encounter an ice with strength 2 or less,
   ;; you may spend 1 hosted power counter to bypass it. Use this ability only once per turn.
@@ -594,7 +595,7 @@
                                       :msg (msg "bypass " (:title current-ice))
                                       :effect (req (bypass-ice state))}}}]})
 
-(defcard "[Bindle]"
+(defcard "Bindle"
   ;; Limit 1 hosted card.
   ;;  Access -->0c: Host the accessed non-agenda card faceup on this program.
   ;; Whenever you breach HQ or R&D, you may trash 1 hosted corp card
@@ -659,7 +660,7 @@
                                               (add-counter state :runner c :credit 1)))}
                               card nil)))}]})
 
-(defcard "[Mrs Rocinha]"
+(defcard "Mrs Rocinha"
   ;; When you install this resource, load 4 power counters onto it. When it is empty, trash it.
   ;; The first time each turn you take an action on an installed resource, remove 1 hosted power
   ;;  counter and gain [click]
@@ -1353,7 +1354,7 @@
                                                           :effect (req (gain-tags state :runner eid 1))}}}
                                        card nil)))}})
 
-(defcard "Puppet State"
+(defcard "[Puppet State]"
   ;; The first time each turn the Runner passes a rezzed ice, you may pay 2{credit}.
   ;; If you do, the Runner encounters that ice again."
   {:implementation "2v3. This is a forced encounter."
@@ -1484,7 +1485,7 @@
                                                (resolve-subroutine! state side eid card (assoc sub :external-trigger true))))}
                                card nil))}]})
 
-(defcard "[Protect the Family]"
+(defcard "Protect the Family"
   ;; Play only if the Runner made a successful run last turn.
   ;; After this operation is resolved, end your action phase.
   ;; The Runner adds 3 cards from their grip to the bottom of the stack in any order.
@@ -1544,7 +1545,7 @@
                                       card nil))}
                       card nil)))}))
 
-(defcard "Overseer Matrix";;"[Turnover]"
+(defcard "[Turnover]"
   ;; When your turn begins, choose 1 to resolve:
   ;; - Turn 1 faceup card in Archives facedown to gain 1{credit}.
   ;; - Turn 1 facedown card in Archives faceup to place 1 advancement counter on a installed card."
@@ -1595,7 +1596,7 @@
 
 ;; NBN CARDS
 
-(defcard "[Fine Print Project]"
+(defcard "Fine Print Project"
   ;; When you score this agenda, you may look at the top 3 cards of R&D;
   ;; from among those 3 cards or from HQ,
   ;; you may score an agenda with 1 or less printed agenda points.
@@ -1632,7 +1633,7 @@
                                                    (effect-completed state side eid)))))}
                        card nil)))}}}})
 
-(defcard "[Policy Coordination]"
+(defcard "Policy Coordination"
   ;; When you score this agenda, place 1 agenda counter on it for every advancement counter past 3.
   ;; Hosted agenda counter: Look at the top 3 cards of R&D and choose 1 of them;
   ;; install it or add it to HQ.
