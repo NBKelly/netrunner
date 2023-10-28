@@ -133,7 +133,7 @@
   ;; you may install 1 connection resource from your grip, paying 2[Credits] less.
   ;; As an additional cost to trash connection resources, the Corp must trash 1 card
   ;; from HQ. (I'm assuming a multi-trash requires a multi-cost)
-  {:implementation "2v3. Cost to trash connections not implemented"
+  {:implementation "2v4. Cost to trash connections not implemented"
    ;; todo - cost to trash connection resources by the corp - look at hacktivist?
    :events [{:event :runner-gain-tag
              :async true
@@ -150,57 +150,124 @@
                              :effect (effect (runner-install (assoc eid :source card :source-type :runner-install) target {:cost-bonus -2}))}
                             card nil))}]})
 
-(defcard "Eye for an Eye"
-  ;; Play only if you are not tagged.
-  ;; Run archives. If successful, instead of breaching Archives,
-  ;; take 1 tag and the corp trashes 1 of their install cards.
-  ;; Threat 5 - if you took a tag this way, the Corp trashes another 1 of their installed cards.
-  ;; Remove this event from the game
-  (letfn [(trash-x-installed [x state]
-            (if (<= x (count (all-installed state :corp)))
-              {:player :corp
-               :prompt (str "Choose " (quantify x "card") " to trash")
-               :waiting-prompt "Corp to trash a card"
-               :msg (msg "trash " (:title target))
-               :choices {:max x
-                         :card #(and (installed? %)
-                                     (corp? %))}
-               :async true
-               :effect (req (trash-cards state side eid targets {:cause :forced-to-trash}))}
-              {:player :corp
-               :msg "has no installed cards to trash"}))]
-    {:makes-run true
-     :implementation "2v3"
-     :rfg-instead-of-trashing true
-     :on-play {:req (req (and archives-runnable
+(defcard "[Rescue Mission]"
+  ;;Play only if you are not tagged.
+  ;; Run archives. If successful, instead of breaching,
+  ;; take 1 tag and install a resource from your heap, paying 2{credits} less.
+  ;;
+  ;; Threat 3 -- Then, you may install a program or hardware from your heap.
+  (letfn [(resolve-threat [state side card eid]
+            (if-not (threat-level 3 state)
+              (effect-completed state side eid)
+              (continue-ability
+                state side
+                {:prompt (msg "Install a program or hardware from your heap")
+                 :choices (req (concat
+                                 (->> (:discard runner)
+                                      (filter
+                                        #(and (or (hardware? %)
+                                                  (program? %))
+                                              (can-pay? state side
+                                                       (assoc eid :source card :source-type :runner-install)
+                                                       % nil [:credit (install-cost state side %)])))
+                                      (sort-by :title)
+                                      (seq))
+                                 ["Done"]))
+                 :effect (req (if (= target "Done")
+                                (effect-completed state side eid)
+                                (runner-install state side (assoc eid :source card :source-type :runner-install) target)))}
+                card nil)))]
+    {:implementation "2v4"
+     :makes-run true
+     :on-play {:req (req (and hq-runnable
                               (not-tagged-req state)))
                :async true
                :effect (effect (make-run eid :archives card))}
      :events [(successful-run-replace-breach
                 {:target-server :archives
                  :this-card-run true
-                 :ability
-                 {:async true
-                  :effect
-                  (req (let [old-tags (count-tags state)]
-                         (wait-for (gain-tags state :runner 1)
-                                   (let [new-tags (count-tags state)]
-                                     (wait-for (resolve-ability
-                                                 state side
-                                                 (trash-x-installed 1 state)
-                                                 card nil)
-                                               (if (and (= new-tags (+ 1 old-tags))
-                                                        (threat-level 5 state))
-                                                 (continue-ability
-                                                   state side
-                                                   (trash-x-installed 1 state)
-                                                   card nil)
-                                                 (effect-completed state side eid)))))))}})]}))
+                 :ability {:async true
+                           :effect (req (wait-for
+                                          (gain-tags state :runner 1)
+                                          (continue-ability
+                                            state side
+                                            {:prompt (msg "Install a resource from your heap, "
+                                                          "paying 2[Credits] less")
+                                             :choices (req (concat
+                                                             (->> (:discard runner)
+                                                                  (filter
+                                                                    #(and (resource? %)
+                                                                          (can-pay? state side
+                                                                                   (assoc eid :source card :source-type :runner-install)
+                                                                                   % nil [:credit (max 0 (- (install-cost state side %) 2))])))
+                                                                  (sort-by :title)
+                                                                  (seq))
+                                                             ["Done"]))
+                                                :async true
+                                             :msg (msg (if (= target "Done")
+                                                         "decline to install a resource"
+                                                         (str "install " (:title target) " from the heap, paying 2[Credits] less")))
+                                             :effect (req (if (= target "Done")
+                                                            (resolve-threat state side card eid)
+                                                            (wait-for (runner-install state side (make-eid state (assoc eid :source card :source-type :runner-install)) target {:cost-bonus -2})
+                                                                      ;; threat
+                                                                      (resolve-threat state side card eid))))}
+                                            card nil)))}})]}))
+
+;; REPLACED in v4
+;;
+;;(defcard "Eye for an Eye"
+  ;; Play only if you are not tagged.
+  ;; Run archives. If successful, instead of breaching Archives,
+  ;; take 1 tag and the corp trashes 1 of their install cards.
+  ;; Threat 5 - if you took a tag this way, the Corp trashes another 1 of their installed cards.
+  ;; Remove this event from the game
+;;  (letfn [(trash-x-installed [x state]
+;;            (if (<= x (count (all-installed state :corp)))
+;;              {:player :corp
+;;               :prompt (str "Choose " (quantify x "card") " to trash")
+;;               :waiting-prompt "Corp to trash a card"
+;;               :msg (msg "trash " (:title target))
+;;               :choices {:max x
+;;                         :card #(and (installed? %)
+;;                                     (corp? %))}
+;;               :async true
+;;               :effect (req (trash-cards state side eid targets {:cause :forced-to-trash}))}
+;;              {:player :corp
+;;               :msg "has no installed cards to trash"}))]
+;;    {:makes-run true
+;;     :implementation "2v3"
+;;     :rfg-instead-of-trashing true
+;;     :on-play {:req (req (and archives-runnable
+;;                              (not-tagged-req state)))
+;;               :async true
+;;               :effect (effect (make-run eid :archives card))}
+;;     :events [(successful-run-replace-breach
+;;                {:target-server :archives
+;;                 :this-card-run true
+;;                 :ability
+;;                 {:async true
+;;                  :effect
+;;                  (req (let [old-tags (count-tags state)]
+;;                         (wait-for (gain-tags state :runner 1)
+;;                                   (let [new-tags (count-tags state)]
+;;                                     (wait-for (resolve-ability
+;;                                                 state side
+;;                                                 (trash-x-installed 1 state)
+;;                                                 card nil)
+;;                                               (if (and (= new-tags (+ 1 old-tags))
+;;                                                       (threat-level 5 state))
+;;                                                 (continue-ability
+;;                                                   state side
+;;                                                   (trash-x-installed 1 state)
+;;                                                   card nil)
+;;                                                 (effect-completed state side eid)))))))}})]}))
 
 (defcard "HQ Occupation"
   ;; Play only if you are not tagged.
-  ;; Run HQ. If successful, take 1 tag and access 2 additional cards when you breach HQ.
-  {:implementation "2v3"
+  ;; Run HQ. If successful, take 1 tag and access 1 additional card when you breach HQ.
+  ;; Access -> Trash a card from your grip: trash the card you are accessing
+  {:implementation "2v4"
    :makes-run true
    :on-play {:req (req (and hq-runnable
                             (not-tagged-req state)))
@@ -208,7 +275,8 @@
              :effect (effect (make-run eid :hq card))}
    :interactions {:access-ability
                   {:label "Trash card"
-                   :msg (msg "trash " (:title target) " at no cost")
+                   :cost [:trash-from-hand 1]
+                   :msg (msg "trash " (:title target))
                    :async true
                    :effect (effect (trash eid (assoc target :seen true) {:cause-card card}))}}
    :events [{:event :successful-run
@@ -229,7 +297,7 @@
   ;;
   ;; Threat 3 - [trash]: Trash currently encountered ice with strength 0 or less.
   ;; Use this ability only during encounters with ice hosting trojans.
-  {:implementation "2v2"
+  {:implementation "2v4"
    :static-abilities [{:type :ice-strength
                        :req (req (and
                                    (get-current-encounter state)
@@ -249,111 +317,114 @@
 (defcard "Onion"
   ;; +1 mu
   ;;
-  ;; When your turn begins, if you are tagged, you may choose 2 cards in the heap.
-  ;; The Corp removes one from the game. Host the other on this hardware (it is not installed).
+  ;; When your turn ends, if you are tagged, you may place 1 hosted power counter on this hardware.
   ;;
-  ;; The first time each turn you remove a tag, you may add a hosted card to the grip.
+  ;; Whenever you remove a tag, you may spend 1 hosted power counter to draw 2 cards.
   {:static-abilities [(mu+ 1)]
+   :implementation "2v4 - placing power counters is automatic, manually adjust if you don't want 'em"
    :events [{:event :runner-lose-tag
-             :req (req (first-event? state side :runner-lose-tag))
-             :async true
-             :effect (req (continue-ability
-                            state side
-                            {:choices (req (cancellable (:hosted card)))
-                             :async true
-                             :prompt "Choose a hosted card"
-                             :msg (msg "move " (:title target) " to their grip")
-                             :effect (effect (move target :hand)
-                                             (effect-completed eid))}
-                            card nil))}
-            {:event :runner-turn-begins
-             :optional
-             {:req (req (and (not (not-tagged-req state))
-                            (<= 2 (count (:discard runner)))
-                            (not (zone-locked? state :runner :discard))))
-              :prompt (msg "Use " (:title card) " to select cards?")
-              ;:autoresolve (get-autoresolve :auto-fire)
-              :yes-ability
-              {:interactive (req true)
-               :async true
-               :prompt "Choose 2 hosted cards"
-               :choices {:max 2
-                         :all true
-                         :card #(and (in-discard? %)
-                                     (runner? %))}
-               :effect
-               (effect (continue-ability
-                         (let [c1 (first targets)
-                               c2 (second targets)]
-                           {:waiting-prompt "Corp to make a decision"
-                            :prompt "Choose which card to remove from the game"
-                            :player :corp
-                            :choices [c1 c2]
-                            :msg (msg (let [[chosen other](if (= target c1)
-                                                            [c1 c2]
-                                                            [c2 c1])]
-                                        (str "add " (:title other) " to onion."
-                                             " Corp removes " (:title chosen) " from the game")))
-                            :effect (req (let [[chosen other] (if (= target c1)
-                                                                [c1 c2]
-                                                                [c2 c1])]
-                                           (host state :runner card other)
-                                           (move state :runner chosen :rfg)))})
-                         card nil))}}}]})
+             :optional {:prompt "Draw 2 cards?"
+                        :yes-ability {:cost [:power 1]
+                                      :msg "draw 2 cards"
+                                      :async true
+                                      :effect (req (draw state :runner eid 2))}}}
+             {:event :runner-turn-ends
+              :req (req (not (not-tagged-req state)))
+              :effect (req (add-counter state side (get-card state card) :power 1))}]})
 
 (defcard "The Wizard's Chest"
   ;; When you install this hardware, search your stack for 2 differently named cards
-  ;; and host them faceup on this hardware.
-  ;; When you steal an agenda, choose 1 hosted card at random.
-  ;; You may trash that card. If you do, install the remaining hosted card, ignoring all costs,
-  ;; then trash this hardware.
-  (letfn [(search-and-host [x]
-            {:prompt (msg "Choose a card (" x " remaining)")
-             :choices (req (filter #(not (contains? (set '(:hosted (get-card state card))) %)) (:deck runner)))
+  ;; Trash 1 of them at random. Host the other face-up on this hardware.
+  ;; When you steal an agenda, you MAY install the hosted card, ignoring all costs, then trash this
+  ;; hardware.
+  ;; Threat 4 --> (4 clicks) - install the hosted card, ignoring all costs
+  (letfn [(search-and-host [chosen]
+            (let [rem (- 2 (count chosen))]
+              {:prompt (msg "Choose a card (" rem " remaining)")
+               :choices (req (concat
+                               (sort-by :title
+                                        (filter #(or (empty? chosen)
+                                                     (not= (:title %) (:title (first chosen))))
+                                                (:deck runner)))
+                               ["Done"]))
+               :async true
+               :effect (req (if (= target "Done")
+                              ;; is there a card to trash
+                              (do (system-msg state side "declines to find a card")
+                                  (if (zero? (count chosen))
+                                    (effect-completed state side eid)
+                                    (do (system-msg state side
+                                                    (str "trashes " (:title (first chosen))))
+                                        (trash-cards state side eid chosen {:unpreventable :true
+                                                                            :cause-card card}))))
+                              (if (= rem 2)
+                                (continue-ability
+                                  state side
+                                  (search-and-host (conj chosen target))
+                                  card nil)
+                                ;; we selected 2 and didn't click done
+                                (let [selection (shuffle (conj chosen target))
+                                      selected-card (first selection)
+                                      trashed-card (second selection)]
+                                  (system-msg state side (str "randomly selects "
+                                                              (:title trashed-card) " to trash"))
+                                  (wait-for (trash state side (make-eid state eid) trashed-card
+                                                   {:unpreventable :true
+                                                    :cause-card card})
+                                            (system-msg state side (str "hosts "
+                                                                        (:title selected-card)
+                                                                        " on " (:title card)))
+                                            (host state side card selected-card)
+                                            (effect-completed state side eid))))))}))
+          (minor-install [trashes]
+            {:msg (msg "install " (:title (first (:hosted card))) ", ignoring all costs")
              :async true
-             :msg (msg "host " (:title target) " on itself")
-             :effect (req (host state side card target)
-                          (if (> x 1)
-                            (continue-ability state side (search-and-host (dec x)) card nil)
-                            (effect-completed state side eid)))})]
-    {:implementation "2v3"
+             :effect (req (let [target-card (first (:hosted card))
+                                new-eid (make-eid state (assoc eid :source card
+                                                               :source-type :runner-install))]
+                            (wait-for (runner-install
+                                        state side
+                                        new-eid target-card {:ignore-all-cost true})
+                                      (if trashes
+                                        (trash state side eid card {:cause-card card})
+                                        (effect-completed state side eid)))))})
+          (install-hosted [trashes]
+            {:optional
+             {:prompt (msg "Install " (:title (first (:hosted card))) ", ignoring all costs?")
+              :waiting-prompt "Runner to make a decision"
+              :req (req (and (not (event? (first (:hosted card))))
+                             (runner-can-install? state side (first (:hosted card)) nil)))
+              :yes-ability (minor-install trashes)
+              :no-ability {:msg (msg "declines to install a card")}}})]
+    {:implementation "2v4"
      :on-install {:msg "search 2 cards from the stack"
                   :async true
                   :effect (req (wait-for (resolve-ability state side
                                                           (make-eid state eid)
-                                                          (search-and-host 2)
+                                                          (search-and-host [])
                                                           card nil)
                                          (trigger-event state side :searched-stack nil)
                                          (shuffle! state side :deck)
                                          (system-msg state side "shuffle the stack")
                                          (effect-completed state side eid)))}
-     :events [{:event :agenda-stolen
-               :async true
-               :effect (req (let [selected-card (first (shuffle (:hosted card)))]
-                              (system-msg state side "agenda stolen")
-                              (continue-ability
-                                state side
-                                {:optional
-                                 {:prompt (msg "Install " (:title selected-card) ", ignoring all costs?")
-                                  :waiting-prompt "Runner to make a decision"
-                                  :req (req (runner-can-install? state side selected-card nil))
-                                  ;;(can-pay? state side (assoc eid :source card :source-type :runner-install) selected-card nil [:credit (install-cost state side selected-card {:cost-bonus -3})])))
-                                  :yes-ability {:msg (msg "install " (:title selected-card) ", ignoring all costs?"
-                                                          (str/join ", " (map :title (filter #(not= (:title %) (:title selected-card)) (:hosted card))))
-                                                          " is trashed as a result")
-                                                :async true
-                                                :effect (req (wait-for (runner-install state side (make-eid state (assoc eid :source card :source-type :runner-install)) selected-card {:ignore-all-cost true})
-                                                                       (trash-cards state side (assoc eid :source card) [card]  {:unpreventable true :cause-card card})))}
-                                  :no-ability {:msg (msg "does not install " (:title selected-card) ". ")}}}
-                                card nil)))}]}))
+     :abilities [(assoc (minor-install false)
+                        :cost [:click 4]
+                        :label "(threat 4) install hosted card, ignoring all costs"
+                        :req (req (and (seq (:hosted card))
+                                       (threat-level 4 state)
+                                       (not (event? (first (:hosted card))))
+                                       (runner-can-install? state side
+                                                            (first (:hosted card)) nil))))]
+     :events [(assoc (install-hosted true) :event :agenda-stolen)]}))
+
 
 (defcard "Heliamphora"
   ;; Whenever you breach Archives, you may host 2 non-agenda cards from Archives on this program.
-  ;; Whenever the Corp purges virus counters, the Corp randomly trashes 2 cards from HQ,
+  ;; Whenever the Corp purges virus counters, the Corp trashes 2 cards from HQ,
   ;; then trash this program."
   ;; TODO - show corp discard when runner access this?
   ;;        perhaps a "show-opponent-discard" key?
-  {:implementation "2v3"
+  {:implementation "2v4"
    :events [{:event :breach-server
              :async true
              :interactive (req true)
@@ -378,62 +449,96 @@
                                                          (effect-completed state side eid))}}}
                             card nil))}
             {:event :purge
-             :msg "force the Corp to trash 2 cards from HQ at random, then trash itself"
+             :msg "force the Corp to trash 2 cards from HQ, then trash itself"
              :async true
-             :effect (req (wait-for (trash-cards state :corp (make-eid state eid) (take 2 (shuffle (:hand corp))) {:cause-card card})
-                                    (trash state :runner eid card {:cause :purge :cause-card card})))}]})
+             :effect (req (if (>= 2 (count (:hand corp)))
+                            (wait-for
+                              (trash-cards state :corp (make-eid state eid)
+                                           (take 2 (shuffle (:hand corp))) {:cause-card card})
+                              (trash state :runner eid card {:cause :purge :cause-card card}))
+                            (continue-ability
+                              state :corp
+                              {:prompt "Choose 2 cards to trash from HQ"
+                               :choices {:max 2
+                                         :all true
+                                         :card #(and (in-hand? %)
+                                                     (corp? %))}
+                               :async true
+                               :effect (req (wait-for (trash-cards
+                                                        :corp (make-eid state eid) targets
+                                                        {:unpreventable true
+                                                         :cause-card card
+                                                         :cause :forced-to-trash}))
+                                            (trash state :runner eid card
+                                                   {:cause :purge :cause-card card}))}
+                              card nil)))}]})
 
 (defcard "Raccoon"
   ;; If you trashed one of your installed cards this turn,
   ;; paid abilities on this icebreaker cost 1{credit} less to activate.
   ;;
   ;; Interface → 2{credit}: Break up to 2 sentry subroutines.
-  ;; 2{credit}: +2 strength."
+  ;; 3{credit}: +3 strength."
   (letfn [(raccoon-fn
             [target]
             (runner? (:card (first target))))]
-    (auto-icebreaker {:implementation "2v3. Printed abilities only."
+    (auto-icebreaker {:implementation "2v4. Printed abilities only."
                       :abilities [(break-sub 1 2 "Sentry" (cond-breaker :runner-trash raccoon-fn))
                                   (break-sub 2 2 "Sentry")
-                                  (strength-pump 1 2 :end-of-encounter (cond-breaker :runner-trash raccoon-fn))
-                                  (strength-pump 2 2)]})))
+                                  (strength-pump 2 3 :end-of-encounter (cond-breaker :runner-trash raccoon-fn))
+                                  (strength-pump 3 3)]})))
 
-(defcard "Boiúna"
+(defcard "[Balancing Act]"
+  ;; When you breach HQ or R&d during a run, if you are tagged, you may access an additional card.
+  ;; Use this ability only once per turn.
+  ;;
+  ;; As an additional cost to trash this card using a basic action, Corp must trash 1 from HQ
+  {:implementation "2v4 - additional cost to trash not implemented"
+   ;;                                                       sue me
+   :events [{:event :breach-server
+             :optional
+             {:req (req (and (not (not-tagged-req state))
+                             run
+                             (or (= target :rd)
+                                 (= target :hq))))
+              :waiting-prompt true
+              :prompt (msg "Access an additional card from " (if (= target :rd) "R&D" "HQ") "?")
+              :once :per-turn
+              :yes-ability {:msg (msg "access 1 additional card from " (if (= target :rd)"R&D" "HQ"))
+                            :effect (effect (access-bonus target 1))}}}]})
+
+;;(defcard "Boiúna"
   ;; Paid abilities on this program cost 1{c} less if you installed a connection this turn.
   ;;
   ;; Interface → 2{credit}: Break up to 2 code gate subroutines.
   ;; 2{credit}: +2 strength.
-  (letfn [(boinga-fn
-            [target]
-            (has-subtype? (:card (first target)) "Connection"))]
-    (auto-icebreaker {:implementation "2v3. Printed abilities only."
-                      :abilities [(break-sub 1 2 "Code Gate" (cond-breaker :runner-install boinga-fn))
-                                  (break-sub 2 2 "Code Gate")
-                                  (strength-pump 1 2 :end-of-encounter (cond-breaker :runner-install boinga-fn))
-                                  (strength-pump 2 2)]})))
+;;  (letfn [(boinga-fn
+;;            [target]
+;;            (has-subtype? (:card (first target)) "Connection"))]
+;;    (auto-icebreaker {:implementation "2v3. Printed abilities only."
+;;                      :abilities [(break-sub 1 2 "Code Gate"
+;;                                      (cond-breaker :runner-install boinga-fn))
+;;                                  (break-sub 2 2 "Code Gate")
+;;                                  (strength-pump 1 2 :end-of-encounter (cond-breaker :runner-install boinga-fn))
+;;                                  (strength-pump 2 2)]})))
 
-(defcard "Friend of a Friend"
-  ;;{click}, {trash}: Gain 7{credit}. Use this ability only if you are tagged.
-  ;; Threat 4 — {trash}: Install 1 connection resource from your heap.
-  ;; Use this ability only during your turn.
-  {:implementation "2v3. Runner turn req not enforced."
-   :abilities [{:label "Gain 7 [Credits]"
-                :msg "gain 7 [Credits]"
+(defcard "[Friend of a Friend]"
+  ;;{click}, {trash}: Gain 5{credit} and remove 1 tag.
+  ;;{click}, {trash}: Gain 9{credit} and   take 1 tag.
+  {:implementation "2v4"
+   :abilities [{:label "Gain 5 [Credits], remove tag"
+                :msg "gain 5 [Credits]"
                 :cost [:click 1 :trash-can]
                 :async true
-                :req (req (pos? (count-tags state)))
-                :effect (effect (gain-credits eid 7))}
-               {:label "Install a connection from your heap"
-                :prompt "Choose a Connection"
-                :cost [:trash-can]
-                :choices (req (cancellable (filter #(and
-                                                      (has-subtype? % "Connection")
-                                                      (can-pay? state side (assoc eid :source card :source-type :runner-install) (get-card state %) nil [:credit (install-cost state side %)]))
-                                                   (:discard runner)) :sorted))
-                :msg (msg "Install " (:title target) " from their heap")
-                :req (req (threat-level 4 state))
+                :effect (req (wait-for (gain-credits state side (make-eid state eid) 5)
+                                       (lose-tags state :runner eid 1)))}
+
+               {:label "Gain 9 [Credits] and a tag"
+                :msg "gain 9 [Credits]"
+                :cost [:click 1 :trash-can]
                 :async true
-                :effect (effect (runner-install (assoc eid :source card :source-type :runner-install) target nil))}]})
+                :effect (req (wait-for (gain-credits state side (make-eid state eid) 9)
+                                       (gain-tags state :runner eid 1)))}]})
 
 ;; CRIMINAL CARDS
 
@@ -441,7 +546,7 @@
   ;; Derez a piece of ice protecting any server, then run that server.
   ;;When that run ends, the Corp may rez that ice, ignoring all costs.
   {:makes-run true
-   :implementation "2v3"
+   :implementation "2v4"
    :on-play
    {:msg (msg "derez " (:title target))
     :choices {:card #(and (ice? %)
@@ -463,65 +568,85 @@
                     (make-run eid (second (get-zone target)) card)))}})
 
 (defcard "[Rule of Three]"
-  ;; When your turn ends, if you made a successful run on HQ, R&D and Archives this turn, you may
-  ;;   gain 3c. If you do, add this card to your score area as an agenda worth 0 points with
-  ;;   "if you have 3 copies of {Rule of Three}" in your score area, you win the game."
-  {:event :runner-turn-ends
-   :implementation "2v3. Winning game is manual."
-   :optional {:prompt (msg "Gain 3[Credits] and add " (:title card) " to your score area?")
-              :yes-ability {:req (req (and
-                                        (installed card)
-                                        (some #{:hq} (:successful-run runner-reg))
-                                        (some #{:rd} (:successful-run runner-reg))
-                                        (some #{:archives} (:successful-run runner-reg))))
-                            :msg (msg "gain 3[Credits] and add itself to the score area as an agenda worth 0 agenda points")
-                            :async true
-                            :effect (req (wait-for (gain-credits state :runner 3)
-                                                   (as-agenda state :runner card 0)
-                                                   (effect-completed state side eid)))}
-              :no-ability {:msg "declines to use ."}}})
+  ;; When your turn ends, if you made a successful run on HQ, R&D and Archives this turn,
+  ;; add this hardware to your score area as an agenda worth 0 points with
+  ;;   "if you have 3 copies of {Rule of Three} in your score area, you win the game"
+  ;; then, you may install a copy of this card from your grip or heap.
+  {:implementation "2v4. Winning game is manual."
+   :events [{:event :runner-turn-ends
+             :req (req (and
+                         (installed? card)
+                         (some #{:hq} (:successful-run runner-reg))
+                         (some #{:rd} (:successful-run runner-reg))
+                         (some #{:archives} (:successful-run runner-reg))))
+             :msg (msg "and add itself to the score area as an agenda worth 0 agenda points")
+             :async true
+             :effect (req (as-agenda state :runner card 0)
+                          (continue-ability
+                            state side
+                            {:prompt "Install another copy of R03?"
+                             :show-discard true
+                             :choices {:card #(and (= (:title card) (:title %))
+                                                   (or (in-discard? %)
+                                                       (in-hand? %)))}
+                             :async true
+                             :effect (req (runner-install state side eid target nil))}
+                            card nil))}]})
 
-(defcard "Wipe Down"
-  ;; Resolve 1 of the following:
-  ;;  remove up to 2 tags
-  ;;  Draw 3 cards. Add 1 card from the grip to the top or bottom of the stack.
-  {:implementation "2v3 - you can choose to remove 0 tags if you want"
-   :on-play {:prompt "Choose one"
-             :req (req (or (pos? (count (:deck runner)))
-                           (pos? (count-tags state))))
-             :choices (req [(when (not= 0 (count-tags state) "Remove up to 2 tags")) "Draw 3 cards"])
-             :effect (effect (continue-ability
-                               (if (= target "Remove up to 2 tags")
-                                 {:prompt "Remove how many tags?"
-                                  :choices (req [0 1 (when (not= 1 (count-tags state)) 2)])
-                                  :msg (msg "remove " target " tags.")
-                                  :async true
-                                  :effect (effect (lose-tags eid target))}
-                                 {:msg "draw 3 cards"
-                                  :async true
-                                  :effect (req (wait-for (draw state side (make-eid state eid) 3)
-                                                         (continue-ability
-                                                           state side
-                                                           {:prompt "select a card to return"
-                                                            :choices {:card #(and (in-hand? %)
-                                                                                  (runner? %))
-                                                                      :all true}
-                                                            :async true
-                                                            :effect (req (let [chosen-card target]
-                                                                           (continue-ability
-                                                                             state side
-                                                                             {:prompt "Choose one"
-                                                                              :choices ["Top of Stack" "Bottom of stack"]
-                                                                              :async true
-                                                                              :effect (req (if (= target "Top of Stack")
-                                                                                             (do (move state :runner chosen-card :deck {:front true})
-                                                                                                 (system-msg state side "places a card on the top of the stack"))
-                                                                                             (do (move state :runner chosen-card :deck)
-                                                                                                 (system-msg state side "places a card on the bottom of the stack")))
-                                                                                           (effect-completed state side eid))}
-                                                                             card nil)))}
-                                                           card nil)))})
-                               card nil))}})
+(defcard "Meeting of Minds"
+  ;; Search your stack for a connection resource and add it to your grip
+  {:on-play
+   {:prompt "Choose a Connection"
+    :implementation "2v4"
+    :choices (req (cancellable (filter #(has-subtype? % "Connection") (:deck runner)) :sorted))
+    :msg (msg "add " (:title target) " from the stack to the grip and shuffle the stack")
+    :async true
+    :effect (effect (trigger-event :searched-stack nil)
+                    (move target :hand)
+                    (shuffle! :deck)
+                    (effect-completed eid))}})
+
+;; (defcard "Wipe Down"
+;;   ;; Resolve 1 of the following:
+;;   ;;  remove up to 2 tags
+;;   ;;  Draw 3 cards. Add 1 card from the grip to the top or bottom of the stack.
+;;   {:implementation "2v3 - you can choose to remove 0 tags if you want"
+;;    :on-play {:prompt "Choose one"
+;;              :req (req (or (pos? (count (:deck runner)))
+;;                            (pos? (count-tags state))))
+;;              :choices (req [(when (not= 0 (count-tags state) "Remove up to 2 tags")) "Draw 3 cards"])
+;;              :effect (effect (continue-ability
+;;                                (if (= target "Remove up to 2 tags")
+;;                                  {:prompt "Remove how many tags?"
+;;                                   :choices (req [0 1 (when (not= 1 (count-tags state)) 2)])
+;;                                   :msg (msg "remove " target " tags.")
+;;                                   :async true
+;;                                   :effect (effect (lose-tags eid target))}
+;;                                  {:msg "draw 3 cards"
+;;                                   :async true
+;;                                   :effect (req (wait-for (draw state side (make-eid state eid) 3)
+;;                                                          (continue-ability
+;;                                                            state side
+;;                                                            {:prompt "select a card to return"
+;;                                                             :choices {:card #(and (in-hand? %)
+;;                                                                                   (runner? %))
+;;                                                                       :all true}
+;;                                                             :async true
+;;                                                             :effect (req (let [chosen-card target]
+;;                                                                            (continue-ability
+;;                                                                              state side
+;;                                                                              {:prompt "Choose one"
+;;                                                                               :choices ["Top of Stack" "Bottom of stack"]
+;;                                                                               :async true
+;;                                                                               :effect (req (if (= target "Top of Stack")
+;;                                                                                              (do (move state :runner chosen-card :deck {:front true})
+;;                                                                                                  (system-msg state side "places a card on the top of the stack"))
+;;                                                                                              (do (move state :runner chosen-card :deck)
+;;                                                                                                  (system-msg state side "places a card on the bottom of the stack")))
+;;                                                                                            (effect-completed state side eid))}
+;;                                                                              card nil)))}
+;;                                                            card nil)))})
+;;                                card nil))}})
 
 (defcard "Alarm Clock"
   ;; When your turn begins, you may run HQ
@@ -569,18 +694,18 @@
                                                          :cause-card card}))}]})
 
 (defcard "Parrots"
-  ;;When you install this program, load 3 power counters onto it. When it is empty, trash it.
-  ;; Whenever you encounter an ice with strength 2 or less,
+  ;;When you install this program, load 2 power counters onto it. When it is empty, trash it.
+  ;; Whenever you encounter an ice with strength 3 or less,
   ;; you may spend 1 hosted power counter to bypass it. Use this ability only once per turn.
-  ;; Threat 5 -- Whenever you encounter an ice, you may trash this program to bypass it.
-  {:implementation "2v3 - abilities are named (but have the same timing)"
-   :data {:counter {:power 3}}
+  ;; Threat 4 -- Whenever you encounter an ice, you may trash this program to bypass it.
+  {:implementation "2v4 - abilities are named (but have the same timing)"
+   :data {:counter {:power 2}}
    :events [(trash-on-empty :power)
             {:event :encounter-ice
              :interactive (req true)
              :ability-name "Parrots (Trash)"
              :optional {:prompt (msg "trash parrots to bypass?")
-                        :req (req (threat-level 5 state))
+                        :req (req (threat-level 4 state))
                         :yes-ability {:cost [:trash-can]
                                       :msg (msg "bypass " (:title current-ice))
                                       :effect (req (bypass-ice state))}}}
@@ -628,37 +753,68 @@
                                                 (effect-completed state side eid))}}})
 
 (defcard "Amelia Earhart"
-  ;; The first time each turn you may a successful run on a central server, place 1 credit on up to
-  ;; 2 installed job and/or connection resources.
-  {:implementation "2v3"
-   :events [{:event :successful-run
-             :req (req (and (is-central? (:server context))
-                            (first-event? state side :successful-run
-                                          (fn [targets]
-                                            (let [context (first targets)]
-                                              (is-central? (:server context)))))
-                            (pos? (count (filter #(and (or (has-subtype? % "Job")
-                                                           (has-subtype? % "Connection"))
-                                                       (resource? %))
-                                                 (all-installed state :runner))))))
-             :msg "place 1 [Credit] on up to 2 job or connection resources"
-             :async true
-             :effect (req (let [valid-targets (filter #(and (or (has-subtype? % "Job")
-                                                                (has-subtype? % "Connection"))
-                                                            (resource? %))
-                                                      (all-installed state :runner))
-                                max-targets (min 2 (count valid-targets))]
-                            (continue-ability
-                              state side
-                              {:choices {:card #(and (resource? %)
-                                                     (installed? %)
-                                                     (or (has-subtype? % "Job")
-                                                         (has-subtype? % "Connection")))
-                                         :max max-targets}
-                               :msg (msg "place a credit on " (str/join " and " (map :title targets)))
-                               :effect (req (doseq [c targets]
-                                              (add-counter state :runner c :credit 1)))}
-                              card nil)))}]})
+  ;; The first time each turn you access 3 or more cards from HQ or R&D during a run,
+  ;; place one power counter.
+  ;; When your turn begins, you may trash this card to force the Corp to lose 3{credit}
+  ;; for each hosted power counter
+  {:implementation "2v4 - condition is implemented as third card in a breach on HQ or RD during run"
+   :flags {:runner-phase-12 (req true)}
+   :events [{:event :pre-access-card
+             :once :per-turn
+             :effect (effect (add-counter (get-card state card) :power 1))
+             :req (req
+                    (or (= :deck (first (:zone target)))
+                        (= :hand (first (:zone target))))
+                    run
+                    (= 3 (second targets)))}
+            {:event :runner-turn-begins
+             :optional
+             {:prompt (msg "Force the corp to lose "
+                           (* 3 (get-counters (get-card state card) :power))
+                           "[Credits]?")
+              :yes-ability
+              {:req (req (pos? (get-counters (get-card state card) :power)))
+               :msg (msg "trash itself and force the corp to lose "
+                         (* 3 (get-counters (get-card state card) :power)) "[Credits]")
+               :async true
+               :effect (req (let [tolose (* 3 (get-counters (get-card state card) :power))]
+                              (wait-for
+                                (trash state side card {:cause-card card})
+                                (lose-credits state :corp eid(min tolose (:credit corp))))))}}}]})
+
+  ;; get-in breach cards-accessed zone
+
+  ;; ;; The first time each turn you may a successful run on a central server, place 1 credit on up to
+  ;; ;; 2 installed job and/or connection resources.
+  ;; {:implementation "2v3"
+  ;;  :events [{:event :successful-run
+  ;;            :req (req (and (is-central? (:server context))
+  ;;                           (first-event? state side :successful-run
+  ;;                                         (fn [targets]
+  ;;                                           (let [context (first targets)]
+  ;;                                             (is-central? (:server context)))))
+  ;;                           (pos? (count (filter #(and (or (has-subtype? % "Job")
+  ;;                                                          (has-subtype? % "Connection"))
+  ;;                                                      (resource? %))
+  ;;                                                (all-installed state :runner))))))
+  ;;            :msg "place 1 [Credit] on up to 2 job or connection resources"
+  ;;            :async true
+  ;;            :effect (req (let [valid-targets (filter #(and (or (has-subtype? % "Job")
+  ;;                                                               (has-subtype? % "Connection"))
+  ;;                                                           (resource? %))
+  ;;                                                     (all-installed state :runner))
+  ;;                               max-targets (min 2 (count valid-targets))]
+  ;;                           (continue-ability
+  ;;                             state side
+  ;;                             {:choices {:card #(and (resource? %)
+  ;;                                                    (installed? %)
+  ;;                                                    (or (has-subtype? % "Job")
+  ;;                                                        (has-subtype? % "Connection")))
+  ;;                                        :max max-targets}
+  ;;                              :msg (msg "place a credit on " (str/join " and " (map :title targets)))
+  ;;                              :effect (req (doseq [c targets]
+  ;;                                             (add-counter state :runner c :credit 1)))}
+  ;;                             card nil)))}]})
 
 (defcard "Mrs Rocinha"
   ;; When you install this resource, load 4 power counters onto it. When it is empty, trash it.

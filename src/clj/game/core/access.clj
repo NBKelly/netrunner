@@ -44,6 +44,8 @@
                          (no-trash-or-steal state))
                        (let [accessed-card (:access @state)]
                          (swap! state dissoc :access)
+                         ;; todo - insert access number into this somehow
+                         ;; means inserting an access number into access-end
                          (trigger-event-sync state side eid :post-access-card c accessed-card))))))
 
 ;;; Accessing rules
@@ -428,17 +430,15 @@
    (swap! state assoc :access card)
    ;; Reset counters for increasing costs of trash, steal, and access.
    (swap! state update :bonus dissoc :trash :steal-cost :access-cost)
-   (when (:breach @state)
-     (let [zone (or (#{:discard :deck :hand} (first (get-zone card)))
-                    (second (get-zone card)))]
-       (swap! state update-in [:breach :cards-accessed zone] (fnil inc 0))))
-   (when (:run @state)
-     (let [zone (or (#{:discard :deck :hand} (first (get-zone card)))
-                    (second (get-zone card)))]
-       (swap! state update-in [:run :cards-accessed zone] (fnil inc 0))))
-   ;; First trigger pre-access-card, then move to determining if we can trash or steal.
-   (wait-for (trigger-event-sync state side :pre-access-card card)
-             (access-pay state side eid card title args))))
+   (let [zone (or (#{:discard :deck :hand} (first (get-zone card)))
+                  (second (get-zone card)))]
+     (when (:breach @state)
+       (swap! state update-in [:breach :cards-accessed zone] (fnil inc 0)))
+     (when (:run @state)
+       (swap! state update-in [:run :cards-accessed zone] (fnil inc 0)))
+     ;; First trigger pre-access-card, then move to determining if we can trash or steal.
+     (wait-for (trigger-event-sync state side :pre-access-card card (get-in @state [:breach :cards-accessed zone]) (get-in @state [:run :cards-accessed zone]))
+               (access-pay state side eid card title args)))))
 
 (defn set-only-card-to-access
   [state _ card]
