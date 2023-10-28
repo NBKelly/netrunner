@@ -83,6 +83,67 @@
                                        card nil)
                      (effect-completed state side eid))))}))
 
+(defn return-to-top-or-bottom-of-either
+  "returns a set of cards to the top or bottom or either deck with an arbitrary controller"
+  ([player set-aside-cards] (return-to-top-or-bottom-of-either player set-aside-cards false))
+  ([player set-aside-cards reveal]
+   (return-to-top-or-bottom-of-either player set-aside-cards reveal 0 0))
+  ([player set-aside-cards reveal sent-top sent-bot]
+   (let [tp (:side (first set-aside-cards))
+         td (if (= tp :corp) "R&D" "the Stack")]
+     {:prompt (msg "Choose a card to place on the top or bottom of " td)
+      :req (req (not (zero? (count set-aside-cards))))
+      :player player
+      :choices (req (sort-by :title set-aside-cards)) ;; they may not be in a public zone
+      :not-distinct true
+      :async true
+      :waiting-prompt "opponent to manipulate cards"
+      :effect (req (let [chosen-card target
+                         ;; can't hurt - this is a fallback if the cards are non-homo
+                         ;; sides sides for some reason
+                         tp (keyword (decapitalize (:side chosen-card)))
+                         td (if (= tp :corp) "R&D" "the Stack")]
+                     (system-msg state side tp)
+                     (continue-ability
+                       state side
+                       {:choices [(str "Top of " td) (str "Bottom of " td)]
+                        :player player
+                        :async true
+                        :prompt (msg "place " (:title chosen-card) " where?")
+                        :msg (msg "place " (if reveal (:title chosen-card) "a card") " on the "
+                                  (decapitalize target))
+                        :effect (req (move state tp chosen-card :deck
+                                           {:front (= target (str "Top of " td))})
+                                     (let [rem (seq (filter #(not (same-card? chosen-card %))
+                                                            set-aside-cards))]
+                                       (let [sent-bot (if (= target (str "Bottom of " td))
+                                                        (inc sent-bot) sent-bot)
+                                             sent-top (if (= target (str "Top of " td))
+                                                        (inc sent-top) sent-top)]
+                                       (if-not (empty? rem)
+                                         (continue-ability
+                                           state side
+                                           (return-to-top-or-bottom-of-either
+                                             player rem reveal sent-top sent-bot)
+                                           card nil)
+                                         ;; todo - if reveal, print the top/bottom in the log
+                                         (do
+                                           (let [tpl (tp @state)]
+                                             (when (and reveal (not (zero? sent-top)))
+                                               (system-msg
+                                                 state side
+                                                 (str "the top cards of " td " are (top to bottom): "
+                                                      (str/join ", "
+                                                                (map :title (take sent-top (:deck tpl)))))))
+                                             (when (and reveal (not (zero? sent-bot)))
+                                               (system-msg
+                                                 state side
+                                                 (str "the bottom cards of " td " are (top to bottom): "
+                                                      (str/join ", "
+                                                                (map :title (reverse (take sent-bot (reverse (:deck tpl))))))))))
+                                           (effect-completed state player eid))))))}
+                       card nil)))})))
+
 (defn return-to-top-or-bottom
   "returns a set of cards to the top or the bottom of the deck"
   ([set-aside-cards] (return-to-top-or-bottom set-aside-cards false))
@@ -100,7 +161,7 @@
                      {:choices ["top of R&D" "bottom of R&D"]
                       :prompt (msg "place " (:title chosen-card) " where?")
                       :msg (msg "place " (if reveal (:title target) "a card") " on the " target)
-                      :effect (req (move state :corp chosen-card :deck {:front (= target "top of R&D")})
+                      :effect (req (move state (:side target) chosen-card :deck {:front (= target "top of R&D")})
                                    (let [rem (seq (filter #(not (same-card? chosen-card %))
                                                           set-aside-cards))]
                                      (if (not (empty? rem))
@@ -1317,7 +1378,7 @@
   ;; When you rez this asset, load 3 power counters onto it. When it is empty, trash it.
   ;; [click], hosted power counter: Gain 2{credit} and draw 1 card. You may install a card from HQ."
   {:on-rez {:effect (effect (add-counter card :power 3))}
-   :implementation "2v3"
+   :implementation "2v4"
    :abilities [{:cost [:click 1 :power 1]
                 :msg "gain 1 [Credits] and draw 1 card"
                 :async true
@@ -1363,7 +1424,7 @@
                  :msg (msg "derez " (:title target))
                  :effect (effect (derez target))}]
       {:derezzed-events [corp-rez-toast]
-       :implementation "2v3"
+       :implementation "2v4"
        :events [{:event :corp-turn-begins
                  :async true
                  :effect (req (wait-for (resolve-ability state side install card nil)
@@ -1374,7 +1435,7 @@
   ;; {sub} Trash an installed resource.
   ;; {sub} If there are no installed resources, trash an installed piece of hardware.
   ;; {sub} If there are no installed pieces of hardware, trash an installed program.
-  {:implementation "2v3 - breaking restriction not implemented"
+  {:implementation "2v4 - breaking restriction not implemented"
    :subroutines [trash-resource-sub
                  (assoc trash-hardware-sub :req (req (not (some #(resource? %) (all-installed state :runner)))))
                  (assoc trash-program-sub :req (req (not (some #(hardware? %) (all-installed state :runner)))))]})
@@ -1480,7 +1541,7 @@
                          card nil))})]
     {:on-play
      {:req (req (last-turn? state :runner :stole-agenda))
-      :implementation "2v3"
+      :implementation "2v4. It's implemented exactly as written."
       :prompt "Choose a card to derez"
       :choices {:card #(and (installed? %)
                             (rezzed? %))}
@@ -1518,7 +1579,7 @@
   ;; As an additional cost to play this operation, spend {click}.
   ;; Draw 2 cards, gain 4{credit} and add 1 card from Archives to HQ."
   {:on-play {:msg "gain 4 [Credits] and draw 2 cards"
-             :implementation "2v3"
+             :implementation "2v4"
              :async true
              :effect (req (wait-for (gain-credits state side 4)
                                     (wait-for (draw state side (make-eid state eid) 2)
@@ -1582,22 +1643,32 @@
                                        card nil)))}})
 
 (defcard "[Puppet State]"
-  ;; The first time each turn the Runner passes a rezzed ice, you may pay 2{credit}.
+  ;; The first time each turn the Runner passes a rezzed ice, you may pay 2{credit}
+  ;; or trash a card from HQ
   ;; If you do, the Runner encounters that ice again."
-  {:implementation "2v3. This is a forced encounter."
+  {:implementation "2v4. This is a forced encounter."
    :events [{:event :pass-ice
              :req (req (and (rezzed? (:ice context))
-                            (system-msg state side "Rezzed")
                             (first-event? state side :pass-ice
                                           (fn [targets]
                                             (let [context (first targets)]
                                               (rezzed? (:ice context)))))))
-             :prompt (msg "pay 2 [Credits] to make the runner encounter " (:title (:ice context)) " again?")
-             :choices (req [(when (can-pay? state :corp (assoc eid :source card :source-type :ability) card nil [:credit 2]) "Pay 2 [Credit]") "No thanks"])
+             :prompt (msg "Make the runner encounter " (:title (:ice context)) " again?")
+             :choices (req [(when (can-pay? state :corp (assoc eid :source card :source-type :ability) card nil [:credit 2]) "Pay 2 [Credit]")
+                            (when (can-pay? state :corp (assoc eid :source card :source-type :ability) card nil [:trash-from-hand 1]) "Trash a card from HQ")
+                            "No thanks"])
              :effect (req (if (= target "No thanks")
                             (effect-completed state side eid)
-                            (wait-for (pay state :corp (make-eid state eid) card :credit 2)
-                                      (force-ice-encounter state side eid current-ice))))}]})
+                            (let [enc-ice current-ice]
+                              (continue-ability
+                                state side
+                                (assoc {:msg (msg "make the runner encounter " (:title enc-ice) " again")
+                                        :async true
+                                        :effect (req (force-ice-encounter state side eid enc-ice))}
+                                       :cost (if (= target "Pay 2 [Credit]")
+                                               [:credit 2]
+                                               [:trash-from-hand 1]))
+                                card nil))))}]})
 
 (defcard "[Carlos Izquierdo]"
   ;; You may advance this asset.
@@ -1699,7 +1770,8 @@
   {:subroutines [(do-net-damage 3)
                  (give-tags 2)
                  trash-resource-or-hardware-sub]
-   :events [{:event :pass-ice
+   :implementation "2v4"
+   :events [{:event :end-of-encounter
              :req (req (and (= :this-turn (:rezzed card))
                             (same-card? (:ice context) card)))
              :msg "force the runner to choose a subroutine to resolve"
@@ -1712,11 +1784,11 @@
                                                (resolve-subroutine! state side eid card (assoc sub :external-trigger true))))}
                                card nil))}]})
 
-(defcard "Protect the Family"
+  (defcard "Protect the Family"
   ;; Play only if the Runner made a successful run last turn.
   ;; After this operation is resolved, end your action phase.
   ;; The Runner adds 3 cards from their grip to the bottom of the stack in any order.
-  ;; Threat 4 — The cards are randomly chosen from the grip instead."
+  ;; Threat 3 — Reveal the grip, you may add 3 cards to the top or bottom of the stack in any order
   (letfn [(cbi-final [chosen original]
             {:player :runner
              :prompt (str "The bottom cards of the Stack will be " (str/join  ", " (map :title chosen)) " (last card is on the bottom).")
@@ -1745,42 +1817,72 @@
                          card nil))})
           (cbi-abi [from]
             (when (pos? (count from))
-              (cbi-choice from '() (count from) from)))]
-    {:async true
-     :implementation "2v3"
-     ;; this is a valid condition for taking 3 at random
-     :effect (req (if (or (<= (count (:hand runner)) 3)
-                          (threat-level 4 state))
-                    (let [chosen-cards (take 3 (shuffle (:hand runner)))]
-                      (continue-ability
-                        state side
-                        (cbi-abi chosen-cards)
-                        card nil))
-                    ;;runner chooses 3 of the cards
-                    (continue-ability
-                      state side
-                      {:prompt (msg "choose 3 cards to add to the bottom of the Stack")
-                       :player :runner
-                       :choices {:card #(and (runner? %)
-                                             (in-hand? %))
-                                 :max 3
-                                 :min 3}
-                       :async true
-                       :effect (req (continue-ability
-                                      state side
-                                      (cbi-abi targets)
-                                      card nil))}
-                      card nil)))}))
+              (cbi-choice from '() (count from) from)))
+          (choose-n [n chosen remaining]
+            (if (or (zero? n)
+                    (zero? (count remaining)))
+              ;; corp can resolve now
+              (return-to-top-or-bottom-of-either :corp chosen true)
+              (if (>= n (count remaining))
+                (return-to-top-or-bottom-of-either :corp remaining true)
+                {:prompt (msg "Choose a runner card to place in the stack (" n " remaining)")
+                 :choices (req (sort-by :title remaining))
+                 :not-distinct true
+                 :async true
+                 :effect (req
+                           (continue-ability
+                             state side
+                             (choose-n (dec n) (concat chosen [target])
+                                       (remove-once #(= target %) remaining))
+                             card nil))})))]
+    ;; return-to-top-or-bottom-of-either corp cards true
+    {:on-play
+     {:async true
+      :implementation "2v4"
+      :req (req (and (pos? (count (:hand runner)))
+                     (last-turn? state :runner :successful-run)))
+      :effect (req (if (threat-level 3 state)
+                     ;; reveal the cards to the corp and do whatever
+                     (continue-ability
+                       state :corp
+                       {:label "Reveal the grip"
+                        :msg (msg "reveal "
+                                  (enumerate-str (map :title (:hand runner)))
+                                  " from the grip")
+                        :async true
+                        :effect (req (wait-for
+                                       (reveal state side (:hand runner))
+                                       (continue-ability
+                                         state side
+                                         (choose-n (min 3 (count (:hand runner))) [] (:hand runner))
+                                         card nil)))}
+                       card nil)
+                     ;;runner chooses 3 of the cards
+                     (let [maxcards (min 3 (count (:hand runner)))]
+                       (continue-ability
+                         state side
+                         {:prompt (msg "choose 3 cards to add to the bottom of the Stack")
+                          :player :runner
+                          :choices {:card #(and (runner? %)
+                                                (in-hand? %))
+                                    :max maxcards
+                                    :min maxcards}
+                          :async true
+                          :effect (req (continue-ability
+                                         state side
+                                         (cbi-abi targets)
+                                         card nil))}
+                         card nil))))}}))
 
 (defcard "[Turnover]"
   ;; When your turn begins, choose 1 to resolve:
   ;; - Turn 1 faceup card in Archives facedown to gain 1{credit}.
   ;; - Turn 1 facedown card in Archives faceup to place 1 advancement counter on a installed card."
-  {:implementation "2v3"
+  {:implementation "2v4"
    :events [{:event :corp-turn-begins
              :prompt "Choose one"
              :interactive (req true)
-             :choices (req [(when (some #(:seen %) (:discard corp)) "Turn a card facedown (gain 1)")
+             :choices (req [(when (seq (:hand corp)) "Trash from HQ (gain 1 draw 2)")
                             (when (some #(not (:seen %)) (:discard corp))
                               "Turn a card faceup (place 1 advancement)")
                             "Done"])
@@ -1789,16 +1891,13 @@
                             (effect-completed state side eid)
                             (continue-ability
                               state side
-                              (if (= target "Turn a card facedown (gain 1)")
+                              (if (= target "Trash from HQ (gain 1 draw 2)")
                                 {:prompt "Turn a card in Archives facedown"
-                                 :choices {:card #(and (in-discard? %)
-                                                       (corp? %)
-                                                       (:seen %))}
-                                 :msg (msg "turn " (:title target)
-                                           " in archives facedown to gain 1 [Credits]")
-                                 :show-discard true
-                                 :effect (req (update! state side (assoc-in target [:seen] false))
-                                              (gain-credits state side eid 1))}
+                                 :cost [:trash-from-hand 1]
+                                 :msg "gain 1 [Credits] and draw 2"
+                                 :effect (req (wait-for (gain-credits state side
+                                                                      (make-eid state eid) 1)
+                                                        (draw state side eid 2)))}
                                 {:prompt "Turn a card in Archives faceup"
                                  :choices {:card #(and (in-discard? %)
                                                        (corp? %)
