@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [game.cards.ice :refer [do-psi end-the-run end-the-run-unless-runner gain-credits-sub runner-loses-credits runner-loses-click runner-pays runner-trash-installed-sub trash-resource-sub trash-hardware-sub trash-program-sub give-tags gain-variable-subs reset-variable-subs]] ;;reffing the other card file might not be ideal
-   [game.core.access :refer [access-bonus breach-server set-only-card-to-access steal-cost-bonus]]
+   [game.core.access :refer [access-bonus access-card breach-server set-only-card-to-access steal-cost-bonus]]
    [game.core.actions :refer [score]]
    [game.core.agendas :refer [update-all-agenda-points]]
    [game.core.board :refer [all-active-installed all-installed get-all-cards get-remotes get-remote-names card->server  server->zone server-list]]
@@ -11,7 +11,7 @@
    [game.core.checkpoint :refer [fake-checkpoint]]
    [game.core.cost-fns :refer [trash-cost install-cost play-cost rez-cost]]
    [game.core.damage :refer [damage damage-prevent]]
-   [game.core.def-helpers :refer [breach-access-bonus corp-recur corp-rez-toast defcard do-brain-damage do-net-damage trash-on-empty get-x-fn]]
+   [game.core.def-helpers :refer [breach-access-bonus corp-recur corp-rez-toast defcard do-brain-damage do-net-damage reorder-choice trash-on-empty get-x-fn]]
    [game.core.diffs :refer [playable?]]
    [game.core.drawing :refer [draw]]
    [game.core.eid :refer [effect-completed make-eid]]
@@ -820,7 +820,7 @@
   ;; When you install this resource, load 4 power counters onto it. When it is empty, trash it.
   ;; The first time each turn you take an action on an installed resource, remove 1 hosted power
   ;;  counter and gain [click]
-  {:implementation "2v3. I still don't understand what this does."
+  {:implementation "2v4. I still don't understand what this does."
    :data {:counter {:power 4}}
    :events [(trash-on-empty :power)
             {:event :runner-spent-click
@@ -910,8 +910,8 @@
 (defcard "[Free Wall]"
   ;; Run R&D. If successful, draw 1 card and when you breach R&D,
   ;;  access 1 additional card and gain 2{credit}.
-  ;;  When that run ends, if it was successful, you may place this card on top of the stack."
-  {:implementation "2v3"
+  ;;  When that run ends, if it was successful, you may place this card on bottom of the stack."
+  {:implementation "2v4"
    :makes-run true
    :on-play {:req (req rd-runnable)
              :async true
@@ -933,83 +933,153 @@
                             (continue-ability
                               state side
                               {:optional
-                               {:prompt "Add Free Wall to the top of the stack?"
-                                :yes-ability {:msg "add itself to the top of the stack"
-                                              :effect (req (move state :runner card :deck {:front true})
+                               {:prompt "Add Free Wall to the bottom of the stack?"
+                                :yes-ability {:msg "add itself to the bottom of the stack"
+                                              :effect (req (move state :runner card :deck {:front false})
                                                            (effect-completed state side eid))}
-                                :no-ability {:msg "decline to add itself to the top of the stack"}}}
+                                :no-ability {:msg "decline to add itself to the bottom of the stack"}}}
                               card nil)))}]})
 
-(defcard "[Repurposer]"
-  ;;You cannot use this hardware while breaching R&D or accessing a card in R&D.
-  ;;  Access → Lose {click}: The Corp shuffles the non-agenda card you are accessing into R&D.
-  ;;  Threat 5 → Whenever you access a non-agenda card, you may trash this hardware.
-  ;;             If you do, the Corp shuffles that card into R&D."
-  (letfn [(resolve-shuffle [state side target eid]
-            (move state :corp target :deck)
-            (shuffle! state :corp :deck)
-            (effect-completed state side eid))]
-  {:implementation "2v3"
-   :interactions
-   {:access-ability
-    {:label "Shuffle a card into R&D"
-     :req (req (and (not (in-deck? target))
-                    (or (pos? (:click runner))
-                        (threat-level 5 state))
-                    (not= (:breach-server (:breach state)) :rd)))
-     :async true
-     :effect (req
-               (let [shuffle-card target]
-                 (continue-ability
-                   state side
-                   {:prompt "Pay how?"
-                    :choices (req [(when (pos? (:click runner))
-                                     "Lose Click")
-                                   (when (threat-level 5 state)
-                                     (str "Trash " (:title card)))])
-                    :async true
-                    :effect (req (if (= target "Lose Click")
-                                   (wait-for
-                                     (pay state :runner (make-eid state eid)
-                                          card [:lose-click 1])
-                                     (system-msg
-                                       state side
-                                       (str (:msg async-result) " to shuffle " (:title shuffle-card) "into R&D"))
-                                     (resolve-shuffle state side shuffle-card eid))
-                                   (wait-for
-                                     (trash state :runner (make-eid state eid)
-                                            card {:cause :runner-ability
-                                                  :cause-card card})
-                                     (system-msg
-                                       state side
-                                       (str "trashes " (:title card)
-                                            " to shuffle " (:title shuffle-card) " into R&D"))
-                                     (resolve-shuffle state side shuffle-card eid))))}
-                   card nil)))}}}))
+(defcard "[Indexer]"
+  ;; When you install, load 3 power counters. Trash empty.
+  ;; Click, power counter: Run R&D. If successful, instead of breaching, index the top 3.
+  ;; You may spend 1 hosted counter to access one of those cards.
+  (let [ability (successful-run-replace-breach
+                 {:target-server :rd
+                  :mandatory true
+                  :duration :end-of-run
+                  :ability
+                  {:async true
+                   :msg "rearrange the top 3 cards of R&D"
+                   :waiting-prompt true
+                   :effect (req (wait-for
+                                  (resolve-ability
+                                    state side
+                                    (let [from (take 3 (:deck corp))]
+                                      (when (pos? (count from))
+                                        (reorder-choice :corp :corp from '() (count from) from)))
+                                    card nil)
+                                  (if (and (installed? (get-card state card))
+                                           (pos? (get-counters (get-card state card) :power))
+                                           (pos? (count (take 3 (:deck corp)))))
+                                    (continue-ability
+                                      state :runner
+                                      {:prompt "Access a card (first is ontop)?"
+                                       :waiting-prompt true
+                                       :not-distinct true
+                                       :choices (req (concat (take 3 (:deck corp)) ["Done"]))
+                                       :async true
+                                       :msg (msg
+                                              (if (= target "Done")
+                                                "declines to access a card"
+                                                (let [card-titles (map :title (take 3 (:deck corp)))
+                                                      target-position
+                                                      (first (positions #{target}
+                                                                        (take 3 (:deck corp))))
+                                                      position (case target-position
+                                                                 0 "top "
+                                                                 1 "second "
+                                                                 2 "third "
+                                                                 "this-should-not-happen ")]
+                                                  (str "access the " position " card from R&D"))))
+                                       :effect (req (if (= target "Done")
+                                                      (effect-completed state side eid)
+                                                      (do
+                                                        (add-counter state side card :power -1)
+                                                        (access-card state side eid target))))}
+                                      card nil)
+                                    (effect-completed state side eid))))}})]
+    {:implementation "2v4"
+     :data {:counter {:power 3}}
+     :events [(trash-on-empty :power)]
+     :abilities [{:cost [:click 1 :power 1]
+                  :msg "make a run on R&D"
+                  :makes-run true
+                  :async true
+                  :effect (effect (register-events card [ability])
+                                  (make-run eid :rd card))}]}))
 
-(defcard "Sketchpad"
-  ;; Install only on a piece of ice.
-  ;;
-  ;; Host ice gains barrier, code gate, and sentry.
-  ;;
-  ;; Threat 4 — Lose {click}: Host this program on another piece of ice."
-  {:hosting {:card #(and (ice? %)
-                         (can-host? %))}
-   :implementation "2v3"
-   :abilities [{:label "Host on a piece of ice"
-                :prompt "Choose a piece of ice"
-                :cost [:lose-click 1]
-                :req (req (threat-level 4 state))
-                :choices {:card #(and (ice? %)
-                                      (installed? %)
-                                      (can-host? %))}
-                :msg (msg "host itself on " (card-str state target))
-                :effect (effect (host target card))}]
-   :on-install {:msg (msg "make " (card-str state (:host card))
-                          " gain Barrier, Code Gate and Sentry subtypes")}
-   :static-abilities [{:type :gain-subtype
-                       :req (req (same-card? target (:host card)))
-                       :value ["Barrier" "Code Gate" "Sentry"]}]})
+(defcard "[Powercache]"
+  ;; When installed, place 2 power counters.
+  ;; Hosted counter: gain 2 credits. Only during your turn.
+  {:implementation "2v4"
+   :abilities [{:cost [:power 1]
+                :req (req (= (:active-player @state) :runner))
+                :async true
+                :effect (effect (gain-credits eid 2))
+                :msg "gain 2 [Credits]"}]
+   :data {:counter {:power 2}}})
+
+;; (defcard "[Repurposer]"
+;;   ;;You cannot use this hardware while breaching R&D or accessing a card in R&D.
+;;   ;;  Access → Lose {click}: The Corp shuffles the non-agenda card you are accessing into R&D.
+;;   ;;  Threat 5 → Whenever you access a non-agenda card, you may trash this hardware.
+;;   ;;             If you do, the Corp shuffles that card into R&D."
+;;   (letfn [(resolve-shuffle [state side target eid]
+;;             (move state :corp target :deck)
+;;             (shuffle! state :corp :deck)
+;;             (effect-completed state side eid))]
+;;   {:implementation "2v3"
+;;    :interactions
+;;    {:access-ability
+;;     {:label "Shuffle a card into R&D"
+;;      :req (req (and (not (in-deck? target))
+;;                     (or (pos? (:click runner))
+;;                         (threat-level 5 state))
+;;                     (not= (:breach-server (:breach state)) :rd)))
+;;      :async true
+;;      :effect (req
+;;                (let [shuffle-card target]
+;;                  (continue-ability
+;;                    state side
+;;                    {:prompt "Pay how?"
+;;                     :choices (req [(when (pos? (:click runner))
+;;                                      "Lose Click")
+;;                                    (when (threat-level 5 state)
+;;                                      (str "Trash " (:title card)))])
+;;                     :async true
+;;                     :effect (req (if (= target "Lose Click")
+;;                                    (wait-for
+;;                                      (pay state :runner (make-eid state eid)
+;;                                           card [:lose-click 1])
+;;                                      (system-msg
+;;                                        state side
+;;                                        (str (:msg async-result) " to shuffle " (:title shuffle-card) "into R&D"))
+;;                                      (resolve-shuffle state side shuffle-card eid))
+;;                                    (wait-for
+;;                                      (trash state :runner (make-eid state eid)
+;;                                             card {:cause :runner-ability
+;;                                                   :cause-card card})
+;;                                      (system-msg
+;;                                        state side
+;;                                        (str "trashes " (:title card)
+;;                                             " to shuffle " (:title shuffle-card) " into R&D"))
+;;                                      (resolve-shuffle state side shuffle-card eid))))}
+;;                    card nil)))}}}))
+
+;; (defcard "Sketchpad"
+;;   ;; Install only on a piece of ice.
+;;   ;;
+;;   ;; Host ice gains barrier, code gate, and sentry.
+;;   ;;
+;;   ;; Threat 4 — Lose {click}: Host this program on another piece of ice."
+;;   {:hosting {:card #(and (ice? %)
+;;                          (can-host? %))}
+;;    :implementation "2v3"
+;;    :abilities [{:label "Host on a piece of ice"
+;;                 :prompt "Choose a piece of ice"
+;;                 :cost [:lose-click 1]
+;;                 :req (req (threat-level 4 state))
+;;                 :choices {:card #(and (ice? %)
+;;                                       (installed? %)
+;;                                       (can-host? %))}
+;;                 :msg (msg "host itself on " (card-str state target))
+;;                 :effect (effect (host target card))}]
+;;    :on-install {:msg (msg "make " (card-str state (:host card))
+;;                           " gain Barrier, Code Gate and Sentry subtypes")}
+;;    :static-abilities [{:type :gain-subtype
+;;                        :req (req (same-card? target (:host card)))
+;;                        :value ["Barrier" "Code Gate" "Sentry"]}]})
 
 (defcard "Pressure Spike"
   ;; Threat 4 — This program gains 2 strength.
@@ -1022,7 +1092,7 @@
                                 (strength-pump 2 1)]
                     :static-abilities [(breaker-strength-bonus (get-x-fn))]}))
 
-(defcard "Brownie"
+(defcard "Cherub"
   ;; When you install this program, search your stack, heap, or grip for 1 icebreaker, trojan,
   ;;   or virus program. If it is a trojan, install it on a piece of ice,
   ;;   otherwise, install it on this program."
@@ -1082,7 +1152,8 @@
   ;; Interface → 1{credit}: Break 1 code gate subroutine.
   ;; Interface → 2{credit}, hosted power counter: Break up to 3 barrier subroutines.
   ;; 1{credit}: +2 strength."
-  (auto-icebreaker {:abilities [(break-sub 1 1 "Code Gate")
+  (auto-icebreaker {:data {:counter {:power 1}}
+                    :abilities [(break-sub 1 1 "Code Gate")
                                 (break-sub [:power 1 :credit 2] 3 "Barrier")
                                 (strength-pump 1 2)]
                     :implementation "2v3"
@@ -1137,23 +1208,24 @@
   ;; The first time each turn you install a connection resource or remove a tag, gain 1{credit}.
   ;;
   ;; Threat 4 — When you install this resource, you may draw 2 cards."
-  {:implementation "2v3"
-   :on-install {:req (req (threat-level 4 state))
-                :msg "draw 2"
-                :async true
-                :effect (effect (draw eid 2))}
-   :events [{:event :runner-lose-tag
-             :msg "gain 1 [Credit]"
-             :req (req (first-event? state :runner :runner-lose-tag)
-                       (no-event? state :runner :runner-install #(has-subtype? (:card (first %)) "Connection")))
-             :async true
-             :effect (effect (gain-credits eid 1))}
-            {:event :runner-install
-             :req (req (no-event? state :runner :runner-lose-tag)
-                       (first-event? state :runner :runner-install #(has-subtype? (:card (first %)) "Connection")))
-             :msg "gain 1 [Credit]"
-             :async true
-             :effect (effect (gain-credits eid 1))}]})
+  (let [ab {:prompt "Choose one"
+            :waiting-prompt true
+            :event :runner-lose-tag
+            :player :runner
+            :choices ["Gain 1 [Credits]" "Draw 1 cards"]
+            :msg (msg (decapitalize target))
+            :async true
+            :interactive (req true)
+            :req (req (first-event? state :runner :runner-lose-tag))
+            :effect (req (if (= target "Gain 1 [Credits]")
+                           (gain-credits state :runner eid 1)
+                           (draw state :runner eid 1)))}]
+    {:implementation "2v4"
+     :on-install {:req (req (threat-level 4 state))
+                  :msg "draw 2"
+                  :async true
+                  :effect (effect (draw eid 2))}
+     :events [ab]}))
 
 (defcard "Thunderbolt Armaments"
   ;; Whenever you rez an AP or destroyer ice during a run,
