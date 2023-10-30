@@ -1459,15 +1459,15 @@
              :effect (req (if (= target "Done")
                             (effect-completed state side eid)
                             (do
+                              ;; note - this is a lingering ability and persists so long as the card is rezzed
+                              ;;  if the card is hushed, it will not derez, so the subtypes will stay!
                               (system-msg state side (str "uses " (:title card) " to make itself gain " target))
                               (register-lingering-effect
                                 state side card
                                 (let [ice card]
                                   {:type :gain-subtype
-                                   :duration :end-of-turn
                                    :req (req (same-card? ice target))
                                    :value target}))
-                              ;; feels spaghetti but it works
                               (continue-ability
                                 state side
                                 (curare-choice (remove #{target} options))
@@ -1661,6 +1661,7 @@
              :choices (req [(when (can-pay? state :corp (assoc eid :source card :source-type :ability) card nil [:credit 2]) "Pay 2 [Credit]")
                             (when (can-pay? state :corp (assoc eid :source card :source-type :ability) card nil [:trash-from-hand 1]) "Trash a card from HQ")
                             "No thanks"])
+             :async true
              :effect (req (if (= target "No thanks")
                             (effect-completed state side eid)
                             (let [enc-ice current-ice]
