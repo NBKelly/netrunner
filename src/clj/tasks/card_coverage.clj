@@ -92,6 +92,7 @@
            '[game.cards.events-test]
            '[game.cards.onr-events-test]
            '[game.cards.hardware-test]
+           '[game.cards.onr-hardware-test]
            '[game.cards.ice-test]
            '[game.cards.onr-ice-test]
            '[game.cards.identities-test]
@@ -114,6 +115,7 @@
                  "Event" '(game.cards.events-test)
                  "ONR-Event" '(game.cards.onr-events-test)
                  "Hardware" '(game.cards.hardware-test)
+                 "ONR-Hardware" '(game.cards.hardware-test)
                  "ICE" '(game.cards.ice-test)
                  "ONR-ICE" '(game.cards.onr-ice-test)
                  "Identity" '(game.cards.identities-test)

@@ -10,6 +10,7 @@
    [game.cards.events]
    [game.cards.onr-events]
    [game.cards.hardware]
+   [game.cards.onr-hardware]
    [game.cards.ice]
    [game.cards.onr-ice]
    [game.cards.identities]

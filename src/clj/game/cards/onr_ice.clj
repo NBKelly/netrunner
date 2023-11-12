@@ -71,3 +71,6 @@
   {:subroutines [(do-brain-damage 1)
                 (do-brain-damage 1)
                 end-the-run]})
+
+(defcard "ONR Quandary"
+  {:subroutines [end-the-run]})

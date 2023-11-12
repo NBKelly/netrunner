@@ -1,14 +1,18 @@
 these are all implemented with tests, unless otherwise noted.
 Leave a gap unless numbers are consecutive. This will make it easy to spot what's missing.
 
-TOTAL: 5 / 582+
+TOTAL: 7 / 582+
+TESTS: 4 / 584+
+008 + Code Corpse
 
-008 Code Corpse
+051 + Bodyweight [TM] Data Crèche
 
 123 Cyfermaster (trivial icebreaker - no test)
 
-148 Department of Truth Enhancement
+148 + Department of Truth Enhancement
 
-335 Networking
+335 + Networking
+
+395 Quandary (trivial ETR ice - no test)
 
 541 Twenty-Four-Hour Surviellance (unimplemented)
