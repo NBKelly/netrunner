@@ -5,6 +5,7 @@
    [clojure.java.io :as io]
    [game.cards.agendas]
    [game.cards.assets]
+   [game.cards.onr-assets]
    [game.cards.basic]
    [game.cards.events]
    [game.cards.hardware]

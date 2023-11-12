@@ -88,6 +88,7 @@
   (println "Loading all tests and cards")
   (require '[game.cards.agendas-test]
            '[game.cards.assets-test]
+           '[game.cards.onr-assets-test]
            '[game.cards.events-test]
            '[game.cards.hardware-test]
            '[game.cards.ice-test]
@@ -105,6 +106,7 @@
         only-total (some #{"--only-total"} args)
         nspaces {"Agenda" '(game.cards.agendas-test)
                  "Asset" '(game.cards.assets-test)
+                 "ONR-Asset" '(game.cards.onr-assets-test)
                  "Event" '(game.cards.events-test)
                  "Hardware" '(game.cards.hardware-test)
                  "ICE" '(game.cards.ice-test)
