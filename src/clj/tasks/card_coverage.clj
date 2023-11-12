@@ -90,8 +90,10 @@
            '[game.cards.assets-test]
            '[game.cards.onr-assets-test]
            '[game.cards.events-test]
+           '[game.cards.onr-events-test]
            '[game.cards.hardware-test]
            '[game.cards.ice-test]
+           '[game.cards.onr-ice-test]
            '[game.cards.identities-test]
            '[game.cards.operations-test]
            '[game.cards.programs-test]
@@ -108,8 +110,10 @@
                  "Asset" '(game.cards.assets-test)
                  "ONR-Asset" '(game.cards.onr-assets-test)
                  "Event" '(game.cards.events-test)
+                 "ONR-Event" '(game.cards.onr-events-test)
                  "Hardware" '(game.cards.hardware-test)
                  "ICE" '(game.cards.ice-test)
+                 "ONR-ICE" '(game.cards.onr-ice-test)
                  "Identity" '(game.cards.identities-test)
                  "Operation" '(game.cards.operations-test)
                  "Program" '(game.cards.programs-test)

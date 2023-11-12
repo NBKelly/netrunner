@@ -1,0 +1,9 @@
+these are all implemented with tests, unless otherwise noted.
+Leave a gap unless numbers are consecutive.
+TOTAL: 3 / 500+
+
+008 Code Corpse
+
+148 Department of Truth Enhancement
+
+335 Networking
