@@ -1,9 +1,14 @@
 these are all implemented with tests, unless otherwise noted.
-Leave a gap unless numbers are consecutive.
-TOTAL: 3 / 500+
+Leave a gap unless numbers are consecutive. This will make it easy to spot what's missing.
+
+TOTAL: 5 / 582+
 
 008 Code Corpse
+
+123 Cyfermaster (trivial icebreaker - no test)
 
 148 Department of Truth Enhancement
 
 335 Networking
+
+541 Twenty-Four-Hour Surviellance (unimplemented)

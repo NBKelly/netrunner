@@ -97,8 +97,10 @@
            '[game.cards.identities-test]
            '[game.cards.operations-test]
            '[game.cards.programs-test]
+           '[game.cards.onr-programs-test]
            '[game.cards.resources-test]
-           '[game.cards.upgrades-test])
+           '[game.cards.upgrades-test]
+           '[game.cards.onr-upgrades-test])
   (load-all-cards)
   (println "Loaded successfully")
   (let [only (some #{"--only"} args)
@@ -117,8 +119,10 @@
                  "Identity" '(game.cards.identities-test)
                  "Operation" '(game.cards.operations-test)
                  "Program" '(game.cards.programs-test)
+                 "ONR-Program" '(game.cards.onr-programs-test)
                  "Resource" '(game.cards.resources-test)
-                 "Upgrade" '(game.cards.upgrades-test)}
+                 "Upgrade" '(game.cards.upgrades-test)
+                 "ONR-Upgrade" '(game.cards.onr-upgrades-test)}
         filtered-nspaces (if (and only (not only-total))
                            (select-keys nspaces [card-type])
                            (into (sorted-map) nspaces))]
