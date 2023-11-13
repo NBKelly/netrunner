@@ -10,7 +10,11 @@
                                                             lose-credits]]
    [game.core.props :refer [add-counter add-icon add-prop remove-icon set-prop]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
+   [game.cards.assets :refer [campaign]]
    ))
+
+(defcard "ONR Braindance Campaign"
+  (campaign 12 2))
 
 (defcard "ONR Department of Truth Enhancement"
   {:abilities [{:cost [:click 1]

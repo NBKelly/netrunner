@@ -6,6 +6,30 @@
             [game.macros-test :refer :all]
             [clojure.test :refer :all]))
 
+(deftest onr-braindance-campaign
+  ;; Adonis Campaign
+  (do-game
+      (new-game {:corp {:hand ["ONR Braindance Campaign" "Hedge Fund"]}})
+      (play-from-hand state :corp "Hedge Fund")
+      (play-from-hand state :corp "ONR Braindance Campaign" "New remote")
+      (let [ac (get-content state :remote1 0)]
+        (changes-val-macro
+          -6 (:credit (get-corp))
+          "spent 6 to rez braindance"
+          (rez state :corp ac))
+        (is (= 12 (get-counters (refresh ac) :credit)) "12 counters on Braindance")
+        (take-credits state :corp)
+        (dotimes [_ 6]
+          (let [credits (:credit (get-corp))
+                counters (get-counters (refresh ac) :credit)]
+            (take-credits state :runner)
+            (is (= (+ credits 2) (:credit (get-corp))) "Gain 2 from Adonis")
+            (is (= (- counters 2) (get-counters (refresh ac) :credit)) "-2 counters on braindance"))
+          (take-credits state :corp))
+        (is (nil? (refresh ac)) "Braindance Campaign should be trashed")
+        (is (= "ONR Braindance Campaign" (->> (get-corp) :discard second :title))))))
+
+
 (deftest onr-department-of-truth-enhancement
   (do-game
     (new-game {:corp {:hand ["ONR Department of Truth Enhancement"]}})
