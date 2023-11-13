@@ -4,6 +4,7 @@ Leave a gap unless numbers are consecutive. This will make it easy to spot what'
 Features:
   Done:
     traces (not complete yet though)
+    Hidden Resources (some functions may leak info - figure these out later, and avoid using :title card if it can be helped)
   Todo:
     forgo actions
     (x card) tokens
@@ -17,8 +18,8 @@ Keys:
   ^ no test (for some reason)
   ? not implemented (deliberately, for some reason)
 
-TOTAL: 12 / 584+
-TESTS: 8 / 584+
+TOTAL: 14 / 584+
+TESTS: 10 / 584+
 
 008 + Code Corpse
 
@@ -43,5 +44,7 @@ TESTS: 8 / 584+
 395 ^ Quandary (trivial ETR ice - no test)
 
 434 + Runner Sensei
+
+507 + Swiss Bank Account
 
 541 ? Twenty-Four-Hour Surviellance (unimplemented)

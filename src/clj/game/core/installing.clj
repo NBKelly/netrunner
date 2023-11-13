@@ -333,16 +333,18 @@
 
 (defn- runner-install-message
   "Prints the correct msg for the card install"
-  [state side card-title cost-str
+  [state side card cost-str
    {:keys [no-cost host-card facedown custom-message]}]
-  (if facedown
-    (system-msg state side "installs a card facedown")
-    (if custom-message
-      (system-msg state side (custom-message cost-str))
-      (system-msg state side
-                  (str (build-spend-msg cost-str "install") card-title
-                       (when host-card (str " on " (card-str state host-card)))
-                       (when no-cost " at no cost"))))))
+  (let [card-title (if (has-subtype? card "Hidden") "a hidden resource" (:title card))]
+    (if facedown
+      (system-msg state side "installs a card facedown")
+      (if custom-message
+        (system-msg state side (custom-message cost-str))
+        (system-msg state side
+                    (str (build-spend-msg cost-str "install")
+                         card-title
+                         (when host-card (str " on " (card-str state host-card)))
+                         (when no-cost " at no cost")))))))
 
 (defn runner-install-continue
   [state side eid card
@@ -361,7 +363,7 @@
                                                   :init-data true
                                                   :no-mu no-mu}))]
     (when-not no-msg
-      (runner-install-message state side (:title installed-card) payment-str args))
+      (runner-install-message state side installed-card payment-str args))
     (when-not facedown
       (implementation-msg state card))
     (play-sfx state side "install-runner")

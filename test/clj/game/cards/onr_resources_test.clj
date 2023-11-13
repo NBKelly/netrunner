@@ -6,7 +6,7 @@
             [game.macros-test :refer :all]
             [clojure.test :refer :all]))
 
-(deftest runner-sensei
+(deftest onr-runner-sensei
   ;; Trace 6 - Give the runner 1 tag for each point your trace exceeded their link
   (do-game
     (new-game {:corp {:deck ["ONR Manhunt"]}
@@ -29,3 +29,17 @@
       "gained 1c from beating trace"
       (click-prompt state :runner "Done"))
     (is (= 0 (count-tags state)) "Runner should have 0 tags")))
+
+(deftest onr-swiss-bank-account
+  (do-game
+    (new-game {:runner {:hand [(qty "ONR Swiss Bank Account" 2)]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "ONR Swiss Bank Account")
+    (is (= 5 (:credit (get-runner))))
+    (let [fall (get-resource state 0)]
+      (card-ability state :runner fall 0)
+      (is (= 7 (:credit (get-runner)))))
+    (play-from-hand state :runner "ONR Swiss Bank Account")
+    (let [fall (get-resource state 0)]
+      (card-ability state :runner fall 1)
+      (is (= 10 (:credit (get-runner)))))))

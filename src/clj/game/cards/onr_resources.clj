@@ -104,3 +104,16 @@
              :async true
              :msg "gain 1[Credit]"
              :effect (effect (gain-credits eid 1))}]})
+
+(defcard "ONR Swiss Bank Account"
+  {:implemention "Interrupts are not implemented."
+   :abilities [{:label "Gain 2 [Credits]"
+                :msg "gain 2 [Credits]"
+                :cost [:trash-can]
+                :async true
+                :effect (effect (gain-credits eid 2))}
+               {:label "Gain 6 [Credits]"
+                :msg "gain 6 [Credits]"
+                :cost [:trash-can :credit 3]
+                :async true
+                :effect (effect (gain-credits eid 6))}]})

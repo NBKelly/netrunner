@@ -456,10 +456,12 @@
        (if (= side :corp)
          ;; public runner cards:
          ;; * installed/hosted and not facedown
+         ;; * installed but not hidden
          ;; * in heap
          (or (and (corp? card)
                   (not (in-set-aside? card)))
-             (and (or (installed? card)
+             (and (or (and (installed? card)
+                           (not (has-subtype? card "Hidden")))
                       (:host card))
                   (or (faceup? card)
                       (not (facedown? card))))
