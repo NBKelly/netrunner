@@ -47,6 +47,15 @@
   (swap! state assoc :onr-trace
          (merge (:onr-trace @state) {:base x})))
 
+(defn cancel-successful-trace
+  [state]
+  (swap! state assoc :onr-trace
+         (merge (:onr-trace @state) {:success-effect-cancelled true})))
+
+(defn- successful-trace-cancelled
+  [state]
+  (get-in @state [:onr-trace :success-effect-cancelled]))
+
 (defn- runner-spent-total
   [state]
   "how much the runner spent"
@@ -94,15 +103,19 @@
                                                    nil ;; No special functions
                                                    {:corp-strength corp-bid ;;TODO - this might be wrong
                                                     :runner-strength runner-link
+                                                    :only-tags (:only-tags trace)
                                                     :successful success
                                                     :corp-spent corp-bid
                                                     :runner-spent (runner-spent-total state)
                                                     :ability (:ability trace)
                                                     :base-link-card link-card})
-                             (wait-for (resolve-ability state :corp (:eid which-ability) which-ability
-                                                card [corp-strength runner-link])
-                                       ;; there's no kicker functionality as far as I know
-                                       (effect-completed state side eid)))))}
+                             ;; it's possible for the effects of the trace to be cancelled by cards
+                             (if (successful-trace-cancelled state)
+                               (effect-completed state side eid)
+                               (wait-for (resolve-ability state :corp (:eid which-ability) which-ability
+                                                          card [corp-strength runner-link])
+                                         ;; there's no kicker functionality as far as I know
+                                         (effect-completed state side eid))))))}
       card nil)))
 
 ;; recursively handle runner link choices until the runner says "Done!"

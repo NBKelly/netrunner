@@ -102,6 +102,22 @@
     (click-prompt state :runner "Done")
     (is (= 0 (count-tags state)) "Runner should have 0 tags")))
 
+(deftest onr-back-door-to-netwatch
+  (do-game
+    (new-game {:corp {:deck ["ONR Manhunt"]}
+               :runner {:hand ["ONR Back Door to Netwatch"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "ONR Back Door to Netwatch")
+    (run-empty-server state :rd)
+    (take-credits state :runner)
+    (play-from-hand state :corp "ONR Manhunt")
+    (click-prompt state :corp "3")
+    (changes-val-macro
+      -3 (:credit (get-runner))
+      "spent 3 to cancel the trace"
+      (click-prompt state :runner "Yes"))
+    (is (zero? (count-tags state)) "The trace effect was prevented!")))
+
 (deftest onr-back-door-to-orbital-air
   ;; Trace 6 - Give the runner 1 tag for each point your trace exceeded their link
   (do-game

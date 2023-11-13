@@ -72,16 +72,18 @@
 (defn onr-trace-ability
   "Run a trace with specified max strength.
   If successful trigger specified ability"
-  ([max {:keys [label] :as ability}]
+  ([max {:keys [label] :as ability} only-tags]
    {:label (str "Trace " max " - " label)
     :onr-trace {:max-strength max
                 :label label
+                :only-tags only-tags
                 :successful ability}})
-  ([max ability un-ability]
+  ([max ability un-ability only-tags]
    (let [label (str (:label ability) " / " (:label un-ability))]
      {:label (str "Trace " max " - " label)
       :onr-trace {:max-strength max
                   :label label
+                  :only-tags only-tags
                   :successful ability
                   :unsuccessful un-ability}})))
 

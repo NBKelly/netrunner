@@ -408,7 +408,8 @@
           [:section
            [:h3  (tr [:settings.card-backs "Card backs"])]
            (doall (for [option [{:name (tr [:settings.nsg "NSG"]) :ref "nsg"}
-                                {:name (tr [:settings.ffg "FFG"]) :ref "ffg"}]]
+                                {:name (tr [:settings.ffg "FFG"]) :ref "ffg"}
+                                {:name (tr [:settings.classic "Classic"]) :ref "onr"}]]
                     [:div.radio {:key (:name option)}
                      [:label [:input {:type "radio"
                                       :name "card-back"

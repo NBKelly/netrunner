@@ -1,4 +1,4 @@
-(ns game.cards.opr-operations
+(ns game.cards.onr-operations
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -61,12 +61,19 @@
    [game.utils :refer :all]
    [jinteki.utils :refer :all]))
 
+(defcard "ONR Accounts Receivable"
+  {:on-play
+   {:msg "gain 9 [Credits]"
+    :async true
+    :effect (effect (gain-credits eid 9))}})
+
 ;; this is a nearprint of midseasons - a good test for the trace system
 (defcard "ONR Manhunt"
   {:on-play
    {:onr-trace
     {:req (req (last-turn? state :runner :made-run))
      :max-strength 6
+     :only-tags true
      :label "Trace 6 - Give the Runner X tags"
      :successful {;:msg "give the Runner X tags"
                   :async true

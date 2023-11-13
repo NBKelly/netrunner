@@ -6,7 +6,14 @@
             [game.macros-test :refer :all]
             [clojure.test :refer :all]))
 
-(deftest manhunt
+(deftest onr-accounts-recievable
+  (do-game
+    (new-game {:corp {:hand ["ONR Accounts Receivable"]}})
+    (is (= 5 (:credit (get-corp))))
+    (play-from-hand state :corp "ONR Accounts Receivable")
+    (is (= 9 (:credit (get-corp))))))
+
+(deftest onr-manhunt
   ;; Trace 6 - Give the runner 1 tag for each point your trace exceeded their link
   (do-game
     (new-game {:corp {:deck ["ONR Manhunt"]}})

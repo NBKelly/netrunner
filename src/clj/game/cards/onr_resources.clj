@@ -80,7 +80,7 @@
    [game.core.winning :refer [check-win-by-agenda]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [game.utils :refer :all]
-   [game.core.onr-trace :refer [set-base-link boost-link]]
+   [game.core.onr-trace :refer [boost-link set-base-link cancel-successful-trace]]
    [jinteki.utils :refer :all]
    [jinteki.validator :refer [legal?]]
    [medley.core :refer [find-first]]))
@@ -121,6 +121,28 @@
 (defcard "ONR Back Door to Hilliard"
   {:abilities [(base-link-abi 0 2)
                (boost-link-abi 3 1)]})
+
+(defcard "ONR Back Door to Netwatch"
+  {:abilities [(set-autoresolve :auto-fire "Back Door to Netwatch")]
+   :events [{:event :successful-trace
+             :async true
+             :effect (req
+                       (let [trace target]
+                         (continue-ability
+                           state side
+                           {:optional
+                            {:autoresolve (get-autoresolve :auto-fire)
+                             :prompt "Cancel the effects of the trace?"
+                             :yes-ability {:cost [:trash-can :credit 3]
+                                           :async true
+                                           :msg (msg "cancel the effect of the trace"
+                                                     (when-not (:only-tags trace)
+                                                       " and give the Corp 1 Bad Publicity point"))
+                                           :effect (req (cancel-successful-trace state)
+                                                        (if (:only-tags trace)
+                                                          (gain-bad-publicity state :corp eid 1)
+                                                          (effect-completed state side eid)))}}}
+                           card nil)))}]})
 
 (defcard "ONR Back Door to Orbital Air"
   {:abilities [(base-link-abi 1 2)
