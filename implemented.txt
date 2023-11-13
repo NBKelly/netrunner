@@ -20,8 +20,12 @@ Keys:
   ^ no test (for some reason)
   ? not implemented (deliberately, for some reason)
 
-TOTAL: 19 / 584+
-TESTS: 14 / 584+
+TOTAL: 22 / 582
+TESTS: 17 / 582
+
+002 + Access through Alpha
+003 + Access to Arasaka
+004 + Access to Kiribati
 
 008 + Code Corpse
 

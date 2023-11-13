@@ -107,6 +107,17 @@
 
 ;; card implementations
 
+(defcard "ONR Access through Alpha"
+  {:abilities [(base-link-abi 1 9)]})
+
+(defcard "ONR Access to Arasaka"
+  {:abilities [(base-link-abi 2 4)
+               (boost-link-abi 2 1)]})
+
+(defcard "ONR Access to Kiribati"
+  {:abilities [(base-link-abi 1 1)
+               (boost-link-abi 1 1)]})
+
 (defcard "ONR Back Door to Hilliard"
   {:abilities [(base-link-abi 0 2)
                (boost-link-abi 3 1)]})
