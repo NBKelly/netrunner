@@ -3,18 +3,17 @@ Leave a gap unless numbers are consecutive. This will make it easy to spot what'
 
 Features:
   Done:
-    traces (not complete yet though)
+    traces (not complete yet though - there are trace interrupts and other things to implement)
     Hidden Resources (some functions may leak info - figure these out later, and avoid using :title card if it can be helped)
-    Regions can only be installed if you can afford to rez them, and must immediately be rezzed
+    Regions can only be installed if you can afford to rez them, and must immediately be
+      rezzed on install (maybe some issues will arise with this in the future, idk)
   Todo:
     forgo actions
     (x card) tokens
 
 Card Updates:
   TODO:
-    Fetch 4.0.1 has an extra period at the end
     Write test for weapons depot once I implement a black ops agenda
-    cards #3 and 4 need names updated
     
 Keys:
   + test done

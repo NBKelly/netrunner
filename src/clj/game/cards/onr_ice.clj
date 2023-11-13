@@ -93,5 +93,5 @@
 (defcard "ONR Quandary"
   {:subroutines [end-the-run]})
 
-(defcard "ONR Fetch 4.0.1."
+(defcard "ONR Fetch 4.0.1"
   {:subroutines [(onr-trace-ability 3 (give-tags 1))]})

@@ -9,8 +9,8 @@
 (deftest onr-fetch-4.0.1
   ;; Subroutine is trace 3 give a tag
   (do-game
-    (new-game {:corp {:deck ["ONR Fetch 4.0.1."]}})
-    (play-from-hand state :corp "ONR Fetch 4.0.1." "HQ")
+    (new-game {:corp {:deck ["ONR Fetch 4.0.1"]}})
+    (play-from-hand state :corp "ONR Fetch 4.0.1" "HQ")
     (let [resistor (get-ice state :hq 0)]
       (rez state :corp resistor)
       (take-credits state :corp)
