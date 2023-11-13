@@ -63,6 +63,7 @@
     [game.core.to-string]
     [game.core.toasts]
     [game.core.trace]
+    [game.core.onr-trace]
     [game.core.turns]
     [game.core.update]
     [game.core.virus]
@@ -837,6 +838,11 @@
   [game.core.trace
    force-base
    init-trace])
+
+(expose-vars
+  [game.core.onr-trace
+   onr-init-trace])
+
 
 (expose-vars
   [game.core.turns

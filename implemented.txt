@@ -1,8 +1,16 @@
 these are all implemented with tests, unless otherwise noted.
 Leave a gap unless numbers are consecutive. This will make it easy to spot what's missing.
 
+Features:
+  Done:
+    traces (not complete yet though)
+  Todo:
+    forgo actions
+    (x card) tokens
+
 TOTAL: 7 / 582+
 TESTS: 4 / 584+
+
 008 + Code Corpse
 
 051 + Bodyweight [TM] Data Crèche
@@ -11,8 +19,12 @@ TESTS: 4 / 584+
 
 148 + Department of Truth Enhancement
 
+301 Manhunt
+
 335 + Networking
 
 395 Quandary (trivial ETR ice - no test)
+
+434 Runner Sensei
 
 541 Twenty-Four-Hour Surviellance (unimplemented)

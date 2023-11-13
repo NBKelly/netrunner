@@ -97,9 +97,11 @@
            '[game.cards.onr-ice-test]
            '[game.cards.identities-test]
            '[game.cards.operations-test]
+           '[game.cards.onr-operations-test]
            '[game.cards.programs-test]
            '[game.cards.onr-programs-test]
            '[game.cards.resources-test]
+           '[game.cards.onr-resources-test]
            '[game.cards.upgrades-test]
            '[game.cards.onr-upgrades-test])
   (load-all-cards)
@@ -120,9 +122,11 @@
                  "ONR-ICE" '(game.cards.onr-ice-test)
                  "Identity" '(game.cards.identities-test)
                  "Operation" '(game.cards.operations-test)
+                 "ONR-Operation" '(game.cards.onr-operations-test)
                  "Program" '(game.cards.programs-test)
                  "ONR-Program" '(game.cards.onr-programs-test)
                  "Resource" '(game.cards.resources-test)
+                 "ONR-Resource" '(game.cards.onr-resources-test)
                  "Upgrade" '(game.cards.upgrades-test)
                  "ONR-Upgrade" '(game.cards.onr-upgrades-test)}
         filtered-nspaces (if (and only (not only-total))
