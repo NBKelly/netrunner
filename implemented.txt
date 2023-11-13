@@ -8,23 +8,23 @@ Features:
     forgo actions
     (x card) tokens
 
-TOTAL: 7 / 582+
-TESTS: 4 / 584+
+TOTAL: 9 / 582+
+TESTS: 6 / 584+
 
 008 + Code Corpse
 
 051 + Bodyweight [TM] Data Crèche
 
-123 Cyfermaster (trivial icebreaker - no test)
+123 ^ Cyfermaster (trivial icebreaker - no test)
 
 148 + Department of Truth Enhancement
 
-301 Manhunt
+301 + Manhunt
 
 335 + Networking
 
-395 Quandary (trivial ETR ice - no test)
+395 ^ Quandary (trivial ETR ice - no test)
 
-434 Runner Sensei
+434 + Runner Sensei
 
-541 Twenty-Four-Hour Surviellance (unimplemented)
+541 ^ Twenty-Four-Hour Surviellance (unimplemented)
