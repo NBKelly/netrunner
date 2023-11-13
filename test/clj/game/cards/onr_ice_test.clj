@@ -6,6 +6,20 @@
             [game.macros-test :refer :all]
             [clojure.test :refer :all]))
 
+(deftest onr-fetch-4.0.1
+  ;; Subroutine is trace 3 give a tag
+  (do-game
+    (new-game {:corp {:deck ["ONR Fetch 4.0.1."]}})
+    (play-from-hand state :corp "ONR Fetch 4.0.1." "HQ")
+    (let [resistor (get-ice state :hq 0)]
+      (rez state :corp resistor)
+      (take-credits state :corp)
+      (run-on state "HQ")
+      (run-continue state)
+      (fire-subs state resistor)
+      (click-prompt state :corp "0")
+      (is (= 1 (count-tags state)) "Runner has gained 1 tag"))))
+
 (deftest onr-networking
   ;; ONR Networking
   (do-game

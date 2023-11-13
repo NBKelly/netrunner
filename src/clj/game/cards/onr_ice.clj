@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [cond-plus.core :refer [cond+]]
-   [game.cards.ice :refer [end-the-run]]
    [game.core.access :refer [access-bonus access-card breach-server max-access]]
    [game.core.bad-publicity :refer [gain-bad-publicity]]
    [game.core.board :refer [all-active-installed all-installed all-installed-runner-type card->server
@@ -65,7 +64,26 @@
    [game.core.update :refer [update!]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [game.utils :refer :all]
-   [jinteki.utils :refer :all]))
+   [jinteki.utils :refer :all]
+   ;; imported from ice
+   [game.cards.ice :refer [end-the-run give-tags]]
+   ))
+
+(defn onr-trace-ability
+  "Run a trace with specified max strength.
+  If successful trigger specified ability"
+  ([max {:keys [label] :as ability}]
+   {:label (str "Trace " max " - " label)
+    :onr-trace {:max-strength max
+                :label label
+                :successful ability}})
+  ([max ability un-ability]
+   (let [label (str (:label ability) " / " (:label un-ability))]
+     {:label (str "Trace " max " - " label)
+      :onr-trace {:max-strength max
+                  :label label
+                  :successful ability
+                  :unsuccessful un-ability}})))
 
 (defcard "ONR Code Corpse"
   {:subroutines [(do-brain-damage 1)
@@ -74,3 +92,6 @@
 
 (defcard "ONR Quandary"
   {:subroutines [end-the-run]})
+
+(defcard "ONR Fetch 4.0.1."
+  {:subroutines [(onr-trace-ability 3 (give-tags 1))]})

@@ -8,6 +8,10 @@ Features:
     forgo actions
     (x card) tokens
 
+Card Updates:
+  TODO:
+    Fetch 4.0.1 has an extra period at the end
+
 Keys:
   + test done
   ^ no test (for some reason)
@@ -25,6 +29,8 @@ TESTS: 8 / 584+
 123 ^ Cyfermaster (trivial icebreaker - no test)
 
 148 + Department of Truth Enhancement
+
+202 + Fetch 4.0.1
 
 301 + Manhunt
 
