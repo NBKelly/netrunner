@@ -8,8 +8,13 @@ Features:
     forgo actions
     (x card) tokens
 
-TOTAL: 10 / 582+
-TESTS: 7 / 584+
+Keys:
+  + test done
+  ^ no test (for some reason)
+  ? not implemented (deliberately, for some reason)
+
+TOTAL: 11 / 584+
+TESTS: 8 / 584+
 
 008 + Code Corpse
 
@@ -23,10 +28,12 @@ TESTS: 7 / 584+
 
 301 + Manhunt
 
+324 + MRAM Chip
+
 335 + Networking
 
 395 ^ Quandary (trivial ETR ice - no test)
 
 434 + Runner Sensei
 
-541 ^ Twenty-Four-Hour Surviellance (unimplemented)
+541 ? Twenty-Four-Hour Surviellance (unimplemented)

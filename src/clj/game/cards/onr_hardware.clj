@@ -97,3 +97,7 @@
                                             (reset-all-ice)
                                             (clear-wait-prompt :corp)
                                             (make-run eid target (get-card state card)))}}}]})
+
+
+(defcard "ONR MRAM Chip"
+  {:static-abilities [(runner-hand-size+ 2)]})

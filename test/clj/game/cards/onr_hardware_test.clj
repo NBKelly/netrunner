@@ -21,3 +21,10 @@
     (is (:run @state) "New run started")
     (is (= [:rd] (:server (:run @state))) "Running on R&D")
     (is (= 1 (:run-credit (get-runner))) "Runner has 1 BP credit")))
+
+(deftest onr-mram-chip
+  (do-game
+    (new-game {:runner {:hand ["ONR MRAM Chip"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "ONR MRAM Chip")
+    (is (= 7 (hand-size :runner)))))
