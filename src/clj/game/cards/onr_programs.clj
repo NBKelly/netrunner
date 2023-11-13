@@ -66,6 +66,52 @@
    [game.utils :refer :all]
    [jinteki.utils :refer :all]))
 
+(defcard "ONR Blink"
+  (letfn [(attempt
+            [state side card sub]
+            (let [c (get-card state card)]
+              (update!
+                state side
+                (assoc-in c [:special :attempted-breaks]
+                          (concat (get-in c [:special :attempted-breaks]) [sub])))))
+          (viable-sub
+            [sub card]
+            (not (seq (filter #(or (:broken %) (= % sub)) (get-in card [:special :attempted-breaks])))))
+          (viable-subs
+            [subs card]
+            (filter #(viable-sub % card) subs))]
+    ;; we're only allowed to attempt each subroutine once!
+    {:implementation "always breaks identical subs from the top down (I'll fix this later, send me an @ if it's an issue)"
+     :on-install {:silent (req true)
+                  :effect (req (update! state :runner (assoc-in (get-card state card) [:special :attempted-breaks] [])))}
+     :events [{:event :encounter-ice
+               :silent (req true)
+               :effect (req (update! state :runner (assoc-in (get-card state card) [:special :attempted-breaks] [])))}]
+     :abilities [{:label "Maybe break a subroutine"
+                  :req (req (and
+                              current-ice
+                              (<= (get-strength current-ice) (get-strength card))
+                              (seq (viable-subs (remove :broken (:subroutines current-ice)) card))))
+                  :cost [:credit 0]
+                  :prompt "Choose a subroutine to try to break"
+                  :choices (req (cancellable (map #(make-label (:sub-effect %)) (viable-subs (remove :broken (:subroutines current-ice)) card))))
+                  :async true
+                  :effect (req
+                            (let [chosen-sub (first (filter #(and (= target (make-label (:sub-effect %)))
+                                                                  (not (:broken %))
+                                                                  (viable-sub % card)) (:subroutines current-ice)))
+                                  die-result (+ 1 (rand-int 6))
+                                  success (<= 4 die-result)]
+                              (system-msg state side (str "rolls a " die-result " (1d6)"))
+                              (if success
+                                (do
+                                  (system-msg state side (str (break-subroutines-msg current-ice [chosen-sub] card)))
+                                  (break-subroutine! state (get-card state current-ice) chosen-sub)
+                                  (effect-completed state side eid))
+                                (do
+                                  (system-msg state side (str "takes " die-result " net damage"))
+                                  (damage state side eid :net die-result {:card card})))))}]}))
+
 (defcard "ONR Cyfermaster"
   (auto-icebreaker {:abilities [(break-sub 2 1 "Code Gate")
                                 (strength-pump 1 1)]}))

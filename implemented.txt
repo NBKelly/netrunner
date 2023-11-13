@@ -17,10 +17,12 @@ Keys:
   ^ no test (for some reason)
   ? not implemented (deliberately, for some reason)
 
-TOTAL: 11 / 584+
+TOTAL: 12 / 584+
 TESTS: 8 / 584+
 
 008 + Code Corpse
+
+048 ^ Blink (no test, this is an rng card!)
 
 051 + Bodyweight [TM] Data Crèche
 
