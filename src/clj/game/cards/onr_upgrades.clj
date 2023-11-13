@@ -58,6 +58,12 @@
    [game.utils :refer :all]
    [jinteki.utils :refer :all]))
 
-(defcard "Twenty-Four-Hour Surviellance"
+(defcard "ONR Twenty-Four-Hour Surviellance"
   ;; TODO - find a way to do this. I know it can be done.
   {:implementation "Unimplemented/Manual Implementation"})
+
+(defcard "ONR Weapons Depot"
+  {:static-abilities [{:type :advancement-requirement
+                       :req (req (and (in-same-server? card target)
+                                      (has-subtype? target "Black Ops")))
+                       :value -1}]})

@@ -3,9 +3,10 @@
     [cond-plus.core :refer [cond+]]
     [game.core.agendas :refer [update-advancement-requirement]]
     [game.core.board :refer [all-installed get-remotes installable-servers server->zone all-installed-runner-type]]
-    [game.core.card :refer [agenda? asset? convert-to-condition-counter corp? event? get-card get-zone has-subtype? ice? operation? program? resource? rezzed? installed?]]
+    [game.core.card :refer [agenda? asset? convert-to-condition-counter corp? event? get-card get-zone has-subtype? ice? operation? program? resource? rezzed? installed? upgrade?]]
     [game.core.card-defs :refer [card-def]]
-    [game.core.cost-fns :refer [ignore-install-cost? install-additional-cost-bonus install-cost]]
+    [game.core.cost-fns :refer [ignore-install-cost? install-additional-cost-bonus install-cost
+                                rez-cost]]
     [game.core.eid :refer [complete-with-result effect-completed eid-set-defaults make-eid]]
     [game.core.engine :refer [checkpoint register-pending-event pay queue-event register-events trigger-event-simult unregister-events]]
     [game.core.effects :refer [register-static-abilities unregister-static-abilities]]
@@ -47,6 +48,10 @@
     (and (has-subtype? card "Region")
          (some #(has-subtype? % "Region") (get-in @state (cons :corp slot))))
     :region
+    (and (has-subtype? card "Region")
+         (= (:faction card) "ONR Corp")
+         (not (can-pay? state side (make-eid state) card nil [:credit (:cost card)])))
+    :onr-region
     ;; ice install prevented by Unscheduled Maintenance
     (and (ice? card)
          (not (turn-flag? state side card :can-install-ice)))
@@ -79,6 +84,9 @@
       ;; failed region check
       :region
       (reason-toast (str "Cannot install " (:title card) ", limit of one Region per server"))
+      ;; can't afford to rez an ONR region
+      :onr-region
+      (reason-toast (str "Cannot install " (:title card) ", cannot afford to rez it"))
       ;; failed install lock check
       :lock-install
       (reason-toast (str "Unable to install " title ", installing is currently locked"))
@@ -226,7 +234,9 @@
 (defn corp-can-pay-and-install?
   [state side eid card server args]
   (let [slot (get-slot state card server (select-keys args [:host-card]))
-        costs (corp-install-cost state side card server args)]
+        costs (corp-install-cost state side card server args)
+        costs (if (and (upgrade? card) (= "ONR Corp" (:faction card)) (has-subtype? card "Region"))
+                (merge-costs costs (:cost card)) costs)]
     (and (corp-can-install? state side card slot (select-keys args [:no-toast]))
          (can-pay? state side eid card nil costs)
          ;; explicitly return true
@@ -268,7 +278,11 @@
   :index - which position for an installed piece of ice"
   ([state side eid card server] (corp-install state side eid card server nil))
   ([state side eid card server {:keys [host-card] :as args}]
-   (let [eid (eid-set-defaults eid :source nil :source-type :corp-install)]
+   (let [eid (eid-set-defaults eid :source nil :source-type :corp-install)
+         ;; ONR regions must be rezzed as soon as they are installed!
+         args (if (and (has-subtype? card "Region") (= (:faction card) "ONR Corp")
+                       (not (:install-state args)))
+                (assoc args :install-state :rezzed) args)]
      (cond
        ;; No server selected; show prompt to select an install site (Interns, Lateral Growth, etc.)
        (not server)

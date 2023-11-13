@@ -5,6 +5,7 @@ Features:
   Done:
     traces (not complete yet though)
     Hidden Resources (some functions may leak info - figure these out later, and avoid using :title card if it can be helped)
+    Regions can only be installed if you can afford to rez them, and must immediately be rezzed
   Todo:
     forgo actions
     (x card) tokens
@@ -12,13 +13,14 @@ Features:
 Card Updates:
   TODO:
     Fetch 4.0.1 has an extra period at the end
-
+    Write test for weapons depot once I implement a black ops agenda
+    
 Keys:
   + test done
   ^ no test (for some reason)
   ? not implemented (deliberately, for some reason)
 
-TOTAL: 14 / 584+
+TOTAL: 15 / 584+
 TESTS: 10 / 584+
 
 008 + Code Corpse
@@ -50,3 +52,5 @@ TESTS: 10 / 584+
 507 + Swiss Bank Account
 
 541 ? Twenty-Four-Hour Surviellance (unimplemented)
+
+567 ^ ONR Weapons Depot

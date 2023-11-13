@@ -26,7 +26,13 @@
                 (fn [server]
                   (corp-can-pay-and-install?
                     state :corp {:source server :source-type :corp-install}
-                    card server {:base-cost [:click 1]
+                    card server {:base-cost
+                                 ;; ONR Regions are only installable if you can rez them
+                                 ;; and you must rez them when you install them
+                                 (if-not (and (has-subtype? card "Region")
+                                              (= "ONR Corp" (:faction card)))
+                                   [:click 1]
+                                   [:click 1 :credit (:cost card)])
                                  :action :corp-click-install
                                  :no-toast true}))
                 (installable-servers state card))]
