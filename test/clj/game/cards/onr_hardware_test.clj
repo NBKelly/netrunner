@@ -28,3 +28,16 @@
     (take-credits state :corp)
     (play-from-hand state :runner "ONR MRAM Chip")
     (is (= 7 (hand-size :runner)))))
+
+(deftest onr-raven-microcyb-eagle
+  (do-game
+    (new-game {:runner {:hand ["ONR Raven Microcryb Eagle", "Sure Gamble", "Corroder"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Sure Gamble")
+    (play-from-hand state :runner "ONR Raven Microcyb Eagle")
+    (play-from-hand state :runner "Corroder")
+    (let [corr (get-program state 0)]
+      (card-ability state :runner (refresh corr) 1)
+      (run-on state :hq)
+      (card-ability state :runner (refresh corr) 1)
+      (click-card state :runner (get-hardware state 0)))))

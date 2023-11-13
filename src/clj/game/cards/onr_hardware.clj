@@ -101,3 +101,17 @@
 
 (defcard "ONR MRAM Chip"
   {:static-abilities [(runner-hand-size+ 2)]})
+
+(defcard "ONR Raven Microcyb Eagle"
+  {:interactions {:prevent [{:type #{:net}
+                             :req (req (not-used-once? state (first (:abilities card)) card))}]
+                  :pay-credits {:req (req (and run
+                                               (= :ability (:source-type eid))
+                                               (has-subtype? target "Icebreaker")))
+                                :type :recurring}}
+  :static-abilities [(mu+ 1)]
+  :abilities [{:cost [:credit 0]
+               :once :per-turn
+               :msg "prevent 1 net damage"
+               :effect (effect (damage-prevent :net 1))}]
+  :recurring 1})

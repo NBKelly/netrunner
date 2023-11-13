@@ -43,6 +43,8 @@ TESTS: 10 / 584+
 
 395 ^ Quandary (trivial ETR ice - no test)
 
+402 + Raven Microcyb Eagle
+
 434 + Runner Sensei
 
 507 + Swiss Bank Account
