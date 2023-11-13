@@ -107,10 +107,16 @@
 
 ;; recursively handle runner link choices until the runner says "Done!"
 (defn runner-link-repeat
-  [state _ eid card {:keys [link-card trace-card] :as trace} abis]
+  [state _ eid card {:keys [link-card trace-card] :as trace} abilities]
   (let [abis (filter #(can-pay? state :runner nil
                                (assoc eid :source link-card :source-type :resource)
-                               nil nil (:cost %)) abis)
+                               nil nil (:cost %)) abilities)
+        ;; you must establish base link before you can use the other abilities
+        ;; and you may only establish base link once!
+        abis (filter #(or (and (nil? (get-in @state [:onr-trace :base]))
+                               (:onr-base-link %))
+                          (and (get-in @state [:onr-trace :base])
+                               (not (:onr-base-link %)))) abis)
         build-label (fn [abi] (str (:cost-label abi) ": " (:label abi)))
         labels (into [] (concat (map build-label abis) ["Done"]))
         zipped (map vector abis labels)
@@ -124,19 +130,12 @@
      :effect (req
                (if (= target "Done")
                  (onr-resolve-trace state corp eid trace-card trace)
-                 ;; map label back to the ability somehow?
-                 ;; if it's the base link, then remove it from the list and serve it back in
-                 ;;  the other fn
-                 (let [abi (chosen-abi target)
-                       ;; you can't set the base link twice, that's an NCIGS violation baby
-                       ;; but if one of the cards has multiple different values, maybe I'll
-                       ;; need to change this later?
-                       ;; we'll wait and see, baby
-                       abis (if-not (:onr-base-link abi) abis (remove #(= abi %) abis))]
+                 (let [abi (chosen-abi target)]
                    (wait-for (resolve-ability state :runner abi card nil)
                              (runner-spent-trace state (second (:cost abi))) ;; this wont work if there are non credit costs!
                              (continue-ability state side
-                                               (runner-link-repeat state side eid card trace abis)
+                                               (runner-link-repeat
+                                                 state side eid card trace abilities)
                                                card nil)))))}))
 
 (defn runner-link-abi

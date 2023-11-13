@@ -6,6 +6,84 @@
             [game.macros-test :refer :all]
             [clojure.test :refer :all]))
 
+(deftest onr-back-door-to-hilliard
+  ;; Trace 6 - Give the runner 1 tag for each point your trace exceeded their link
+  (do-game
+    (new-game {:corp {:deck ["ONR Manhunt"]}
+               :runner {:hand ["ONR Back Door to Hilliard"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "ONR Back Door to Hilliard")
+    (run-empty-server state :rd)
+    (take-credits state :runner)
+    ;; 7 - 4 means that our max trace is 3
+    ;; the runner should also have 6 credits
+    (play-from-hand state :corp "ONR Manhunt")
+    (click-prompt state :corp "3")
+    (click-prompt state :runner "ONR Back Door to Hilliard")
+    (changes-val-macro
+      -0 (:credit (get-runner))
+      "spent 0c to boost link to 2"
+      (click-prompt state :runner "0 [Credits]: Base Link 2"))
+    (changes-val-macro
+      -3 (:credit (get-runner))
+      "spent 1c to boost link to 3"
+      (click-prompt state :runner "3 [Credits]: +1 Link"))
+    (click-prompt state :runner "Done")
+    (is (= 0 (count-tags state)) "Runner should have 0 tags")))
+
+(deftest onr-back-door-to-orbital-air
+  ;; Trace 6 - Give the runner 1 tag for each point your trace exceeded their link
+  (do-game
+    (new-game {:corp {:deck ["ONR Manhunt"]}
+               :runner {:hand ["ONR Back Door to Orbital Air"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "ONR Back Door to Orbital Air")
+    (run-empty-server state :rd)
+    (take-credits state :runner)
+    ;; 7 - 4 means that our max trace is 3
+    ;; the runner should also have 6 credits
+    (play-from-hand state :corp "ONR Manhunt")
+    (click-prompt state :corp "3")
+    (click-prompt state :runner "ONR Back Door to Orbital Air")
+    (changes-val-macro
+      -1 (:credit (get-runner))
+      "spent 1c to boost link to 2"
+      (click-prompt state :runner "1 [Credits]: Base Link 2"))
+    (changes-val-macro
+      -2 (:credit (get-runner))
+      "spent 2c to boost link to 3"
+      (click-prompt state :runner "2 [Credits]: +1 Link"))
+    (click-prompt state :runner "Done")
+    (is (= 0 (count-tags state)) "Runner should have 0 tags")))
+
+(deftest onr-back-door-to-rivals
+  ;; Trace 6 - Give the runner 1 tag for each point your trace exceeded their link
+  (do-game
+    (new-game {:corp {:deck ["ONR Manhunt"]}
+               :runner {:hand ["ONR Back Door to Rivals"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "ONR Back Door to Rivals")
+    (run-empty-server state :rd)
+    (take-credits state :runner)
+    ;; 7 - 4 means that our max trace is 3
+    ;; the runner should also have 6 credits
+    (play-from-hand state :corp "ONR Manhunt")
+    (click-prompt state :corp "2")
+    (click-prompt state :runner "ONR Back Door to Rivals")
+    (changes-val-macro
+      -0 (:credit (get-runner))
+      "spent 0c to boost link to 2"
+      (click-prompt state :runner "0 [Credits]: Base Link 2"))
+    (changes-val-macro
+      -3 (:credit (get-runner))
+      "spent 1c to boost link to 3"
+      (click-prompt state :runner "3 [Credits]: +1 Link"))
+    (changes-val-macro
+      +1 (:credit (get-runner))
+      "gained 1c from beating trace"
+      (click-prompt state :runner "Done"))
+    (is (= 0 (count-tags state)) "Runner should have 0 tags")))
+
 (deftest onr-runner-sensei
   ;; Trace 6 - Give the runner 1 tag for each point your trace exceeded their link
   (do-game

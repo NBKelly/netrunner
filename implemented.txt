@@ -14,16 +14,22 @@ Card Updates:
   TODO:
     Fetch 4.0.1 has an extra period at the end
     Write test for weapons depot once I implement a black ops agenda
+    cards #3 and 4 need names updated
     
 Keys:
   + test done
   ^ no test (for some reason)
   ? not implemented (deliberately, for some reason)
 
-TOTAL: 15 / 584+
-TESTS: 10 / 584+
+TOTAL: 19 / 584+
+TESTS: 14 / 584+
 
 008 + Code Corpse
+
+027 + Back Door to Hilliard
+
+029 + Back Door to Orbital Air
+030 + Back Door to Rivals
 
 048 ^ Blink (no test, this is an rng card!)
 

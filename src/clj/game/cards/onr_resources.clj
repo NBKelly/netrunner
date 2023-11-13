@@ -85,20 +85,48 @@
    [jinteki.validator :refer [legal?]]
    [medley.core :refer [find-first]]))
 
+(defn- base-link-abi
+  [cost val]
+  (let [cost (if (integer? cost) [:credit cost] cost)]
+    {:onr-base-link true
+     :req (req true)
+     :cost cost
+     :base-link val
+     :label (str "Base Link " val)
+     :msg (str "set their Base Link to " val)
+     :effect (req (set-base-link state val))}))
+
+(defn- boost-link-abi
+  [cost val]
+  (let [cost (if (integer? cost) [:credit cost] cost)]
+    {:onr-boost-link true
+     :cost cost
+     :label (str "+" val " Link")
+     :msg (str "gain +" val " Link")
+     :effect (req (boost-link state val))}))
+
+;; card implementations
+
+(defcard "ONR Back Door to Hilliard"
+  {:abilities [(base-link-abi 0 2)
+               (boost-link-abi 3 1)]})
+
+(defcard "ONR Back Door to Orbital Air"
+  {:abilities [(base-link-abi 1 2)
+               (boost-link-abi 2 1)]})
+
+(defcard "ONR Back Door to Rivals"
+  {:abilities [(base-link-abi 0 2)
+               (boost-link-abi 3 1)]
+   :events [{:event :unsuccessful-trace
+             :req (req (same-card? card (:base-link-card target)))
+             :async true
+             :msg "gain 1[Credit]"
+             :effect (effect (gain-credits eid 1))}]})
+
 (defcard "ONR Runner Sensei"
-  {:abilities [{:onr-base-link true
-                :req (req true)
-                :cost [:credit 2]
-                :base-link 4
-                :label "Base Link 4"
-                :msg "set their Base Link to 4"
-                :effect (req (set-base-link state 4))}
-               {:onr-boost-link true
-                :cost [:credit 2]
-                :onr-link 1
-                :label "+1 link"
-                :msg "gain +1 Link"
-                :effect (req (boost-link state 1))}]
+  {:abilities [(base-link-abi 2 4)
+               (boost-link-abi 2 1)]
    :events [{:event :unsuccessful-trace
              :req (req (same-card? card (:base-link-card target)))
              :async true
