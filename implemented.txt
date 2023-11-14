@@ -110,15 +110,21 @@ TESTS:  65 / 582
 
 265 + Invisibility
 
+259 + Imperial Guard
+
 268 ^ Jackhammer
 
 276 + Keeper
 
 280 + Laser Wire
 
+284 + Lesser Arcana
+
 287 + Liche
 
 301 + Manhunt
+
+305 + Marionette
 
 310 + Mazer
 
@@ -129,6 +135,7 @@ TESTS:  65 / 582
 329 + Nerve Labyrinth
 
 335 + Networking
+336 + Neural Blade
 
 365 + ONR π in the 'Face
 366 ^ Pile Driver
@@ -148,6 +155,8 @@ TESTS:  65 / 582
 
 434 + Runner Sensei
 
+441 + Scaffolding
+
 449 + Scramble
 
 457 + Sentinels Prime
@@ -158,8 +167,11 @@ TESTS:  65 / 582
 
 482 + Snowbank
 
+487 + Sphinx 2006
+
 499 ^ Submarine Uplink (do this test later - fetch + uplink should be fine)
 
+502 + Sumo 2008
 503 ^ Sunburst Cranial Interface
 
 507 + Swiss Bank Account
@@ -170,7 +182,10 @@ TESTS:  65 / 582
 
 536 + Triggerman
 
+538 + Tumblers
+
 541 ? Twenty-Four-Hour Surviellance (unimplemented)
+542 + Twisty Passages
 
 553 ^ Vewy Vewy Quiet
 

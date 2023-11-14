@@ -436,6 +436,11 @@
   (trivial-trash-program "ONR Ice Pick Willie" 0)
   (trivial-etr "ONR Ice Pick Willie" 1))
 
+(deftest onr-imperial-guard
+  (noisy-breaker-used-discount 5 "ONR Imperial Guard")
+  (trivial-trash-program "ONR Imperial Guard" 0)
+  (trivial-etr "ONR Imperial Guard" 1))
+
 (deftest onr-keeper
   (trivial-etr "ONR Keeper"))
 
@@ -443,11 +448,20 @@
   (trivial-damage 1 "ONR Laser Wire")
   (trivial-etr "ONR Laser Wire" 1))
 
+(deftest onr-lesser-arcana
+  (trivial-etr "ONR Lesser Arcana")
+  (changes-subtype-rez 1 "Sentry" "Wall" "ONR Lesser Arcana"))
+
 (deftest onr-liche
   (trivial-brain-damage 1 "ONR Liche")
   (trivial-brain-damage 1 "ONR Liche" 1)
   (trivial-brain-damage 1 "ONR Liche" 2)
   (trivial-etr "ONR Liche" 3))
+
+(deftest onr-marionette
+  (trivial-trash-program "ONR Marionette" 0)
+  (trivial-etr "ONR Marionette" 1)
+  (pay-x-or-bounce-on-pass 1 "ONR Marionette"))
 
 (deftest onr-mazer
   (trivial-etr "ONR Mazer"))
@@ -459,6 +473,10 @@
 (deftest onr-nerve-labyrinth
   (trivial-damage 2 "ONR Nerve Labyrinth")
   (trivial-etr "ONR Nerve Labyrinth" 1))
+
+(deftest onr-neural-blade
+  (trivial-damage 1 "ONR Neural Blade")
+  (cannot-break-next-ice "ONR Neural Blade" 1))
 
 (deftest onr-pi-in-the-face
   (trivial-etr "ONR π in the 'Face"))
@@ -473,6 +491,10 @@
 
 (deftest onr-rock-is-strong
   (trivial-etr "ONR Rock is Strong"))
+
+(deftest onr-scaffolding
+  (gain-x-and-bounce-on-pass 1 "ONR Scaffolding")
+  (trivial-etr "ONR Scaffolding"))
 
 (deftest onr-scramble
   (trivial-etr "ONR Scramble"))
@@ -492,6 +514,14 @@
   (gain-x-on-rez 3 "ONR Snowbank")
   (pay-x-or-etr-sub 1 "ONR Snowbank"))
 
+(deftest onr-sphinx-2006
+  (trivial-etr "ONR Sphinx 2006")
+  (changes-subtype-rez 4 "Code Gate" "Sentry" "ONR Sphinx 2006"))
+
+(deftest onr-sumo-2008
+  (trivial-etr "ONR Sumo 2008")
+  (changes-subtype-rez 1 "Sentry" "Wall" "ONR Sumo 2008"))
+
 (deftest onr-toughonium-wall
   (trivial-etr "ONR Toughonium [TM] Wall")
   (trivial-etr "ONR Toughonium [TM] Wall" 1)
@@ -501,6 +531,14 @@
 (deftest onr-triggerman
   (trivial-trash-program "ONR Triggerman" 0)
   (trivial-etr "ONR Triggerman" 1))
+
+(deftest onr-tumbler
+  (gain-x-and-bounce-on-pass 1 "ONR Tumblers")
+  (trivial-etr "ONR Tumblers"))
+
+(deftest onr-twisty-passages
+  (trivial-etr "ONR Twisty Passages")
+  (pay-x-or-bounce-on-pass 1 "ONR Twisty Passages"))
 
 (deftest onr-quandary (trivial-etr "ONR Quandary"))
 

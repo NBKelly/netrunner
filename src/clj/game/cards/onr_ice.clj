@@ -295,6 +295,11 @@
   {:subroutines [trash-program-sub
                  end-the-run]})
 
+(defcard "ONR Imperial Guard"
+  {:rez-cost-bonus (req (used-noisy-discount state 5))
+   :subroutines [trash-program-sub
+                 end-the-run]})
+
 (defcard "ONR Keeper"
   {:subroutines [end-the-run]})
 
@@ -302,10 +307,18 @@
   {:subroutines [(do-net-damage 1)
                  end-the-run]})
 
+(defcard "ONR Lesser Arcana"
+  (change-subtype-on-rez "Sentry" "Wall" 1 {:subroutines [end-the-run]}))
+
 (defcard "ONR Liche"
   {:subroutines [(do-brain-damage 1)
                  (do-brain-damage 1)
                  (do-brain-damage 1)
+                 end-the-run]})
+
+(defcard "ONR Marionette"
+  {:events [(bounce-unless-corp-pays 1)]
+   :subroutines [trash-program-sub
                  end-the-run]})
 
 (defcard "ONR Mazer"
@@ -318,6 +331,10 @@
 (defcard "ONR Misleading Access Menus"
   {:on-rez (gain-credits-sub 3)
    :subroutines [(end-the-run-unless-runner-pays [:credit 1])]})
+
+(defcard "ONR Neural Blade"
+  {:subroutines [(do-net-damage 1)
+                 prevent-breaking-next-ice]})
 
 (defcard "ONR π in the 'Face"
   {:subroutines [end-the-run]})
@@ -332,6 +349,10 @@
 
 (defcard "ONR Rock is Strong"
   {:subroutines [end-the-run]})
+
+(defcard "ONR Scaffolding"
+  {:events [(bounce-and-corp-gains 1)]
+   :subroutines [end-the-run]})
 
 (defcard "ONR Scramble"
   {:subroutines [end-the-run]})
@@ -351,6 +372,12 @@
   {:on-rez (gain-credits-sub 3)
    :subroutines [(end-the-run-unless-runner-pays [:credit 1])]})
 
+(defcard "ONR Sphinx 2006"
+  (change-subtype-on-rez "Code Gate" "Sentry" 4 {:subroutines [end-the-run]}))
+
+(defcard "ONR Sumo 2008"
+  (change-subtype-on-rez "Sentry" "Wall" 1 {:subroutines [end-the-run]}))
+
 (defcard "ONR Toughonium [TM] Wall"
   {:subroutines [end-the-run
                  end-the-run
@@ -360,6 +387,14 @@
 (defcard "ONR Triggerman"
   {:subroutines [trash-program-sub
                  end-the-run]})
+
+(defcard "ONR Tumblers"
+  {:events [(bounce-and-corp-gains 1)]
+   :subroutines [end-the-run]})
+
+(defcard "ONR Twisty Passages"
+  {:events [(bounce-unless-corp-pays 1)]
+   :subroutines [end-the-run]})
 
 (defcard "ONR Quandary"
   {:subroutines [end-the-run]})
