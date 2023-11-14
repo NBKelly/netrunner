@@ -58,3 +58,36 @@
       (click-prompt state :runner "2 [Credits]: +1 Link"))
     (click-prompt state :runner "Done")
     (is (= 0 (count-tags state)) "Runner should have 0 tag")))
+
+(deftest onr-cloak-pay-credits-prompt
+    ;; Pay-credits prompt
+    (do-game
+      (new-game {:runner {:deck ["ONR Cloak" "Refractor"]
+                          :credits 15}})
+      (take-credits state :corp)
+      (play-from-hand state :runner "ONR Cloak")
+      (play-from-hand state :runner "Refractor")
+      (let [cl (get-program state 0)
+            refr (get-program state 1)]
+        (run-on state :hq)
+        (is (= 3 (get-counters cl :recurring)) "Cloak starts with 3 credits")
+        (changes-val-macro 0 (:credit (get-runner))
+                           "Used 1 credit from Cloak"
+                           (card-ability state :runner refr 1)
+                           (click-card state :runner cl)))))
+
+(deftest invisibility-pay-credits-prompt
+    ;; Pay-credits prompt
+    (do-game
+      (new-game {:runner {:deck ["ONR Invisibility" "Refractor"]}})
+      (take-credits state :corp)
+      (play-from-hand state :runner "ONR Invisibility")
+      (play-from-hand state :runner "Refractor")
+      (let [cl (get-program state 0)
+            refr (get-program state 1)]
+        (run-on state :hq)
+        (is (= 1 (get-counters cl :recurring)) "Invisibility starts with 1 credit1")
+        (changes-val-macro 0 (:credit (get-runner))
+                           "Used 1 credit from Cloak"
+                           (card-ability state :runner refr 1)
+                           (click-card state :runner cl)))))

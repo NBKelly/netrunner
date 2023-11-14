@@ -66,7 +66,7 @@
    [game.utils :refer :all]
    [jinteki.utils :refer :all]
    ;; imported from ice
-   [game.cards.ice :refer [end-the-run give-tags]]
+   [game.cards.ice :refer [end-the-run give-tags trash-program-sub]]
    ))
 
 (defn onr-trace-ability
@@ -87,10 +87,60 @@
                   :successful ability
                   :unsuccessful un-ability}})))
 
+;; card implementations
+
+(defcard "ONR Banpei"
+  {:subroutines [trash-program-sub
+                 end-the-run]})
+
+(defcard "ONR Brain Wash"
+  {:subroutines [(do-brain-damage 1)]})
+
+(defcard "ONR Canis Major"
+  {:subroutines [{:label (str "All further ice is encountered at +2 Strength")
+                  :msg "Make all further ice be encountered at +2 strength this run."
+                  :effect (effect (register-lingering-effect
+                                    card
+                                    {:type :ice-strength
+                                     :duration :end-of-run
+                                     :req (req (and (get-current-encounter state)
+                                                    (same-card? current-ice target)))
+                                     :value +2}))}]})
+
+(defcard "ONR Canis Minor"
+  {:subroutines [{:label (str "All further ice is encountered at +1 Strength")
+                  :msg "Make all further ice be encountered at +1 strength this run."
+                  :effect (effect (register-lingering-effect
+                                    card
+                                    {:type :ice-strength
+                                     :duration :end-of-run
+                                     :req (req (and (get-current-encounter state)
+                                                    (same-card? current-ice target)))
+                                     :value +1}))}]})
+
 (defcard "ONR Code Corpse"
   {:subroutines [(do-brain-damage 1)
-                (do-brain-damage 1)
+                 (do-brain-damage 1)
+                 end-the-run]})
+
+(defcard "ONR Colonel Failure"
+  {:subroutines [trash-program-sub
+                 trash-program-sub
+                 trash-program-sub
+                 end-the-run
+                 end-the-run]})
+
+(defcard "ONR Cortical Scanner"
+  {:subroutines[end-the-run
+                end-the-run
                 end-the-run]})
+
+(defcard "ONR Cortical Scrub"
+  {:subroutines [(do-brain-damage 1)
+                 end-the-run]})
+
+(defcard "ONR Crystal Wall"
+  {:subroutines[end-the-run]})
 
 (defcard "ONR Data Wall"
   {:subroutines [end-the-run]})
