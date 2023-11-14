@@ -142,18 +142,108 @@
 (defcard "ONR Crystal Wall"
   {:subroutines[end-the-run]})
 
+(defcard "ONR D'Arc Knight"
+  {:subroutines [trash-program-sub
+                 end-the-run]})
+
+(defcard "ONR Data Naga"
+  {:subroutines [trash-program-sub
+                 end-the-run]})
+
 (defcard "ONR Data Wall"
   {:subroutines [end-the-run]})
 
 (defcard "ONR Data Wall 2.0"
   {:subroutines [end-the-run]})
 
-(defcard "ONR Reinforced Wall"
+(defcard "ONR Endless Corridor"
   {:subroutines [end-the-run
                  end-the-run]})
 
 (defcard "ONR Fetch 4.0.1"
   {:subroutines [(onr-trace-ability 3 (give-tags 1) true)]})
 
+(defcard "ONR Filter"
+  {:subroutines [end-the-run]})
+
+(defcard "ONR Fire Wall"
+  {:subroutines [end-the-run]})
+
+(defcard "ONR Ice Pick Willie"
+  {:subroutines [trash-program-sub
+                 end-the-run]})
+
+(defcard "ONR Keeper"
+  {:subroutines [end-the-run]})
+
+(defcard "ONR Laser Wire"
+  {:subroutines [(do-net-damage 1)
+                 end-the-run]})
+
+(defcard "ONR Liche"
+  {:subroutines [(do-brain-damage 1)
+                 (do-brain-damage 1)
+                 (do-brain-damage 1)
+                 end-the-run]})
+
+(defcard "ONR Mazer"
+  {:subroutines [end-the-run]})
+
+(defcard "ONR Nerve Labyrinth"
+  {:subroutines [(do-net-damage 2)
+                 end-the-run]})
+
+(defcard "ONR π in the 'Face"
+  {:subroutines [end-the-run]})
+
+(defcard "ONR Razor Wire"
+  {:subroutines [(do-net-damage 2)
+                 end-the-run]})
+
+(defcard "ONR Reinforced Wall"
+  {:subroutines [end-the-run
+                 end-the-run]})
+
+(defcard "ONR Rock is Strong"
+  {:subroutines [end-the-run]})
+
+(defcard "ONR Scramble"
+  {:subroutines [end-the-run]})
+
+(defcard "ONR Sentinels Prime"
+  {:subroutines [trash-program-sub
+                 end-the-run]})
+
+(defcard "ONR Shotgun Wire"
+  {:subroutines [(do-net-damage 2)
+                 end-the-run]})
+
+(defcard "ONR Sleeper"
+  {:subroutines [end-the-run]})
+
+(defcard "ONR Toughonium [TM] Wall"
+  {:subroutines [end-the-run
+                 end-the-run
+                 end-the-run
+                 end-the-run]})
+
+(defcard "ONR Triggerman"
+  {:subroutines [trash-program-sub
+                 end-the-run]})
+
 (defcard "ONR Quandary"
   {:subroutines [end-the-run]})
+
+(defcard "ONR Wall of Ice"
+  {:subroutines [(do-net-damage 2)
+                 (do-net-damage 2)
+                 end-the-run
+                 end-the-run]})
+
+(defcard "ONR Wall of Static"
+  {:subroutines [end-the-run]})
+
+(defcard "ONR Zombie"
+  {:subroutines [(do-brain-damage 1)
+                 (do-brain-damage 1)
+                 end-the-run]})

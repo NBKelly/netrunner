@@ -26,8 +26,8 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:  44 / 582
-TESTS:  27 / 582
+TOTAL:  79 / 582
+TESTS:  64 / 582
 --------------------------
 002 + Access through Alpha
 003 + Access to Arasaka
@@ -70,27 +70,50 @@ TESTS:  27 / 582
 
 123 ^ Cyfermaster (trivial icebreaker - no test)
 
-136 + Data Wall 2.0 (trivial)
-137 + Data Wall (trivial)
+125 + D'Arc Knight
+
+132 + Data Naga
+
+136 + Data Wall 2.0
+137 + Data Wall
 
 148 + Department of Truth Enhancement
 
+179 + Endless Corridor
+
 202 + Fetch 4.0.1
+
+204 + Filter
+
+206 + Fire Wall
 
 219 ^ Fubar
 
 234 ^ Hammer
 
+253 + Ice Pick Willie
+
 265 + Invisibility
 
 268 ^ Jackhammer
 
+276 + Keeper
+
+280 + Laser Wire
+
+287 + Liche
+
 301 + Manhunt
+
+310 + Mazer
 
 324 + MRAM Chip
 
+329 + Nerve Labyrinth
+
 335 + Networking
 
+365 + ONR π in the 'Face
 366 ^ Pile Driver
 
 395 + Quandary (trivial ETR ice - no test)
@@ -100,9 +123,21 @@ TESTS:  27 / 582
 402 + Raven Microcyb Eagle
 403 ^ Raven Microcyb Owl
 
+405 + Razor Wire
+
 415 + Reinforced Wall
 
+430 + Rock is Strong
+
 434 + Runner Sensei
+
+449 + Scramble
+
+457 + Sentinels Prime
+
+464 + Shotgun Wire
+
+477 + Sleeper
 
 499 ^ Submarine Uplink (do this test later - fetch + uplink should be fine)
 
@@ -112,10 +147,19 @@ TESTS:  27 / 582
 
 519 + The Deck
 
+532 + Toughonium Wall
+
+536 + Triggerman
+
 541 ? Twenty-Four-Hour Surviellance (unimplemented)
 
 553 ^ Vewy Vewy Quiet
 
+563 + Wall of Ice
+564 + Wall of Static
+
 567 ^ ONR Weapons Depot
 
 576 ^ Wrecking Ball
+
+581 + Zombie
