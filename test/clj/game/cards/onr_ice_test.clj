@@ -105,6 +105,48 @@
        (click-prompt state :runner "End the run")
        (is (nil? (:run @state)))))))
 
+(defn- pay-x-or-bounce-on-pass
+  ([x name]
+   (do-game
+     (new-game {:corp {:credits (+ 20 (* 3 x)) :hand [name]}})
+     (play-from-hand state :corp name "New remote")
+     (take-credits state :corp)
+     (let [card (get-ice state :remote1 0)]
+       (rez state :corp card)
+       (run-on state :remote1)
+       (run-continue state)
+       (run-continue state :pass-ice)
+       (changes-val-macro
+         (- x) (:credit (get-corp))
+         (str "paid x to keep " (:title name) " on the field")
+         (click-prompt state :corp "Yes")
+         (is (= 0 (count (:hand (get-corp)))) "card not added to hand"))
+       (run-jack-out state)
+       (run-on state :remote1)
+       (run-continue state)
+       (run-continue state :pass-ice)
+       (changes-val-macro
+         0 (:credit (get-corp))
+         (str "paid 0, bounced card to hand ")
+         (click-prompt state :corp "No")
+         (is (= 1 (count (:hand (get-corp)))) "card not added to hand")))
+     (take-credits state :runner)
+     (play-from-hand state :corp name "New remote")
+     (take-credits state :corp)
+     ;; test it when we cannot afford to pay
+     (let [card (get-ice state :remote2 0)]
+       (rez state :corp card)
+       (run-on state :remote2)
+       (run-continue state)
+       (core/gain state :corp :credit (- (:credit (get-corp))))
+       (is (= 0 (:credit (get-corp))) "corp is poor")
+       (changes-val-macro
+         0 (:credit (get-corp))
+         (str "paid 0, bounced card to hand ")
+       (run-continue state :pass-ice)
+         (click-prompt state :corp "No")
+         (is (= 1 (count (:hand (get-corp)))) "card not added to hand"))))))
+
 ;; tests here
 
 (deftest onr-banpei-etr
@@ -183,6 +225,10 @@
 (deftest onr-darc-knight
   (trivial-trash-program "ONR Data Naga" 0)
   (trivial-etr "ONR Data Naga" 1))
+
+(deftest onr-datacomb
+  (trivial-etr "ONR Datacomb")
+  (pay-x-or-bounce-on-pass 1 "ONR Datacomb"))
 
 (deftest onr-data-wall (trivial-etr "ONR Data Wall"))
 

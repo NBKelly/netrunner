@@ -87,6 +87,17 @@
                   :successful ability
                   :unsuccessful un-ability}})))
 
+(defn- bounce-unless-corp-pays
+  ([cost]
+   (let [cost (if (integer? cost) [:credit cost] cost)]
+     {:event :pass-ice
+      :req (req (same-card? (:ice context) card))
+      :optional {:prompt (msg "Pay " cost "[Credits] to keep " (:title card) " on the field?")
+                 :yes-ability {:cost cost
+                               :msg (msg "to keep " (card-str state card) " on the field")}
+                 :no-ability {:msg (msg "add " (card-str state card) " to HQ")
+                              :effect (effect (move :corp card :hand))}}})))
+
 ;; card implementations
 
 (defcard "ONR Banpei"
@@ -145,6 +156,10 @@
 (defcard "ONR D'Arc Knight"
   {:subroutines [trash-program-sub
                  end-the-run]})
+
+(defcard "ONR Datacomb"
+  {:subroutines [end-the-run]
+   :events [(bounce-unless-corp-pays 1)]})
 
 (defcard "ONR Data Naga"
   {:subroutines [trash-program-sub
