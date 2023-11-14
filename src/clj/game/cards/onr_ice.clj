@@ -66,7 +66,7 @@
    [game.utils :refer :all]
    [jinteki.utils :refer :all]
    ;; imported from ice
-   [game.cards.ice :refer [end-the-run give-tags trash-program-sub]]
+   [game.cards.ice :refer [end-the-run end-the-run-unless-runner-pays gain-credits-sub give-tags trash-program-sub]]
    ))
 
 (defn onr-trace-ability
@@ -193,6 +193,10 @@
   {:subroutines [(do-net-damage 2)
                  end-the-run]})
 
+(defcard "ONR Misleading Access Menus"
+  {:on-rez (gain-credits-sub 3)
+   :subroutines [(end-the-run-unless-runner-pays [:credit 1])]})
+
 (defcard "ONR π in the 'Face"
   {:subroutines [end-the-run]})
 
@@ -220,6 +224,10 @@
 
 (defcard "ONR Sleeper"
   {:subroutines [end-the-run]})
+
+(defcard "ONR Snowbank"
+  {:on-rez (gain-credits-sub 3)
+   :subroutines [(end-the-run-unless-runner-pays [:credit 1])]})
 
 (defcard "ONR Toughonium [TM] Wall"
   {:subroutines [end-the-run

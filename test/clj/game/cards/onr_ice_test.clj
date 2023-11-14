@@ -84,6 +84,27 @@
          (str "Expected to end gain " x " credits on rez (net change " expected-change ")")
          (rez state :corp card))))))
 
+(defn- pay-x-or-etr-sub
+  ([x name] (pay-x-or-etr-sub x name 0))
+  ([x name sub]
+   (do-game
+     (new-game {:corp {:credits 20 :hand [name]}
+                :runner {:credits (* 3 x)}})
+     (play-from-hand state :corp name "New remote")
+     (take-credits state :corp)
+     (let [card (get-ice state :remote1 0)]
+       (rez state :corp card)
+       (run-on state :remote1)
+       (run-continue state)
+       (card-subroutine state :corp card sub)
+       (changes-val-macro
+         (- x) (:credit (get-runner))
+         (str "Paid " x "c for subroutine")
+         (click-prompt state :runner (str "Pay " x " [Credits]")))
+       (card-subroutine state :corp card sub)
+       (click-prompt state :runner "End the run")
+       (is (nil? (:run @state)))))))
+
 ;; tests here
 
 (deftest onr-banpei-etr
@@ -211,6 +232,10 @@
 (deftest onr-mazer
   (trivial-etr "ONR Mazer"))
 
+(deftest onr-misleading-access-menus
+  (gain-x-on-rez 3 "ONR Misleading Access Menus")
+  (pay-x-or-etr-sub 1 "ONR Misleading Access Menus"))
+
 (deftest onr-nerve-labyrinth
   (trivial-damage 2 "ONR Nerve Labyrinth")
   (trivial-etr "ONR Nerve Labyrinth" 1))
@@ -242,6 +267,10 @@
 
 (deftest onr-sleeper
   (trivial-etr "ONR Sleeper"))
+
+(deftest onr-snowbank
+  (gain-x-on-rez 3 "ONR Snowbank")
+  (pay-x-or-etr-sub 1 "ONR Snowbank"))
 
 (deftest onr-toughonium-wall
   (trivial-etr "ONR Toughonium [TM] Wall")

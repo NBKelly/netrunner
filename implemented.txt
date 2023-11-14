@@ -26,8 +26,8 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:  79 / 582
-TESTS:  64 / 582
+TOTAL:  80 / 582
+TESTS:  65 / 582
 --------------------------
 002 + Access through Alpha
 003 + Access to Arasaka
@@ -107,6 +107,8 @@ TESTS:  64 / 582
 
 310 + Mazer
 
+319 + Misleading Access Menus
+
 324 + MRAM Chip
 
 329 + Nerve Labyrinth
@@ -138,6 +140,8 @@ TESTS:  64 / 582
 464 + Shotgun Wire
 
 477 + Sleeper
+
+482 + Snowbank
 
 499 ^ Submarine Uplink (do this test later - fetch + uplink should be fine)
 
