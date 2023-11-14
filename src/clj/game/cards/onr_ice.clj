@@ -98,6 +98,29 @@
                  :no-ability {:msg (msg "add " (card-str state card) " to HQ")
                               :effect (effect (move :corp card :hand))}}})))
 
+(defn- used-noisy-discount
+  ([state cost]
+   (letfn [(find-breaker-in-run [cid state]
+             (let [evs (filter #(and (= :breaker-strength-changed (first %)) (= cid (:cid (first (second %))))) (:events (:run @state)))]
+               (first (map #(first (second %)) evs))))
+           ;; this finds the cids of every icebreaker used to break a subroutine during this run
+           (find-breaker-cids [state]
+             (let [broken-sub-events (filter #(= :subroutines-broken (first %)) (:events (:run @state)))
+                   ;; this should just explicitly be the ices that were broken this run
+                   broken-sub-events (map #(:subroutines (first (second %))) broken-sub-events)
+                   broken-subs (filter :broken (flatten broken-sub-events))]
+               (map :breaker broken-subs)))
+           (noisy-breaker-broke-subs-this-run [state]
+             (let [breakers (map #(find-breaker-in-run % state) (find-breaker-cids state))]
+               (some #(= "Noisy" %) (first (map :subtypes breakers)))))
+           (pump-breaker-events [state]
+             (map second (filter #(or (= :pump-breaker (first %)) (= :subroutines-broken (first %))) (:events (:run @state)))))
+           (noisy-was-pumped [state]
+             (some #(has-subtype? % "Noisy") (map first (pump-breaker-events state))))]
+     ;; wow! what a nightmare
+     (if (or (noisy-breaker-broke-subs-this-run state)
+             (noisy-was-pumped state))
+       (- cost) 0))))
 ;; card implementations
 
 (defcard "ONR Banpei"
@@ -170,6 +193,11 @@
 
 (defcard "ONR Data Wall 2.0"
   {:subroutines [end-the-run]})
+
+(defcard "ONR Deadeye"
+  {:rez-cost-bonus (req (used-noisy-discount state 5))
+   :subroutines [trash-program-sub
+                 end-the-run]})
 
 (defcard "ONR Endless Corridor"
   {:subroutines [end-the-run

@@ -72,10 +72,14 @@ TESTS:  65 / 582
 
 125 + D'Arc Knight
 
+127 + Datacomb
+
 132 + Data Naga
 
 136 + Data Wall 2.0
 137 + Data Wall
+
+139 ^ Deadeye (do test tomorrow)
 
 148 + Department of Truth Enhancement
 

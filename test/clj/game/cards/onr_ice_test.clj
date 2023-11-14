@@ -54,7 +54,7 @@
        (run-on state :remote1)
        (run-continue state)
        (card-subroutine state :corp card sub)
-       (is (= x (:brain-damage (get-runner))) "Runner took 2 brain damage")))))
+       (is (= x (:brain-damage (get-runner))) (str "Runner took " x " brain damage"))))))
 
 (defn- trivial-damage
   ([x name] (trivial-damage x name 0))
