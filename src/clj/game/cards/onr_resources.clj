@@ -61,6 +61,7 @@
    [game.core.rezzing :refer [derez rez]]
    [game.core.runs :refer [bypass-ice can-run-server? get-runnable-zones
                            gain-run-credits get-current-encounter
+                           jack-out
                            update-current-encounter
                            make-run set-next-phase
                            successful-run-replace-breach total-cards-accessed]]
@@ -165,6 +166,25 @@
              :async true
              :msg "gain 1[Credit]"
              :effect (effect (gain-credits eid 1))}]})
+
+(defcard "ONR Submarine Uplink"
+  ;; this forces you to jackout after the current encounter
+  {:abilities [{:onr-base-link true
+                :req (req run)
+                :cost [:credit 0]
+                :base-link 4
+                :label (str "Base Link " 4)
+                :msg (str "set their Base Link to " 4)
+                :effect (req (set-base-link state 4)
+                             (register-events
+                               state side card
+                              [{:event :end-of-encounter
+                                :unregister-once-resolved true
+                                :async true
+                                :duration :end-of-run
+                                :effect (req (jack-out state side eid))}]))}
+               (assoc (boost-link-abi 2 1)  :req (req run))
+               ]})
 
 (defcard "ONR Swiss Bank Account"
   {:implemention "Interrupts are not implemented."

@@ -130,6 +130,7 @@
                                (:onr-base-link %))
                           (and (get-in @state [:onr-trace :base])
                                (not (:onr-base-link %)))) abis)
+        abis (filter #(can-trigger? state :runner eid % link-card nil) abis)
         build-label (fn [abi] (str (:cost-label abi) ": " (:label abi)))
         labels (into [] (concat (map build-label abis) ["Done"]))
         zipped (map vector abis labels)

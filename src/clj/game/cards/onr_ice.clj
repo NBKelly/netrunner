@@ -92,8 +92,18 @@
                 (do-brain-damage 1)
                 end-the-run]})
 
-(defcard "ONR Quandary"
+(defcard "ONR Data Wall"
   {:subroutines [end-the-run]})
 
+(defcard "ONR Data Wall 2.0"
+  {:subroutines [end-the-run]})
+
+(defcard "ONR Reinforced Wall"
+  {:subroutines [end-the-run
+                 end-the-run]})
+
 (defcard "ONR Fetch 4.0.1"
-  {:subroutines [(onr-trace-ability 3 (give-tags 1))]})
+  {:subroutines [(onr-trace-ability 3 (give-tags 1) true)]})
+
+(defcard "ONR Quandary"
+  {:subroutines [end-the-run]})

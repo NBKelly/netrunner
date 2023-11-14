@@ -41,3 +41,30 @@
       (run-on state :hq)
       (card-ability state :runner (refresh corr) 1)
       (click-card state :runner (get-hardware state 0)))))
+
+(deftest onr-the-deck
+  ;; Trace 6 - Give the runner 1 tag for each point your trace exceeded their link
+  (do-game
+    (new-game {:corp {:deck ["ONR Manhunt"]}
+               :runner {:hand ["ONR The Deck" (qty "Sure Gamble" 2)]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Sure Gamble")
+    (play-from-hand state :runner "Sure Gamble")
+    (play-from-hand state :runner "ONR The Deck")
+    (run-empty-server state :rd)
+    (take-credits state :runner)
+    ;; 7 - 4 means that our max trace is 3
+    ;; the runner should also have 6 credits
+    (play-from-hand state :corp "ONR Manhunt")
+    (click-prompt state :corp "3")
+    (click-prompt state :runner "ONR The Deck")
+    (changes-val-macro
+      -0 (:credit (get-runner))
+      "spent 0c to boost link to 5"
+      (click-prompt state :runner "0 [Credits]: Base Link 5"))
+    (changes-val-macro
+      -3 (:credit (get-runner))
+      "spent 1c to boost link to 6"
+      (click-prompt state :runner "1 [Credits]: +1 Link"))
+    (click-prompt state :runner "Done")
+    (is (= 0 (count-tags state)) "Runner should have 0 tags")))

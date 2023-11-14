@@ -14,14 +14,18 @@ Features:
 Card Updates:
   TODO:
     Write test for weapons depot once I implement a black ops agenda
+    Write tests for stealth cards once the noisy cards are done (owl, cloak, invisibility,
+      sunburst cranial interface, Vewy Vewy Quiet)
+    Write tests for noisy cards (bulldozer, jackhammer, hammer, fubar, Pile Driver,
+    	  	    	  	Ramming Piston, Wrecking Ball)
     
 Keys:
   + test done
   ^ no test (for some reason)
   ? not implemented (deliberately, for some reason)
-
-TOTAL: 23 / 582
-TESTS: 18 / 582
+  
+TOTAL:  44 / 582
+TESTS:  23 / 582
 
 002 + Access through Alpha
 003 + Access to Arasaka
@@ -31,9 +35,12 @@ TESTS: 18 / 582
 008 + Code Corpse
 
 027 + Back Door to Hilliard
-
+028 + Back Door to Netwatch
 029 + Back Door to Orbital Air
 030 + Back Door to Rivals
+
+032 + Baedeker's Net Map
+033 + Bakdoor[TM]
 
 048 ^ Blink (no test, this is an rng card!)
 
@@ -41,11 +48,26 @@ TESTS: 18 / 582
 
 058 + ONR Braindance Campaign
 
+064 ^ Bulldozer
+
+080 ^ Cloak
+
 123 ^ Cyfermaster (trivial icebreaker - no test)
+
+136 ^ Data Wall 2.0 (trivial)
+137 ^ Data Wall (trivial)
 
 148 + Department of Truth Enhancement
 
 202 + Fetch 4.0.1
+
+219 ^ Fubar
+
+234 ^ Hammer
+
+265 ^ Invisibility
+
+268 ^ Jackhammer
 
 301 + Manhunt
 
@@ -53,14 +75,31 @@ TESTS: 18 / 582
 
 335 + Networking
 
+366 ^ Pile Driver
+
 395 ^ Quandary (trivial ETR ice - no test)
 
+399 ^ Ramming Piston
+
 402 + Raven Microcyb Eagle
+403 ^ Raven Microcyb Owl
+
+415 ^ Reinforced Wall
 
 434 + Runner Sensei
 
+499 ^ Submarine Uplink (do this test later - fetch + uplink should be fine)
+
+503 ^ Sunburst Cranial Interface
+
 507 + Swiss Bank Account
+
+519 + The Deck
 
 541 ? Twenty-Four-Hour Surviellance (unimplemented)
 
+553 ^ Vewy Vewy Quiet
+
 567 ^ ONR Weapons Depot
+
+576 ^ Wrecking Ball

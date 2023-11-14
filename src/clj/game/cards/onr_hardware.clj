@@ -62,9 +62,30 @@
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [game.utils :refer :all]
    [jinteki.utils :refer :all]
+   [game.core.onr-trace :refer [boost-link set-base-link cancel-successful-trace]]
    [game.core.set-aside :refer [set-aside get-set-aside]]
    [game.core.sabotage :refer [sabotage-ability]]
    [game.core.mark :refer [identify-mark-ability]]))
+
+(defn- base-link-abi
+  [cost val]
+  (let [cost (if (integer? cost) [:credit cost] cost)]
+    {:onr-base-link true
+     :req (req true)
+     :cost cost
+     :base-link val
+     :label (str "Base Link " val)
+     :msg (str "set their Base Link to " val)
+     :effect (req (set-base-link state val))}))
+
+(defn- boost-link-abi
+  [cost val]
+  (let [cost (if (integer? cost) [:credit cost] cost)]
+    {:onr-boost-link true
+     :cost cost
+     :label (str "+" val " Link")
+     :msg (str "gain +" val " Link")
+     :effect (req (boost-link state val))}))
 
 ;; Card definitions
 
@@ -102,6 +123,15 @@
 (defcard "ONR MRAM Chip"
   {:static-abilities [(runner-hand-size+ 2)]})
 
+(defcard "ONR Raven Microcyb Owl"
+  {:recurring 3
+   :static-abilities [(mu+ 1)]
+   :interactions {:pay-credits {:req (req (and run
+                                               (= :ability (:source-type eid))
+                                               (has-subtype? target "Icebreaker")
+                                               (not (has-subtype? target "Noisy"))))
+                                :type :recurring}}})
+
 (defcard "ONR Raven Microcyb Eagle"
   {:interactions {:prevent [{:type #{:net}
                              :req (req (not-used-once? state (first (:abilities card)) card))}]
@@ -115,3 +145,18 @@
                :msg "prevent 1 net damage"
                :effect (effect (damage-prevent :net 1))}]
   :recurring 1})
+
+(defcard "ONR Sunburst Cranial Interface"
+  {:recurring 1
+   :static-abilities [(mu+ 1)
+                      (runner-hand-size+ 1)]
+   :interactions {:pay-credits {:req (req (and run
+                                               (= :ability (:source-type eid))
+                                               (has-subtype? target "Icebreaker")
+                                               (not (has-subtype? target "Noisy"))))
+                                :type :recurring}}})
+
+(defcard "ONR The Deck"
+  {:abilities [(base-link-abi 0 5)
+               (boost-link-abi 1 1)]
+   :static-abilities [(mu+ 1)]})

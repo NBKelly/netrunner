@@ -62,9 +62,77 @@
    [game.core.trace :refer [force-base]]
    [game.core.update :refer [update!]]
    [game.core.virus :refer [get-virus-counters]]
+   [game.core.onr-trace :refer [boost-link set-base-link cancel-successful-trace]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [game.utils :refer :all]
    [jinteki.utils :refer :all]))
+
+(defn- base-link-abi
+  [cost val]
+  (let [cost (if (integer? cost) [:credit cost] cost)]
+    {:onr-base-link true
+     :req (req true)
+     :cost cost
+     :base-link val
+     :label (str "Base Link " val)
+     :msg (str "set their Base Link to " val)
+     :effect (req (set-base-link state val))}))
+
+(defn- boost-link-abi
+  [cost val]
+  (let [cost (if (integer? cost) [:credit cost] cost)]
+    {:onr-boost-link true
+     :cost cost
+     :label (str "+" val " Link")
+     :msg (str "gain +" val " Link")
+     :effect (req (boost-link state val))}))
+
+;; deal with stealth/noisy cards
+
+(defn- count-stealth-creds
+  [state]
+  (let [inst (all-active-installed state :runner)
+        stealth (filter #(has-subtype? % "Stealth") inst)
+        creds (map #(+ (or (get-counters % :credit) 0) (or (get-counters % :recurring) 0)) stealth)
+        total (reduce + 0 creds)]
+    total))
+
+(defn- lose-x-stealth-creds
+  [amt]
+  {:req (req (pos? amt))
+   :prompt (msg "Lose a stealth credit (" amt " remain)")
+   :async true
+   :choices {:card #(or (pos? (get-counters % :credit)) (pos? (get-counters % :recurring)))}
+   :effect (req (if (pos? (get-counters target :recurring))
+                  (add-counter state side target :recurring -1)
+                  (add-counter state side target :credit -1))
+                (continue-ability
+                  state side
+                  (lose-x-stealth-creds (dec amt))
+                  card nil))})
+
+(defn- lose-from-stealth
+  [amt]
+  (if (integer? amt)
+    {:additional-ability
+     {:msg (msg "lose " amt " credits from stealth cards")
+      :req (req (pos? (count-stealth-creds state)))
+      :async true
+      :effect (req (let [max (min amt (count-stealth-creds state))]
+                     (continue-ability state side
+                                       (lose-x-stealth-creds max)
+                                       card nil)))}}
+    nil))
+
+;; card implementations
+
+(defcard "ONR Baedeker's Net Map"
+  {:abilities [(base-link-abi 0 1)
+               (boost-link-abi 1 1)]})
+
+(defcard "ONR Bakdoor [TM]"
+  {:abilities [(base-link-abi 0 3)
+               (boost-link-abi 2 1)]})
 
 (defcard "ONR Blink"
   (letfn [(attempt
@@ -112,6 +180,87 @@
                                   (system-msg state side (str "takes " die-result " net damage"))
                                   (damage state side eid :net die-result {:card card})))))}]}))
 
+(defcard "ONR Bulldozer"
+  (auto-icebreaker {:abilities [(break-sub 1 1 "Wall" (lose-from-stealth 2))
+                                (strength-pump 2 1)]
+                    :events [{:event :subroutines-broken
+                              :req (req (and (all-subs-broken-by-card? target card)
+                                             (has-subtype? target "Wall")))
+                              :once :per-encounter
+                              :effect (req (register-events
+                                             state side card
+                                             [{:event :encounter-ice
+                                               :duration :end-of-run
+                                               :unregister-once-resolved :true
+                                               :async true
+                                               :effect (req (if (has-subtype? current-ice "Sentry")
+                                                              (continue-ability
+                                                                state side
+                                                                (break-sub 0 1 "Sentry" {:req (req true) :repeatable false})
+                                                                card nil)
+                                                              (effect-completed state side eid)))}]))}]}))
+
+(defcard "ONR Cloak"
+  {:recurring 3
+   :interactions {:pay-credits {:req (req (and run
+                                               (= :ability (:source-type eid))
+                                               (has-subtype? target "Icebreaker")
+                                               (not (has-subtype? target "Noisy"))))
+                                :type :recurring}}})
+
 (defcard "ONR Cyfermaster"
   (auto-icebreaker {:abilities [(break-sub 2 1 "Code Gate")
                                 (strength-pump 1 1)]}))
+
+(defcard "ONR Fubar"
+  (auto-icebreaker
+    (letfn [(chosen-type [card] (get-in card [:card-target]))]
+      {:abilities [(break-sub 1 1 "All"
+                              (assoc (lose-from-stealth 1)
+                                     :req (req (and (chosen-type card)
+                                                    (has-subtype? current-ice (chosen-type card))))))
+                   (strength-pump 2 1)
+                   {:prompt "Choose target type"
+                    :req (req (not (:card-target card)))
+                    :label "Choose subtype (once per game)"
+                    :choices ["Sentry" "Code Gate" "Wall"]
+                    :cost [:credit 0]
+                    :msg (msg "choose to be able to break " target " subroutines")
+                    :effect (effect (update! (assoc card :card-target target)))}]})))
+
+(defcard "ONR Hammer"
+  (auto-icebreaker {:abilities [(break-sub 1 1 "Wall" (lose-from-stealth 2))
+                                (strength-pump 1 1)]}))
+
+(defcard "ONR Invisibility"
+  {:recurring 1
+   :interactions {:pay-credits {:req (req (and run
+                                               (= :ability (:source-type eid))
+                                               (has-subtype? target "Icebreaker")
+                                               (not (has-subtype? target "Noisy"))))
+                                :type :recurring}}})
+
+(defcard "ONR Jackhammer"
+  (auto-icebreaker {:abilities [(break-sub 0 1 "Wall" (lose-from-stealth 1))
+                                (strength-pump 1 1)]}))
+
+(defcard "ONR Pile Driver"
+  (auto-icebreaker {:abilities [(break-sub 3 4 "Wall" (lose-from-stealth 3))
+                                (strength-pump 1 1)]}))
+
+
+(defcard "ONR Ramming Piston"
+  (auto-icebreaker {:abilities [(break-sub 2 1 "Wall" (lose-from-stealth 2))
+                                (strength-pump 1 1)]}))
+
+(defcard "ONR Vewy Vewy Quiet"
+  {:recurring 2
+   :interactions {:pay-credits {:req (req (and run
+                                               (= :ability (:source-type eid))
+                                               (has-subtype? target "Icebreaker")
+                                               (not (has-subtype? target "Noisy"))))
+                                :type :recurring}}})
+
+(defcard "ONR Wrecking Ball"
+  (auto-icebreaker {:abilities [(break-sub 0 1 "Wall" (lose-from-stealth 1))
+                                (strength-pump 2 1)]}))
