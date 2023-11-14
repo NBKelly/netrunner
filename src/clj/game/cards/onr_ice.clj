@@ -98,6 +98,16 @@
                  :no-ability {:msg (msg "add " (card-str state card) " to HQ")
                               :effect (effect (move :corp card :hand))}}})))
 
+(defn- bounce-and-corp-gains
+  [creds]
+  {:event :pass-ice
+   :req (req (same-card? (:ice context) card))
+   :optional {:prompt (msg "Gain " creds "[Credits] and return " (:title card) " on HQ?")
+              :yes-ability {:msg (msg "gains " creds "[Credits] and returns " (:title card) " to HQ")
+                            :async true
+                            :effect (effect (move :corp card :hand)
+                                         (gain-credits eid creds))}}})
+
 (defn- used-noisy-discount
   ([state cost]
    (letfn [(find-breaker-in-run [cid state]
@@ -121,11 +131,62 @@
      (if (or (noisy-breaker-broke-subs-this-run state)
              (noisy-was-pumped state))
        (- cost) 0))))
+
+(def prevent-breaking-next-ice
+  {:msg "prevent the Runner from breaking subroutines on the next piece of ice they encounter this run"
+   :effect
+   (effect (register-events
+             card
+             [{:event :encounter-ice
+               :duration :end-of-run
+               :unregister-once-resolved true
+               :msg (msg "prevent the runner from breaking subroutines on " (:title (:ice context)))
+               :effect (effect (register-lingering-effect
+                                 card
+                                 (let [encountered-ice (:ice context)]
+                                   {:type :cannot-break-subs-on-ice
+                                    :duration :end-of-encounter
+                                    :req (req (same-card? encountered-ice (:ice context)))
+                                    :value true})))}]))})
+
+(defn- change-subtype-on-rez
+  [from to cost cdef]
+  (merge cdef {:on-rez {:optional {:prompt (msg "Pay " cost " credits to change subtype to " to)
+                                   :yes-ability {:cost (if (integer? cost) [:credit cost] cost)
+                                                 :msg (msg "lose " from " and gain " to)
+                                                 :effect (effect (update! (assoc-in card [:special :change-subtype] {:from from :to to})))}}}
+               :static-abilities [{:type :gain-subtype
+                                   :req (req (and (same-card? card target)
+                                                  (get-in card [:special :change-subtype :to])))
+                                   :value (req (get-in card [:special :change-subtype :to]))}
+                                  {:type :lose-subtype
+                                   :req (req (and (same-card? card target)
+                                                  (get-in card [:special :change-subtype :from])))
+                                   :value (req (get-in card [:special :change-subtype :from]))}]}))
+
 ;; card implementations
 
 (defcard "ONR Banpei"
   {:subroutines [trash-program-sub
                  end-the-run]})
+
+(defcard "ONR Bolter Cluster"
+  {:subroutines [(do-net-damage 4)
+                 prevent-breaking-next-ice]})
+
+(defcard "ONR Bolter Swarm"
+  {:rez-cost-bonus (req (used-noisy-discount state 5))
+   :subroutines [(do-net-damage 4)
+                 prevent-breaking-next-ice]})
+
+(defcard "ONR Brain Drain"
+  {:subroutines [{:label "maybe do 3 brain damage"
+                  :effect (req (let [di (inc (rand-int 6))]
+                                 (system-msg state side (str "uses " (:title card) " to roll a " di " (1d6)"))
+                                 (if (= 1 di)
+                                   (continue-ability state side (do-brain-damage 3) card nil)
+                                   (effect-completed state side eid))))
+                  :async true}]})
 
 (defcard "ONR Brain Wash"
   {:subroutines [(do-brain-damage 1)]})
@@ -152,6 +213,9 @@
                                                     (same-card? current-ice target)))
                                      :value +1}))}]})
 
+(defcard "ONR Caryatid"
+  (change-subtype-on-rez "Wall" "Code Gate" 1 {:subroutines [end-the-run]}))
+
 (defcard "ONR Code Corpse"
   {:subroutines [(do-brain-damage 1)
                  (do-brain-damage 1)
@@ -173,6 +237,9 @@
   {:subroutines [(do-brain-damage 1)
                  end-the-run]})
 
+(defcard "ONR Credit Blocks"
+  (change-subtype-on-rez "Sentry" "Wall" 1 {:subroutines [end-the-run]}))
+
 (defcard "ONR Crystal Wall"
   {:subroutines[end-the-run]})
 
@@ -183,6 +250,10 @@
 (defcard "ONR Datacomb"
   {:subroutines [end-the-run]
    :events [(bounce-unless-corp-pays 1)]})
+
+(defcard "ONR Data Darts"
+  {:subroutines [(do-net-damage 3)
+                 prevent-breaking-next-ice]})
 
 (defcard "ONR Data Naga"
   {:subroutines [trash-program-sub
@@ -199,6 +270,11 @@
    :subroutines [trash-program-sub
                  end-the-run]})
 
+(defcard "ONR Death Yo-Yo"
+  {:events [(bounce-and-corp-gains 1)]
+   :subroutines [(do-brain-damage 1)
+                 end-the-run]})
+
 (defcard "ONR Endless Corridor"
   {:subroutines [end-the-run
                  end-the-run]})
@@ -211,6 +287,9 @@
 
 (defcard "ONR Fire Wall"
   {:subroutines [end-the-run]})
+
+(defcard "ONR Galatea"
+  (change-subtype-on-rez "Wall" "Code Gate" 1 {:subroutines [end-the-run]}))
 
 (defcard "ONR Ice Pick Willie"
   {:subroutines [trash-program-sub

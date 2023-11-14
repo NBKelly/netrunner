@@ -50,14 +50,18 @@ TESTS:  65 / 582
 
 051 + Bodyweight [TM] Data Crèche
 
-058 + ONR Braindance Campaign
+053 + Bolter Cluster
+054 + Bolter Swarm
 
+058 + ONR Braindance Campaign
+059 ^ Brain Drain (random, untestable?)
 060 + ONR Brain Wash
 
 064 ^ Bulldozer
 
 066 + Canis Major
 067 + Canis Minor
+068 + Caryatid
 
 080 + Cloak
 
@@ -66,6 +70,8 @@ TESTS:  65 / 582
 106 + ONR Cortical Scanner
 107 + ONR Cortical Scrub
 
+113 + ONR Credit Blocks
+
 120 + ONR Crystal Wall
 
 123 ^ Cyfermaster (trivial icebreaker - no test)
@@ -73,13 +79,16 @@ TESTS:  65 / 582
 125 + D'Arc Knight
 
 127 + Datacomb
+128 + Data Darts
 
 132 + Data Naga
 
 136 + Data Wall 2.0
 137 + Data Wall
 
-139 ^ Deadeye (do test tomorrow)
+139 + Deadeye
+
+142 + Death Yo-Yo
 
 148 + Department of Truth Enhancement
 
@@ -92,6 +101,8 @@ TESTS:  65 / 582
 206 + Fire Wall
 
 219 ^ Fubar
+
+221 + Galatea
 
 234 ^ Hammer
 

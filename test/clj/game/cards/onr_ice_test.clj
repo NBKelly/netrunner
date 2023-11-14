@@ -6,6 +6,14 @@
             [game.macros-test :refer :all]
             [clojure.test :refer :all]))
 
+(defn dismiss-rez-prompt [state]
+  (when-not (no-prompt? state :corp)
+    (click-prompt state :corp "No")))
+
+(defn dismiss-rez [state side card]
+  (rez state side card)
+  (dismiss-rez-prompt state))
+
 (defn- trivial-etr
   ([name] (trivial-etr name 0))
   ([name sub]
@@ -14,7 +22,7 @@
                        :hand [name]}})
      (play-from-hand state :corp name "New remote")
      (let [card (get-ice state :remote1 0)]
-       (rez state :corp card)
+       (dismiss-rez state :corp card)
        (take-credits state :corp)
        (run-on state :remote1)
        (run-continue state)
@@ -33,7 +41,7 @@
      (play-from-hand state :runner "ONR Jackhammer")
      (let [card (get-ice state :remote1 0)
            jh (get-program state 0)]
-       (rez state :corp card)
+       (dismiss-rez state :corp card)
        (run-on state :remote1)
        (run-continue state)
        (card-subroutine state :corp card sub)
@@ -50,7 +58,7 @@
      (play-from-hand state :corp name "New remote")
      (take-credits state :corp)
      (let [card (get-ice state :remote1 0)]
-       (rez state :corp card)
+       (dismiss-rez state :corp card)
        (run-on state :remote1)
        (run-continue state)
        (card-subroutine state :corp card sub)
@@ -66,7 +74,7 @@
      (play-from-hand state :corp name "New remote")
      (take-credits state :corp)
      (let [card (get-ice state :remote1 0)]
-       (rez state :corp card)
+       (dismiss-rez state :corp card)
        (run-on state :remote1)
        (run-continue state)
        (card-subroutine state :corp card sub)
@@ -82,7 +90,7 @@
        (changes-val-macro
          expected-change (:credit (get-corp))
          (str "Expected to end gain " x " credits on rez (net change " expected-change ")")
-         (rez state :corp card))))))
+         (dismiss-rez state :corp card))))))
 
 (defn- pay-x-or-etr-sub
   ([x name] (pay-x-or-etr-sub x name 0))
@@ -93,7 +101,7 @@
      (play-from-hand state :corp name "New remote")
      (take-credits state :corp)
      (let [card (get-ice state :remote1 0)]
-       (rez state :corp card)
+       (dismiss-rez state :corp card)
        (run-on state :remote1)
        (run-continue state)
        (card-subroutine state :corp card sub)
@@ -112,7 +120,7 @@
      (play-from-hand state :corp name "New remote")
      (take-credits state :corp)
      (let [card (get-ice state :remote1 0)]
-       (rez state :corp card)
+       (dismiss-rez state :corp card)
        (run-on state :remote1)
        (run-continue state)
        (run-continue state :pass-ice)
@@ -129,13 +137,13 @@
          0 (:credit (get-corp))
          (str "paid 0, bounced card to hand ")
          (click-prompt state :corp "No")
-         (is (= 1 (count (:hand (get-corp)))) "card not added to hand")))
+         (is (= 1 (count (:hand (get-corp)))) "card added to hand")))
      (take-credits state :runner)
      (play-from-hand state :corp name "New remote")
      (take-credits state :corp)
      ;; test it when we cannot afford to pay
      (let [card (get-ice state :remote2 0)]
-       (rez state :corp card)
+       (dismiss-rez state :corp card)
        (run-on state :remote2)
        (run-continue state)
        (core/gain state :corp :credit (- (:credit (get-corp))))
@@ -145,8 +153,135 @@
          (str "paid 0, bounced card to hand ")
        (run-continue state :pass-ice)
          (click-prompt state :corp "No")
-         (is (= 1 (count (:hand (get-corp)))) "card not added to hand"))))))
+         (is (= 1 (count (:hand (get-corp)))) "card added to hand"))))))
 
+(defn- gain-x-and-bounce-on-pass
+  ([x name]
+   (do-game
+     (new-game {:corp {:credits (+ 20 (* 3 x)) :hand [name]}})
+     (play-from-hand state :corp name "New remote")
+     (take-credits state :corp)
+     (let [card (get-ice state :remote1 0)]
+       (dismiss-rez state :corp card)
+       (run-on state :remote1)
+       (run-continue state)
+       (run-continue state :pass-ice)
+       (changes-val-macro
+         0 (:credit (get-corp)) "No change"
+         (click-prompt state :corp "No")
+         (is (= 0 (count (:hand (get-corp)))) "card not added to hand"))
+       (run-jack-out state)
+       (run-on state :remote1)
+       (run-continue state)
+       (run-continue state :pass-ice)
+       (changes-val-macro
+         x (:credit (get-corp))
+         (str "gain " x " to bounce paid card to hand")
+         (click-prompt state :corp "Yes")
+         (is (= 1 (count (:hand (get-corp)))) "card added to hand"))))))
+
+(defn- noisy-breaker-used-discount
+  [x name]
+  (do-game
+    (new-game {:corp {:hand [name]
+                      :credits 40}
+               :runner {:hand ["ONR Jackhammer"]}})
+    (play-from-hand state :corp name "HQ")
+    (take-credits state :corp)
+    (play-from-hand state :runner "ONR Jackhammer")
+    (run-on state :hq)
+    (let [card (get-ice state :hq 0)
+          rez-cost (:cost (refresh card))
+          jack (get-program state 0)
+          discounted-cost (- rez-cost x)]
+      (changes-val-macro
+        (- rez-cost) (:credit (get-corp))
+        "Normal rez cost"
+        (dismiss-rez state :corp (refresh card)))
+      (derez state :corp (refresh card))
+      ;; boost by 1 - we've now used a noisy breaker
+      (card-ability state :runner (refresh jack) 1)
+      (changes-val-macro
+        (- discounted-cost) (:credit (get-corp))
+        "Normal rez cost"
+        (dismiss-rez state :corp (refresh card))))))
+
+(defn- cannot-break-next-ice
+  ([name] (cannot-break-next-ice name 0))
+  ([name sub]
+   ;; Cannot break subroutines of next piece of ice
+   (do-game
+     (new-game {:corp {:hand [name (qty "ONR Data Wall" 2)]
+                       :credits 30}
+                :runner {:hand ["ONR Jackhammer"]
+                         :credits 20}})
+     (play-from-hand state :corp "ONR Data Wall" "HQ")
+     (play-from-hand state :corp "ONR Data Wall" "HQ")
+     (play-from-hand state :corp name "HQ")
+     (take-credits state :corp)
+     (play-from-hand state :runner "ONR Jackhammer")
+     (let [card (get-ice state :hq 2)
+           wall1 (get-ice state :hq 1)
+           wall2 (get-ice state :hq 0)
+           breaker  (get-program state 0)]
+       (run-on state "HQ")
+       (dismiss-rez state :corp card)
+       (run-continue state)
+       (card-subroutine state :corp card sub)
+       (run-continue-until state :approach-ice wall1)
+       (dismiss-rez state :corp wall1)
+       (run-continue state)
+       ;; Inazuma subs prevented break on next piece of ice
+       (card-ability state :runner breaker "Break 1 Wall subroutine")
+       (is (no-prompt? state :runner) " can't break so no prompt")
+       ;; Next piece of ice is fine to break again
+       (run-continue-until state :approach-ice wall2)
+       (dismiss-rez state :corp wall2)
+       (run-continue state)
+       (card-ability state :runner breaker "Break 1 Wall subroutine")
+       (click-prompt state :runner "End the run")
+       (is (empty? (remove :broken (:subroutines (refresh wall2)))) "All subroutines broken"))))
+  )
+
+(defn- changes-subtype-rez
+  [x from to name]
+  (do-game
+    (new-game {:corp {:hand [name]
+                      :credits 50}})
+    (play-from-hand state :corp name "HQ")
+    (let [card (get-ice state :hq 0)]
+      (rez state :corp card)
+      (is (has-subtype? (refresh card) from) "no change")
+      (is (not (has-subtype? (refresh card) to)) "no change")
+      (changes-val-macro
+        (- x) (:credit (get-corp))
+        "spent x to swap types"
+        (click-prompt state :corp "Yes"))
+      (is (has-subtype? (refresh card) to) (str "swapped to " to))
+      (is (not (has-subtype? (refresh card) from)) (str "swapped from" from))
+      (is (no-prompt? state :corp))
+      (derez state :corp (refresh card))
+      (rez state :corp (refresh card))
+      (is (has-subtype? (refresh card) from) "no change")
+      (is (not (has-subtype? (refresh card) to)) "no change")
+      (changes-val-macro
+        0 (:credit (get-corp))
+        "did not swap"
+        (click-prompt state :corp "No"))
+      (is (has-subtype? (refresh card) from) "no change")
+      (is (not (has-subtype? (refresh card) to)) "no change"))))
+
+;; trivial-etr
+;; trivial-trash-program
+;; trivial-brain-damage
+;; trivial-damage
+;; gain-x-on-rez
+;; pay-x-or-etr-sub
+;; pay-x-or-bounce-on-pass
+;; noisy-breaker-used-discount
+;; cannot-break-next-ice
+;; changes-subtype-rez (x from to name)
+;; gain-x-and-bounce-on-pass
 ;; tests here
 
 (deftest onr-banpei-etr
@@ -155,6 +290,15 @@
 
 (deftest onr-brain-wash
   (trivial-brain-damage 1 "ONR Brain Wash"))
+
+(deftest onr-bolter-cluster
+  (trivial-damage 4 "ONR Bolter Cluster")
+  (cannot-break-next-ice "ONR Bolter Cluster" 1))
+
+(deftest onr-bolter-swarm
+  (noisy-breaker-used-discount 5 "ONR Bolter Swarm")
+  (trivial-damage 4 "ONR Bolter Swarm")
+  (cannot-break-next-ice "ONR Bolter Swarm" 1))
 
 (deftest onr-canis-major
   (do-game
@@ -194,6 +338,10 @@
       (run-continue state :encounter-ice)
       (is (= 1 (core/get-strength (refresh vanil)))))))
 
+(deftest onr-caryatid
+  (trivial-etr "ONR Caryatid")
+  (changes-subtype-rez 1 "Wall" "Code Gate" "ONR Caryatid"))
+
 (deftest onr-code-corpse
   (trivial-brain-damage 1 "ONR Code Corpse" 0)
   (trivial-brain-damage 1 "ONR Code Corpse" 1)
@@ -215,6 +363,10 @@
   (trivial-brain-damage 1 "ONR Cortical Scrub" 0)
   (trivial-etr "ONR Cortical Scrub" 1))
 
+(deftest onr-credit-blocks
+  (trivial-etr "ONR Credit Blocks")
+  (changes-subtype-rez 1 "Sentry" "Wall" "ONR Credit Blocks"))
+
 (deftest onr-crystal-wall
   (trivial-etr "ONR Crystal Wall"))
 
@@ -222,7 +374,7 @@
   (trivial-trash-program "ONR D'Arc Knight" 0)
   (trivial-etr "ONR D'Arc Knight" 1))
 
-(deftest onr-darc-knight
+(deftest onr-data-naga
   (trivial-trash-program "ONR Data Naga" 0)
   (trivial-etr "ONR Data Naga" 1))
 
@@ -230,9 +382,27 @@
   (trivial-etr "ONR Datacomb")
   (pay-x-or-bounce-on-pass 1 "ONR Datacomb"))
 
+(deftest onr-data-darts
+  (trivial-damage 3 "ONR Data Darts")
+  (cannot-break-next-ice "ONR Data Darts" 1))
+
+(deftest onr-darc-knight
+  (trivial-trash-program "ONR Data Naga" 0)
+  (trivial-etr "ONR Data Naga" 1))
+
 (deftest onr-data-wall (trivial-etr "ONR Data Wall"))
 
 (deftest onr-data-wall-2.0 (trivial-etr "ONR Data Wall 2.0"))
+
+(deftest onr-deadeye
+  (noisy-breaker-used-discount 5 "ONR Deadeye")
+  (trivial-trash-program "ONR Deadeye" 0)
+  (trivial-etr "ONR Deadeye" 1))
+
+(deftest onr-death-yo-yo
+  (gain-x-and-bounce-on-pass 1 "ONR Death Yo-Yo")
+  (trivial-brain-damage 1 "ONR Death Yo-Yo")
+  (trivial-etr "ONR Death Yo-Yo" 1))
 
 (deftest onr-endless-corridor
   (trivial-etr "ONR Endless Corridor")
@@ -257,6 +427,10 @@
       (fire-subs state resistor)
       (click-prompt state :corp "0")
       (is (= 1 (count-tags state)) "Runner has gained 1 tag"))))
+
+(deftest onr-galatea
+  (trivial-etr "ONR Galatea")
+  (changes-subtype-rez 1 "Wall" "Code Gate" "ONR Galatea"))
 
 (deftest onr-ice-pick-willie
   (trivial-trash-program "ONR Ice Pick Willie" 0)
