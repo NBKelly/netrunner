@@ -28,7 +28,7 @@
    [game.core.flags :refer [can-score? clear-persistent-flag! in-corp-scored?
                             in-runner-scored? is-scored? prevent-jack-out
                             register-persistent-flag! register-turn-flag! when-scored? zone-locked?]]
-   [game.core.gaining :refer [gain-clicks gain-credits lose-clicks
+   [game.core.gaining :refer [gain-clicks gain-credits gain-debt lose-clicks lose-debt
                               lose-credits]]
    [game.core.hand-size :refer [runner-hand-size+]]
    [game.core.ice :refer [add-extra-sub! remove-extra-subs! update-all-ice]]
@@ -61,11 +61,82 @@
    [game.utils :refer :all]
    [jinteki.utils :refer :all]))
 
+(defn handle-debt-collections
+  ([debt]
+   (letfn [(debt-abi []
+             {:event :corp-gain
+              :async true
+              :duration :true
+              :unregister-once-resolved true
+              :req (req (and (= :credit (first target))
+                             (pos? (second target)))) ;; only if we actually gain creds!
+              :msg (msg
+                     (let [creds-owed (:debt corp)
+                           creds-gained (second target)
+                           siphoned (if (>= creds-owed creds-gained) creds-gained creds-owed)
+                           remainder (- creds-owed siphoned)]
+                       (str "forfeit " siphoned "[credits] to cover their debts"
+                            (when (pos? remainder) (str " (they still owe " remainder "[credits])")))))
+              :effect (req (let [creds-owed (:debt corp)
+                                 creds-gained (second target)
+                                 siphoned (if (>= creds-owed creds-gained) creds-gained creds-owed)
+                                 remainder (- creds-owed siphoned)]
+                             (wait-for (lose-credits state side (make-eid state eid) siphoned)
+                                       (when (pos? remainder)
+                                         (register-events
+                                           state side card
+                                           [(debt-abi)]))
+                                       (lose-debt state side eid siphoned))))})]
+     {:msg (msg "incur a debt of " debt "[Credits]"(when (pos? (:debt corp)) (str " (they now owe " (+ debt (:debt corp)) "[Credits])")))
+      :async true
+      :effect (req
+                (when (zero? (:debt corp))
+                  (register-events
+                    state side (get-card state card)
+                    [(debt-abi)]))
+                (gain-debt state side eid debt))})))
+
 (defcard "ONR Accounts Receivable"
   {:on-play
    {:msg "gain 9 [Credits]"
     :async true
     :effect (effect (gain-credits eid 9))}})
+
+(defcard "ONR Corporate Guard(R) Temps"
+  (letfn [(gain-click-event [x]
+            {:event :corp-turn-begins
+             :duration true
+             :req (req true)
+             :unregister-once-resolved true
+             :async true
+             :msg (msg "gain an action" (when (> x 1) (str " (" (dec x) " remain)")))
+             :effect (req (gain-clicks state :corp 1)
+                          (when (> x 1)
+                            (register-events
+                              state side card
+                              [(gain-click-event (dec x))]))
+                          (effect-completed state side eid))})]
+    {:on-play {:req (req (> (:credit corp) 1))
+               :prompt (msg "Pay 2X[credit] to gain actions for the next X turns and forfeit the next X[credit] you gain")
+               :choices {:number (req (int (/ (:credit corp) 2)))}
+               :async true
+               :effect (req
+                         (let [x target]
+                           (continue-ability
+                             state side
+                             (when (pos? x)
+                               {:cost [:credit (* 2 x)]
+                                :msg (msg "gain an additional action for the next " x " turns, and forfeit the next " x " credits they gain")
+                                :async true
+                                :effect (req
+                                          (register-events
+                                            state side card
+                                            [(gain-click-event x)])
+                                          (continue-ability
+                                            state side
+                                            (handle-debt-collections x)
+                                            card nil))})
+                             card nil)))}}))
 
 ;; this is a nearprint of midseasons - a good test for the trace system
 (defcard "ONR Manhunt"

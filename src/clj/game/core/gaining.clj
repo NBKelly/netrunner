@@ -1,5 +1,6 @@
 (ns game.core.gaining
   (:require
+   [game.core.say :refer [system-msg]]
     [game.core.eid :refer [make-eid effect-completed]]
     [game.core.engine :refer [trigger-event trigger-event-sync]]
     [game.core.toasts :refer [toast]]))
@@ -77,6 +78,28 @@
             (swap! state update-in [:stats side :lose cost-type] (fnil + 0) amount))
           (deduct state side [cost-type amount])))
     (trigger-event state side (if (= side :corp) :corp-lose :runner-lose) [cost-type amount])))
+
+(defn gain-debt
+  "Utility function for gaining debt"
+  ([state side eid amount] (gain-debt state side eid amount nil))
+  ([state side eid amount args]
+   (if (and amount
+            (pos? amount))
+     (do (gain state side :debt amount)
+         (trigger-event-sync state side eid (if (= :debt side) :corp-debt-gain :runner-debt-gain) amount args))
+     (effect-completed state side eid))))
+
+(defn lose-debt
+  "Utility function for triggering events"
+  ([state side eid amount] (lose-debt state side eid amount nil))
+  ([state side eid amount args]
+   (if (and amount
+            (or (= :all amount)
+                (pos? amount))
+            (pos? (:debt (side @state))))
+     (do (lose state side :debt amount)
+         (trigger-event-sync state side eid (if (= :corp side) :corp-debt-loss :runner-debt-loss) amount args))
+     (effect-completed state side eid))))
 
 (defn gain-credits
   "Utility function for triggering events"

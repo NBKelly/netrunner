@@ -23,6 +23,7 @@
    click
    click-per-turn
    credit
+   debt
    bad-publicity
    toast
    hand-size
@@ -54,6 +55,7 @@
                              :archives {:content [] :ices []}})
      :click 0 :click-per-turn 3
      :credit 5
+     :debt 0
      :bad-publicity (map->BadPublicity {:base 0 :additional 0})
      :toast []
      :hand-size (map->HandSize {:base 5 :total 5})
@@ -69,6 +71,7 @@
    basic-action-card
    deck
    deck-id
+   debt
    hand
    discard
    scored
@@ -118,6 +121,7 @@
      :toast []
      :click 0 :click-per-turn 4
      :credit 5 :run-credit 0
+     :debt 0
      :link 0
      :tag (map->Tags {:base 0 :total 0 :is-tagged false})
      :memory {:base 4
