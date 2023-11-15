@@ -47,6 +47,19 @@
         (card-ability state :corp (refresh dept) 1)
         (is (zero? (get-counters (refresh dept) :credit)) "0 counters on DOTE")))))
 
+(deftest onr-krumz-test
+  (do-game
+    (new-game {:corp {:hand ["ONR Krumz" "ONR Manhunt"]}})
+    (take-credits state :corp)
+    (run-empty-server state :rd)
+    (take-credits state :runner)
+    (play-from-hand state :corp "ONR Krumz" "New remote")
+    (let [krumz (get-content state :remote1 0)]
+      (rez state :corp krumz)
+      (play-from-hand state :corp "ONR Manhunt")
+      (click-prompt state :corp "3")
+      (click-card state :corp (refresh krumz)))))
+
 (deftest onr-rescheduler
   (do-game
     (new-game {:corp {:hand [(qty "ONR Rescheduler" 7)]

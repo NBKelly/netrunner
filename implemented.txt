@@ -26,9 +26,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   101 / 584
-TESTS:   85 / 101
-NO TEST: 15
+TOTAL:   103 / 584
+TESTS:   86 / 103
+NO TEST: 16
 NO IMP:  1
 --------------------------
 002 + Access through Alpha
@@ -118,6 +118,7 @@ NO IMP:  1
 
 276 + Keeper
 
+279 + Krumz
 280 + Laser Wire
 
 284 + Lesser Arcana
@@ -178,6 +179,8 @@ NO IMP:  1
 
 487 + Sphinx 2006
 
+492 ^ Stereogram Antibody (Do this later, was just lazy)
+
 499 ^ Submarine Uplink (do this test later - fetch + uplink should be fine)
 
 502 + Sumo 2008
@@ -221,10 +224,11 @@ The following (marked) cards have no tests or implementations:
   366 ^ Pile Driver
   399 ^ Ramming Piston
   403 ^ Raven Microcyb Owl
+  492 ^ Stereogram Antibody (Do this later, was just lazy)
   499 ^ Submarine Uplink (do this test later - fetch + uplink should be fine)
   503 ^ Sunburst Cranial Interface
   553 ^ Vewy Vewy Quiet
   567 ^ ONR Weapons Depot
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 225
+Random card to implement: 530

@@ -82,6 +82,11 @@
                                (add-counter state side card :credit (- creds))
                                (gain-credits state :corp eid creds)))}]})
 
+(defcard "ONR Krumz"
+  {:recurring 1
+   :interactions {:pay-credits {:req (req (= :trace (:source-type eid)))
+                                :type :recurring}}})
+
 (defcard "ONR Rescheduler"
   {:abilities [{:cost [:click 1]
                 :label  "shuffle all cards in HQ into R&D and draw that many cards"
@@ -103,3 +108,12 @@
                                (wait-for (gain-credits state :corp (make-eid state eid) credits)
                                          (add-counter state side card :credit (- credits) {:placed true})
                                          (effect-completed state side eid))))}]})
+
+(defcard "ONR Stereogram Antibody"
+  {:on-access {:req (req (in-discard? card))
+               :msg "do 1 net damage and shuffle itself into R&D"
+               :async true
+               :effect (req (wait-for (damage state side (make-eid state eid) :net 1 {:card card})
+                                      (move state :corp card :deck nil)
+                                      (shuffle! state :corp :deck)
+                                      (effect-completed state side eid)))}})
