@@ -66,7 +66,7 @@
    [game.utils :refer :all]
    [jinteki.utils :refer :all]
    ;; imported from ice
-   [game.cards.ice :refer [end-the-run end-the-run-unless-runner-pays gain-credits-sub give-tags trash-program-sub]]
+   [game.cards.ice :refer [end-the-run end-the-run-unless-runner-pays gain-credits-sub give-tags trash-program-sub do-psi]]
    ))
 
 (defn onr-trace-ability
@@ -305,6 +305,9 @@
 (defcard "ONR Galatea"
   (change-subtype-on-rez "Wall" "Code Gate" 1 {:subroutines [end-the-run]}))
 
+(defcard "ONR Hunter"
+  {:subroutines [(trace-tag 5)]})
+
 (defcard "ONR Ice Pick Willie"
   {:subroutines [trash-program-sub
                  end-the-run]})
@@ -353,6 +356,19 @@
 (defcard "ONR π in the 'Face"
   {:subroutines [end-the-run]})
 
+(defcard "ONR Pocket Virtual Reality"
+  {:on-encounter {:msg "place 4 credits on itself"
+                  :effect (effect (add-counter card :recurring 4 nil))}
+   :interactions {:pay-credits {:req (req (= :trace (:source-type eid)))
+                                :type :recurring}}
+   :events [{:event :end-of-encounter
+             :msg "return unused credits to the bank"
+             :effect (effect (add-counter card :recurring (- (get-counters card :recurring)) nil))
+             :req (req (and (= (:ice context) card)
+                            (pos? (get-counters card :recurring))))}]
+   :subroutines [(trace-tag 6)
+                 (trace-tag 6)]})
+
 (defcard "ONR Razor Wire"
   {:subroutines [(do-net-damage 2)
                  end-the-run]})
@@ -391,6 +407,9 @@
 
 (defcard "ONR Sumo 2008"
   (change-subtype-on-rez "Sentry" "Wall" 1 {:subroutines [end-the-run]}))
+
+(defcard "ONR Too Many Doors"
+  {:subroutines [(do-psi end-the-run)]})
 
 (defcard "ONR Toughonium [TM] Wall"
   {:subroutines [end-the-run

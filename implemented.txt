@@ -27,8 +27,8 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   104 / 584
-TESTS:   87 / 104
+TOTAL:   107 / 584
+TESTS:   90 / 107
 NO TEST: 16
 NO IMP:  1
 --------------------------
@@ -111,6 +111,8 @@ NO IMP:  1
 
 234 ^ Hammer
 
+248 + Hunter
+
 253 + Ice Pick Willie
 
 265 + Invisibility
@@ -149,6 +151,8 @@ NO IMP:  1
 
 365 + ONR π in the 'Face
 366 ^ Pile Driver
+
+372 + ONR Pocket Virtual Reality
 
 395 + Quandary (trivial ETR ice - no test)
 
@@ -193,6 +197,8 @@ NO IMP:  1
 
 519 + The Deck
 
+529 + Too Many Doors
+
 532 + Toughonium Wall
 
 536 + Triggerman
@@ -234,4 +240,4 @@ The following (marked) cards have no tests or implementations:
   567 ^ ONR Weapons Depot
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 208
+Random card to implement: 96
