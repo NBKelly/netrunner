@@ -26,8 +26,8 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   99 / 584
-TESTS:   83 / 99
+TOTAL:   100 / 584
+TESTS:   84 / 100
 NO TEST: 15
 NO IMP:  1
 --------------------------
@@ -157,6 +157,7 @@ NO IMP:  1
 
 415 + Reinforced Wall
 
+429 + Rockerboy Promotion
 430 + Rock is Strong
 
 434 + Runner Sensei
@@ -224,4 +225,4 @@ The following (marked) cards have no tests or implementations:
   567 ^ ONR Weapons Depot
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 429
+Random card to implement: 286

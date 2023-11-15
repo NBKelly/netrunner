@@ -46,3 +46,16 @@
         (str "Corp gains 3 * " n " credits from Department of Truth Enhancement")
         (card-ability state :corp (refresh dept) 1)
         (is (zero? (get-counters (refresh dept) :credit)) "0 counters on DOTE")))))
+
+(deftest onr-rockerboy-promotion
+  ;; Regolith Mining License
+  (do-game
+   (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                     :hand ["ONR Rockerboy Promotion"]}})
+   (play-from-hand state :corp "ONR Rockerboy Promotion" "New remote")
+   (let [rml (get-content state :remote1 0)]
+     (rez state :corp (refresh rml))
+     (changes-val-macro
+      3 (:credit (get-corp))
+      "Corp gains 3 credits"
+      (card-ability state :corp rml 0)))))
