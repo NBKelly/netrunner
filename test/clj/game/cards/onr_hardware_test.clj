@@ -31,7 +31,7 @@
 
 (deftest onr-raven-microcyb-eagle
   (do-game
-    (new-game {:runner {:hand ["ONR Raven Microcryb Eagle", "Sure Gamble", "Corroder"]}})
+    (new-game {:runner {:hand ["ONR Raven Microcyb Eagle", "Sure Gamble", "Corroder"]}})
     (take-credits state :corp)
     (play-from-hand state :runner "Sure Gamble")
     (play-from-hand state :runner "ONR Raven Microcyb Eagle")
@@ -63,8 +63,20 @@
       "spent 0c to boost link to 5"
       (click-prompt state :runner "0 [Credits]: Base Link 5"))
     (changes-val-macro
-      -3 (:credit (get-runner))
+      -1 (:credit (get-runner))
       "spent 1c to boost link to 6"
       (click-prompt state :runner "1 [Credits]: +1 Link"))
     (click-prompt state :runner "Done")
     (is (= 0 (count-tags state)) "Runner should have 0 tags")))
+
+(deftest zetatech-portastation-pay-credits-prompt
+    ;; Pay-credits prompt
+    (do-game
+      (new-game {:runner {:deck ["ONR Zetatech Portastation" "Dirty Laundry"]}})
+      (take-credits state :corp)
+      (play-from-hand state :runner "ONR Zetatech Portastation")
+      (let [ppvp (get-hardware state 0)]
+        (changes-val-macro -1 (:credit (get-runner))
+                           "Used 1 credit from "
+                           (play-from-hand state :runner "Dirty Laundry")
+                           (click-card state :runner ppvp)))))

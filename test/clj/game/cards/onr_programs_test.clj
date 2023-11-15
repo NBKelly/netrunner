@@ -91,3 +91,16 @@
                            "Used 1 credit from Cloak"
                            (card-ability state :runner refr 1)
                            (click-card state :runner cl)))))
+
+(deftest zetatech-software-installer-pay-credits-prompt
+  ;; Pay-credits prompt
+  (do-game
+    (new-game {:runner {:deck ["ONR Zetatech Software Installer" "ONR Hammer"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "ONR Zetatech Software Installer")
+    (let [rara (get-program state 0)]
+        (changes-val-macro 0 (:credit (get-runner))
+                           "Used 2 credits from ONR Zetatech Software Installer"
+                           (play-from-hand state :runner "ONR Hammer")
+                           (click-card state :runner rara)
+                           (click-card state :runner rara)))))

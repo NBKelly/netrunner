@@ -26,8 +26,8 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   96 / 584
-TESTS:   80 / 96
+TOTAL:   98 / 584
+TESTS:   82 / 98
 NO TEST: 15
 NO IMP:  1
 --------------------------
@@ -200,6 +200,8 @@ NO IMP:  1
 
 576 ^ Wrecking Ball
 
+579 + Zetatech Portastation
+580 + Zetatech Software Installer
 581 + Zombie
 --------------------------
 --------------------------
@@ -220,4 +222,4 @@ The following (marked) cards have no tests or implementations:
   567 ^ ONR Weapons Depot
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 579
+Random card to implement: 38

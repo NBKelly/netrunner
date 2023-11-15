@@ -264,3 +264,9 @@
 (defcard "ONR Wrecking Ball"
   (auto-icebreaker {:abilities [(break-sub 0 1 "Wall" (lose-from-stealth 1))
                                 (strength-pump 2 1)]}))
+
+(defcard "ONR Zetatech Software Installer"
+  {:recurring 2
+   :interactions {:pay-credits {:req (req (and (= :runner-install (:source-type eid))
+                                               (program? target)))
+                                :type :recurring}}})

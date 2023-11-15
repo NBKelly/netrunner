@@ -160,3 +160,12 @@
   {:abilities [(base-link-abi 0 5)
                (boost-link-abi 1 1)]
    :static-abilities [(mu+ 1)]})
+
+(defcard "ONR Zetatech Portastation"
+  {:recurring 1
+   :interactions {:pay-credits {:req (req (and
+                                           (event? target)
+                                           (or (= 0 (count (:cost-paid eid)))
+                                               (:x-cost eid))
+                                           (= :play (:source-type eid))))
+                                :type :recurring}}})
