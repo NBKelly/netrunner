@@ -26,8 +26,10 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:  80 / 582
-TESTS:  65 / 582
+TOTAL:   96 / 584
+TESTS:   80 / 96
+NO TEST: 15
+NO IMP:  1
 --------------------------
 002 + Access through Alpha
 003 + Access to Arasaka
@@ -137,6 +139,8 @@ TESTS:  65 / 582
 335 + Networking
 336 + Neural Blade
 
+346 + Olivia Salazar
+
 365 + ONR π in the 'Face
 366 ^ Pile Driver
 
@@ -197,3 +201,23 @@ TESTS:  65 / 582
 576 ^ Wrecking Ball
 
 581 + Zombie
+--------------------------
+--------------------------
+The following (marked) cards have no tests or implementations:
+  048 ^ Blink (no test, this is an rng card!)
+  059 ^ Brain Drain (random, untestable?)
+  064 ^ Bulldozer
+  123 ^ Cyfermaster (trivial icebreaker - no test)
+  219 ^ Fubar
+  234 ^ Hammer
+  268 ^ Jackhammer
+  366 ^ Pile Driver
+  399 ^ Ramming Piston
+  403 ^ Raven Microcyb Owl
+  499 ^ Submarine Uplink (do this test later - fetch + uplink should be fine)
+  503 ^ Sunburst Cranial Interface
+  553 ^ Vewy Vewy Quiet
+  567 ^ ONR Weapons Depot
+  576 ^ Wrecking Ball
+  541 ? Twenty-Four-Hour Surviellance (unimplemented)
+Random card to implement: 579

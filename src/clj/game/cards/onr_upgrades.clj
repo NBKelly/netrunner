@@ -41,7 +41,7 @@
    [game.core.props :refer [add-counter add-prop set-prop]]
    [game.core.purging :refer [purge]]
    [game.core.revealing :refer [reveal]]
-   [game.core.rezzing :refer [rez]]
+   [game.core.rezzing :refer [rez derez get-rez-cost]]
    [game.core.runs :refer [end-run force-ice-encounter jack-out redirect-run
                            set-next-phase start-next-phase]]
    [game.core.say :refer [system-msg]]
@@ -57,6 +57,39 @@
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [game.utils :refer :all]
    [jinteki.utils :refer :all]))
+
+(defcard "ONR Olivia Salazar"
+  (letfn [(sally-price [ice state]
+            (or (int (/ (second (first (get-rez-cost state :corp ice nil))) 2)) 0))]
+    {:abilities [{:req (req (and run this-server))
+                  :label "Rez an ice for half the rez cost"
+                  :effect
+                  (effect
+                    (continue-ability
+                      {:prompt "Choose a card to rez"
+                       :async true
+                       :once :per-run
+                       :choices {:card #(and (same-server? card %)
+                                             (ice? %)
+                                             (not (rezzed? %))
+                                             (can-pay? state :corp
+                                                       (assoc eid :source card :source-type :ability)
+                                                       card nil [:credit (sally-price % state)]))}
+                       :msg (msg "pay " (sally-price target state) "[Credits] to rez " (:title target))
+                       :effect (req (wait-for (pay state side
+                                                   (make-eid
+                                                     state (assoc eid :source card :source-type :ability))
+                                                   card :credit (sally-price target state))
+                                              (wait-for (rez state side (make-eid state eid) target {:ignore-cost :all-costs :no-msg true})
+                                                        (let [c (:card async-result)]
+                                                          (register-events
+                                                            state side card
+                                                            [{:event :run-ends
+                                                              :unregister-once-resolved true
+                                                              :duration :end-of-run
+                                                              :effect (effect (derez c))}])
+                                                          (effect-completed state side eid)))))}
+                      card nil))}]}))
 
 (defcard "ONR Twenty-Four-Hour Surviellance"
   ;; TODO - find a way to do this. I know it can be done.
