@@ -87,6 +87,16 @@
                   :successful ability
                   :unsuccessful un-ability}})))
 
+(defn- trace-tag
+  ([max] (trace-tag max 1))
+  ([max tags]
+   (onr-trace-ability max (give-tags tags) true)))
+
+(defn- trace-net
+  ([max] (trace-net max 1))
+  ([max net]
+   (onr-trace-ability max (do-net-damage net) false)))
+
 (defn- bounce-unless-corp-pays
   ([cost]
    (let [cost (if (integer? cost) [:credit cost] cost)]
@@ -216,6 +226,10 @@
 (defcard "ONR Caryatid"
   (change-subtype-on-rez "Wall" "Code Gate" 1 {:subroutines [end-the-run]}))
 
+(defcard "ONR Chihuahua"
+  {:on-rez (gain-credits-sub 2)
+   :subroutines [(trace-net 1)]})
+
 (defcard "ONR Code Corpse"
   {:subroutines [(do-brain-damage 1)
                  (do-brain-damage 1)
@@ -280,7 +294,7 @@
                  end-the-run]})
 
 (defcard "ONR Fetch 4.0.1"
-  {:subroutines [(onr-trace-ability 3 (give-tags 1) true)]})
+  {:subroutines [(trace-tag 3)]})
 
 (defcard "ONR Filter"
   {:subroutines [end-the-run]})

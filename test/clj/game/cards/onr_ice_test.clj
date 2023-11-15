@@ -271,6 +271,41 @@
       (is (has-subtype? (refresh card) from) "no change")
       (is (not (has-subtype? (refresh card) to)) "no change"))))
 
+(defn- trace-tag
+  ([x name] (trace-tag x name 0))
+  ([x name sub]
+   (do-game
+     (new-game {:corp {:credits 20
+                       :hand [name]}
+                :runner {:hand [(qty "ONR Networking" (inc x))]}})
+     (play-from-hand state :corp name "New remote")
+     (take-credits state :corp)
+     (let [card (get-ice state :remote1 0)]
+       (dismiss-rez state :corp card)
+       (run-on state :remote1)
+       (run-continue state)
+       (card-subroutine state :corp card sub)
+       (click-prompt state :corp "0")
+       (is (= x (count-tags state)) (str "runner gained " x " tags"))))))
+
+(defn- trace-net
+  ([x name] (trace-net x name 0))
+  ([x name sub]
+   (do-game
+     (new-game {:corp {:credits 20
+                       :hand [name]}
+                :runner {:hand [(qty "ONR Networking" (inc x))]}})
+     (play-from-hand state :corp name "New remote")
+     (take-credits state :corp)
+     (let [card (get-ice state :remote1 0)]
+       (dismiss-rez state :corp card)
+       (run-on state :remote1)
+       (run-continue state)
+       (card-subroutine state :corp card sub)
+       (click-prompt state :corp "0")
+       (is (= x (count (:discard (get-runner)))) (str "runner gained " x " tags"))))))
+
+
 ;; trivial-etr
 ;; trivial-trash-program
 ;; trivial-brain-damage
@@ -282,14 +317,28 @@
 ;; cannot-break-next-ice
 ;; changes-subtype-rez (x from to name)
 ;; gain-x-and-bounce-on-pass
+;; trace-tag
+;; trace-net
 ;; tests here
+
+(deftest ^:kaocha/pending onr-asp
+  )
+
+(deftest ^:kaocha/pending onr-ball-and-chain
+  )
 
 (deftest onr-banpei-etr
   (trivial-trash-program "ONR Banpei" 0)
   (trivial-etr "ONR Banpei" 1))
 
+(deftest ^:kaocha/pending onr-baskerville
+  )
+
 (deftest onr-brain-wash
   (trivial-brain-damage 1 "ONR Brain Wash"))
+
+(deftest ^:kaocha/pending onr-brain-drain
+  )
 
 (deftest onr-bolter-cluster
   (trivial-damage 4 "ONR Bolter Cluster")
@@ -299,6 +348,9 @@
   (noisy-breaker-used-discount 5 "ONR Bolter Swarm")
   (trivial-damage 4 "ONR Bolter Swarm")
   (cannot-break-next-ice "ONR Bolter Swarm" 1))
+
+(deftest ^:kaocha/pending onr-bug-zapper
+  )
 
 (deftest onr-canis-major
   (do-game
@@ -342,6 +394,16 @@
   (trivial-etr "ONR Caryatid")
   (changes-subtype-rez 1 "Wall" "Code Gate" "ONR Caryatid"))
 
+(deftest ^:kaocha/pending onr-cerberus
+  )
+
+(deftest onr-chihuahua
+  (gain-x-on-rez 2 "ONR Chihuahua")
+  (trace-net 1 "ONR Chihuahua"))
+
+(deftest ^:kaocha/pending onr-cinderella
+  )
+
 (deftest onr-code-corpse
   (trivial-brain-damage 1 "ONR Code Corpse" 0)
   (trivial-brain-damage 1 "ONR Code Corpse" 1)
@@ -363,12 +425,19 @@
   (trivial-brain-damage 1 "ONR Cortical Scrub" 0)
   (trivial-etr "ONR Cortical Scrub" 1))
 
+(deftest ^:kaocha/pending onr-coyote
+  (gain-x-on-rez 3 "ONR Chihuahua"))
+
 (deftest onr-credit-blocks
   (trivial-etr "ONR Credit Blocks")
   (changes-subtype-rez 1 "Sentry" "Wall" "ONR Credit Blocks"))
 
 (deftest onr-crystal-wall
   (trivial-etr "ONR Crystal Wall"))
+
+(deftest onr-datacomb
+  (trivial-etr "ONR Datacomb")
+  (pay-x-or-bounce-on-pass 1 "ONR Datacomb"))
 
 (deftest onr-darc-knight
   (trivial-trash-program "ONR D'Arc Knight" 0)
@@ -378,17 +447,12 @@
   (trivial-trash-program "ONR Data Naga" 0)
   (trivial-etr "ONR Data Naga" 1))
 
-(deftest onr-datacomb
-  (trivial-etr "ONR Datacomb")
-  (pay-x-or-bounce-on-pass 1 "ONR Datacomb"))
-
 (deftest onr-data-darts
   (trivial-damage 3 "ONR Data Darts")
   (cannot-break-next-ice "ONR Data Darts" 1))
 
-(deftest onr-darc-knight
-  (trivial-trash-program "ONR Data Naga" 0)
-  (trivial-etr "ONR Data Naga" 1))
+(deftest ^:kaocha/pending onr-data-raven
+  )
 
 (deftest onr-data-wall (trivial-etr "ONR Data Wall"))
 
@@ -404,42 +468,86 @@
   (trivial-brain-damage 1 "ONR Death Yo-Yo")
   (trivial-etr "ONR Death Yo-Yo" 1))
 
+(deftest ^:kaocha/pending onr-digiconda
+  )
+
+(deftest ^:kaocha/pending onr-dogpile
+  )
+
+(deftest ^:kaocha/pending onr-dumpster
+  )
+
 (deftest onr-endless-corridor
   (trivial-etr "ONR Endless Corridor")
   (trivial-etr "ONR Endless Corridor" 1))
 
-(deftest onr-filter
-  (trivial-etr "ONR Filter"))
+(deftest ^:kaocha/pending onr-entrapment
+  )
 
-(deftest onr-filter
-  (trivial-etr "ONR Fire Wall"))
+(deftest ^:kaocha/pending onr-fang
+  )
+
+(deftest ^:kaocha/pending onr-fang-2.0
+  )
+
+(deftest ^:kaocha/pending onr-fatal-attractor
+  )
 
 (deftest onr-fetch-4.0.1
   ;; Subroutine is trace 3 give a tag
-  (do-game
-    (new-game {:corp {:deck ["ONR Fetch 4.0.1"]}})
-    (play-from-hand state :corp "ONR Fetch 4.0.1" "HQ")
-    (let [resistor (get-ice state :hq 0)]
-      (rez state :corp resistor)
-      (take-credits state :corp)
-      (run-on state "HQ")
-      (run-continue state)
-      (fire-subs state resistor)
-      (click-prompt state :corp "0")
-      (is (= 1 (count-tags state)) "Runner has gained 1 tag"))))
+  (trace-tag 1 "ONR Fetch 4.0.1"))
+
+(deftest onr-filter
+  (trivial-etr "ONR Filter"))
+
+(deftest onr-fire-wall
+  (trivial-etr "ONR Fire Wall"))
+
+(deftest ^:kaocha/pending onr-food-fight
+  )
+
+(deftest ^:kaocha/pending onr-fragmentation-storm
+  )
 
 (deftest onr-galatea
   (trivial-etr "ONR Galatea")
   (changes-subtype-rez 1 "Wall" "Code Gate" "ONR Galatea"))
 
+(deftest ^:kaocha/pending onr-gatekeeper
+  )
+
+(deftest ^:kaocha/pending onr-glacier
+  )
+
+(deftest ^:kaocha/pending onr-haunting-inquisition
+  )
+
+(deftest ^:kaocha/pending onr-homewrecker
+  )
+
+(deftest ^:kaocha/pending onr-homing-missing
+  )
+
+(deftest ^:kaocha/pending onr-hunter
+  )
+
+(deftest ^:kaocha/pending onr-hunting-pack
+  )
+
 (deftest onr-ice-pick-willie
   (trivial-trash-program "ONR Ice Pick Willie" 0)
   (trivial-etr "ONR Ice Pick Willie" 1))
+
+(deftest ^:kaocha/pending onr-iceberg
+  )
 
 (deftest onr-imperial-guard
   (noisy-breaker-used-discount 5 "ONR Imperial Guard")
   (trivial-trash-program "ONR Imperial Guard" 0)
   (trivial-etr "ONR Imperial Guard" 1))
+
+(deftest ^:kaocha/pending onr-jack-attack
+  )
 
 (deftest onr-keeper
   (trivial-etr "ONR Keeper"))
@@ -463,12 +571,24 @@
   (trivial-etr "ONR Marionette" 1)
   (pay-x-or-bounce-on-pass 1 "ONR Marionette"))
 
+(deftest ^:kaocha/pending onr-mastermind
+  )
+
+(deftest ^:kaocha/pending onr-mastiff
+  )
+
 (deftest onr-mazer
   (trivial-etr "ONR Mazer"))
+
+(deftest ^:kaocha/pending onr-minotaur
+  )
 
 (deftest onr-misleading-access-menus
   (gain-x-on-rez 3 "ONR Misleading Access Menus")
   (pay-x-or-etr-sub 1 "ONR Misleading Access Menus"))
+
+(deftest ^:kaocha/pending onr-mobile-barricade
+  )
 
 (deftest onr-nerve-labyrinth
   (trivial-damage 2 "ONR Nerve Labyrinth")
@@ -478,8 +598,16 @@
   (trivial-damage 1 "ONR Neural Blade")
   (cannot-break-next-ice "ONR Neural Blade" 1))
 
+(deftest ^:kaocha/pending onr-pocket-virtual-reality
+  )
+
+(deftest ^:kaocha/pending onr-puzzle
+  )
+
 (deftest onr-pi-in-the-face
   (trivial-etr "ONR π in the 'Face"))
+
+(deftest onr-quandary (trivial-etr "ONR Quandary"))
 
 (deftest onr-razor-wire
   (trivial-damage 2 "ONR Razor Wire")
@@ -489,8 +617,20 @@
   (trivial-etr "ONR Reinforced Wall" 0)
   (trivial-etr "ONR Reinforced Wall" 1))
 
+(deftest ^:kaocha/pending onr-rex
+  )
+
+(deftest ^:kaocha/pending onr-riddler
+  )
+
+(deftest ^:kaocha/pending onr-roadblock
+  )
+
 (deftest onr-rock-is-strong
   (trivial-etr "ONR Rock is Strong"))
+
+(deftest ^:kaocha/pending onr-sandstorm
+  )
 
 (deftest onr-scaffolding
   (gain-x-and-bounce-on-pass 1 "ONR Scaffolding")
@@ -502,6 +642,9 @@
 (deftest onr-sentinels-prime
   (trivial-trash-program "ONR Sentinels Prime" 0)
   (trivial-etr "ONR Sentinels Prime" 1))
+
+(deftest ^:kaocha/pending onr-shock.r
+  )
 
 (deftest onr-shotgun-wire
   (trivial-damage 2 "ONR Shotgun Wire")
@@ -522,25 +665,50 @@
   (trivial-etr "ONR Sumo 2008")
   (changes-subtype-rez 1 "Sentry" "Wall" "ONR Sumo 2008"))
 
+(deftest ^:kaocha/pending onr-tko-2.0
+  )
+
+(deftest ^:kaocha/pending onr-too-many-doors
+  )
+
 (deftest onr-toughonium-wall
   (trivial-etr "ONR Toughonium [TM] Wall")
   (trivial-etr "ONR Toughonium [TM] Wall" 1)
   (trivial-etr "ONR Toughonium [TM] Wall" 2)
   (trivial-etr "ONR Toughonium [TM] Wall" 3))
 
+(deftest ^:kaocha/pending onr-trapdoor
+  )
+
 (deftest onr-triggerman
   (trivial-trash-program "ONR Triggerman" 0)
   (trivial-etr "ONR Triggerman" 1))
 
-(deftest onr-tumbler
+(deftest onr-tumblers
   (gain-x-and-bounce-on-pass 1 "ONR Tumblers")
   (trivial-etr "ONR Tumblers"))
+
+(deftest ^:kaocha/pending onr-tutor
+  )
 
 (deftest onr-twisty-passages
   (trivial-etr "ONR Twisty Passages")
   (pay-x-or-bounce-on-pass 1 "ONR Twisty Passages"))
 
-(deftest onr-quandary (trivial-etr "ONR Quandary"))
+(deftest ^:kaocha/pending onr-vacuum-link
+  )
+
+(deftest ^:kaocha/pending onr-viral-15
+  )
+
+(deftest ^:kaocha/pending onr-virizz
+  )
+
+(deftest ^:kaocha/pending onr-vortex
+  )
+
+(deftest ^:kaocha/pending onr-walking-wall
+  )
 
 (deftest onr-wall-of-ice
   (trivial-damage 2 "ONR Wall of Ice")
@@ -550,6 +718,9 @@
 
 (deftest onr-wall-of-static
   (trivial-etr "Wall of Static"))
+
+(deftest ^:kaocha/pending onr-washed-up-solo-construct
+  )
 
 (deftest onr-zombie
   (trivial-brain-damage 1 "ONR Zombie" 0)

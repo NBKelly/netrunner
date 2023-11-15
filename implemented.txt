@@ -13,6 +13,7 @@ Features:
 
 Card Updates:
   TODO:
+    Update text for Jack Attac(k)
     Write test for weapons depot once I implement a black ops agenda
     Write tests for stealth cards once the noisy cards are done (owl, cloak, invisibility,
       sunburst cranial interface, Vewy Vewy Quiet)
@@ -26,8 +27,8 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   103 / 584
-TESTS:   86 / 103
+TOTAL:   104 / 584
+TESTS:   87 / 104
 NO TEST: 16
 NO IMP:  1
 --------------------------
@@ -64,6 +65,8 @@ NO IMP:  1
 066 + Canis Major
 067 + Canis Minor
 068 + Caryatid
+
+076 + Chihuahua
 
 080 + Cloak
 
@@ -231,4 +234,4 @@ The following (marked) cards have no tests or implementations:
   567 ^ ONR Weapons Depot
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 530
+Random card to implement: 208
