@@ -47,6 +47,17 @@
         (card-ability state :corp (refresh dept) 1)
         (is (zero? (get-counters (refresh dept) :credit)) "0 counters on DOTE")))))
 
+(deftest onr-rescheduler
+  (do-game
+    (new-game {:corp {:hand [(qty "ONR Rescheduler" 7)]
+                      :deck [(qty "ONR Accounts Receivable" 40)]}})
+    (play-from-hand state :corp "ONR Rescheduler" "New remote")
+    (let [sch (get-content state :remote1 0)]
+      (rez state :corp sch)
+      (card-ability state :corp (refresh sch) 0)
+      (is (= 6 (count (:hand (get-corp)))))
+      (is (some #(= (:title %) "ONR Accounts Receivable") (:hand (get-corp))) "Bad luck!"))))
+
 (deftest onr-rockerboy-promotion
   ;; Regolith Mining License
   (do-game

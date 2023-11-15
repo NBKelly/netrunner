@@ -82,6 +82,15 @@
                                (add-counter state side card :credit (- creds))
                                (gain-credits state :corp eid creds)))}]})
 
+(defcard "ONR Rescheduler"
+  {:abilities [{:cost [:click 1]
+                :label  "shuffle all cards in HQ into R&D and draw that many cards"
+                :async true
+                :msg (msg "shuffle HQ into R&D and draw " (count (:hand corp)) " cards")
+                :effect (req (let [cards (count (:hand corp))]
+                               (shuffle-into-deck state side :hand)
+                               (draw state side eid cards)))}]})
+
 (defcard "ONR Rockerboy Promotion"
   {:data {:counter {:credit 15}}
    :events [(trash-on-empty :credit)]
