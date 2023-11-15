@@ -29,7 +29,8 @@
                             register-run-flag!]]
    [game.core.gaining :refer [gain-credits lose-clicks lose-credits]]
    [game.core.hand-size :refer [corp-hand-size+]]
-   [game.core.ice :refer [all-subs-broken? get-run-ices pump-ice resolve-subroutine!
+   [game.core.ice :refer [all-subs-broken?  insert-extra-sub! remove-sub!
+                          get-run-ices pump-ice resolve-subroutine!
                           unbroken-subroutines-choice update-all-ice update-all-icebreakers]]
    [game.core.installing :refer [corp-install corp-install-list]]
    [game.core.moving :refer [mill move remove-from-currently-drawing
@@ -58,11 +59,56 @@
    [game.utils :refer :all]
    [jinteki.utils :refer :all]))
 
+(defcard "ONR Marcel DeSoleil"
+  {:abilities [{:async true
+                :label "duplicate a subroutine"
+                :req (req
+                       (and
+                         this-server run
+                         (can-pay? state :corp (assoc eid :source card :source-type :ability)
+                                      [:credit 2 :trash-from-deck 2] nil)
+                            (some #(and (ice? %)
+                                        (rezzed? %)
+                                        (pos? (count (:subroutines %)))
+                                        (same-server? % card))
+                                  (all-installed state :corp))))
+                :effect (req (continue-ability
+                               state side
+                               {:prompt "Choose an ice protecting this server"
+                                :async true
+                                :choices {:card #(and (ice? %)
+                                                      (rezzed? %)
+                                                      (pos? (count (:subroutines %)))
+                                                      (same-server? % card))}
+                                :effect (req
+                                          (let [target-ice target
+                                                from-cid (:cid card)]
+                                            (continue-ability
+                                              state side
+                                              {:cost [:credit 2 :trash-from-deck 2]
+                                               :prompt "Duplicate a subroutine"
+                                               :choices (req (concat (map #(make-label (:sub-effect %)) (:subroutines target-ice)) ["Cancel"]))
+                                               :msg (msg "repeat '" target "' subroutine on " (card-str state target-ice) " until the end of the run")
+                                               :effect (req
+                                                         (let [sub (nth (:subroutines target-ice) (:idx (first targets)))]
+                                                           (insert-extra-sub! state side target-ice sub from-cid (:index sub) {:printed false :variable true})
+                                                           (register-events
+                                                             state side card
+                                                             [{:event :run-ends
+                                                               :unregister-once-resolved true
+                                                               :req (req true)
+                                                               :duration :end-of-run
+                                                               :effect (req
+                                                                         (remove-sub! state side target-ice #(= from-cid (:from-cid %))))}])))}
+                                              card nil)))}
+                               card nil))}]})
+
 (defcard "ONR Olivia Salazar"
   (letfn [(sally-price [ice state]
             (or (int (/ (second (first (get-rez-cost state :corp ice nil))) 2)) 0))]
     {:abilities [{:req (req (and run this-server))
                   :label "Rez an ice for half the rez cost"
+                  :async true
                   :effect
                   (effect
                     (continue-ability

@@ -26,8 +26,8 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   98 / 584
-TESTS:   82 / 98
+TOTAL:   99 / 584
+TESTS:   83 / 99
 NO TEST: 15
 NO IMP:  1
 --------------------------
@@ -126,6 +126,8 @@ NO IMP:  1
 
 301 + Manhunt
 
+303 + Marcel DeSoleil
+
 305 + Marionette
 
 310 + Mazer
@@ -222,4 +224,4 @@ The following (marked) cards have no tests or implementations:
   567 ^ ONR Weapons Depot
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 38
+Random card to implement: 429

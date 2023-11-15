@@ -89,11 +89,34 @@
                        (into []))]
      (assoc ice :subroutines new-subs))))
 
+(defn insert-sub
+  ([ice sub cid index {:keys [printed variable]}]
+   (let [curr-subs (:subroutines ice [])
+         new-sub {:label (make-label sub)
+                  :from-cid cid
+                  :sub-effect (if (:sub-effect sub)
+                                (:sub-effect sub)
+                                (dissoc sub :breakable))
+                  :position (or (:position sub) 0)
+                  :index index
+                  :variable (or variable false)
+                  :printed (or printed false)
+                  :breakable (:breakable sub true)}
+         new-subs (map #(if (>= (:index %) index) (assoc % index (inc (:index %))) %) curr-subs)
+         new-subs (conj new-subs new-sub)
+         sorted (into [] (sort-by :index new-subs))]
+     (assoc ice :subroutines sorted))))
+
 (defn add-sub!
   ([state side ice sub] (add-sub! state side ice sub (:cid ice) nil))
   ([state side ice sub cid] (add-sub! state side ice sub cid nil))
   ([state side ice sub cid args]
    (update! state :corp (add-sub ice sub cid args))
+   (trigger-event state side :subroutines-changed (get-card state ice))))
+
+(defn insert-sub!
+  ([state side ice sub cid index args]
+   (update! state :corp (insert-sub ice sub cid index args))
    (trigger-event state side :subroutines-changed (get-card state ice))))
 
 (defn remove-sub
@@ -129,6 +152,11 @@
   ([state side ice pred]
    (update! state :corp (remove-subs ice pred))
    (trigger-event state side :subroutines-changed (get-card state ice))))
+
+(defn insert-extra-sub!
+  "Insert a subroutine at index n in an ice"
+  ([state side ice sub cid index args]
+   (insert-sub! state side (assoc-in ice [:special :extra-subs] true) sub cid index args)))
 
 (defn add-extra-sub!
   "Add a run time subroutine to a piece of ice (Warden, Sub Boost, etc)"
