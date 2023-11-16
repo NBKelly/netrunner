@@ -10,10 +10,15 @@ Features:
   Todo:
     forgo actions
     (x card) tokens
+    /describe-counters command (can click on a card, or you can name a server)
+                              -- gives a list of all the counters on a server
+    /explain-counter command (name a counter, or click on a card that only has one counter type)
+                              -- gives you a description of what the counter does
 
 Card Updates:
   TODO:
     Update text for Jack Attac(k)
+    Update text for Fait Accompli
     Write test for weapons depot once I implement a black ops agenda
     Write tests for stealth cards once the noisy cards are done (owl, cloak, invisibility,
       sunburst cranial interface, Vewy Vewy Quiet)
@@ -27,9 +32,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   116 / 584
-TESTS:   97 / 116
-NO TEST: 18
+TOTAL:   117 / 584
+TESTS:   97 / 117
+NO TEST: 19
 NO IMP:  1
 --------------------------
 002 + Access through Alpha
@@ -67,7 +72,7 @@ NO IMP:  1
 060 + ONR Brain Wash
 
 064 ^ Bulldozer
-
+065 ^ Butcher Boy (test once viruses are done!)
 066 + Canis Major
 067 + Canis Minor
 068 + Caryatid
@@ -239,6 +244,7 @@ The following (marked) cards have no tests or implementations:
   048 ^ Blink (no test, this is an rng card!)
   059 ^ Brain Drain (random, untestable?)
   064 ^ Bulldozer
+  065 ^ Butcher Boy (test once viruses are done!)
   123 ^ Cyfermaster (trivial icebreaker - no test)
   219 ^ Fubar
   234 ^ Hammer
@@ -255,4 +261,4 @@ The following (marked) cards have no tests or implementations:
   567 ^ ONR Weapons Depot
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 510
+Random card to implement: 210

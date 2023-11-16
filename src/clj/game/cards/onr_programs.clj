@@ -124,6 +124,13 @@
                                        card nil)))}}
     nil))
 
+(defn- handle-if-new
+  [token event state side card target]
+  (when (or (zero? (get-counters target token)) true)
+    (register-events
+      state side (get-card state card)
+      [event])))
+
 ;; card implementations
 
 (defcard "ONR Baedeker's Net Map"
@@ -199,6 +206,31 @@
                                                                 (break-sub 0 1 "Sentry" {:req (req true) :repeatable false})
                                                                 card nil)
                                                               (effect-completed state side eid)))}]))}]}))
+
+(defcard "ONR Butcher Boy"
+  (letfn [(butcher-boy-event []
+            {:event :runner-turn-begins
+             :unregister-once-resolved true
+             :ability-name "Butcher Boy Tokens"
+             :req (req (and
+                         (>= (get-counters (get-card state (:identity corp)) :butcher-boy) 2)))
+             :async true
+             :effect (req (let [to-gain (int (/ (get-counters (get-card state (:identity corp)) :butcher-boy) 2))]
+                            (register-events
+                              state side
+                              (:identity runner)
+                              [(butcher-boy-event)])
+                            (system-msg state side (str "gains " to-gain "[Credits] from butcher boy tokens (ONR Butcher Boy)"))
+                            (gain-credits state :runner eid (int (/ (get-counters (get-card state (:identity corp)) :butcher-boy) 2)))))})]
+    {:events [{:event :successful-run
+               :req (req (= :hq (target-server context)))
+               :msg (msg "give the corp a Butcher Boy token")
+               :effect (req
+                         (when (zero? (get-counters (:identity corp) :butcher-boy))
+                           (register-events
+                             state side (:identity corp)
+                             [(butcher-boy-event)]))
+                         (add-counter state :corp (get-card state (:identity corp)) :butcher-boy 1))}]}))
 
 (defcard "ONR Cloak"
   {:recurring 3

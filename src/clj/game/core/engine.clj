@@ -563,6 +563,7 @@
    (let [events (or (seq (concat (:events cdef) (:derezzed-events cdef)))
                     (let [cdef (card-def card)]
                       (remove :location (concat (:events cdef) (:derezzed-events cdef)))))
+         events (filter #(not (:persistent %)) events)
          abilities (map :event events)]
      (swap! state assoc :events
             (->> (:events @state)
@@ -716,7 +717,8 @@
                                           (not (and silent-fn
                                                     (silent-fn state side (make-eid state) card event-targets))))
                                        handlers)
-                    titles (map :card non-silent)
+                    titles (map #(assoc (:card %) :title (or (:ability-name (:ability %))
+                                                             (:title (:card %)))) non-silent)
                     interactive (filter #(let [interactive-fn (:interactive (:ability %))
                                                card (card-for-ability state %)]
                                            (and interactive-fn
@@ -752,7 +754,10 @@
                   {:prompt "Choose a trigger to resolve"
                    :choices titles
                    :async true
-                   :effect (req (let [to-resolve (some #(when (same-card? target (:card %)) %) handlers)
+                   :effect (req (let [to-resolve (some #(when (and (= (:title target) (:ability-name (:ability %)))
+                                                                   (same-card? target (:card %))) %) handlers)
+                                      ;; this lets us select the exact one to resolve based on the ability-name, if given
+                                      to-resolve (or to-resolve (some #(when (same-card? target (:card %)) %) handlers))
                                       ability-to-resolve (dissoc-req (:ability to-resolve))
                                       the-card (card-for-ability state to-resolve)]
                                   (wait-for
@@ -764,7 +769,10 @@
                                     (if (should-continue state handlers)
                                       (continue-ability state side
                                                         (choose-handler
-                                                          (remove-once #(same-card? target (:card %)) handlers))
+                                                          (remove-once
+                                                            ;;#(same-card? target (:card %))
+                                                            #(= to-resolve %)
+                                                            handlers))
                                                         nil event-targets)
                                       (effect-completed state side eid)))))})))]
 
