@@ -27,8 +27,8 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   108 / 584
-TESTS:   91 / 108
+TOTAL:   109 / 584
+TESTS:   92 / 109
 NO TEST: 16
 NO IMP:  1
 --------------------------
@@ -116,6 +116,7 @@ NO IMP:  1
 248 + Hunter
 
 253 + Ice Pick Willie
+254 + Ice Transmutation
 
 265 + Invisibility
 
@@ -242,4 +243,4 @@ The following (marked) cards have no tests or implementations:
   567 ^ ONR Weapons Depot
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 326
+Random card to implement: 500

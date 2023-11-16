@@ -4,6 +4,7 @@
    [cljc.java-time.local-date :as ld]
    [clojure.java.io :as io]
    [game.cards.agendas]
+   [game.cards.onr-agendas]
    [game.cards.assets]
    [game.cards.onr-assets]
    [game.cards.basic]
