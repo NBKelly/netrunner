@@ -10,6 +10,8 @@ Features:
   Todo:
     forgo actions
     (x card) tokens
+    re-arrange the css for tokens so that around 10 or so types can fit on a card
+                   (any more than that and the players deserve to suffer)
     /describe-counters command (can click on a card, or you can name a server)
                               -- gives a list of all the counters on a server
     /explain-counter command (name a counter, or click on a card that only has one counter type)
@@ -42,8 +44,9 @@ NO IMP:  1
 004 + Access to Kiribati
 005 + Accounts Receivable
 
+007 ^ Afreet
 008 + Code Corpse
-
+009 ^ AI Boon (rng card)
 012 + All-Hands
 
 015 + Anonymous Tip
@@ -58,15 +61,21 @@ NO IMP:  1
 
 035 + Banpei
 
-046 + Blackmail
+037 ^ Bartmoss Memorial Icebreaker
 
+041 ^ Big Frackin' Gun
+
+046 + Blackmail
+047 ^ Black Widow
 048 ^ Blink (no test, this is an rng card!)
 
+050 ^ Boardwalk (random reveal...)
 051 + Bodyweight [TM] Data Crèche
 052 + Bodyweight [TM] Synthetic Blood
 053 + Bolter Cluster
 054 + Bolter Swarm
 
+057 ^ Boring Bit
 058 + ONR Braindance Campaign
 059 ^ Brain Drain (random, untestable?)
 060 + ONR Brain Wash
@@ -76,6 +85,7 @@ NO IMP:  1
 066 + Canis Major
 067 + Canis Minor
 068 + Caryatid
+069 ^ Cascade (test once viruses are done!)
 
 076 + Chihuahua
 
@@ -261,4 +271,4 @@ The following (marked) cards have no tests or implementations:
   567 ^ ONR Weapons Depot
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 210
+Random card to implement: 103

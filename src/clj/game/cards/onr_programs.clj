@@ -19,7 +19,7 @@
    [game.core.effects :refer [any-effects register-lingering-effect
                               unregister-effects-for-card]]
    [game.core.eid :refer [effect-completed make-eid]]
-   [game.core.engine :refer [ability-as-handler dissoc-req not-used-once? pay
+   [game.core.engine :refer [ability-as-handler dissoc-req not-used-once?  gather-events pay
                              print-msg register-events register-once
                              trigger-event trigger-event-simult unregister-events]]
    [game.core.events :refer [run-events first-event? first-installed-trash? run-events
@@ -124,14 +124,59 @@
                                        card nil)))}}
     nil))
 
-(defn- handle-if-new
-  [token event state side card target]
-  (when (or (zero? (get-counters target token)) true)
-    (register-events
-      state side (get-card state card)
-      [event])))
+(defn handle-if-unique
+  [state side card handler]
+  (let [matching-events
+        (seq (filter #(= (:ability-name handler) (:ability-name (:ability %)))
+                     (gather-events state side (:event handler) nil)))]
+    (when-not matching-events
+      (register-events state side card [handler]))))
+
+(defn- daemon-abilities []
+  [{:label "Install and host a program"
+    :cost [:click 1]
+    :prompt "Choose a program"
+    :choices {:req (req (and (program? target)
+                             (runner-can-install? state side target false)
+                             (in-hand? target)))}
+    :msg (msg "install from the grip and host " (:title target))
+    :async true
+    :effect (effect (runner-install eid target {:host-card card :no-mu true}))}
+   {:label "Host an installed program (manual)"
+    :prompt "Choose an installed program"
+    :choices {:card #(and (program? %)
+                          (installed? %))}
+    :msg (msg "host " (:title target))
+    :effect (effect (host card target)
+                    (unregister-effects-for-card target #(= :used-mu (:type %)))
+                    (update-mu))}])
+
+(defn- host-with-negative-strength [x]
+  {:type :breaker-strength
+   :req (req (and (has-subtype? target "Icebreaker")
+                  (some #(same-card? % target) (:hosted card))))
+   :value (- x)})
+
+(defn- dice-roll [] (inc (rand-int 6)))
 
 ;; card implementations
+
+(defcard "ONR AI Boon"
+  (auto-icebreaker {:abilities [(break-sub 1 1 "Barrier")
+                                (strength-pump 1 1)]
+                    :events [{:event :run
+                              :async true
+                              :effect (req (let [str (dice-roll)]
+                                             (continue-ability
+                                               state side
+                                               {:msg (msg "gain " str " strength for the run")
+                                                :effect (effect (pump card str :end-of-run))}
+                                               card nil)))}]}))
+
+(defcard "ONR Afreet"
+  {:implementation "MU Limit not enforced"
+   :static-abilities [(host-with-negative-strength 1)]
+   :abilities (daemon-abilities)})
 
 (defcard "ONR Baedeker's Net Map"
   {:abilities [(base-link-abi 0 1)
@@ -140,6 +185,51 @@
 (defcard "ONR Bakdoor [TM]"
   {:abilities [(base-link-abi 0 3)
                (boost-link-abi 2 1)]})
+
+(defcard "ONR Bartmoss Memorial Icebreaker"
+  (auto-icebreaker {:abilities [(break-sub 1 1 "All")
+                                (strength-pump 1 1)]
+                    :events [{:event :end-of-encounter
+                              :req (req (any-subs-broken-by-card? (:ice context) card))
+                              :async true
+                              :effect (req (let [di (dice-roll)]
+                                             (continue-ability
+                                               state side
+                                               {:msg (msg "roll " di "(1d6)" (when (= 1 di) " and trash itself"))
+                                                :effect (req (if (= 1 di)
+                                                               (trash state side eid card {:cause-card card})
+                                                               (effect-completed state side eid)))}
+                                               card nil)))}]}))
+
+(defcard "ONR Big Frackin' Gun"
+  (auto-icebreaker {:abilities [(break-sub 6 5 "Sentry")
+                                (strength-pump 1 1)]}))
+
+(defcard "ONR Black Dahlia"
+  (auto-icebreaker {:abilities [(break-sub 2 1 "Sentry")
+                                (strength-pump 2 1)]}))
+
+(defcard "ONR Black Widow"
+  (auto-icebreaker
+    {:on-install
+     {:prompt "Choose a piece of ice to target for Black Widow"
+      :choices {:card ice?}
+      :effect (req (let [ice target]
+                     (add-icon state side card ice "BW" (faction-label card))
+                     (system-msg state side
+                                 (str "selects " (card-str state ice)
+                                      " for " (:title card) "'s strength gain ability"))
+                     (register-events
+                       state side card
+                       [{:event :encounter-ice
+                         :interactive (req true)
+                         :req (req (same-card? ice (:ice context)))
+                         :once :per-encounter
+                         :msg "gain 5 strength for the encounter"
+                         :effect (effect (pump (get-card state card) 5))}])))}
+     :leave-play (effect (remove-icon card))
+     :abilities [(break-sub 1 1 "Sentry")
+                 (strength-pump 2 1)]}))
 
 (defcard "ONR Blink"
   (letfn [(attempt
@@ -187,6 +277,39 @@
                                   (system-msg state side (str "takes " die-result " net damage"))
                                   (damage state side eid :net die-result {:card card})))))}]}))
 
+(defcard "ONR Boardwalk"
+  (letfn [(boardwalk-event []
+            {:event :runner-turn-begins
+             :unregister-once-resolved true
+             :ability-name "Boardwalk Counters"
+             :async true
+             :effect (req (let [counters (get-counters (get-card state (:identity corp)) :boardwalk)
+                                to-reveal (int (/ counters 2))
+                                can-reveal (count (:hand corp))]
+                            ;; dereg these events on 0 counters to save on performance?
+                            (when-not (zero? counters)
+                              (register-events
+                                state side
+                                (:identity runner)
+                                [(boardwalk-event)]))
+                            (if-not (zero? (min to-reveal can-reveal))
+                              (let [revealed (take (min to-reveal can-reveal) (shuffle (:hand corp)))]
+                                (do (system-msg state side (str "forces the corp to reveal "
+                                                                (enumerate-str (map :title (sort-by :title revealed)))
+                                                                " from HQ due to boardwalk counters (ONR Boardwalk)"))
+                                    (reveal state side eid revealed)))
+                              (effect-completed state side eid))))})]
+    {:events [{:event :successful-run
+               :req (req (= :hq (target-server context)))
+               :msg (msg "give the corp a Boardwalk counter")
+               :effect (req
+                         (handle-if-unique state side (:identity runner) (boardwalk-event))
+                         (add-counter state :corp (get-card state (:identity corp)) :boardwalk 1))}]}))
+
+(defcard "ONR Boring Bit"
+  (auto-icebreaker {:abilities [(break-sub 2 1 "Wall")
+                                (strength-pump 1 1)]}))
+
 (defcard "ONR Bulldozer"
   (auto-icebreaker {:abilities [(break-sub 1 1 "Wall" (lose-from-stealth 2))
                                 (strength-pump 2 1)]
@@ -207,29 +330,59 @@
                                                                 card nil)
                                                               (effect-completed state side eid)))}]))}]}))
 
+(defcard "ONR Cascade"
+  (letfn [(cascade-event []
+            {:event :corp-turn-begins
+             :unregister-once-resolved true
+             :ability-name "Cascade Counters"
+             :async true
+             :effect (req (let [counters (get-counters (get-card state (:identity corp)) :cascade)
+                                to-mill (int (/ counters 2))]
+                            (when-not (zero? counters)
+                               (register-events
+                                 state side
+                                 (:identity runner)
+                                 [(cascade-event)]))
+                            (if-not (zero? to-mill)
+                              (wait-for (mill state :runner (make-eid state eid) :corp to-mill)
+                                        (let [trashed-cards async-result]
+                                          ;; make them faceup
+                                          (doseq [c trashed-cards]
+                                            (update! state side (assoc c :seen true)))
+                                          (system-msg state side (str "force the corp to trash "
+                                                                      (enumerate-str (map :title (sort-by :title async-result)))
+                                                                      " from the top of R&D due to cascade counters (ONR Cascade)"))
+                                          (effect-completed state side eid)))
+                              (effect-completed state side eid))))})]
+    {:events [{:event :successful-run
+               :req (req (= :rd (target-server context)))
+               :msg (msg "give the corp a Cascade counter")
+               :effect (req
+                         (handle-if-unique state side (:identity runner) (cascade-event))
+                         (add-counter state :corp (get-card state (:identity corp)) :cascade 1))}]}))
+
 (defcard "ONR Butcher Boy"
   (letfn [(butcher-boy-event []
             {:event :runner-turn-begins
              :unregister-once-resolved true
-             :ability-name "Butcher Boy Tokens"
-             :req (req (and
-                         (>= (get-counters (get-card state (:identity corp)) :butcher-boy) 2)))
+             :ability-name "Butcher Boy Counters"
              :async true
-             :effect (req (let [to-gain (int (/ (get-counters (get-card state (:identity corp)) :butcher-boy) 2))]
-                            (register-events
-                              state side
-                              (:identity runner)
-                              [(butcher-boy-event)])
-                            (system-msg state side (str "gains " to-gain "[Credits] from butcher boy tokens (ONR Butcher Boy)"))
-                            (gain-credits state :runner eid (int (/ (get-counters (get-card state (:identity corp)) :butcher-boy) 2)))))})]
+             :effect (req (let [counters (get-counters (get-card state (:identity corp)) :butcher-boy)
+                                to-gain (int (/ counters 2))]
+                            (when-not (zero? counters)
+                               (register-events
+                                 state side
+                                 (:identity runner)
+                                 [(butcher-boy-event)]))
+                            (if-not (zero? to-gain)
+                              (do (system-msg state side (str "gains " to-gain "[Credits] from butcher boy counters (ONR Butcher Boy)"))
+                                  (gain-credits state :runner eid (int (/ (get-counters (get-card state (:identity corp)) :butcher-boy) 2))))
+                              (effect-completed state side eid))))})]
     {:events [{:event :successful-run
                :req (req (= :hq (target-server context)))
-               :msg (msg "give the corp a Butcher Boy token")
+               :msg (msg "give the corp a Butcher Boy counter")
                :effect (req
-                         (when (zero? (get-counters (:identity corp) :butcher-boy))
-                           (register-events
-                             state side (:identity corp)
-                             [(butcher-boy-event)]))
+                         (handle-if-unique state side (:identity runner) (butcher-boy-event))
                          (add-counter state :corp (get-card state (:identity corp)) :butcher-boy 1))}]}))
 
 (defcard "ONR Cloak"
