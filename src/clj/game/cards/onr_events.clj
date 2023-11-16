@@ -72,6 +72,48 @@
    [jinteki.utils :refer :all]
    [jinteki.validator :refer [legal?]]))
 
+(defcard "ONR All-Hands"
+  {:makes-run true
+   :implementation "Can't use Noisy is manual"
+   :on-play {:req (req hq-runnable)
+             :async true
+             :effect (effect (make-run eid :hq card))}
+   :events [{:event :successful-run
+             :silent (req true)
+             :req (req (and (= :hq (target-server context))
+                            this-card-run))
+             :effect (effect (register-events
+                              card [(breach-access-bonus :hq 3 {:duration :end-of-run})]))}]})
+
+(defcard "ONR Anonymous Tip"
+  {:on-play
+   {:req (req (some #(and (rezzed? %) (ice? %) (has-subtype? % "Black Ice"))
+                    (all-installed state :corp)))
+    :msg (msg "derez " (:title target))
+    :choices {:card #(and (ice? %)
+                          (has-subtype? % "Black Ice")
+                          (rezzed? %))}
+    :effect (effect (derez target))}})
+
+(defcard "ONR Blackmail"
+  {:makes-run true
+   :on-play {:req (req hq-runnable)
+             :async true
+             :effect (effect (make-run eid :hq card))}
+   :events [(successful-run-replace-breach
+                {:target-server :hq
+                 :mandatory true
+                 :this-card-run true
+                 :ability {:msg "add itself to their score area as an agenda worth 1 agenda point"
+                           :effect (req (as-agenda state :runner card 1))}})]})
+
+(defcard "ONR Bodyweight [TM] Synthetic Blood"
+  {:on-play
+   {:msg "draw 5 cards"
+    :async true
+    :effect (effect (draw eid 5))}})
+
+
 (defcard "ONR Ice and Data's Guide to the Net"
   (letfn [(outermost-ice [state server]
             (last (:ices (get-in @state (cons :corp (server->zone state server))))))
@@ -82,7 +124,8 @@
                         (expose-chain state side eid (rest xs)))))]
     {:on-play {:async true
                :msg "expose the outermost piece of ice on each server"
-               :req (req (seq (filter #(not (rezzed? (outermost-ice state %))) servers)))
+               :req (req (seq (filter #(and (outermost-ice state %)
+                                            (not (rezzed? (outermost-ice state %))) servers))))
                :effect (req (let [ices (map #(outermost-ice state %) servers)
                                   unrezzed (filter #(not (rezzed? %)) ices)]
                               (expose-chain state side eid unrezzed)))}}))

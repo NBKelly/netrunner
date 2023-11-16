@@ -27,8 +27,8 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   112 / 584
-TESTS:   93 / 112
+TOTAL:   116 / 584
+TESTS:   97 / 116
 NO TEST: 18
 NO IMP:  1
 --------------------------
@@ -38,6 +38,10 @@ NO IMP:  1
 005 + Accounts Receivable
 
 008 + Code Corpse
+
+012 + All-Hands
+
+015 + Anonymous Tip
 
 027 + Back Door to Hilliard
 028 + Back Door to Netwatch
@@ -49,10 +53,12 @@ NO IMP:  1
 
 035 + Banpei
 
+046 + Blackmail
+
 048 ^ Blink (no test, this is an rng card!)
 
 051 + Bodyweight [TM] Data Crèche
-
+052 + Bodyweight [TM] Synthetic Blood
 053 + Bolter Cluster
 054 + Bolter Swarm
 
@@ -115,7 +121,7 @@ NO IMP:  1
 
 248 + Hunter
 
-250 ^ Ice and Data's Guide to the Net
+250 ^ Ice and Data's Guide to the Net (update the req for this one!)
 251 ^ Ice and Data Special Report
 
 253 + Ice Pick Willie
@@ -236,7 +242,7 @@ The following (marked) cards have no tests or implementations:
   123 ^ Cyfermaster (trivial icebreaker - no test)
   219 ^ Fubar
   234 ^ Hammer
-  250 ^ Ice and Data's Guide to the Net
+  250 ^ Ice and Data's Guide to the Net (update the req for this one!)
   251 ^ Ice and Data Special Report
   268 ^ Jackhammer
   366 ^ Pile Driver
@@ -249,4 +255,4 @@ The following (marked) cards have no tests or implementations:
   567 ^ ONR Weapons Depot
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 528
+Random card to implement: 510
