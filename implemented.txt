@@ -27,9 +27,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   110 / 584
-TESTS:   93 / 110
-NO TEST: 16
+TOTAL:   112 / 584
+TESTS:   93 / 112
+NO TEST: 18
 NO IMP:  1
 --------------------------
 002 + Access through Alpha
@@ -114,6 +114,9 @@ NO IMP:  1
 234 ^ Hammer
 
 248 + Hunter
+
+250 ^ Ice and Data's Guide to the Net
+251 ^ Ice and Data Special Report
 
 253 + Ice Pick Willie
 254 + Ice Transmutation
@@ -233,6 +236,8 @@ The following (marked) cards have no tests or implementations:
   123 ^ Cyfermaster (trivial icebreaker - no test)
   219 ^ Fubar
   234 ^ Hammer
+  250 ^ Ice and Data's Guide to the Net
+  251 ^ Ice and Data Special Report
   268 ^ Jackhammer
   366 ^ Pile Driver
   399 ^ Ramming Piston
@@ -244,4 +249,4 @@ The following (marked) cards have no tests or implementations:
   567 ^ ONR Weapons Depot
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 251
+Random card to implement: 528
