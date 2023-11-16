@@ -34,9 +34,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   117 / 584
-TESTS:   97 / 117
-NO TEST: 19
+TOTAL:   135 / 584
+TESTS:   99 / 135
+NO TEST: 35
 NO IMP:  1
 --------------------------
 002 + Access through Alpha
@@ -91,16 +91,23 @@ NO IMP:  1
 
 080 + Cloak
 
-088 + ONR Colonel Failure
+082 + Clown
 
-096 + ONR Corporate Guard(R) Temps
+085 ^ Codecracker
+086 ^ Codeslinger
 
-106 + ONR Cortical Scanner
-107 + ONR Cortical Scrub
+088 + Colonel Failure
 
-113 + ONR Credit Blocks
+096 + Corporate Guard(R) Temps
 
-120 + ONR Crystal Wall
+103 ^ Corrosion
+
+106 + Cortical Scanner
+107 + Cortical Scrub
+
+113 + Credit Blocks
+
+120 + Crystal Wall
 
 123 ^ Cyfermaster (trivial icebreaker - no test)
 
@@ -120,13 +127,24 @@ NO IMP:  1
 
 148 + Department of Truth Enhancement
 
+158 ^ Dogcatcher
+
+168 ^ Dwarf
+
 179 + Endless Corridor
+180 + ONR Enterprise, Inc., Shields
+
+185 ^ Evil Twin
 
 202 + Fetch 4.0.1
 
 204 + Filter
 
 206 + Fire Wall
+
+210 ^ Force Shield
+
+215 ^ Forward's Legacy
 
 219 ^ Fubar
 
@@ -251,11 +269,27 @@ NO IMP:  1
 --------------------------
 --------------------------
 The following (marked) cards have no tests or implementations:
+  007 ^ Afreet
+  009 ^ AI Boon (rng card)
+  037 ^ Bartmoss Memorial Icebreaker
+  041 ^ Big Frackin' Gun
+  047 ^ Black Widow
   048 ^ Blink (no test, this is an rng card!)
+  050 ^ Boardwalk (random reveal...)
+  057 ^ Boring Bit
   059 ^ Brain Drain (random, untestable?)
   064 ^ Bulldozer
   065 ^ Butcher Boy (test once viruses are done!)
+  069 ^ Cascade (test once viruses are done!)
+  085 ^ Codecracker
+  086 ^ Codeslinger
+  103 ^ Corrosion
   123 ^ Cyfermaster (trivial icebreaker - no test)
+  158 ^ Dogcatcher
+  168 ^ Dwarf
+  185 ^ Evil Twin
+  210 ^ Force Shield
+  215 ^ Forward's Legacy
   219 ^ Fubar
   234 ^ Hammer
   250 ^ Ice and Data's Guide to the Net (update the req for this one!)
@@ -271,4 +305,4 @@ The following (marked) cards have no tests or implementations:
   567 ^ ONR Weapons Depot
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 103
+Random card to implement: 510

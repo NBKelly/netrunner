@@ -76,6 +76,29 @@
                            (card-ability state :runner refr 1)
                            (click-card state :runner cl)))))
 
+(deftest onr-clown
+  ;; Clown - lower ice strength on encounter
+  (do-game
+    (new-game {:corp {:deck ["Ice Wall" "Ganked!"]}
+               :runner {:deck ["ONR Clown"]}})
+    (play-from-hand state :corp "Ice Wall" "Archives")
+    (play-from-hand state :corp "Ganked!" "Archives")
+    (take-credits state :corp 2)
+    (let [iwall (get-ice state :archives 0)]
+      (play-from-hand state :runner "ONR Clown")
+      (run-on state "Archives")
+      (rez state :corp iwall)
+      (run-continue state)
+      (is (zero? (get-strength (refresh iwall))) "Ice Wall strength at 0 for encounter")
+      (run-continue state :movement)
+      (is (= 1 (get-strength (refresh iwall))) "Ice Wall strength at 1 after encounter")
+      (run-continue state)
+      (click-prompt state :corp "Yes")
+      (click-card state :corp iwall)
+      (is (zero? (get-strength (refresh iwall))) "Ice Wall strength at 0 for encounter")
+      (run-continue state)
+      (is (= 1 (get-strength (refresh iwall))) "Ice Wall strength at 1 after encounter"))))
+
 (deftest invisibility-pay-credits-prompt
     ;; Pay-credits prompt
     (do-game

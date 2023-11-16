@@ -265,7 +265,7 @@
                             (let [chosen-sub (first (filter #(and (= target (make-label (:sub-effect %)))
                                                                   (not (:broken %))
                                                                   (viable-sub % card)) (:subroutines current-ice)))
-                                  die-result (+ 1 (rand-int 6))
+                                  die-result (dice-roll)
                                   success (<= 4 die-result)]
                               (system-msg state side (str "rolls a " die-result " (1d6)"))
                               (if success
@@ -393,9 +393,153 @@
                                                (not (has-subtype? target "Noisy"))))
                                 :type :recurring}}})
 
+(defcard "ONR Clown"
+  {:static-abilities [{:type :ice-strength
+                       :req (req (and (get-current-encounter state)
+                                      (same-card? current-ice target)))
+                       :value -1}]})
+
+(defcard "ONR Cockroach"
+  {:implemntation "TODO"})
+
+(defcard "ONR Codecracker"
+  (auto-icebreaker {:abilities [(break-sub 0 1 "Code Gate")
+                                (strength-pump 1 1)]}))
+
+(defcard "ONR Codeslinger"
+  (auto-icebreaker {:abilities [(break-sub 1 1 "Sentry")]}))
+
+(defcard "ONR Corrosion"
+  (auto-icebreaker {:abilities [(break-sub 0 1 "Wall")
+                                (strength-pump 1 1)]}))
+
+(defcard "ONR Crumble"
+  {:implementation "TODO"})
+
 (defcard "ONR Cyfermaster"
   (auto-icebreaker {:abilities [(break-sub 2 1 "Code Gate")
                                 (strength-pump 1 1)]}))
+
+(defcard "ONR Deep Thought"
+  {:implementation "TODO"})
+
+(defcard "ONR Disintegrator"
+  {:implementation "TODO"})
+
+(defcard "ONR Dogcatcher"
+  (auto-icebreaker {:abilities [(break-sub 1 1 "Hellhound")
+                                (break-sub 1 1 "Bloodhound")
+                                (break-sub 1 1 "Watchdog")
+                                (break-sub 1 1 "Pit Bull")
+                                (strength-pump 1 1)]}))
+
+(defcard "ONR Dropp [TM]"
+  {:implementation "Erratum - Should read '0[Credits] Break all subroutines of a piece
+    of ice, and end the run. 1[Credits]: +1 strength. TODO"})
+
+(defcard "ONR Dupré" {}) ;;TODO
+
+(defcard "ONR Dwarf"
+  (auto-icebreaker {:abilities [(break-sub 1 1 "Wall")
+                                (strength-pump 1 1)]}))
+
+(defcard "ONR Early Worm"
+  (auto-icebreaker {:abilities [(break-sub 1 1 "Wall")
+                                (strength-pump 2 3)]}))
+
+(defcard "ONR Emergency Self-Construct" {}) ;;TODO
+
+(defcard "ONR Enterprise, Inc., Shields"
+  {:interactions {:prevent [{:type #{:net :brain}
+                             :req (req true)}]}
+   :abilities [{:cost [:credit 1]
+                :msg "prevent up to 2 net damage"
+                :effect (effect (damage-prevent :net 2))}
+               {:label "Prevent 1 brain damage"
+                :msg "prevent 1 brain damage"
+                :cost [:credit 1]
+                :effect (effect (damage-prevent :brain 1))}]})
+
+(defcard "ONR Evil Twin"
+  (letfn [(uses [state card]
+            (or (get-in (get-card state card) [:special :usecount]) 0))
+          (set-use [state side card x]
+            (update! state side (assoc-in (get-card state card) [:special :usecount] x)))]
+    (auto-icebreaker
+      {:interactions {:prevent [{:type #{:net :brain}
+                                 :req (req (if (< (uses state card) 2) true false))}]}
+       :events [{:event :runner-turn-ends
+                 :silent (req true)
+                 :effect (req (set-use state side card 0))}
+                {:event :corp-turn-ends
+                 :silent (req true)
+                 :effect (req (set-use state side card 0))}]
+       :abilities [(break-sub 3 1 "Sentry")
+                   (strength-pump 1 1)
+                   {:label "Prevent 1 net damage"
+                    :req (req (< (uses state card) 2))
+                    :cost [:credit 0]
+                    :msg "prevent 1 net damage"
+                    :effect (req
+                              (set-use state side card (inc (uses state card)))
+                              (damage-prevent state side :net 1))}
+                   {:label "Prevent 1 brain damage"
+                    :req (req (< (uses state card) 2))
+                    :msg "prevent 1 brain damage"
+                    :cost [:credit 0]
+                    :effect (req
+                              (set-use state side card (inc (uses state card)))
+                              (damage-prevent state side :brain 1))}]})))
+
+(defcard "ONR Expert Schedule Analyzer" {}) ;;TODO
+
+(defcard "ONR Fait Accompli" {}) ;;TODO
+
+(defcard "ONR False Echo" {}) ;;TODO
+
+(defcard "ONR Flak"
+  (auto-icebreaker {:abilities [(break-sub 1 1 "AP")
+                                (strength-pump 1 1)]}))
+
+(defcard "ONR Force Shield"
+  (letfn [(uses [state card]
+            (or (get-in (get-card state card) [:special :usecount]) 0))
+          (set-use [state side card x]
+            (update! state side (assoc-in (get-card state card) [:special :usecount] x)))]
+    {:interactions {:prevent [{:type #{:net :brain}
+                               :req (req (if (< (uses state card) 2) true false))}]}
+     :events [{:event :runner-turn-ends
+               :silent (req true)
+               :effect (req (set-use state side card 0))}
+              {:event :corp-turn-ends
+               :silent (req true)
+               :effect (req (set-use state side card 0))}]
+     :abilities [{:label "Prevent 1 net damage"
+                  :req (req (< (uses state card) 2))
+                  :cost [:credit 0]
+                  :msg "prevent 1 net damage"
+                  :effect (req
+                            (set-use state side card (inc (uses state card)))
+                            (damage-prevent state side :net 1))}
+                 {:label "Prevent 1 brain damage"
+                  :req (req (< (uses state card) 2))
+                  :msg "prevent 1 brain damage"
+                  :cost [:credit 0]
+                  :effect (req
+                            (set-use state side card (inc (uses state card)))
+                            (damage-prevent state side :brain 1))}]}))
+
+(defcard "ONR Forward's Legacy"
+  (auto-icebreaker {:abilities [(break-sub 0 1 "Sentry")]
+                    :events [{:event :run
+                              :async true
+                              :effect (req (let [str (dice-roll)]
+                                             (continue-ability
+                                               state side
+                                               {:msg (msg "gain " str " strength for the run")
+                                                :effect (effect (pump card str :end-of-run))}
+                                               card nil)))}]}))
+
 
 (defcard "ONR Fubar"
   (auto-icebreaker
