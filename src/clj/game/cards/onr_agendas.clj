@@ -93,3 +93,14 @@
    :static-abilities [{:type :ice-strength
                        :req (req (same-card? target (get-in card [:special :transmutation])))
                        :value 1}]})
+
+(defcard "ONR Subsidiary Branch"
+  {:move-zone (req (when (and (in-scored? card)
+                              (= :corp (:scored-side card)))
+                     (system-msg state side (str "uses " (:title card) " to gain 1 additional [Click] per turn"))
+                     (when (= :corp (:active-player @state))
+                       (gain-clicks state :corp 1))
+                     (gain state :corp :click-per-turn 1)))
+   :leave-play (req (lose state :corp
+                          :click 1
+                          :click-per-turn 1))})

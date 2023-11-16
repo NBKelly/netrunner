@@ -27,8 +27,8 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   109 / 584
-TESTS:   92 / 109
+TOTAL:   110 / 584
+TESTS:   93 / 110
 NO TEST: 16
 NO IMP:  1
 --------------------------
@@ -192,6 +192,7 @@ NO IMP:  1
 492 ^ Stereogram Antibody (Do this later, was just lazy)
 
 499 ^ Submarine Uplink (do this test later - fetch + uplink should be fine)
+500 + Subsidiary Branch
 
 502 + Sumo 2008
 503 ^ Sunburst Cranial Interface
@@ -243,4 +244,4 @@ The following (marked) cards have no tests or implementations:
   567 ^ ONR Weapons Depot
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 500
+Random card to implement: 251

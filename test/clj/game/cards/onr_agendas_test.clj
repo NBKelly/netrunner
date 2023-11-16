@@ -25,3 +25,19 @@
       (is (= 6 (count (:subroutines (refresh hydra)))))
       (run-continue state :pass-ice)
       (is (= 3 (count (:subroutines (refresh hydra))))))))
+
+(deftest onr-subsidiary-branch
+    ;; Gain an additional click
+    (do-game
+      (new-game {:corp {:deck ["ONR Subsidiary Branch"
+                               "Melange Mining Corp."]}})
+      (play-and-score state "ONR Subsidiary Branch")
+      (is (= 1 (:agenda-point (get-corp))))
+      (play-from-hand state :corp "Melange Mining Corp." "New remote")
+      (let [mmc (get-content state :remote2 0)]
+        (rez state :corp mmc)
+        (take-credits state :corp)
+        (take-credits state :runner)
+        (is (= 4 (:click (get-corp))))
+        (card-ability state :corp mmc 0)
+        (is (= 1 (:click (get-corp)))))))
