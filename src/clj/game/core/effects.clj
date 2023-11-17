@@ -30,7 +30,7 @@
 (defn register-lingering-effect
   [state _ card ability]
   (let [ability (assoc
-                  (select-keys ability [:type :duration :req :value])
+                  (select-keys ability [:type :duration :req :value :ability-name])
                   :card card
                   :uuid (uuid/v1))]
     (swap! state update :effects conj ability)
@@ -124,3 +124,11 @@
   ([state side effect-type pred target] (any-effects state side effect-type pred target nil))
   ([state side effect-type pred target targets]
    (some pred (get-effects state side effect-type target targets))))
+
+(defn any-named-effects
+  "Check if any effects return true for pred"
+  ([state side effect-type name] (any-named-effects state side effect-type name true? nil nil))
+  ([state side effect-type name pred] (any-named-effects state side effect-type name pred nil nil))
+  ([state side effect-type name pred target] (any-named-effects state side effect-type name pred target nil))
+  ([state side effect-type name pred target targets]
+   (some pred (filter #(= (:ability-name %) name) (get-effects state side effect-type target targets)))))

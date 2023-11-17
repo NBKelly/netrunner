@@ -16,7 +16,7 @@
    [game.core.damage :refer [damage damage-prevent]]
    [game.core.def-helpers :refer [breach-access-bonus defcard offer-jack-out trash-on-empty get-x-fn]]
    [game.core.drawing :refer [draw]]
-   [game.core.effects :refer [any-effects register-lingering-effect
+   [game.core.effects :refer [any-effects get-effect-maps register-lingering-effect
                               unregister-effects-for-card]]
    [game.core.eid :refer [effect-completed make-eid]]
    [game.core.engine :refer [ability-as-handler dissoc-req not-used-once?  gather-events pay
@@ -124,13 +124,47 @@
                                        card nil)))}}
     nil))
 
+(defn- lose-all-stealth
+  [state side card eid]
+  (let [runner-cards (all-installed state :runner)
+        stealthy (filter #(has-subtype? % "Stealth") runner-cards)
+        chosen (first (filter #(or (pos? (get-counters % :credit)) (pos? (get-counters % :recurring))) stealthy))
+        creds (when chosen (get-counters chosen :credit))
+        rec (when chosen (get-counters chosen :recurring))]
+    (if-not chosen
+      (effect-completed state side eid)
+      (continue-ability
+        state side
+        {:msg (msg "lose "
+                   (when creds (str creds " credits " (when rec "and ")))
+                   (when rec (str rec " recurring credits "))
+                   "from " (card-str state chosen))
+         :async true
+         :effect (req (when creds (add-counter state side (get-card state chosen) :credit (- creds)))
+                      (when rec (add-counter state side (get-card state chosen) :recurring (- rec)))
+                      ;;(effect-completed state side eid))}
+                      (continue-ability
+                        state side
+                        {:async true
+                         :effect (lose-all-stealth state side card eid)}
+                        card nil))}
+        card nil))))
+
 (defn handle-if-unique
-  [state side card handler]
-  (let [matching-events
-        (seq (filter #(= (:ability-name handler) (:ability-name (:ability %)))
-                     (gather-events state side (:event handler) nil)))]
-    (when-not matching-events
-      (register-events state side card [handler]))))
+  ([state side card handler] (handle-if-unique state side card handler nil))
+  ([state side card handler targets] (handle-if-unique state side card handler targets false))
+  ([state side card handler targets debug]
+   (let [matching-events
+         (seq (filter #(= (:ability-name handler) (:ability-name (:ability %)))
+                      (gather-events state side (:event handler) targets)))]
+     (when debug
+       (do
+         (system-msg state side (str "event type: " (:event handler)))
+         (system-msg state side (str (gather-events state side (:event handler) targets)))
+         ))
+     (when-not matching-events
+       (do (when debug (system-msg state side (str "registered " (:ability-name handler))))
+           (register-events state side card [handler]))))))
 
 (defn- daemon-abilities []
   [{:label "Install and host a program"
@@ -159,7 +193,43 @@
 
 (defn- dice-roll [] (inc (rand-int 6)))
 
+(defn- register-effect-once [state side card target-side effect]
+  (let [em (get-effect-maps state target-side (:type effect))
+        matches (filter #(= (:ability-name %) (:ability-name effect)) em)]
+    (when (empty? matches)
+      (register-lingering-effect
+        state side card
+        effect))))
+
 ;; card implementations
+
+(defcard "ONR Braniac: Espionage Enjoyer"
+  {:interactions
+   {:access-ability
+    {:label "Trash card"
+     :req (req (and (can-trash? state :runner target)
+                    ;; 2+ crumble counters and in hq
+                    (or
+                      (and (<= 2 (get-counters (get-card state (:identity corp)) :garbage))
+                           (or (= :rd (second (:zone target)))
+                               (= :deck (first (:zone target)))))
+                      (and (<= 2 (get-counters (get-card state (:identity corp)) :crumble))
+                           (or (= :hq (second (:zone target)))
+                               (= :hand (first (:zone target))))))))
+     :cost [:credit 0]
+     :async true
+     :effect (effect
+               (system-msg (str "trashes " (:title target) " at no cost"
+                                (if (or (=  :hq (second (:zone target)))
+                                        (= :hand (first (:zone target))))
+                                  " due to Crumble counters (ONR Crumble)"
+                                  " due to Garbage counters (ONR Garbage In)")))
+               (trash eid (assoc target :seen true)
+                            {:accessed true
+                             :cause-card card}))}}})
+
+;; I'm implementing braniac here
+
 
 (defcard "ONR AI Boon"
   (auto-icebreaker {:abilities [(break-sub 1 1 "Barrier")
@@ -414,14 +484,45 @@
                                 (strength-pump 1 1)]}))
 
 (defcard "ONR Crumble"
-  {:implementation "TODO"})
+  {:implementation "Depends on you running the ONR Runner ID"
+   :events [{:event :run-ends
+             :req (req (and (= :hq (target-server context))
+                                       (:successful context)))
+             :msg (msg "give the corp a Crumble counter")
+             :effect (req
+                       (add-counter state :corp (get-card state (:identity corp)) :crumble 1))}]})
 
 (defcard "ONR Cyfermaster"
   (auto-icebreaker {:abilities [(break-sub 2 1 "Code Gate")
                                 (strength-pump 1 1)]}))
 
 (defcard "ONR Deep Thought"
-  {:implementation "TODO"})
+  (letfn [(thought-event []
+            {:event :runner-turn-begins
+             :unregister-once-resolved true
+             :ability-name "Thought Counters"
+             :async true
+             :effect (req (let [counters (get-counters (get-card state (:identity corp)) :thought)
+                                to-peek (<= 3 counters)]
+                            (when-not (zero? counters)
+                               (register-events
+                                 state side
+                                 (:identity runner)
+                                 [(thought-event)]))
+                            (if to-peek
+                              (continue-ability
+                                state side
+                                {:prompt (req (->> corp :deck first :title (str "The top card of R&D is ")))
+                                 :effect (req (system-msg state side "looks at the top cards of R&D due to Thought counters (ONR Deep Thought)"))
+                                 :choices ["OK"]}
+                                card nil)
+                              (effect-completed state side eid))))})]
+    {:events [{:event :successful-run
+               :req (req (= :rd (target-server context)))
+               :msg (msg "give the corp a Thought counter")
+               :effect (req
+                         (handle-if-unique state side (:identity runner) (thought-event))
+                         (add-counter state :corp (get-card state (:identity corp)) :thought 1))}]}))
 
 (defcard "ONR Disintegrator"
   {:implementation "TODO"})
@@ -557,9 +658,69 @@
                     :msg (msg "choose to be able to break " target " subroutines")
                     :effect (effect (update! (assoc card :card-target target)))}]})))
 
+(defcard "ONR Garbage In"
+  {:implementation "Depends on you running the ONR Runner ID"
+   :events [{:event :run-ends
+             :req (req (and (= :rd (target-server context))
+                            (:successful context)))
+             :msg (msg "give the corp a Garbage counter")
+             :effect (req
+                       (add-counter state :corp (get-card state (:identity corp)) :garbage 1))}]})
+
+(defcard "ONR Gremlins"
+  {:events [{:event :successful-run
+             :req (req (= :hq (target-server context)))
+             :msg (msg "give the corp a Gremlin counter")
+             :effect (req
+                       (add-counter state :corp (get-card state (:identity corp)) :gremlin 1)
+                       (register-effect-once
+                         state side card :corp
+                         {:type :hand-size
+                          :ability-name "Gremlins"
+                          :req (req (= :corp side))
+                          :value (req (- (int (/ (get-counters (get-card state (:identity corp)) :gremlin) 2))))}))}]})
+
+(defcard "ONR Grubb"
+  (auto-icebreaker {:abilities [(break-sub 1 1 "Wall")
+                                (strength-pump 2 1 :end-of-run)]}))
+
 (defcard "ONR Hammer"
   (auto-icebreaker {:abilities [(break-sub 1 1 "Wall" (lose-from-stealth 2))
                                 (strength-pump 1 1)]}))
+
+(defcard "ONR Highlighter"
+  (letfn [(highlighter-event []
+            {:event :breach-server
+             :unregister-once-resolved true
+             :side :runner
+             :async true
+             :ability-name "Highlighter Counters"
+             :req (req (= target :rd))
+             :effect (req (let [counters (get-counters (get-card state (:identity corp)) :highlighter)
+                                add-access (dec counters)]
+                            (when (pos? add-access)
+                              (system-msg state side (str "accesses an additional " add-access " cards from R&D due to Highlighter counters (ONR Highlighter)"))
+                              (access-bonus state side :rd add-access))
+                            (when-not (zero? counters)
+                              (register-events
+                                state side
+                                (:identity runner)
+                                [(highlighter-event)]))
+                            (effect-completed state side eid)))})]
+    {:events [{:event :run-ends
+               :req (req (and (= :rd (target-server context))
+                              (:successful context)))
+               :msg (msg "give the corp a Highlighter counter")
+               :effect (req
+                         (handle-if-unique state side (:identity runner) (highlighter-event) [:rd])
+                         (add-counter state :corp (get-card state (:identity corp)) :highlighter 1))}]}))
+
+(defcard "ONR Imp"
+  {:implementation "MU Limit not enforced"
+   :static-abilities [(host-with-negative-strength 1)]
+   :abilities (daemon-abilities)})
+
+(defcard "ONR Incubator" {}) ;;todo
 
 (defcard "ONR Invisibility"
   {:recurring 1
@@ -572,6 +733,73 @@
 (defcard "ONR Jackhammer"
   (auto-icebreaker {:abilities [(break-sub 0 1 "Wall" (lose-from-stealth 1))
                                 (strength-pump 1 1)]}))
+
+(defcard "ONR Japanese Water Torture" {}) ;;todo
+
+(defcard "ONR Joan of Arc"
+  {:interactions {:prevent [{:type #{:trash-program}
+                             :req (req
+                                    (let [target-card (:prevent-target target)]
+                                      (if-not (same-card? target-card card)
+                                        true
+                                        false)))}]}
+   :abilities [{:cost [:trash-can]
+                :label "prevent a program trash"
+                :effect (effect (trash-prevent :program 1))}
+               {:cost [:credit 1 :return-to-hand]
+                :label "prevent a program trash"
+                :effect (effect (trash-prevent :program 1))}]})
+
+(defcard "ONR Krash"
+  (auto-icebreaker {:abilities [(break-sub 2 1 "All")
+                                (strength-pump 2 1)]}))
+
+(defcard "ONR Lockjaw"
+  {:abilities [{:req (req (get-current-encounter state))
+                :cost [:trash-can]
+                :label "Give icebreaker +2 strength for the run"
+                :prompt "Choose an installed non-AI icebreaker"
+                :choices {:card #(and (has-subtype? % "Icebreaker")
+                                      (installed? %))}
+                :msg (msg "give +2 strength to " (:title target))
+                :effect (effect (pump target 2 :end-of-run))}]})
+
+(defcard "ONR Loony Goon"
+  (auto-icebreaker {:abilities [(break-sub 1 1 "Sentry")
+                                (strength-pump 1 1)]}))
+
+(defcard "ONR MS-todon"
+  (auto-icebreaker {:abilities [(break-sub 1 1 "Sentry")
+                                (strength-pump 1 1)]
+                    :events [{:event :subroutines-broken
+                              :once :per-run
+                              :req (req (and
+                                          (has-subtype? target "Sentry")
+                                          (any-subs-broken-by-card? target card)))
+                              :msg "lose all stealth credits and take a tag"
+                              :effect (req (wait-for (gain-tags state :runner 1)
+                                                     (lose-all-stealth state side card eid)))}]}))
+
+(defcard "ONR Matador"
+  (auto-icebreaker {:abilities [(break-sub 1 1 "Sentry")
+                                (strength-pump 3 5)]}))
+
+(defcard "ONR Microtech AI Interface"
+  {:events [{:event :breach-server
+             :async true
+             :req (req (= target :rd))
+             :effect (effect (continue-ability
+                               {:req (req (< 1 (count (:deck corp))))
+                                :prompt "How many cards from R&D do you cut to the bottom?"
+                                :choices {:number (req (count (:deck corp)))
+                                          :default (req 0)}
+                                :msg (msg "cut "
+                                          (when (= target (count (:deck corp))) "ALL ")
+                                          (quantify target " card") " to the bottom of R&D")
+                                :effect (req (let [cards (take target (:deck corp))]
+                                               (doseq [c cards]
+                                                 (move state :corp c :deck))))}
+                               card nil))}]})
 
 (defcard "ONR Pile Driver"
   (auto-icebreaker {:abilities [(break-sub 3 4 "Wall" (lose-from-stealth 3))

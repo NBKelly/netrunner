@@ -19,8 +19,6 @@ Features:
 
 Card Updates:
   TODO:
-    Update text for Jack Attac(k)
-    Update text for Fait Accompli
     Write test for weapons depot once I implement a black ops agenda
     Write tests for stealth cards once the noisy cards are done (owl, cloak, invisibility,
       sunburst cranial interface, Vewy Vewy Quiet)
@@ -34,9 +32,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   135 / 584
-TESTS:   99 / 135
-NO TEST: 35
+TOTAL:   149 / 584
+TESTS:   99 / 149
+NO TEST: 49
 NO IMP:  1
 --------------------------
 002 + Access through Alpha
@@ -107,6 +105,8 @@ NO IMP:  1
 
 113 + Credit Blocks
 
+117 ^ Crumble (requires braniac id)
+
 120 + Crystal Wall
 
 123 ^ Cyfermaster (trivial icebreaker - no test)
@@ -124,6 +124,8 @@ NO IMP:  1
 139 + Deadeye
 
 142 + Death Yo-Yo
+
+145 ^ Deep Thought
 
 148 + Department of Truth Enhancement
 
@@ -149,8 +151,14 @@ NO IMP:  1
 219 ^ Fubar
 
 221 + Galatea
+222 ^ Garbage In
+
+230 ^ Gremlins
+231 ^ Grubb
 
 234 ^ Hammer
+
+238 ^ Highlighter
 
 248 + Hunter
 
@@ -160,14 +168,19 @@ NO IMP:  1
 253 + Ice Pick Willie
 254 + Ice Transmutation
 
+258 ^ Imp
+
 265 + Invisibility
 
 259 + Imperial Guard
 
 268 ^ Jackhammer
 
+273 ^ Joan of Arc
+
 276 + Keeper
 
+278 ^ Krash
 279 + Krumz
 280 + Laser Wire
 
@@ -175,17 +188,25 @@ NO IMP:  1
 
 287 + Liche
 
+294 ^ Lockjaw
+
+296 ^ Loony Goon
+
 301 + Manhunt
 
 303 + Marcel DeSoleil
 
 305 + Marionette
 
+309 ^ Matador
 310 + Mazer
+
+313 ^ Microtech AI Interface
 
 319 + Misleading Access Menus
 
 324 + MRAM Chip
+325 ^ MS-todon
 
 329 + Nerve Labyrinth
 
@@ -284,17 +305,31 @@ The following (marked) cards have no tests or implementations:
   085 ^ Codecracker
   086 ^ Codeslinger
   103 ^ Corrosion
+  117 ^ Crumble (requires braniac id)
   123 ^ Cyfermaster (trivial icebreaker - no test)
+  145 ^ Deep Thought
   158 ^ Dogcatcher
   168 ^ Dwarf
   185 ^ Evil Twin
   210 ^ Force Shield
   215 ^ Forward's Legacy
   219 ^ Fubar
+  222 ^ Garbage In
+  230 ^ Gremlins
+  231 ^ Grubb
   234 ^ Hammer
+  238 ^ Highlighter
   250 ^ Ice and Data's Guide to the Net (update the req for this one!)
   251 ^ Ice and Data Special Report
+  258 ^ Imp
   268 ^ Jackhammer
+  273 ^ Joan of Arc
+  278 ^ Krash
+  294 ^ Lockjaw
+  296 ^ Loony Goon
+  309 ^ Matador
+  313 ^ Microtech AI Interface
+  325 ^ MS-todon
   366 ^ Pile Driver
   399 ^ Ramming Piston
   403 ^ Raven Microcyb Owl
@@ -305,4 +340,4 @@ The following (marked) cards have no tests or implementations:
   567 ^ ONR Weapons Depot
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 510
+Random card to implement: 55
