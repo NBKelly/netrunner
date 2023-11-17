@@ -893,10 +893,68 @@
                                 card nil)
                               (effect-completed state side eid))))}]})
 
+(defcard "ONR Newsgroup Filter"
+  {:abilities [{:cost [:click 1]
+                :keep-menu-open :while-clicks-left
+                :async true
+                :effect (effect (gain-credits eid 2))
+                :msg "gain 2 [Credits]"}]})
+
+(defcard "ONR Pattel's Virus"
+  {:events [{:event :successful-run
+             :req (req (let [events (map #(first %) (run-events state side :subroutines-broken))
+                             all-subs-broke (fn [card]
+                                              (empty? (remove :broken (:subroutines card))))
+                             valid-targets (filter all-subs-broke events)]
+                         (some #(and (ice? %) (installed? (get-card state %))) valid-targets)))
+             :choices {:req (req (and
+                                   (ice? target)
+                                   (let [events (map #(first %) (run-events state side :subroutines-broken))
+                                         all-subs-broke (fn [card]
+                                                          (empty? (remove :broken (:subroutines card))))
+                                         valid-targets (filter all-subs-broke events)]
+                                     (some #(same-card? % target) valid-targets))))}
+             :effect (req (add-counter state side (get-card state target) :pattel 1)
+                          (register-effect-once
+                            state side card :corp
+                            {:type :ice-strength
+                             :ability-name "Pattel's Virus"
+                             :value (req (- (get-counters (get-card state target) :pattel)))}))
+             :msg (msg "place a pattel counter on " (card-str state target))}]})
+
+
 (defcard "ONR Pile Driver"
   (auto-icebreaker {:abilities [(break-sub 3 4 "Wall" (lose-from-stealth 3))
                                 (strength-pump 1 1)]}))
 
+(defcard "ONR Poltergeist"
+  {:recurring 2
+   :interactions {:pay-credits {:req (req (and (= :runner-trash-corp-cards (:source-type eid))
+                                               (asset? target)))
+                                :type :recurring}}})
+
+(defcard "ONR Pox" {}) ;;TODO
+
+(defcard "ONR Psychic Friend"
+  (auto-icebreaker {:abilities [(break-sub 1 1 "Code Gate")
+                                (strength-pump 2 1 :end-of-turn)]}))
+
+(defcard "ONR R&D-Protocol Files"
+  (let [ability (successful-run-replace-breach
+                 {:target-server :rd
+                  :mandatory true
+                  :duration :end-of-run
+                  :ability
+                  {:prompt (msg "The top cards of R&D are" (enumerate-str (map :title (take 5 (:deck corp)))))
+                   :choices ["Noted"]
+                   :msg (msg "look at the top 5 cards of R&D")}})]
+    {:implementation "requires successful run"
+     :abilities [{:cost [:click 1]
+                  :msg "make a run on R&D"
+                  :makes-run true
+                  :async true
+                  :effect (effect (register-events card [ability])
+                                  (make-run eid :rd card))}]}))
 
 (defcard "ONR Ramming Piston"
   (auto-icebreaker {:abilities [(break-sub 2 1 "Wall" (lose-from-stealth 2))

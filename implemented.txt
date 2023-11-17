@@ -32,9 +32,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   153 / 584
-TESTS:   99 / 153
-NO TEST: 53
+TOTAL:   158 / 584
+TESTS:   101 / 158
+NO TEST: 56
 NO IMP:  1
 --------------------------
 002 + Access through Alpha
@@ -218,12 +218,20 @@ NO IMP:  1
 335 + Networking
 336 + Neural Blade
 
+340 + Newsgroup Filter
+
 346 + Olivia Salazar
 
-365 + ONR π in the 'Face
+363 ^ Pattel's Virus
+
+365 + π in the 'Face
 366 ^ Pile Driver
 
-372 + ONR Pocket Virtual Reality
+372 + Pocket Virtual Reality
+
+376 + Poltergiest
+
+392 ^ Psychic Friend
 
 395 + Quandary (trivial ETR ice - no test)
 
@@ -233,6 +241,8 @@ NO IMP:  1
 403 ^ Raven Microcyb Owl
 
 405 + Razor Wire
+
+408 ^ R&D-Protocol Files
 
 415 + Reinforced Wall
 
@@ -339,9 +349,12 @@ The following (marked) cards have no tests or implementations:
   325 ^ MS-todon
   326 ^ Mystery Box
   331 ^ Netspace Inverter
+  363 ^ Pattel's Virus
   366 ^ Pile Driver
+  392 ^ Psychic Friend
   399 ^ Ramming Piston
   403 ^ Raven Microcyb Owl
+  408 ^ R&D-Protocol Files
   492 ^ Stereogram Antibody (Do this later, was just lazy)
   499 ^ Submarine Uplink (do this test later - fetch + uplink should be fine)
   503 ^ Sunburst Cranial Interface
@@ -349,4 +362,4 @@ The following (marked) cards have no tests or implementations:
   567 ^ ONR Weapons Depot
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 246
+Random card to implement: 13

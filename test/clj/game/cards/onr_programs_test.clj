@@ -115,6 +115,41 @@
                            (card-ability state :runner refr 1)
                            (click-card state :runner cl)))))
 
+(deftest onr-newsgroup-filter
+  ;; Magnum Opus - Gain 2 cr
+  (do-game
+    (new-game {:runner {:deck ["ONR Newsgroup Filter"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "ONR Newsgroup Filter")
+    (is (= 2 (core/available-mu state)))
+    (is (zero? (:credit (get-runner))))
+    (let [mopus (get-program state 0)]
+      (card-ability state :runner mopus 0)
+      (is (= 2 (:credit (get-runner))) "Gain 2cr"))))
+
+(deftest onr-poltergiest
+  ;; Paricia
+  (do-game
+    (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                      :hand ["PAD Campaign" "Shell Corporation"]}
+               :runner {:hand ["ONR Poltergeist"]}})
+    (play-from-hand state :corp "PAD Campaign" "New remote")
+    (play-from-hand state :corp "Shell Corporation" "New remote")
+    (take-credits state :corp)
+    (play-from-hand state :runner "ONR Poltergeist")
+    (let [pad (get-content state :remote1 0)
+          shell (get-content state :remote2 0)]
+      (run-empty-server state :remote2)
+      (click-prompt state :runner "Pay 3 [Credits] to trash")
+      (is (no-prompt? state :runner) "No pay-credit prompt as it's an upgrade")
+      (is (nil? (refresh shell)) "Shell Corporation successfully trashed")
+      (run-empty-server state :remote1)
+      (is (= 2 (:credit (get-runner))) "Runner can't afford to trash PAD Campaign")
+      (click-prompt state :runner "Pay 4 [Credits] to trash")
+      (dotimes [_ 2]
+        (click-card state :runner "ONR Poltergeist"))
+      (is (nil? (refresh pad)) "PAD Campaign successfully trashed"))))
+
 (deftest zetatech-software-installer-pay-credits-prompt
   ;; Pay-credits prompt
   (do-game
