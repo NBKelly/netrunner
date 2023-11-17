@@ -32,9 +32,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   158 / 584
-TESTS:   101 / 158
-NO TEST: 56
+TOTAL:   172 / 584
+TESTS:   105 / 172
+NO TEST: 66
 NO IMP:  1
 --------------------------
 002 + Access through Alpha
@@ -236,9 +236,9 @@ NO IMP:  1
 395 + Quandary (trivial ETR ice - no test)
 
 397 ^ Rabbit
-
+398 ^ Raffles
 399 ^ Ramming Piston
-
+401 ^ Raptor
 402 + Raven Microcyb Eagle
 403 ^ Raven Microcyb Owl
 
@@ -246,8 +246,14 @@ NO IMP:  1
 
 408 ^ R&D-Protocol Files
 
+412 ^ Redecorator
+
+414 ^ Reflector
 415 + Reinforced Wall
 
+418 + Rent-I-Con
+
+420 ^ Replicator
 421 + Rescheduler
 
 429 + Rockerboy Promotion
@@ -257,11 +263,22 @@ NO IMP:  1
 
 441 + Scaffolding
 
+443 + Scatter Shot
+444 ^ Schematics Search Engine
+
 449 + Scramble
+
+453 ^ SeeYa
+
+455 + Self-Modifying Code
 
 457 + Sentinels Prime
 
+459 ^ Shaka
+460 ^ Shield
+
 464 + Shotgun Wire
+465 + Shredder Uplink Protocol
 
 477 + Sleeper
 
@@ -354,9 +371,19 @@ The following (marked) cards have no tests or implementations:
   363 ^ Pattel's Virus
   366 ^ Pile Driver
   392 ^ Psychic Friend
+  397 ^ Rabbit
+  398 ^ Raffles
   399 ^ Ramming Piston
+  401 ^ Raptor
   403 ^ Raven Microcyb Owl
   408 ^ R&D-Protocol Files
+  412 ^ Redecorator
+  414 ^ Reflector
+  420 ^ Replicator
+  444 ^ Schematics Search Engine
+  453 ^ SeeYa
+  459 ^ Shaka
+  460 ^ Shield
   492 ^ Stereogram Antibody (Do this later, was just lazy)
   499 ^ Submarine Uplink (do this test later - fetch + uplink should be fine)
   503 ^ Sunburst Cranial Interface
@@ -364,4 +391,4 @@ The following (marked) cards have no tests or implementations:
   567 ^ ONR Weapons Depot
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 13
+Random card to implement: 118

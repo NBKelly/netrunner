@@ -4,7 +4,7 @@
    [game.core.access :refer [access-bonus max-access]]
    [game.core.board :refer [all-active all-active-installed all-installed all-installed-runner-type
                             card->server server->zone]]
-   [game.core.card :refer [active? agenda? asset? card-index corp? facedown? faceup?
+   [game.core.card :refer [active? agenda? asset? card-index corp? facedown? faceup? upgrade?
                            get-advancement-requirement get-card get-counters
                            get-nested-host get-title get-zone
                            hardware? has-subtype? in-hand? in-discard? ice? installed?
@@ -961,9 +961,153 @@
                        :req (req (ice? target))
                        :value -1}]})
 
+(defcard "ONR Raffles"
+  (auto-icebreaker {:abilities [(break-sub 1 1 "Code Gate")
+                                (strength-pump 2 1)]}))
+
 (defcard "ONR Ramming Piston"
   (auto-icebreaker {:abilities [(break-sub 2 1 "Wall" (lose-from-stealth 2))
                                 (strength-pump 1 1)]}))
+
+(defcard "ONR Raptor"
+  (auto-icebreaker {:abilities [(break-sub 2 1 "Sentry")
+                                (strength-pump 1 1)]}))
+
+(defcard "ONR Redecorator"
+  (auto-icebreaker {:abilities [(break-sub 1 2 "Sentry")
+                                (strength-pump 3 1)]}))
+
+(defcard "ONR Reflector"
+  (auto-icebreaker {:abilities [(break-sub 0 1 "Stun")
+                                (break-sub 0 1 "Hellbolt")
+                                (break-sub 0 1 "Knockout")]}))
+
+(defcard "ONR Rent-I-Con"
+  (auto-icebreaker
+    {:abilities [(break-sub
+                   1 1 "All"
+                   {:additional-ability
+                    {:msg "will trash itself when this run ends"
+                     :effect (req
+                               (register-events
+                                 state :runner (get-card state card)
+                                 [{:event :run-ends
+                                   :duration :end-of-run
+                                   :unregister-once-resolved true
+                                   :async true
+                                   :effect (effect (trash eid card {:cause :runner-ability
+                                                                    :cause-card card}))}]))}})
+                 (strength-pump 1 1)]}))
+
+(defcard "ONR Replicator"
+  {:implementation "Trace restriction not implemented"
+   :abilities [(break-sub 0 1 "All" {:label "break 1 subroutine that traces"})
+               (strength-pump 1 1)]})
+
+
+(defcard "ONR Scaldan" {}) ;;TODO - figure out how I'm doing ONR Bad Pub. This will probably be an ability on the runner id.
+
+(defcard "ONR Scatter Shot"
+  {:recurring 2
+   :interactions {:pay-credits {:req (req (and (= :runner-trash-corp-cards (:source-type eid))
+                                               (upgrade? target)))
+                                :type :recurring}}})
+
+(defcard "ONR Schematics Search Engine"
+  (letfn [(expose-chain [state side eid xs]
+            (if-not (seq xs)
+              (effect-completed state side eid)
+              (wait-for (expose state side (make-eid state eid) (first xs))
+                        (expose-chain state side eid (rest xs)))))]
+    {:events [{:event :breach-server
+               :async true
+               :req (req (= target :hq))
+               :effect (effect (continue-ability
+                                 {:optional
+                                  {:prompt "Expose all of the cards?"
+                                   :req (req (some #(not (rezzed? %)) (all-installed state :corp)))
+                                   :yes-ability {:msg "expose ALL of the cards"
+                                                 :effect (req (expose-chain state side eid (filter #(not (rezzed? %)) (all-installed state :corp))))
+                                                 :async true}}}
+                                 card nil))}]}))
+
+(defcard "ONR SeeYa"
+  {:abilities [{:cost [:click 1 :credit 1]
+                :choices {:card #(and (corp? %)
+                                      (installed? %))}
+                :effect (effect (expose eid target))
+                :msg "expose 1 card"}]})
+
+(defcard "ONR Self-Modifying Code"
+  {:abilities [{:req (req (not (install-locked? state side)))
+                :label "Install a program from the stack"
+                :cost [:trash-can]
+                :async true
+                :effect (effect (continue-ability
+                                  {:prompt "Choose a program to install"
+                                   :msg (msg (if (= target "Done")
+                                               "shuffle the stack"
+                                               (str "install " (:title target) " from the stack")))
+                                   :choices (req (concat
+                                                   (->> (:deck runner)
+                                                        (filter
+                                                          #(and (program? %)
+                                                                (can-pay? state side
+                                                                          (assoc eid :source card :source-type :runner-install)
+                                                                          % nil [:credit (install-cost state side %)])))
+                                                        (sort-by :title)
+                                                        (seq))
+                                                  ["Done"]))
+                                   :async true
+                                   :effect (req (trigger-event state side :searched-stack nil)
+                                                (shuffle! state side :deck)
+                                                (if (= target "Done")
+                                                  (effect-completed state side eid)
+                                                  (runner-install state side (assoc eid :source card :source-type :runner-install) target nil)))}
+                                  card nil))}]})
+
+(defcard "ONR Shaka"
+  (auto-icebreaker {:abilities [(break-sub 1 1 "Sentry")
+                                (strength-pump 2 1)]}))
+
+(defcard "ONR Shield"
+  (letfn [(uses [state card]
+            (or (get-in (get-card state card) [:special :usecount]) 0))
+          (set-use [state side card x]
+            (update! state side (assoc-in (get-card state card) [:special :usecount] x)))]
+    {:interactions {:prevent [{:type #{:net}
+                               :req (req (if (< (uses state card) 2) true false))}]}
+     :events [{:event :runner-turn-ends
+               :silent (req true)
+               :effect (req (set-use state side card 0))}
+              {:event :corp-turn-ends
+               :silent (req true)
+               :effect (req (set-use state side card 0))}]
+     :abilities [{:label "Prevent 1 net damage"
+                  :req (req (< (uses state card) 2))
+                  :cost [:credit 0]
+                  :msg "prevent 1 net damage"
+                  :effect (req
+                            (set-use state side card (inc (uses state card)))
+                            (damage-prevent state side :net 1))}]}))
+
+(defcard "ONR Shredder Uplink Protocol"
+  {:abilities [{:cost [:click 1]
+                :msg "make a run on Archives"
+                :makes-run true
+                :async true
+                :effect (effect (register-events
+                                  card
+                                  [{:event :pre-successful-run
+                                    :duration :end-of-run
+                                    :unregister-once-resolved true
+                                    :interactive (req true)
+                                    :msg "change the attacked server to HQ"
+                                    :req (req (= :archives (-> run :server first)))
+                                    :effect (req (swap! state assoc-in [:run :server] [:hq])
+                                                 (trigger-event state :corp :no-action))}])
+                                (make-run eid :archives (get-card state card)))}]})
+
 
 (defcard "ONR Vewy Vewy Quiet"
   {:recurring 2
