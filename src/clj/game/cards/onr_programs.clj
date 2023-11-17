@@ -1108,6 +1108,11 @@
                                                  (trigger-event state :corp :no-action))}])
                                 (make-run eid :archives (get-card state card)))}]})
 
+(defcard "ONR Signpost"
+  {:events [{:event :trace-revealed
+             :optional {:prompt "Gain 2 link?"
+                        :waiting-prompt true
+                        :yes-ability (boost-link-abi 1 2)}}]})
 
 (defcard "ONR Vewy Vewy Quiet"
   {:recurring 2

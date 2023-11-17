@@ -1,11 +1,11 @@
 (ns game.core.onr-trace
   (:require
    [game.core.board :refer [all-active-installed]]
-   [game.core.card :refer [has-subtype?]]
+   [game.core.card :refer [has-subtype? get-card]]
    [game.core.costs :refer [total-available-credits]]
    [game.core.effects :refer [any-effects sum-effects get-effects]]
    [game.core.eid :refer [effect-completed make-eid]]
-   [game.core.engine :refer [can-trigger? pay register-ability-type resolve-ability trigger-event-simult trigger-event-sync]]
+   [game.core.engine :refer [can-trigger? checkpoint pay register-ability-type resolve-ability trigger-event-simult trigger-event-sync queue-event]]
    [game.core.link :refer [get-link]]
    [game.core.payment :refer [can-pay?]]
    [game.core.prompt-state :refer [add-to-prompt-queue remove-from-prompt-queue]]
@@ -29,9 +29,14 @@
 ;; finally do everything else needed
 
 
+(defn- update-link
+  [state val]
+  (swap! state assoc :onr-trace (merge (:onr-trace @state) {:link-changed val})))
+
 (defn boost-link
   [state x]
   "Boosts link by X"
+  (update-link state true)
   (swap! state assoc :onr-trace
          (merge (:onr-trace @state) {:boost (+ (or (get-in @state [:onr-trace :boost]) 0) x)})))
 
@@ -44,8 +49,12 @@
 (defn set-base-link
   [state x]
   "Sets the base link to be X"
+  (update-link state true)
   (swap! state assoc :onr-trace
          (merge (:onr-trace @state) {:base x})))
+
+(defn- was-link-changed [state]
+  (get-in @state [:onr-trace :link-changed]))
 
 (defn cancel-successful-trace
   [state]
@@ -94,28 +103,40 @@
                  " the Runner's " runner-link " Link")
        :async true
        :effect (req
-                 (let [which-ability (assoc (if success
-                                              (:successful trace)
-                                              (:unsuccessful trace))
-                                            :eid (make-eid state))]
-                   (system-say state side (str "The trace was " (when-not success "un") "successful."))
-                   (wait-for (trigger-event-simult state :corp (if success :successful-trace :unsuccessful-trace)
-                                                   nil ;; No special functions
-                                                   {:corp-strength corp-bid ;;TODO - this might be wrong
-                                                    :runner-strength runner-link
-                                                    :only-tags (:only-tags trace)
-                                                    :successful success
-                                                    :corp-spent corp-bid
-                                                    :runner-spent (runner-spent-total state)
-                                                    :ability (:ability trace)
-                                                    :base-link-card link-card})
-                             ;; it's possible for the effects of the trace to be cancelled by cards
-                             (if (successful-trace-cancelled state)
-                               (effect-completed state side eid)
-                               (wait-for (resolve-ability state :corp (:eid which-ability) which-ability
-                                                          card [corp-strength runner-link])
-                                         ;; there's no kicker functionality as far as I know
-                                         (effect-completed state side eid))))))}
+                 ;; now we interrupt, and potentially redefine
+                 ;;(trigger-event-simult
+                 (queue-event state :trace-revealed {:card (get-card state card)})
+                 (wait-for (checkpoint state nil (make-eid state eid))
+                           (let [runner-link (current-link state)
+                                 success (>= corp-bid runner-link)
+                                 corp-strength corp-bid]
+                             (when (was-link-changed state)
+                               (system-msg state side (str "has had their trace attempt adjusted to Strength " corp-strength " - "
+                                                           (if success
+                                                             "beating" "losing to")
+                                                           " the Runner's " runner-link " Link")))
+                             (let [which-ability (assoc (if success
+                                                          (:successful trace)
+                                                          (:unsuccessful trace))
+                                                        :eid (make-eid state))]
+                               (system-say state side (str "The trace was " (when-not success "un") "successful."))
+                               (wait-for (trigger-event-simult state :corp (if success :successful-trace :unsuccessful-trace)
+                                                               nil ;; No special functions
+                                                               {:corp-strength corp-bid ;;TODO - this might be wrong
+                                                                :runner-strength runner-link
+                                                                :only-tags (:only-tags trace)
+                                                                :successful success
+                                                                :corp-spent corp-bid
+                                                                :runner-spent (runner-spent-total state)
+                                                                :ability (:ability trace)
+                                                                :base-link-card link-card})
+                                         ;; it's possible for the effects of the trace to be cancelled by cards
+                                         (if (successful-trace-cancelled state)
+                                           (effect-completed state side eid)
+                                           (wait-for (resolve-ability state :corp (:eid which-ability) which-ability
+                                                                      card [corp-strength runner-link])
+                                                     ;; there's no kicker functionality as far as I know
+                                                     (effect-completed state side eid))))))))}
       card nil)))
 
 ;; recursively handle runner link choices until the runner says "Done!"

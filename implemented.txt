@@ -32,9 +32,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   172 / 584
-TESTS:   105 / 172
-NO TEST: 66
+TOTAL:   173 / 584
+TESTS:   105 / 173
+NO TEST: 67
 NO IMP:  1
 --------------------------
 002 + Access through Alpha
@@ -279,6 +279,7 @@ NO IMP:  1
 
 464 + Shotgun Wire
 465 + Shredder Uplink Protocol
+466 ^ Signpost
 
 477 + Sleeper
 
@@ -384,6 +385,7 @@ The following (marked) cards have no tests or implementations:
   453 ^ SeeYa
   459 ^ Shaka
   460 ^ Shield
+  466 ^ Signpost
   492 ^ Stereogram Antibody (Do this later, was just lazy)
   499 ^ Submarine Uplink (do this test later - fetch + uplink should be fine)
   503 ^ Sunburst Cranial Interface
@@ -391,4 +393,4 @@ The following (marked) cards have no tests or implementations:
   567 ^ ONR Weapons Depot
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 118
+Random card to implement: 517
