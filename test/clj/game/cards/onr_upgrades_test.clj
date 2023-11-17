@@ -26,6 +26,19 @@
       (card-subroutine state :corp wall 0)
       (is (not (rezzed? (refresh wall)))))))
 
+(deftest onr-tokyo-chiba-infighting
+  (do-game
+    (new-game {:corp {:hand ["ONR Tokyo-Chiba Infighting"]}})
+    (play-from-hand state :corp "ONR Tokyo-Chiba Infighting" "New remote")
+    (let [card (get-content state :remote1 0)]
+      (is (rezzed? (refresh card)) "regions auto-rez")
+      (take-credits state :corp)
+      (changes-val-macro
+        2 (:credit (get-corp))
+        "gained 2 for unsuccessful run"
+        (run-on state :remote1)
+        (run-jack-out state)))))
+
 (deftest onr-twenty-four-hour-surveillance
   ;; ONR Twenty-Four-Hour Surviellance
   ;; no implementation

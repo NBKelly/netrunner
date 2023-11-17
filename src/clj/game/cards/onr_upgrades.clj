@@ -137,6 +137,14 @@
                                                           (effect-completed state side eid)))))}
                       card nil))}]}))
 
+(defcard "ONR Tokyo-Chiba Infighting"
+  {:events [{:event :run-ends
+             :req (req (and (= (second (get-zone card)) (target-server context))
+                            (:unsuccessful context)))
+             :msg (msg "gain 2[Credits]")
+             :async true
+             :effect (effect (gain-credits eid 2))}]})
+
 (defcard "ONR Twenty-Four-Hour Surviellance"
   ;; TODO - find a way to do this. I know it can be done.
   {:implementation "Unimplemented/Manual Implementation"})

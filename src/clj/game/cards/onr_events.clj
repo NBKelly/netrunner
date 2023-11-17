@@ -13,6 +13,7 @@
                            installed? is-type? operation? program? resource? rezzed? runner? upgrade?]]
    [game.core.charge :refer [can-charge charge-ability charge-card]]
    [game.core.cost-fns :refer [install-cost play-cost rez-cost]]
+   [game.core.costs :refer [total-available-credits]]
    [game.core.damage :refer [damage damage-prevent]]
    [game.core.def-helpers :refer [breach-access-bonus defcard offer-jack-out
                                   reorder-choice]]
@@ -168,3 +169,36 @@
    {:msg "gain 9 [Credits]"
     :async true
     :effect (effect (gain-credits eid 9))}})
+
+(defcard "ONR Synchronized Attack on HQ"
+  {:on-play
+   {:implementation "ERRATUM - For each card stored in HQ, Corp either
+    pays[2] or discards that card."
+    :req (req (and (some #{:hq} (:successful-run runner-reg))
+                   (pos? (count (:hand corp)))))
+    :msg "force the corp to (pay 2 or discard) each card in HQ"
+    :effect (req (wait-for (resolve-ability
+                             state :corp
+                             {:prompt "Choose cards in HQ to keep (2[Credits] each)"
+                              :waiting-prompt true
+                              :player :corp
+                              :async true
+                              :choices {:max (req (min (count (:hand corp)) (quot (total-available-credits state :corp eid card) 2)))
+                                        :card #(and (corp? %)
+                                                    (in-hand? %))}
+                              :effect (req (wait-for (pay state :corp (make-eid state eid) card :credit (* 2 (count targets)))
+                                                     (system-msg
+                                                       state :corp
+                                                       (str (:msg async-result) " to prevent the trashing of "
+                                                            (count targets) " cards from HQ"))
+                                                     (effect-completed state side (make-result eid targets))))}
+                             card nil)
+                           (let [prevented async-result
+                                 trashtargets (:hand corp)
+                                 cids-to-trash (set/difference (set (map :cid trashtargets)) (set (map :cid prevented)))
+                                 cards-to-trash (filter #(cids-to-trash (:cid %)) trashtargets)]
+                             (when (not async-result)
+                               (system-msg state :corp "chooses to discard ALL cards"))
+                             (wait-for (trash-cards state :corp cards-to-trash {:cause-card card})
+                                       (system-msg state :corp (str "discards " (quantify (count cards-to-trash) " card") " from HQ"))
+                                       (effect-completed state side eid)))))}})

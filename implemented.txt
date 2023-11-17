@@ -32,9 +32,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   189 / 584
-TESTS:   107 / 189
-NO TEST: 81
+TOTAL:   191 / 584
+TESTS:   108 / 191
+NO TEST: 82
 NO IMP:  1
 --------------------------
 002 + Access through Alpha
@@ -312,10 +312,13 @@ NO IMP:  1
 
 507 + Swiss Bank Account
 
+509 ^ Synchronized Attack on HQ
+
 519 + The Deck
 
 526 ^ Tinweasel
 
+528 + Tokyo-Chiba Infighting
 529 + Too Many Doors
 
 532 + Toughonium Wall
@@ -421,6 +424,7 @@ The following (marked) cards have no tests or implementations:
   499 ^ Submarine Uplink (do this test later - fetch + uplink should be fine)
   501 ^ Succubus
   503 ^ Sunburst Cranial Interface
+  509 ^ Synchronized Attack on HQ
   526 ^ Tinweasel
   553 ^ Vewy Vewy Quiet
   567 ^ ONR Weapons Depot
@@ -429,4 +433,4 @@ The following (marked) cards have no tests or implementations:
   575 ^ Worm
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 528
+Random card to implement: 463
