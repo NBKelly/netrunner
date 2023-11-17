@@ -171,6 +171,28 @@
       (click-prompt state :runner "Done"))
     (is (= 0 (count-tags state)) "Runner should have 0 tags")))
 
+(deftest field-reporter-for-ice-and-data
+  (do-game
+    (new-game {:corp {:hand [(qty "Vanilla" 3)]}
+               :runner {:hand ["ONR Field Reporter for Ice and Data"]}})
+    (play-from-hand state :corp "Vanilla" "HQ")
+    (play-from-hand state :corp "Vanilla" "R&D")
+    (play-from-hand state :corp "Vanilla" "Archives")
+    (take-credits state :corp)
+    (rez state :corp (get-ice state :hq 0))
+    (play-from-hand state :runner "ONR Field Reporter for Ice and Data")
+    (changes-val-macro
+      +4 (:credit (get-runner))
+      "+1 drip from Journo"
+      (take-credits state :runner))
+    (take-credits state :corp)
+    (rez state :corp (get-ice state :archives 0))
+    (rez state :corp (get-ice state :rd 0))
+    (changes-val-macro
+      +6 (:credit (get-runner))
+      "+2 drip from Journo"
+      (take-credits state :runner))))
+
 (deftest onr-runner-sensei
   ;; Trace 6 - Give the runner 1 tag for each point your trace exceeded their link
   (do-game

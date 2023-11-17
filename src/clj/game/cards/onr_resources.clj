@@ -167,6 +167,18 @@
              :msg "gain 1[Credit]"
              :effect (effect (gain-credits eid 1))}]})
 
+(defcard "ONR Field Reporter for Ice and Data"
+  {:events [{:event :runner-turn-ends
+             :async true
+             :effect (req (let [ice-summoned (count (filter #(ice? (:card (first %))) (turn-events state side :rez)))]
+                            (if (pos? ice-summoned)
+                              (continue-ability
+                                state side
+                                {:msg (msg "gain " ice-summoned "[Credits]")
+                                 :effect (effect (gain-credits eid ice-summoned))}
+                                card nil)
+                              (effect-completed state side eid))))}]})
+
 (defcard "ONR Submarine Uplink"
   ;; this forces you to jackout after the current encounter
   {:abilities [{:onr-base-link true

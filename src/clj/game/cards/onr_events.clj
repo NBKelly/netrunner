@@ -164,6 +164,12 @@
                                }
                               card nil)))}}))
 
+(defcard "ONR Livewire's Contacts"
+  {:on-play
+   {:msg "gain 3 [Credits]"
+    :async true
+    :effect (effect (gain-credits eid 3))}})
+
 (defcard "ONR Networking"
   {:on-play
    {:msg "gain 9 [Credits]"

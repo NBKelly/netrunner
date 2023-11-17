@@ -32,8 +32,8 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   191 / 584
-TESTS:   108 / 191
+TOTAL:   193 / 584
+TESTS:   110 / 193
 NO TEST: 82
 NO IMP:  1
 --------------------------
@@ -145,7 +145,7 @@ NO IMP:  1
 185 ^ Evil Twin
 
 202 + Fetch 4.0.1
-
+203 + Field Reporter for Ice and Data
 204 + Filter
 
 206 + Fire Wall
@@ -193,6 +193,8 @@ NO IMP:  1
 284 + Lesser Arcana
 
 287 + Liche
+
+292 + Livewire's Contacts
 
 294 ^ Lockjaw
 
@@ -433,4 +435,4 @@ The following (marked) cards have no tests or implementations:
   575 ^ Worm
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 463
+Random card to implement: 31

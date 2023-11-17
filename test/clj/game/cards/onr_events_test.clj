@@ -61,6 +61,16 @@
   ;; ONR Networking
   (do-game
     (new-game {:corp {:deck [(qty "Hedge Fund" 5)]}
+               :runner {:hand ["ONR Livewire's Contacts"]}})
+    (take-credits state :corp)
+    (let [credits (:credit (get-runner))]
+      (play-from-hand state :runner "ONR Livewire's Contacts")
+      (is (= 8 (:credit (get-runner))) "Runner should spend 0 and gain 3"))))
+
+(deftest onr-networking
+  ;; ONR Networking
+  (do-game
+    (new-game {:corp {:deck [(qty "Hedge Fund" 5)]}
                :runner {:hand ["ONR Networking"]}})
     (take-credits state :corp)
     (let [credits (:credit (get-runner))]
