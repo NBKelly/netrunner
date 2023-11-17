@@ -32,9 +32,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   173 / 584
-TESTS:   105 / 173
-NO TEST: 67
+TOTAL:   185 / 584
+TESTS:   107 / 185
+NO TEST: 77
 NO IMP:  1
 --------------------------
 002 + Access through Alpha
@@ -281,23 +281,34 @@ NO IMP:  1
 465 + Shredder Uplink Protocol
 466 ^ Signpost
 
-477 + Sleeper
+474 ^ Skeleton Passkeys
 
+476 ^ Skullcap
+477 + Sleeper
+478 + Smarteye
+
+481 ^ Snowball
 482 + Snowbank
 
+486 ^ Speed Trap
 487 + Sphinx 2006
+
+490 ^ Startup Immolator
 
 492 ^ Stereogram Antibody (Do this later, was just lazy)
 
 499 ^ Submarine Uplink (do this test later - fetch + uplink should be fine)
 500 + Subsidiary Branch
-
+501 ^ Succubus
 502 + Sumo 2008
 503 ^ Sunburst Cranial Interface
+504 + Superglue
 
 507 + Swiss Bank Account
 
 519 + The Deck
+
+526 ^ Tinweasel
 
 529 + Too Many Doors
 
@@ -317,6 +328,11 @@ NO IMP:  1
 
 567 ^ ONR Weapons Depot
 
+570 ^ Wild Card
+
+573 ^ Wizard's Book
+
+575 ^ Worm
 576 ^ Wrecking Ball
 
 579 + Zetatech Portastation
@@ -386,11 +402,21 @@ The following (marked) cards have no tests or implementations:
   459 ^ Shaka
   460 ^ Shield
   466 ^ Signpost
+  474 ^ Skeleton Passkeys
+  476 ^ Skullcap
+  481 ^ Snowball
+  486 ^ Speed Trap
+  490 ^ Startup Immolator
   492 ^ Stereogram Antibody (Do this later, was just lazy)
   499 ^ Submarine Uplink (do this test later - fetch + uplink should be fine)
+  501 ^ Succubus
   503 ^ Sunburst Cranial Interface
+  526 ^ Tinweasel
   553 ^ Vewy Vewy Quiet
   567 ^ ONR Weapons Depot
+  570 ^ Wild Card
+  573 ^ Wizard's Book
+  575 ^ Worm
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 517
+Random card to implement: 49

@@ -231,7 +231,27 @@
         (is (= 1 (:credit (get-runner))) "Did not gain 2 credits from Gabe's ability")
         (is (not= :hq (-> (get-runner) :register :successful-run first)) "Successful Run on HQ was not recorded"))))
 
-
+(deftest onr-superglue
+  ;; Crescentus should only work on rezzed ice
+  (do-game
+    (new-game {:corp {:deck ["Ice Wall"]}
+               :runner {:deck ["ONR Superglue" "Corroder"]}})
+    (play-from-hand state :corp "Ice Wall" "HQ")
+    (take-credits state :corp)
+    (play-from-hand state :runner "Corroder")
+    (play-from-hand state :runner "ONR Superglue")
+    (run-on state "HQ")
+    (let [cor (get-program state 0)
+          cres (get-program state 1)
+          iw (get-ice state :hq 0)]
+      (rez state :corp iw)
+      (run-continue state)
+      (is (rezzed? (refresh iw)) "Ice Wall is now rezzed")
+      (card-ability state :runner cor 0)
+      (click-prompt state :runner "End the run")
+      (card-ability state :runner cres 0)
+      (is (nil? (get-program state 1)) "ONR Superglue could be used because the piece of ice is rezzed")
+      (is (not (rezzed? (refresh iw))) "Ice Wall is no longer rezzed"))))
 
 (deftest zetatech-software-installer-pay-credits-prompt
   ;; Pay-credits prompt

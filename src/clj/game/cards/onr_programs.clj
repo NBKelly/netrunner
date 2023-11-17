@@ -49,7 +49,7 @@
    [game.core.revealing :refer [reveal]]
    [game.core.rezzing :refer [derez get-rez-cost rez]]
    [game.core.runs :refer [active-encounter? bypass-ice continue end-run-prevent
-                           get-current-encounter make-run successful-run-replace-breach
+                           get-current-encounter jack-out make-run successful-run-replace-breach
                            update-current-encounter]]
    [game.core.sabotage :refer [sabotage-ability]]
    [game.core.say :refer [system-msg]]
@@ -1114,6 +1114,100 @@
                         :waiting-prompt true
                         :yes-ability (boost-link-abi 1 2)}}]})
 
+(defcard "ONR Skeleton Passkeys"
+  (auto-icebreaker {:abilities [(break-sub 0 1 "Code Gate")
+                                (strength-pump 3 4)]}))
+
+(defcard "ONR Skivviss" {:implementation "TODO"}) ;;todo
+
+(defcard "ONR Skullcap"
+  {:interactions {:prevent [{:type #{:net :brain}
+                             :req (req true)}]}
+   :abilities [{:cost [:trash-can]
+                :label "prevent any amount of net damage"
+                :msg "prevent any amount of net damage"
+                :effect (req (damage-prevent state :runner :net Integer/MAX_VALUE))}
+               {:cost [:trash-can]
+                :label "prevent any amount of brain damage"
+                :msg "prevent any amount of brain damage"
+                :effect (req (damage-prevent state :runner :brain Integer/MAX_VALUE))}]})
+
+(defcard "ONR Smarteye"
+    {:events [{:event :approach-ice
+             :optional
+             {:req (req (not (rezzed? (:ice context))))
+              :prompt "Expose approached piece of ice?"
+              :yes-ability
+              {:async true
+               :msg "expose the approached piece of ice"
+               :effect (req (wait-for
+                              (expose state side (:ice context))
+                              (continue-ability state side (offer-jack-out) card nil)))}}}]})
+
+(defcard "ONR Snowball"
+  (auto-icebreaker {:abilities [(break-sub 1 1 "Sentry"
+                                           {:additional-ability {:msg "gain +1 strength for the remainder of the run"
+                                                                 :effect (effect (pump card 1 :end-of-run))}})
+                                (strength-pump 1 1)]}))
+
+(defcard "ONR Speed Trap"
+  {:events [{:event :rez
+             :req (req (and (or (asset? (:card context))
+                                (upgrade? (:card context)))
+                            run))
+             :async true
+             :effect
+             (effect
+               (continue-ability
+                 {:optional
+                  {:player :runner
+                   :waiting-prompt true
+                   :prompt (msg "Jack out?")
+                   :yes-ability
+                   {:cost [:credit 0]
+                    :msg (msg "jack out at light speed")
+                    :async true
+                    :effect (req (jack-out state side eid))}}}
+                 card nil))}]})
+
+(defcard "ONR Startup Immolator"
+  {:events [{:event :subroutines-broken
+             :req (req (and (same-card? (last run-ices) target)
+                             (all-subs-broken? target)))
+             :effect (req (let [target-ice target
+                                ccost (:cost target)]
+                            (continue-ability
+                              state side
+                              {:optional
+                               {:prompt (msg "Trash this card, pay " ccost "[Credits]: trash " (:title target-ice) "?")
+                                :req (req (can-pay? state side eid card nil [:credit ccost]))
+                                :yes-ability
+                                {:async true
+                                 :cost [:credit ccost :trash-can]
+                                 :msg (msg "trash " (card-str state target-ice))
+                                 :effect (effect (trash eid target-ice {:cause-card card}))}}}
+                              card nil)))
+             :async true}]})
+
+(defcard "ONR Succubus"
+  {:implementation "MU Limit not enforced"
+   :static-abilities [(host-with-negative-strength 0)]
+   :abilities (daemon-abilities)})
+
+(defcard "ONR Superglue"
+  {:abilities [{:req (req (and (get-current-encounter state)
+                               (rezzed? current-ice)
+                               (all-subs-broken? current-ice)))
+                :label "derez an ice"
+                :cost [:trash-can]
+                :msg (msg "derez " (:title current-ice))
+                :effect (effect (derez current-ice))}]})
+
+(defcard "ONR Taxman" {:implementation "TODO"}) ;;TODO
+
+(defcard "ONR Tinweasel"
+  (auto-icebreaker {:abilities [(break-sub 0 1 "Code Gate")]}))
+
 (defcard "ONR Vewy Vewy Quiet"
   {:recurring 2
    :interactions {:pay-credits {:req (req (and run
@@ -1121,6 +1215,22 @@
                                                (has-subtype? target "Icebreaker")
                                                (not (has-subtype? target "Noisy"))))
                                 :type :recurring}}})
+
+(defcard "ONR Vienna 22" {:implementation "todo"}) ;;TODO
+
+(defcard "ONR Viral Pipeline" {:implementation "todo"}) ;;TODO
+
+(defcard "ONR Wild Card"
+  (auto-icebreaker {:abilities [(break-sub 0 1 "Sentry")
+                                (strength-pump 3 1)]}))
+
+(defcard "ONR Wizard's Book"
+  (auto-icebreaker {:abilities [(break-sub 0 1 "Code Gate")
+                                (strength-pump 2 1)]}))
+
+(defcard "ONR Worm"
+  (auto-icebreaker {:abilities [(break-sub 0 1 "Wall")
+                                (strength-pump 3 1)]}))
 
 (defcard "ONR Wrecking Ball"
   (auto-icebreaker {:abilities [(break-sub 0 1 "Wall" (lose-from-stealth 1))
