@@ -32,9 +32,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   185 / 584
-TESTS:   107 / 185
-NO TEST: 77
+TOTAL:   189 / 584
+TESTS:   107 / 189
+NO TEST: 81
 NO IMP:  1
 --------------------------
 002 + Access through Alpha
@@ -48,6 +48,8 @@ NO IMP:  1
 012 + All-Hands
 
 015 + Anonymous Tip
+
+020 ^ Armageddon
 
 027 + Back Door to Hilliard
 028 + Back Door to Netwatch
@@ -129,8 +131,12 @@ NO IMP:  1
 
 148 + Department of Truth Enhancement
 
+157 ^ Disintegrator
 158 ^ Dogcatcher
 
+165 ^ Dropp
+
+167 ^ Dupree
 168 ^ Dwarf
 
 179 + Endless Corridor
@@ -343,6 +349,7 @@ NO IMP:  1
 The following (marked) cards have no tests or implementations:
   007 ^ Afreet
   009 ^ AI Boon (rng card)
+  020 ^ Armageddon
   037 ^ Bartmoss Memorial Icebreaker
   041 ^ Big Frackin' Gun
   047 ^ Black Widow
@@ -359,7 +366,10 @@ The following (marked) cards have no tests or implementations:
   117 ^ Crumble (requires braniac id)
   123 ^ Cyfermaster (trivial icebreaker - no test)
   145 ^ Deep Thought
+  157 ^ Disintegrator
   158 ^ Dogcatcher
+  165 ^ Dropp
+  167 ^ Dupree
   168 ^ Dwarf
   185 ^ Evil Twin
   210 ^ Force Shield
@@ -419,4 +429,4 @@ The following (marked) cards have no tests or implementations:
   575 ^ Worm
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 49
+Random card to implement: 528

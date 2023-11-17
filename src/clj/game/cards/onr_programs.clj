@@ -48,7 +48,7 @@
    [game.core.props :refer [add-counter add-icon remove-icon]]
    [game.core.revealing :refer [reveal]]
    [game.core.rezzing :refer [derez get-rez-cost rez]]
-   [game.core.runs :refer [active-encounter? bypass-ice continue end-run-prevent
+   [game.core.runs :refer [active-encounter? bypass-ice continue end-run-prevent end-run
                            get-current-encounter jack-out make-run successful-run-replace-breach
                            update-current-encounter]]
    [game.core.sabotage :refer [sabotage-ability]]
@@ -248,6 +248,38 @@
   {:implementation "MU Limit not enforced"
    :static-abilities [(host-with-negative-strength 1)]
    :abilities (daemon-abilities)})
+
+(defcard "ONR Armageddon"
+  (letfn [(doom-event []
+            {:event :corp-install
+             :async true
+             :unregister-once-resolved true
+             :ability-name "Doom Counters"
+             :effect (req (let [counters (get-counters (get-card state (:identity corp)) :doom)
+                                rolls (take counters (repeatedly #(dice-roll)))
+                                sorted (when rolls (sort rolls))
+                                hits (when sorted (count (filter #(= 6 %) sorted)))]
+                            (when-not (zero? counters)
+                              (register-events
+                                state side
+                                (:identity runner)
+                                [(doom-event)]))
+                            (if-not (zero? counters)
+                              (do (system-msg state side (str "rolls [" (str/join ", " sorted) "] from Doom counters (ONR Armageddon)"))
+                                  (if (pos? hits)
+                                    (do (system-msg state side (str "forces the corporation to trash " (card-str state (:card context)) ", and remove " (quantify hits " Doom counter")))
+                                        (wait-for (trash state :corp (make-eid state eid) (:card context) {:unpreventable true})
+                                                  (add-counter state :corp (get-card state (:identity corp)) :doom (- hits))
+                                                  (effect-completed state side eid)))
+                                    (effect-completed state side eid)))
+                              (effect-completed state side eid))))})]
+    {:events [(successful-run-replace-breach
+                {:target-server :rd
+                 :ability {:req (req true)
+                           :msg "Give the corp a Doom counter"
+                           :effect (req
+                                     (handle-if-unique state side (:identity runner) (doom-event))
+                                     (add-counter state :corp (get-card state (:identity corp)) :doom 1))}})]}))
 
 (defcard "ONR Baedeker's Net Map"
   {:abilities [(base-link-abi 0 1)
@@ -526,7 +558,21 @@
                          (add-counter state :corp (get-card state (:identity corp)) :thought 1))}]}))
 
 (defcard "ONR Disintegrator"
-  {:implementation "TODO"})
+  {:events [{:event :pass-ice
+             :req (req
+                    (and (all-subs-broken? (:ice target))
+                         (can-pay? state side eid card nil [:credit 2])))
+             :effect (req (let [target-ice (:ice target)]
+                            (continue-ability
+                              state side
+                              {:optional
+                               {:prompt (msg "2[Credits]: Derez " (:title target-ice) " and end the run?")
+                                :yes-ability {:cost [:credit 2]
+                                              :async true
+                                              :msg (msg "derez " (:title target-ice) " and end the run")
+                                              :effect (effect (derez target-ice)
+                                                              (end-run :runner eid card))}}}
+                              card nil)))}]})
 
 (defcard "ONR Dogcatcher"
   (auto-icebreaker {:abilities [(break-sub 1 1 "Hellhound")
@@ -536,10 +582,43 @@
                                 (strength-pump 1 1)]}))
 
 (defcard "ONR Dropp [TM]"
-  {:implementation "Erratum - Should read '0[Credits] Break all subroutines of a piece
-    of ice, and end the run. 1[Credits]: +1 strength. TODO"})
+  {:abilities [(break-sub 0 0 "All" {:additional-ability {:msg "end the run™"
+                                                          :effect (effect (end-run :runner eid card))}})
+               (strength-pump 1 1)]
+   :implementation "Erratum - Should read '0[Credits] Break all subroutines of a piece
+    of ice, and end the run. 1[Credits]: +1 strength."})
 
-(defcard "ONR Dupré" {}) ;;TODO
+(defcard "ONR Dupré"
+  (let [check-last-server {:req (req (let [last-server (get-in (get-card state card) [:special :last-server])]
+                                       (and run last-server (not (= last-server (target-server (:run @state)))))))
+                           :effect (req (update! state runner (assoc-in (get-card state card) [:special :last-server] nil))
+                                        (add-counter state side (get-card state card) :power (- (get-counters (get-card state card) :power))))
+                           :msg "remove all power counters"}]
+    {:implementation "uses power counters"
+     :abilities [(break-sub 1 1 "Code Gate" {:additional-ability {:req (req run)
+                                                                  :async true
+                                                                  :effect (req (update! state :runner (assoc-in (get-card state card) [:special :broke-sub] true))
+                                                                               (continue-ability
+                                                                                 state side
+                                                                                 check-last-server
+                                                                                 card nil))}})
+                 ;; graft these together the hard way - yuck
+                 {:label "add 1 strength"
+                  :req (req true)
+                  :cost [:credit 2]
+                  :pump 1
+                  :msg (msg "increase its strength from " (get-strength card)
+                            " to " (+ 1 (get-strength card)))
+                  :effect (effect (pump card 1)
+                                  (continue-ability check-last-server card nil))}]
+     :static-abilities [{:type :breaker-strength
+                         :req (req (same-card? target card))
+                         :value (req (get-counters (get-card state card) :power))}]
+     :events [{:event :run-ends
+               :req (req (get-in (get-card state card) [:special :broke-sub]))
+               :msg (msg "place a +1 power counter on itself")
+               :effect (req (add-counter state side card :power 1)
+                            (update! state :runner (assoc-in (get-card state card) [:special :last-server] (target-server context))))}]}))
 
 (defcard "ONR Dwarf"
   (auto-icebreaker {:abilities [(break-sub 1 1 "Wall")
