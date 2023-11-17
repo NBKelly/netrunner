@@ -57,6 +57,43 @@
     (play-from-hand state :runner "ONR Bodyweight [TM] Synthetic Blood")
     (is (= 5 (count (:hand (get-runner)))) "Runner should draw 5 cards")))
 
+(deftest onr-inside-job
+  ;; Inside Job
+  (do-game
+      (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                        :hand ["Ice Wall"]}
+                 :runner {:hand ["ONR Inside Job"]}})
+      (play-from-hand state :corp "Ice Wall" "HQ")
+      (take-credits state :corp)
+      (play-from-hand state :runner "ONR Inside Job")
+      (click-prompt state :runner "HQ")
+      (is (:run @state) "A run has been initiated")
+      (rez state :corp (get-ice state :hq 0))
+      (run-continue state)
+      (is (= :movement (:phase (get-run))) "Run has bypassed Ice Wall")))
+
+(deftest onr-kilroy-was-here
+  ;; Demolition Run - Trash at no cost
+  (do-game
+    (new-game {:corp {:deck ["False Lead"
+                             "Shell Corporation"
+                             (qty "Hedge Fund" 3)]}
+               :runner {:deck ["ONR Kilroy Was Here"]}})
+    (core/move state :corp (find-card "False Lead" (:hand (get-corp))) :deck) ; put False Lead back in R&D
+    (play-from-hand state :corp "Shell Corporation" "R&D") ; install upgrade with a trash cost in root of R&D
+    (take-credits state :corp 2) ; pass to runner's turn by taking credits
+    (play-from-hand state :runner "ONR Kilroy Was Here")
+    (is (= 5 (:credit (get-runner))) "Paid 0 credits for the event")
+    (is (= [:rd] (get-in @state [:run :server])) "Run initiated on R&D")
+    (run-continue state)
+    (click-prompt state :runner "Unrezzed upgrade")
+    (click-prompt state :runner "[ONR Kilroy Was Here] Trash card")
+    (is (= 5 (:credit (get-runner))) "Trashed Shell Corporation at no cost")
+    (click-prompt state :runner "[ONR Kilroy Was Here] Trash card")
+    (is (zero? (:agenda-point (get-runner))) "Didn't steal False Lead")
+    (is (= 2 (count (:discard (get-corp)))) "2 cards in Archives")
+    (is (no-prompt? state :runner) "Run concluded")))
+
 (deftest onr-networking
   ;; ONR Networking
   (do-game

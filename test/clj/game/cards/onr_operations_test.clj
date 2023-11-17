@@ -13,6 +13,20 @@
     (play-from-hand state :corp "ONR Accounts Receivable")
     (is (= 9 (:credit (get-corp))))))
 
+(deftest onr-badtimes
+  ;; Bad Times
+  (do-game
+    (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                      :hand ["ONR Badtimes"]}})
+      (is (= 4 (core/available-mu state)) "Runner should start with 4 MU")
+      (play-from-hand state :corp "ONR Badtimes")
+      (is (= 4 (core/available-mu state)) "Corp can't play without a tag")
+      (gain-tags state :runner 1)
+      (play-from-hand state :corp "ONR Badtimes")
+      (is (= 2 (core/available-mu state)) "Runner should lose 2 available MU")
+      (take-credits state :corp)
+      (is (= 4 (core/available-mu state)) "Runner should regain 2 available MU")))
+
 (deftest onr-corporate-guard-temps
   (let [name "ONR Corporate Guard(R) Temps"]
     (do-game

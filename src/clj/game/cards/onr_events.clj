@@ -164,6 +164,30 @@
                                }
                               card nil)))}}))
 
+(defcard "ONR Inside Job"
+  {:makes-run true
+   :on-play {:prompt "Choose a server"
+             :choices (req runnable-servers)
+             :async true
+             :effect (effect (make-run eid target card))}
+   :events [{:event :encounter-ice
+             :req (req (first-run-event? state side :encounter-ice))
+             :once :per-run
+             :msg (msg "bypass " (:title (:ice context)))
+             :effect (req (bypass-ice state))}]})
+
+(defcard "ONR Kilroy Was Here"
+  {:makes-run true
+   :on-play {:req (req rd-runnable)
+             :async true
+             :effect (effect (make-run eid :rd card))}
+   :interactions {:access-ability
+                  {:label "Trash card"
+                   :req (req (can-trash? state :runner target))
+                   :msg (msg "trash " (:title target) " at no cost")
+                   :async true
+                   :effect (effect (trash eid (assoc target :seen true) {:cause-card card}))}}})
+
 (defcard "ONR Livewire's Contacts"
   {:on-play
    {:msg "gain 3 [Credits]"

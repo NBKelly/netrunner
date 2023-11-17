@@ -41,3 +41,9 @@
         (is (= 4 (:click (get-corp))))
         (card-ability state :corp mmc 0)
         (is (= 1 (:click (get-corp)))))))
+
+(deftest onr-world-domination
+  (do-game
+    (new-game {:corp {:deck ["ONR World Domination"]}})
+    (play-and-score state "ONR World Domination")
+    (is (= 7 (:agenda-point (get-corp))))))

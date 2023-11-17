@@ -104,3 +104,14 @@
    :leave-play (req (lose state :corp
                           :click 1
                           :click-per-turn 1))})
+
+(defcard "ONR World Domination"
+  {:on-score {:msg "gain and additional 4 agenda points 👀"
+              :effect (req (register-lingering-effect
+                             state side nil
+                             {:type :user-agenda-points
+                              ;; `target` is either `:corp` or `:runner`
+                              :req (req (= :corp target))
+                              :value 4})
+                           (update-all-agenda-points state side)
+                           (check-win-by-agenda state side))}})

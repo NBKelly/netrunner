@@ -25,15 +25,15 @@ Card Updates:
     Write tests for noisy cards (bulldozer, jackhammer, hammer, fubar, Pile Driver,
     	  	    	  	Ramming Piston, Wrecking Ball)
     Write trivial test templates for program trashing
-    
+
 Keys:
   + test done
   ^ no test (for some reason)
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   193 / 584
-TESTS:   110 / 193
+TOTAL:   197 / 584
+TESTS:   114 / 197
 NO TEST: 82
 NO IMP:  1
 --------------------------
@@ -55,7 +55,7 @@ NO IMP:  1
 028 + Back Door to Netwatch
 029 + Back Door to Orbital Air
 030 + Back Door to Rivals
-
+031 + Badtimes
 032 + Baedeker's Net Map
 033 + Bakdoor[TM]
 
@@ -176,6 +176,8 @@ NO IMP:  1
 
 258 ^ Imp
 
+263 + Inside Job
+
 265 + Invisibility
 
 259 + Imperial Guard
@@ -185,7 +187,7 @@ NO IMP:  1
 273 ^ Joan of Arc
 
 276 + Keeper
-
+277 + Kilroy Was Here
 278 ^ Krash
 279 + Krumz
 280 + Laser Wire
@@ -342,7 +344,7 @@ NO IMP:  1
 570 ^ Wild Card
 
 573 ^ Wizard's Book
-
+574 + World Domination 👀
 575 ^ Worm
 576 ^ Wrecking Ball
 
@@ -435,4 +437,4 @@ The following (marked) cards have no tests or implementations:
   575 ^ Worm
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 31
+Random card to implement: 209

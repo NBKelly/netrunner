@@ -102,6 +102,15 @@
     :async true
     :effect (effect (gain-credits eid 9))}})
 
+(defcard "ONR Badtimes"
+  {:on-play {:req (req tagged)
+             :msg "force the Runner to lose 2[mu] until the end of the turn"
+             :effect (req (register-lingering-effect
+                            state :corp card
+                            (assoc (mu+ -2) :duration :end-of-turn))
+                          (update-mu state))}})
+
+
 (defcard "ONR Corporate Guard(R) Temps"
   (letfn [(gain-click-event [x]
             {:event :corp-turn-begins
