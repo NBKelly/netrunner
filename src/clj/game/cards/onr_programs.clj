@@ -20,7 +20,7 @@
                               unregister-effects-for-card]]
    [game.core.eid :refer [effect-completed make-eid]]
    [game.core.engine :refer [ability-as-handler dissoc-req not-used-once?  gather-events pay
-                             print-msg register-events register-once
+                             print-msg register-events register-once resolve-ability
                              trigger-event trigger-event-simult unregister-events]]
    [game.core.events :refer [run-events first-event? first-installed-trash? run-events
                              first-successful-run-on-server? turn-events]]
@@ -55,6 +55,7 @@
    [game.core.say :refer [system-msg]]
    [game.core.servers :refer [central->name is-central? is-remote? protecting-same-server?
                               remote->name target-server unknown->kw zone->name]]
+   [game.core.set-aside :refer [set-aside get-set-aside]]
    [game.core.shuffling :refer [shuffle!]]
    [game.core.tags :refer [gain-tags lose-tags]]
    [game.core.to-string :refer [card-str]]
@@ -800,6 +801,97 @@
                                                (doseq [c cards]
                                                  (move state :corp c :deck))))}
                                card nil))}]})
+
+(defcard "ONR Morphing Tool"
+  (auto-icebreaker
+    (letfn [(chosen-type [card] (get-in card [:card-target]))
+            (choose-type-abi []
+              {:prompt "Choose target type"
+               :label "Choose subtype (once per game)"
+               :choices ["Sentry" "Code Gate" "Wall"]
+               :msg (msg "choose to be able to break " target " subroutines")
+               :effect (effect (update! (assoc card :card-target target)))})]
+      {:on-install (choose-type-abi)
+       :abilities [(break-sub 1 1 "All"
+                              (assoc (lose-from-stealth 1)
+                                     :req (req (and (chosen-type card)
+                                                    (has-subtype? current-ice (chosen-type card))))))
+                   (strength-pump 2 1)
+                   (assoc (choose-type-abi) :cost [:credit 1 :click 1])]})))
+
+(defcard "ONR Mouse"
+  {:abilities [{:cost [:click 1]
+                :choices {:card #(and (corp? %)
+                                      (installed? %)
+                                      (not (ice? %)))}
+                :effect (effect (expose eid target))
+                :msg "expose 1 card"}]})
+
+(defcard "ONR Mystery Box"
+  (letfn [(shuffle-end [shuffle-back]
+            {:msg (msg "shuffle " (enumerate-str (map :title shuffle-back)) " into the stack")
+             :effect (req
+                       (doseq [c shuffle-back]
+                         (move state side c :deck))
+                       (shuffle! state side :deck))})]
+    {:abilities [{:label "Install a program from the top 5"
+                  :cost [:credit 0]
+                  :req (req run)
+                  :once :per-run
+                  :async true
+                  :waiting-prompt true
+                  :effect (req (set-aside state side eid (take 5 (:deck runner)))
+                               (let [set-aside-cards (sort-by :title (get-set-aside state side eid))
+                                     programs (filter program? set-aside-cards)]
+                                 (system-msg state side (str "uses " (get-title card)
+                                                             " to set aside "
+                                                             (enumerate-str (map get-title set-aside-cards))
+                                                             " from the top of the stack"))
+                                 (wait-for (resolve-ability state side
+                                                            {:async true
+                                                             :prompt (str "The set aside cards are: "
+                                                                          (enumerate-str (map get-title set-aside-cards)))
+                                                             :choices ["OK"]}
+                                                            card nil)
+                                           (if-not (empty? programs)
+                                             (wait-for (trash state side card {:cause-card card})
+                                                       (system-msg state side (str "trashes " (:title card)))
+                                                       (continue-ability
+                                                         state side
+                                                         {:prompt "Choose a program to install, ignoring all costs"
+                                                          :async true
+                                                          :choices (req (concat programs ["Done"]))
+                                                          :effect (req (if (= "Done" target)
+                                                                         (continue-ability state side (shuffle-end set-aside-cards) card nil)
+                                                                         (let [set-aside-cards (remove-once #(= % target) set-aside-cards)
+                                                                               new-eid (assoc eid :source card :source-type :runner-install)]
+                                                                           (wait-for (runner-install state side (make-eid state new-eid) target {:ignore-all-cost true})
+                                                                                     (continue-ability state side (shuffle-end set-aside-cards) card nil)))))}
+                                                         card nil))
+                                             (continue-ability
+                                               state side
+                                               (shuffle-end set-aside-cards)
+                                               card nil)))))}]}))
+
+(defcard "ONR Netspace Inverter"
+  {:events [{:event :run-ends
+             :async true
+             :effect (req (let [target-server (target-server context)
+                                server-ice (:ices (get-in @state (cons :corp (server->zone state (zone->name target-server)))))]
+                            (if (and (< 1 (count server-ice))
+                                     (:successful context))
+                              (continue-ability
+                                state side
+                                {:optional {:prompt (msg "Invert the ice on " (zone->name target-server))
+                                            :yes-ability {:msg (msg "invert the ice on " (zone->name target-server))
+                                                          :effect (req (let [half (int (/ (count server-ice) 2))
+                                                                             first-half (take half server-ice)
+                                                                             last-half (take half (reverse server-ice))
+                                                                             swaps (map vector first-half last-half)]
+                                                                         (doseq [pair swaps]
+                                                                           (swap-ice state side (first pair) (second pair)))))}}}
+                                card nil)
+                              (effect-completed state side eid))))}]})
 
 (defcard "ONR Pile Driver"
   (auto-icebreaker {:abilities [(break-sub 3 4 "Wall" (lose-from-stealth 3))
