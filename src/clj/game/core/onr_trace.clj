@@ -215,8 +215,9 @@
              (let [eid (assoc eid :source-type :trace)
                    corp-credits (total-available-credits state :corp eid card)
                    runner-credits (total-available-credits state :runner eid card)
+                   max-str-adjust (or (sum-effects state side :max-strength card) 0)
                    trace (merge trace {:player :corp
-                                       :max-strength max-strength
+                                       :max-strength (max (+ max-strength max-str-adjust) 0)
                                        :corp-credits corp-credits
                                        :runner-credits runner-credits})]
                (reset-onr-trace-modifications state)

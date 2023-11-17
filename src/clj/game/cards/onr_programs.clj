@@ -956,6 +956,11 @@
                   :effect (effect (register-events card [ability])
                                   (make-run eid :rd card))}]}))
 
+(defcard "ONR Rabbit"
+  {:static-abilities [{:type :max-strength
+                       :req (req (ice? target))
+                       :value -1}]})
+
 (defcard "ONR Ramming Piston"
   (auto-icebreaker {:abilities [(break-sub 2 1 "Wall" (lose-from-stealth 2))
                                 (strength-pump 1 1)]}))

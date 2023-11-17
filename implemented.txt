@@ -235,6 +235,8 @@ NO IMP:  1
 
 395 + Quandary (trivial ETR ice - no test)
 
+397 ^ Rabbit
+
 399 ^ Ramming Piston
 
 402 + Raven Microcyb Eagle
