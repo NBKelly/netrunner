@@ -32,8 +32,8 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   210 / 584
-TESTS:   122 / 210
+TOTAL:   212 / 584
+TESTS:   124 / 212
 NO TEST: 87
 NO IMP:  1
 --------------------------
@@ -185,6 +185,7 @@ NO IMP:  1
 253 + Ice Pick Willie
 254 + Ice Transmutation
 
+257 + I Got a Rock
 258 ^ Imp
 
 263 + Inside Job
@@ -246,6 +247,8 @@ NO IMP:  1
 340 + Newsgroup Filter
 
 346 + Olivia Salazar
+
+361 + Parraline 5750
 
 363 ^ Pattel's Virus
 
@@ -464,4 +467,4 @@ The following (marked) cards have no tests or implementations:
   575 ^ Worm
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 552
+Random card to implement: 357

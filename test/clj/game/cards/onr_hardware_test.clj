@@ -29,6 +29,21 @@
     (play-from-hand state :runner "ONR MRAM Chip")
     (is (= 7 (hand-size :runner)))))
 
+(deftest onr-parraline-5750
+    ;; Pay-credits prompt
+    (do-game
+      (new-game {:runner {:deck ["ONR Parraline 5750" "Corroder"]}
+                 :credits 15})
+      (take-credits state :corp)
+      (play-from-hand state :runner "ONR Parraline 5750")
+      (play-from-hand state :runner "Corroder")
+      (run-on state :hq)
+      (let [ppvp (get-hardware state 0)]
+        (changes-val-macro -1 (:credit (get-runner))
+                           "Used 1 credit from "
+                           (card-ability state (get-program state 0) 0)
+                           (click-card state :runner ppvp)))))
+
 (deftest onr-raven-microcyb-eagle
   (do-game
     (new-game {:runner {:hand ["ONR Raven Microcyb Eagle", "Sure Gamble", "Corroder"]}})

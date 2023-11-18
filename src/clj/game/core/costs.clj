@@ -1,10 +1,12 @@
 (ns game.core.costs
   (:require
+   [game.core.agendas :refer [update-all-agenda-points]]
    [game.core.bad-publicity :refer [gain-bad-publicity]]
    [game.core.board :refer [all-active all-active-installed all-installed all-installed-runner-type]]
    [game.core.card :refer [active? agenda? corp? facedown? get-card get-counters hardware? has-subtype? ice? in-hand? installed? program? resource? rezzed? runner?]]
    [game.core.card-defs :refer [card-def]]
    [game.core.damage :refer [damage]]
+   [game.core.effects :refer [register-lingering-effect]]
    [game.core.eid :refer [complete-with-result make-eid]]
    [game.core.engine :refer [checkpoint resolve-ability trigger-event-sync]]
    [game.core.flags :refer [is-scored?]]
@@ -1050,6 +1052,29 @@
                            " from on " title)
                  :type :agenda
                  :value (value cost)}))))
+
+;; AgendaPoints
+(defmethod cost-name :agenda-point [_] :agenda-point)
+(defmethod value :agenda-point [[_ cost-value]] cost-value)
+(defmethod label :agenda-point [cost]
+  (quantify (value cost) "agenda point"))
+(defmethod payable? :agenda-point
+  [cost state side eid card]
+  (<= (get-in @state [side :agenda-point]) (value cost)))
+(defmethod handler :agenda-point
+  [cost state side eid card actions]
+  (do (register-lingering-effect
+        state side nil
+        {:type :user-agenda-points
+         ;; `target` is either `:corp` or `:runner`
+         :req (req (= side target))
+         :value (- (value cost))})
+      (update-all-agenda-points state side)
+      (complete-with-result
+        state side eid
+        {:msg (str "pays " (quantify (value cost) "agenda point"))
+         :type :agenda-point
+         :value (value cost)})))
 
 ;; PowerCounter
 (defmethod cost-name :power [_] :power)

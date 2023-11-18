@@ -123,6 +123,14 @@
 (defcard "ONR MRAM Chip"
   {:static-abilities [(runner-hand-size+ 2)]})
 
+(defcard "ONR Parraline 5750"
+  {:recurring 1
+   :static-abilities [(mu+ 1)]
+   :interactions {:pay-credits {:req (req (and run
+                                               (= :ability (:source-type eid))
+                                               (has-subtype? target "Icebreaker")))
+                                :type :recurring}}})
+
 (defcard "ONR Raven Microcyb Owl"
   {:recurring 3
    :static-abilities [(mu+ 1)]

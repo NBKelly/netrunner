@@ -1,4 +1,4 @@
-(ns game.cards.assets
+(ns game.cards.onr-assets
   (:require
    [clojure.pprint :as pprint]
    [clojure.set :as set]
@@ -62,7 +62,9 @@
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [game.utils :refer :all]
    [jinteki.utils :refer :all]
-   [game.core.link :refer [get-link]]))
+   [game.core.link :refer [get-link]]
+   [game.cards.assets :refer [campaign]]
+   ))
 
 (defcard "ONR Braindance Campaign"
   (campaign 12 2))
@@ -81,6 +83,14 @@
                 :effect (req (let [creds (get-counters card :credit)]
                                (add-counter state side card :credit (- creds))
                                (gain-credits state :corp eid creds)))}]})
+
+(defcard "ONR I Got a Rock"
+  {:abilities [{:cost [:click 1 :agenda-point 3]
+                :label "Do 15 meat damage"
+                :msg "do 15 meat damage"
+                :req (req (<= 2 (count-tags state)))
+                :async true
+                :effect (effect (damage eid :meat 7 {:card card}))}]})
 
 (defcard "ONR Krumz"
   {:recurring 1

@@ -47,6 +47,21 @@
         (card-ability state :corp (refresh dept) 1)
         (is (zero? (get-counters (refresh dept) :credit)) "0 counters on DOTE")))))
 
+(deftest onr-i-got-a-rock
+  (do-game
+    (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                      :hand ["ONR I Got a Rock"]}
+               :runner {:hand [(qty "Sure Gamble" 16)]}})
+    (play-from-hand state :corp "ONR I Got a Rock" "New remote")
+    (let [rock (get-content state :remote1 0)]
+      (rez state :corp rock)
+      (card-ability state :corp (refresh rock) 0)
+      (is (= 16 (count (:hand (get-runner)))) "BOOM! should not be played as runner has no tags")
+      (gain-tags state :runner 2)
+      (is (zero? (count (:discard (get-runner)))) "Runner should have 0 cards in discard")
+      (card-ability state :corp (refresh rock) 0)
+      (is (= 15 (count (:discard (get-runner)))) "Runner should take 7 damage"))))
+
 (deftest onr-krumz-test
   (do-game
     (new-game {:corp {:hand ["ONR Krumz" "ONR Manhunt"]}})
