@@ -4,9 +4,11 @@ This is a fork of the netrunner client used for jinteki.net, with the goal of po
 ## Implementation status:
 * 200 / 584 cards implemented so far
 * 117 of those with unit tests
-* the ONR trace mechanic has been implemented
-* two special ID's have been created, which some mechanics rely on (a small handful of the viruses, ONR style purging)
+* The ONR trace mechanic has been implemented
+* Two special ID's have been created, which some mechanics rely on (a small handful of the viruses, ONR style purging)
 * ONR cards that refer to trace do not interact with ANR cards that refer to trace. Other than that, almost all
+
+![1996 Implementation Graph](graph_implementation.jpg?raw=true)
 
 ## TODO
 * Make an ONR legal format
