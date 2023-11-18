@@ -132,6 +132,15 @@
 (defcard "ONR MRAM Chip"
   {:static-abilities [(runner-hand-size+ 2)]})
 
+(defcard "Omnitech Wet Drive"
+  (let [update-base-mu (fn [state n] (swap! state assoc-in [:runner :memory :base] n))]
+    {:effect (req (update-base-mu state (count (get-in @state [:runner :hand])))
+                  (add-watch state :ekomind (fn [_k ref old new]
+                                                (let [hand-size (count (get-in new [:runner :hand]))]
+                                                  (when (not= (count (get-in old [:runner :hand])) hand-size)
+                                                    (update-base-mu ref hand-size))))))
+     :leave-play (req (remove-watch state :ekomind))}))
+
 (defcard "ONR Parraline 5750"
   {:recurring 1
    :static-abilities [(mu+ 1)]

@@ -368,6 +368,25 @@
            (click-prompt state :corp to)))
        (is (= [to-zone] (get-in @state [:run :server])) (str "running on " to))))))
 
+(defn- external-sub-count
+  [ices counts index sub-name]
+  (do-game
+    (new-game {:corp {:credits 5000
+                      :hand ices}})
+    (core/gain-clicks state :corp (count ices))
+    ;;(let [zipped (map vector ices counts)]
+    (doseq [ice ices]
+      (play-from-hand state :corp ice "HQ"))
+    (let [target-ice (get-ice state :hq index)]
+      (dotimes [n (count counts)]
+        (rez state :corp (get-ice state :hq n))
+        (when (>= n index)
+          (do
+            (is (= (nth counts n) (count (:subroutines (refresh target-ice)))) "sub right count")
+            (when (> (nth counts n) 0)
+              (is (= (:label (first (:subroutines (refresh target-ice)))) sub-name)
+                  "sub right name"))))))))
+
 ;; trivial-etr
 ;; trivial-trash-program
 ;; trivial-brain-damage
@@ -570,9 +589,8 @@
   (trivial-etr "ONR Galatea")
   (changes-subtype-rez 1 "Wall" "Code Gate" "ONR Galatea"))
 
-(deftest ^:kaocha/pending onr-gatekeeper
-  ;; has x etr subs (pay 2x on rez)
-  )
+(deftest onr-gatekeeper
+  (purchase-subroutine-on-rez "ONR Gatekeeper" "End the run" 2))
 
 (deftest ^:kaocha/pending onr-glacier
   ;; costs 1 ap to rez
@@ -598,9 +616,11 @@
 (deftest onr-hunter
   (trace-tag 1 "ONR Hunter"))
 
-(deftest ^:kaocha/pending onr-hunting-pack
-  ;; 1x 'trace 5 - tag' per outside ice?
-  )
+(deftest onr-hunting-pack
+  (external-sub-count
+    ["ONR Data Wall" "ONR Hunting Pack" "ONR Data Wall" "Enigma" "Ice Wall"]
+    [0 0 1 2 3]
+    1 "Trace 5 - Give the Runner 1 tag"))
 
 (deftest onr-ice-pick-willie
   (trivial-trash-program "ONR Ice Pick Willie" 0)
@@ -659,9 +679,12 @@
 (deftest onr-mazer
   (trivial-etr "ONR Mazer"))
 
-(deftest ^:kaocha/pending onr-minotaur
+(deftest onr-minotaur
   ;; etr for each rezzed code gate or wall outside of it
-  )
+  (external-sub-count
+    ["ONR Data Wall" "ONR Minotaur" "ONR Data Wall" "Enigma" "Ice Wall"]
+    [0 0 1 2 2]
+    1 "End the run"))
 
 (deftest onr-misleading-access-menus
   (gain-x-on-rez 3 "ONR Misleading Access Menus")

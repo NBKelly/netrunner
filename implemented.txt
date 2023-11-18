@@ -25,6 +25,7 @@ Card Updates:
     Write tests for noisy cards (bulldozer, jackhammer, hammer, fubar, Pile Driver,
     	  	    	  	Ramming Piston, Wrecking Ball)
     Write trivial test templates for program trashing
+    double check walking wall, glacier, mobile barricade
 
 Keys:
   + test done
@@ -32,9 +33,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   221 / 584
-TESTS:   129 / 221
-NO TEST: 91
+TOTAL:   232 / 584
+TESTS:   133 / 232
+NO TEST: 98
 NO IMP:  1
 --------------------------
 002 + Access through Alpha
@@ -84,6 +85,7 @@ NO IMP:  1
 059 ^ Brain Drain (random, untestable?)
 060 + ONR Brain Wash
 
+063 ^ Bug Zapper
 064 ^ Bulldozer
 065 ^ Butcher Boy (test once viruses are done!)
 066 + Canis Major
@@ -141,6 +143,7 @@ NO IMP:  1
 
 157 ^ Disintegrator
 158 ^ Dogcatcher
+159 ^ Dog Pile
 
 165 ^ Dropp
 166 + Dumpster
@@ -172,8 +175,10 @@ NO IMP:  1
 
 221 + Galatea
 222 ^ Garbage In
+223 + Gatekeeper
 
 226 + Gideon's Pawnshop
+227 ^ Glacier
 
 230 ^ Gremlins
 231 ^ Grubb
@@ -185,7 +190,7 @@ NO IMP:  1
 244 + Hot Tip for WNS
 
 248 + Hunter
-
+249 + Hunting Pack
 250 ^ Ice and Data's Guide to the Net (update the req for this one!)
 251 ^ Ice and Data Special Report
 
@@ -233,14 +238,19 @@ NO IMP:  1
 
 305 + Marionette
 
+307 ^ Mastermind
+
 309 ^ Matador
 310 + Mazer
 
 313 ^ Microtech AI Interface
 
+317 + Minotaur
+
 319 + Misleading Access Menus
 
-322 ^ ONR Morphing Tool
+321 ^ Mobile Barricade
+322 ^ Morphing Tool
 323 ^ Mouse
 324 + MRAM Chip
 325 ^ MS-todon
@@ -256,6 +266,8 @@ NO IMP:  1
 340 + Newsgroup Filter
 
 346 + Olivia Salazar
+
+350 ^ Omnitech Wet Drive
 
 361 + Parraline 5750
 
@@ -373,7 +385,7 @@ NO IMP:  1
 553 ^ Vewy Vewy Quiet
 
 561 + Vortex
-
+562 ^ Walking Wall
 563 + Wall of Ice
 564 + Wall of Static
 565 ^ Washed-Up Solo Construct
@@ -405,6 +417,7 @@ The following (marked) cards have no tests or implementations:
   050 ^ Boardwalk (random reveal...)
   057 ^ Boring Bit
   059 ^ Brain Drain (random, untestable?)
+  063 ^ Bug Zapper
   064 ^ Bulldozer
   065 ^ Butcher Boy (test once viruses are done!)
   069 ^ Cascade (test once viruses are done!)
@@ -417,6 +430,7 @@ The following (marked) cards have no tests or implementations:
   146 ^ Demolition Run
   157 ^ Disintegrator
   158 ^ Dogcatcher
+  159 ^ Dog Pile
   165 ^ Dropp
   167 ^ Dupree
   168 ^ Dwarf
@@ -426,6 +440,7 @@ The following (marked) cards have no tests or implementations:
   215 ^ Forward's Legacy
   219 ^ Fubar
   222 ^ Garbage In
+  227 ^ Glacier
   230 ^ Gremlins
   231 ^ Grubb
   234 ^ Hammer
@@ -441,13 +456,16 @@ The following (marked) cards have no tests or implementations:
   289 ^ Lisa Blight
   294 ^ Lockjaw
   296 ^ Loony Goon
+  307 ^ Mastermind
   309 ^ Matador
   313 ^ Microtech AI Interface
-  322 ^ ONR Morphing Tool
+  321 ^ Mobile Barricade
+  322 ^ Morphing Tool
   323 ^ Mouse
   325 ^ MS-todon
   326 ^ Mystery Box
   331 ^ Netspace Inverter
+  350 ^ Omnitech Wet Drive
   363 ^ Pattel's Virus
   366 ^ Pile Driver
   392 ^ Psychic Friend
@@ -478,6 +496,7 @@ The following (marked) cards have no tests or implementations:
   509 ^ Synchronized Attack on HQ
   526 ^ Tinweasel
   553 ^ Vewy Vewy Quiet
+  562 ^ Walking Wall
   565 ^ Washed-Up Solo Construct
   567 ^ ONR Weapons Depot
   570 ^ Wild Card
@@ -485,4 +504,4 @@ The following (marked) cards have no tests or implementations:
   575 ^ Worm
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 244
+Random card to implement: 70

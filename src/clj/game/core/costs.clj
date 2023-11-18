@@ -1065,10 +1065,11 @@
   [cost state side eid card actions]
   (do (register-lingering-effect
         state side nil
-        {:type :user-agenda-points
-         ;; `target` is either `:corp` or `:runner`
-         :req (req (= side target))
-         :value (- (value cost))})
+        (let [tg-side side]
+          {:type :user-agenda-points
+           ;; `target` is either `:corp` or `:runner`
+           :req (req (= target tg-side))
+           :value (- (value cost))}))
       (update-all-agenda-points state side)
       (complete-with-result
         state side eid

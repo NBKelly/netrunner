@@ -4,7 +4,7 @@
    [cond-plus.core :refer [cond+]]
    [game.core.access :refer [access-bonus access-card breach-server max-access]]
    [game.core.bad-publicity :refer [gain-bad-publicity]]
-   [game.core.board :refer [all-active-installed all-installed all-installed-runner-type card->server
+   [game.core.board :refer [all-active-installed all-installed all-installed-runner-type card->server server-list
                             get-all-cards get-all-installed server->zone]]
    [game.core.card :refer [active? agenda? asset? can-be-advanced? card-index
                            corp? corp-installable-type? faceup?
@@ -30,7 +30,7 @@
    [game.core.gaining :refer [gain-credits lose-clicks lose-credits]]
    [game.core.hand-size :refer [hand-size]]
    [game.core.hosting :refer [host]]
-   [game.core.ice :refer [add-sub add-sub! any-subs-broken? break-sub get-current-ice ice-strength-bonus
+   [game.core.ice :refer [add-sub add-sub! any-subs-broken? break-sub get-current-ice get-run-ices ice-strength-bonus
                           remove-sub! remove-subs! resolve-subroutine
                           set-current-ice unbroken-subroutines-choice update-all-ice update-all-icebreakers
                           update-ice-strength]]
@@ -116,7 +116,7 @@
               :yes-ability {:msg (msg "gains " creds "[Credits] and returns " (:title card) " to HQ")
                             :async true
                             :effect (effect (move :corp card :hand)
-                                         (gain-credits eid creds))}}})
+                                            (gain-credits eid creds))}}})
 
 (defn- used-noisy-discount
   ([state cost]
@@ -200,8 +200,6 @@
                   :msg "prevent the Runner from jacking out"
                   :effect (req (prevent-jack-out state side))}]})
 
-
-
 (defn- boop-sub
   ([cost]
    {:prompt "Choose a server to deflect the runner to"
@@ -227,6 +225,81 @@
                        phase (if (pos? ice) :encounter-ice :movement)]
                    (redirect-run state side server phase)
                    (start-next-phase state side eid)))}))
+
+(defn- glacier-event [cdef]
+  (merge cdef
+         {:derezzed-events [{:event :run
+                             :interactive (req (not= ((get-autoresolve :auto-fire) state side eid card nil) "No"))
+                             :silent (req (= ((get-autoresolve :auto-fire) state side eid card nil) "No"))
+                             :optional
+                             {:prompt (msg "Reveal " (:title card) " and move it to the outermost position of another server?")
+                              :autoresolve (get-autoresolve :auto-fire)
+                              :req (req (and
+                                          ;;this-server
+                                          (can-pay? state side eid card nil [:credit 1])))
+                              :yes-ability
+                              {:choices (req (cancellable (server-list state)))
+                               :prompt "Choose a server"
+                               :msg (msg "reveal " (card-str state card {:visible true}) " and move it to the outermost position of" target)
+                               :cost [:credit 1]
+                               :async true
+                               :effect (req (wait-for
+                                              (reveal state side (make-eid state eid) card)
+                                              (system-msg state side (second (server->zone state target)))
+                                              (disable-card state side card)
+                                              (let [moved (move state side (get-card state card)
+                                                                [:servers (second (server->zone state target)) :ices]
+                                                                nil)]
+                                                (enable-card state side (get-card state moved))
+                                                (register-events state side (get-card state moved) (map #(assoc % :condition :derezzed) (:derezzed-events (card-def moved))))
+                                                (when (< run-position (count (get-run-ices state)))
+                                                  (swap! state update-in [:run :position] inc))
+                                                (set-current-ice state)
+                                                (update-all-ice state side)
+                                                (update-all-icebreakers state side)
+                                                (effect-completed state side eid))
+                                              ))}}}]
+          :events
+          [{:event :run
+            :interactive (req (not= ((get-autoresolve :auto-fire) state side eid card nil) "No"))
+            :silent (req (= ((get-autoresolve :auto-fire) state side eid card nil) "No"))
+            :optional
+            {:prompt (msg "move " (:title card) " to the outermost position of another server?")
+             :autoresolve (get-autoresolve :auto-fire)
+             :req (req (and
+                         ;;this-server
+                         (can-pay? state side eid card nil [:credit 1])))
+             :yes-ability
+             {:choices (req (cancellable (server-list state)))
+              :prompt "Choose a server"
+              :msg (msg "move " (card-str state card {:visible true}) " to the outermost position of" target)
+              :cost [:credit 1]
+              :async true
+              :effect (req (system-msg state side (second (server->zone state target)))
+                           (disable-card state side card)
+                           (let [moved (move state side (get-card state card)
+                                             [:servers (second (server->zone state target)) :ices]
+                                             nil)]
+                             (enable-card state side (get-card state moved))
+                             ;;(register-events state side (get-card state moved) (map #(assoc % :condition :derezzed) (:derezzed-events (card-def moved))))
+                             (when (< run-position (count (get-run-ices state)))
+                               (swap! state update-in [:run :position] inc))
+                             (set-current-ice state)
+                             (update-all-ice state side)
+                             (update-all-icebreakers state side)
+                             (effect-completed state side eid))
+                           )}}}]}))
+
+(defn- exterior-ice [state card]
+  (if-not (= (first (:zone card)) :servers)
+    [] ;; cards not installed protecting a server have no exterior ice
+    (let [server-ice (get-in @state (concat [:corp] (:zone card)))]
+      ;;first is inside, last is outside
+      (letfn [(get-outside [ices card]
+                (if (same-card? (first ices) card)
+                  (rest ices)
+                  (get-outside (rest ices) card)))]
+        (get-outside server-ice card)))))
 
 ;; card implementations
 
@@ -254,6 +327,17 @@
 
 (defcard "ONR Brain Wash"
   {:subroutines [(do-brain-damage 1)]})
+
+(defcard "ONR Bug Zapper"
+  (let [damage-count (fn [state card]
+                 (count (filter rezzed? (exterior-ice state card))))]
+    {:subroutines [{:label "Do 2 net damage for each rezzed ice outside this one"
+                    :effect (req (continue-ability
+                                   state side
+                                   (do-net-damage (* 2 (damage-count state card)))
+                                   card nil))
+                    :async true}
+                   end-the-run]}))
 
 (defcard "ONR Canis Major"
   {:subroutines [{:label (str "All further ice is encountered at +2 Strength")
@@ -343,6 +427,18 @@
    :subroutines [(do-brain-damage 1)
                  end-the-run]})
 
+(defcard "ONR Dog Pile"
+  (let [damage-count (fn [state card]
+                 (count (filter rezzed? (exterior-ice state card))))]
+    {:static-abilities [(ice-strength-bonus (req true) (req (damage-count state card)))]
+     :subroutines [{:label "Do 1 net damage for each rezzed ice outside this one"
+                    :effect (req (continue-ability
+                                   state side
+                                   (do-net-damage (* 1 (damage-count state card)))
+                                   card nil))
+                    :async true}
+                   end-the-run]}))
+
 (defcard "ONR Dumpster"
   {:install-req (req (remove #{"Archives"} targets))
    :subroutines [(boop-sub "Archives" nil)]})
@@ -369,8 +465,32 @@
 (defcard "ONR Galatea"
   (change-subtype-on-rez "Wall" "Code Gate" 1 {:subroutines [end-the-run]}))
 
+(defcard "ONR Gatekeeper"
+  (purchase-subroutines-on-rez end-the-run 2 {}))
+
+(defcard "ONR Glacier"
+  (glacier-event {
+                 :subroutines [end-the-run
+                               end-the-run]
+                 :abilities [(set-autoresolve :auto-fire "Glacier swap on run")]}))
+
 (defcard "ONR Hunter"
   {:subroutines [(trace-tag 5)]})
+
+(defcard "ONR Hunting Pack"
+  (let [sub-count (fn [state card]
+                    (count (filter rezzed? (exterior-ice state card))))
+        reset-sub-abi {:label "manually reset subs"
+                       :effect (effect (reset-variable-subs card (sub-count state card) (trace-tag 5) {:variable true :front true}))}]
+    {:abilities [reset-sub-abi]
+     :on-rez reset-sub-abi
+     :events [(assoc reset-sub-abi :event :derez)
+              (assoc reset-sub-abi :event :rez)
+              (assoc reset-sub-abi
+                     :event :card-moved
+                     :req (req (corp? target)
+                               (or (= :servers (first (:zone target)))
+                                   (= :servers (first (:previous-zone target))))))]}))
 
 (defcard "ONR Ice Pick Willie"
   {:subroutines [trash-program-sub
@@ -406,16 +526,93 @@
    :subroutines [trash-program-sub
                  end-the-run]})
 
+(defcard "ONR Mastermind"
+  (let [damage-count (fn [state card]
+                 (count (filter rezzed? (exterior-ice state card))))]
+    {:static-abilities [(ice-strength-bonus (req true) (req (damage-count state card)))]
+     :subroutines [{:label "Do 1 brain damage for each rezzed ice outside this one"
+                    :effect (req (continue-ability
+                                   state side
+                                   (do-brain-damage (* 1 (damage-count state card)))
+                                   card nil))
+                    :async true}
+                   end-the-run]}))
+
 (defcard "ONR Mazer"
   {:subroutines [end-the-run]})
 
-(defcard "ONR Nerve Labyrinth"
-  {:subroutines [(do-net-damage 2)
-                 end-the-run]})
+(defcard "ONR Minotaur"
+  (let [sub-count (fn [state card]
+                    (count (filter #(and (or (has-subtype? % "Code Gate")
+                                             (has-subtype? % "Wall"))
+                                         (rezzed? %))
+                                   (exterior-ice state card))))
+        reset-sub-abi {:label "manually reset subs"
+                  :effect (effect (reset-variable-subs card (sub-count state card) end-the-run {:variable true :front true}))}]
+    {:abilities [reset-sub-abi]
+     :on-rez reset-sub-abi
+     :events [(assoc reset-sub-abi :event :derez)
+              (assoc reset-sub-abi :event :rez)
+              (assoc reset-sub-abi
+                     :event :card-moved
+                     :req (req (corp? target)
+                               (or (= :servers (first (:zone target)))
+                                   (= :servers (first (:previous-zone target))))))]}))
 
 (defcard "ONR Misleading Access Menus"
   {:on-rez (gain-credits-sub 3)
    :subroutines [(end-the-run-unless-runner-pays [:credit 1])]})
+
+;; I'm gonna be sick...
+(defcard "ONR Mobile Barricade"
+  {:derezzed-events
+   [{:event :run
+     :interactive (req (not= ((get-autoresolve :auto-fire) state side eid card nil) "No"))
+     :silent (req (= ((get-autoresolve :auto-fire) state side eid card nil) "No"))
+     :optional
+     {:prompt (msg "Reveal " (:title card) " and swap it with another ice protecting this server?")
+      :autoresolve (get-autoresolve :auto-fire)
+      :req (req (and
+                  this-server
+                  (can-pay? state side eid card nil [:credit 1])))
+      :yes-ability
+      {:choices {:req (req (and
+                             (not (same-card? card target))
+                             (ice? target)
+                             (protecting-same-server? card target)))}
+       :msg (msg "reveal " (card-str state card {:visible true}) " and swap it with "
+                 (card-str state target))
+       :cost [:credit 1]
+       :effect (req (wait-for
+                      (reveal state side (make-eid state eid) card)
+                      (swap-ice state side card target)))}}}]
+   :events [{:event :run
+             :interactive (req (not= ((get-autoresolve :auto-fire) state side eid card nil) "No"))
+             :silent (req (= ((get-autoresolve :auto-fire) state side eid card nil) "No"))
+             :optional
+             {:prompt (msg "Swap " (:title card) " with another ice protecting this server?")
+              :autoresolve (get-autoresolve :auto-fire)
+              :req (req (and
+                          this-server
+                          (can-pay? state side eid card nil [:credit 1])))
+              :yes-ability
+              {:choices {:req (req (and
+                                     (not (same-card? card target))
+                                     (ice? target)
+                                     (protecting-same-server? card target)))}
+               :msg (msg "swap " (card-str state card) " with "
+                         (card-str state target))
+               :cost [:credit 1]
+               :effect (req (wait-for
+                              (reveal state side (make-eid state eid) card)
+                              (swap-ice state side card target)))}}}]
+   :subroutines [(do-net-damage 1)
+                 end-the-run]
+   :abilities [(set-autoresolve :auto-fire "Mobile Barricade swap on run")]})
+
+(defcard "ONR Nerve Labyrinth"
+  {:subroutines [(do-net-damage 2)
+                 end-the-run]})
 
 (defcard "ONR Neural Blade"
   {:subroutines [(do-net-damage 1)
@@ -512,6 +709,51 @@
 (defcard "ONR Vortex"
   {:subroutines [(boop-sub 2)]})
 
+(defcard "ONR Walking Wall"
+  {:derezzed-events
+   [{:event :run
+     :interactive (req (not= ((get-autoresolve :auto-fire) state side eid card nil) "No"))
+     :silent (req (= ((get-autoresolve :auto-fire) state side eid card nil) "No"))
+     :optional
+     {:prompt (msg "Reveal " (:title card) " and swap it with another ice protecting this server?")
+      :autoresolve (get-autoresolve :auto-fire)
+      :req (req (and
+                  this-server
+                  (can-pay? state side eid card nil [:credit 1])))
+      :yes-ability
+      {:choices {:req (req (and
+                             (not (same-card? card target))
+                             (ice? target)
+                             (protecting-same-server? card target)))}
+       :msg (msg "reveal " (card-str state card {:visible true}) " and swap it with "
+                 (card-str state target))
+       :cost [:credit 1]
+       :effect (req (wait-for
+                      (reveal state side (make-eid state eid) card)
+                      (swap-ice state side card target)))}}}]
+   :events [{:event :run
+             :interactive (req (not= ((get-autoresolve :auto-fire) state side eid card nil) "No"))
+             :silent (req (= ((get-autoresolve :auto-fire) state side eid card nil) "No"))
+             :optional
+             {:prompt (msg "Swap " (:title card) " with another ice protecting this server?")
+              :autoresolve (get-autoresolve :auto-fire)
+              :req (req (and
+                          this-server
+                          (can-pay? state side eid card nil [:credit 1])))
+              :yes-ability
+              {:choices {:req (req (and
+                                     (not (same-card? card target))
+                                     (ice? target)
+                                     (protecting-same-server? card target)))}
+               :msg (msg "swap " (card-str state card) " with "
+                         (card-str state target))
+               :cost [:credit 1]
+               :effect (req (wait-for
+                              (reveal state side (make-eid state eid) card)
+                              (swap-ice state side card target)))}}}]
+   :subroutines [end-the-run]
+   :abilities [(set-autoresolve :auto-fire "Walking Wall swap on run")]})
+
 (defcard "ONR Wall of Ice"
   {:subroutines [(do-net-damage 2)
                  (do-net-damage 2)
@@ -530,8 +772,8 @@
                         :yes-ability {:cost [:credit 1]
                                       :msg "prevent the Corp from trashing a program"}
                         :no-ability (assoc trash-program-sub :player :corp)}}]
-        {:on-rez (gain-credits-sub 3)
-         :subroutines [sub]}))
+    {:on-rez (gain-credits-sub 3)
+     :subroutines [sub]}))
 
 (defcard "ONR Zombie"
   {:subroutines [(do-brain-damage 1)
