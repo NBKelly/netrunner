@@ -32,8 +32,8 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   201 / 584
-TESTS:   118 / 201
+TOTAL:   202 / 584
+TESTS:   119 / 202
 NO TEST: 82
 NO IMP:  1
 --------------------------
@@ -446,4 +446,4 @@ The following (marked) cards have no tests or implementations:
   575 ^ Worm
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 437
+Random card to implement: 554
