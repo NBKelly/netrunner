@@ -467,6 +467,18 @@
 (defcard "ONR Wall of Static"
   {:subroutines [end-the-run]})
 
+(defcard "ONR Washed-Up Solo Construct"
+  (let [sub {:label "Trash a program unless Runner pays 1"
+             :async true
+             :optional {:player :runner
+                        :waiting-prompt true
+                        :prompt "Pay 1 to prevent the corp trashing a program?"
+                        :yes-ability {:cost [:credit 1]
+                                      :msg "prevent the Corp from trashing a program"}
+                        :no-ability (assoc trash-program-sub :player :corp)}}]
+        {:on-rez (gain-credits-sub 3)
+         :subroutines [sub]}))
+
 (defcard "ONR Zombie"
   {:subroutines [(do-brain-damage 1)
                  (do-brain-damage 1)

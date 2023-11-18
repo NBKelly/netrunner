@@ -32,9 +32,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   202 / 584
-TESTS:   119 / 202
-NO TEST: 82
+TOTAL:   203 / 584
+TESTS:   119 / 203
+NO TEST: 83
 NO IMP:  1
 --------------------------
 002 + Access through Alpha
@@ -347,6 +347,7 @@ NO IMP:  1
 
 563 + Wall of Ice
 564 + Wall of Static
+565 ^ Washed-Up Solo Construct
 
 567 ^ ONR Weapons Depot
 
@@ -440,10 +441,11 @@ The following (marked) cards have no tests or implementations:
   509 ^ Synchronized Attack on HQ
   526 ^ Tinweasel
   553 ^ Vewy Vewy Quiet
+  565 ^ Washed-Up Solo Construct
   567 ^ ONR Weapons Depot
   570 ^ Wild Card
   573 ^ Wizard's Book
   575 ^ Worm
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 554
+Random card to implement: 174
