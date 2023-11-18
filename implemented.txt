@@ -128,6 +128,7 @@ NO IMP:  1
 
 132 + Data Naga
 
+135 + Data Sifters
 136 + Data Wall 2.0
 137 + Data Wall
 
@@ -504,4 +505,4 @@ The following (marked) cards have no tests or implementations:
   575 ^ Worm
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 70
+Random card to implement: 135

@@ -173,6 +173,16 @@
                                             card nil))})
                              card nil)))}}))
 
+(defcard "ONR Data Sifters"
+  {:on-play
+   {:req (req (last-turn? state :runner :trashed-card))
+    :implementation "Doesn't enforce asset (node) only"
+    :msg "give the runner a tag"
+    :async true
+    :effect (req
+              (system-msg state side (last-turn? state :runner :trashed-card))
+              (gain-tags state :corp eid 1))}})
+
 (defcard "ONR Emergency Rig"
   (letfn [(kludge-event []
             {:event :corp-turn-begins

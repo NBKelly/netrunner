@@ -54,6 +54,18 @@
                          "+0 clicks"
                          (take-credits state :corp)))))
 
+(deftest onr-data-sifters ;;TODO - actually fix this card
+    ;; Winning Trace - Trashing 2 cards
+    (do-game
+      (new-game {:corp {:deck ["Dedicated Response Team" "ONR Data Sifters"]}})
+      (play-from-hand state :corp "Dedicated Response Team" "New remote")
+      (take-credits state :corp)
+      (run-empty-server state :remote1)
+      (click-prompt state :runner "Pay 3 [Credits] to trash")
+      (take-credits state :runner)
+      (is (zero? (-> (get-runner) :discard count)) "heap should be empty")
+      (play-from-hand state :corp "ONR Data Sifters")
+      (is (= 1 (count-tags state)) "Runner should have 1 tags")))
 
 (deftest onr-manhunt
   ;; Trace 6 - Give the runner 1 tag for each point your trace exceeded their link
