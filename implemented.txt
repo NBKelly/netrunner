@@ -32,9 +32,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   212 / 584
-TESTS:   124 / 212
-NO TEST: 87
+TOTAL:   214 / 584
+TESTS:   125 / 214
+NO TEST: 88
 NO IMP:  1
 --------------------------
 002 + Access through Alpha
@@ -64,6 +64,8 @@ NO IMP:  1
 037 ^ Bartmoss Memorial Icebreaker
 
 041 ^ Big Frackin' Gun
+
+044 ^ Black Dahlia
 
 046 + Blackmail
 047 ^ Black Widow
@@ -139,7 +141,7 @@ NO IMP:  1
 158 ^ Dogcatcher
 
 165 ^ Dropp
-
+166 + Dumpster
 167 ^ Dupree
 168 ^ Dwarf
 
@@ -384,6 +386,7 @@ The following (marked) cards have no tests or implementations:
   020 ^ Armageddon
   037 ^ Bartmoss Memorial Icebreaker
   041 ^ Big Frackin' Gun
+  044 ^ Black Dahlia
   047 ^ Black Widow
   048 ^ Blink (no test, this is an rng card!)
   050 ^ Boardwalk (random reveal...)
@@ -467,4 +470,4 @@ The following (marked) cards have no tests or implementations:
   575 ^ Worm
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 44
+Random card to implement: 102

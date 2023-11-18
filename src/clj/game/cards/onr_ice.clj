@@ -49,7 +49,7 @@
    [game.core.purging :refer [purge]]
    [game.core.revealing :refer [reveal]]
    [game.core.rezzing :refer [derez get-rez-cost rez]]
-   [game.core.runs :refer [bypass-ice encounter-ends end-run
+   [game.core.runs :refer [bypass-ice encounter-ends end-run start-next-phase
                            force-ice-encounter get-current-encounter prevent-access
                            redirect-run set-next-phase]]
    [game.core.say :refer [system-msg]]
@@ -200,6 +200,17 @@
                   :msg "prevent the Runner from jacking out"
                   :effect (req (prevent-jack-out state side))}]})
 
+(defn- boop-sub
+  [server cost]
+  {:msg (msg "deflect the runner. The Runner is now running on " server)
+   :label (str "Deflect the runner to " server "(encounter)")
+   :async true
+   :effect (req (let [dest (server->zone state server)
+                      ice (count (get-in corp (conj dest :ices)))
+                      phase (if (pos? ice) :encounter-ice :movement)]
+                  (redirect-run state side server phase)
+                  (start-next-phase state side eid)))})
+
 ;; card implementations
 
 (defcard "ONR Banpei"
@@ -314,6 +325,10 @@
   {:events [(bounce-and-corp-gains 1)]
    :subroutines [(do-brain-damage 1)
                  end-the-run]})
+
+(defcard "ONR Dumpster"
+  {:install-req (req (remove #{"Archives"} targets))
+   :subroutines [(boop-sub "Archives" nil)]})
 
 (defcard "ONR Endless Corridor"
   {:subroutines [end-the-run

@@ -1,5 +1,6 @@
 (ns game.cards.onr-ice-test
   (:require [game.core :as core]
+            [game.core.board :refer [server->zone]]
             [game.core.card :refer :all]
             [game.core-test :refer :all]
             [game.utils-test :refer :all]
@@ -343,6 +344,24 @@
           (is (= sub (:label (last (:subroutines (refresh ice))))) "Sub correct")
           (is (= (inc n) (count (:subroutines (refresh ice)))) "right number of subs"))))))
 
+(defn- deflect-sub
+  ([from to name] (deflect-sub [from to name 0]))
+  ([from to name sub]
+   (do-game
+     (new-game {:corp {:credits 50
+                       :hand [name]}})
+     (play-from-hand state :corp name from)
+     (let [from-zone (server->zone state from)
+           to-zone (server->zone state to)
+           ice (get-ice state from-zone 0)]
+       (take-credits state :corp)
+       (run-on state from)
+       (rez state :corp ice)
+       (run-continue state :encounter)
+       (is (= [from-zone] (get-in @state [:run :server])) (str "running on " from))
+       (card-subroutine state :corp (refresh ice) sub)
+       (is (= [to-zone] (get-in @state [:run :server])) (str "running on " to))))))
+
 
 ;; trivial-etr
 ;; trivial-trash-program
@@ -358,7 +377,8 @@
 ;; trace-tag
 ;; trace-net
 ;; canis-effect
-
+;; deflect-sub
+;; purchase-subroutine-on-rez
 ;; tests here
 
 (deftest ^:kaocha/pending onr-asp
@@ -501,7 +521,7 @@
 (deftest ^:kaocha/pending onr-dumpster
   ;; can't install on archives
   ;; bounce runner to archives (straight to encounter)
-  )
+  (deflect-sub "HQ" "Archives" "Dumpster"))
 
 (deftest onr-endless-corridor
   (trivial-etr "ONR Endless Corridor")
