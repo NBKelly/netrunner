@@ -345,23 +345,28 @@
           (is (= (inc n) (count (:subroutines (refresh ice)))) "right number of subs"))))))
 
 (defn- deflect-sub
-  ([from to name] (deflect-sub [from to name 0]))
-  ([from to name sub]
+  ([from to cost name] (deflect-sub from to cost name 0))
+  ([from to cost name sub]
    (do-game
      (new-game {:corp {:credits 50
-                       :hand [name]}})
+                       :hand [name "ONR Quandary"]}})
      (play-from-hand state :corp name from)
-     (let [from-zone (server->zone state from)
-           to-zone (server->zone state to)
+     (play-from-hand state :corp "ONR Quandary" "New remote")
+     (let [from-zone (second (server->zone state from))
+           to-zone (second (server->zone state to))
            ice (get-ice state from-zone 0)]
        (take-credits state :corp)
        (run-on state from)
        (rez state :corp ice)
-       (run-continue state :encounter)
+       (run-continue state :encounter-ice)
        (is (= [from-zone] (get-in @state [:run :server])) (str "running on " from))
        (card-subroutine state :corp (refresh ice) sub)
+       (when (not (no-prompt? state :corp))
+         (changes-val-macro
+           (- cost) (:credit (get-corp))
+           (str "paid " cost " to deflect to " to)
+           (click-prompt state :corp to)))
        (is (= [to-zone] (get-in @state [:run :server])) (str "running on " to))))))
-
 
 ;; trivial-etr
 ;; trivial-trash-program
@@ -518,18 +523,18 @@
   ;; +1 str for each rezzed ice outside dogpile
   )
 
-(deftest ^:kaocha/pending onr-dumpster
+(deftest onr-dumpster
   ;; can't install on archives
   ;; bounce runner to archives (straight to encounter)
-  (deflect-sub "HQ" "Archives" "Dumpster"))
+  (deflect-sub "HQ" "Archives" 0 "ONR Dumpster"))
 
 (deftest onr-endless-corridor
   (trivial-etr "ONR Endless Corridor")
   (trivial-etr "ONR Endless Corridor" 1))
 
-(deftest ^:kaocha/pending onr-entrapment
+(deftest onr-entrapment
   ;; sub: pay 2 to aginfusion the runner
-  )
+  (deflect-sub "HQ" "Archives" 2 "ONR Entrapment"))
 
 (deftest ^:kaocha/pending onr-fang
   ;; trace: etr, can't run unless pay 2
@@ -784,11 +789,11 @@
   (trivial-etr "ONR Toughonium [TM] Wall" 2)
   (trivial-etr "ONR Toughonium [TM] Wall" 3))
 
-(deftest ^:kaocha/pending onr-trapdoor
+(deftest onr-trapdoor
   ;; only on R&D or HQ
   ;; aginfusion runner to a remote
   ;; automatically break sub on encounter if there are no remotes?
-  )
+  (deflect-sub "HQ" "Server 1" 0 "ONR Trapdoor"))
 
 (deftest onr-triggerman
   (trivial-trash-program "ONR Triggerman" 0)
@@ -819,9 +824,9 @@
   ;; midway station grid for rest of run
   )
 
-(deftest ^:kaocha/pending onr-vortex
+(deftest onr-vortex
   ;; pay 2 to aginfusion
-  )
+  (deflect-sub "HQ" "Archives" 2 "ONR Vortex"))
 
 (deftest ^:kaocha/pending onr-walking-wall
   (trivial-etr "ONR Walking Wall")

@@ -32,8 +32,8 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   214 / 584
-TESTS:   125 / 214
+TOTAL:   217 / 584
+TESTS:   128 / 217
 NO TEST: 88
 NO IMP:  1
 --------------------------
@@ -151,6 +151,7 @@ NO IMP:  1
 
 179 + Endless Corridor
 180 + ONR Enterprise, Inc., Shields
+181 + Entrapment
 
 185 ^ Evil Twin
 
@@ -352,6 +353,7 @@ NO IMP:  1
 529 + Too Many Doors
 
 532 + Toughonium Wall
+533 + Trapdoor
 
 536 + Triggerman
 
@@ -361,6 +363,8 @@ NO IMP:  1
 542 + Twisty Passages
 
 553 ^ Vewy Vewy Quiet
+
+561 + Vortex
 
 563 + Wall of Ice
 564 + Wall of Static
@@ -470,4 +474,4 @@ The following (marked) cards have no tests or implementations:
   575 ^ Worm
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 102
+Random card to implement: 55

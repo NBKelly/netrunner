@@ -200,16 +200,33 @@
                   :msg "prevent the Runner from jacking out"
                   :effect (req (prevent-jack-out state side))}]})
 
+
+
 (defn- boop-sub
-  [server cost]
-  {:msg (msg "deflect the runner. The Runner is now running on " server)
-   :label (str "Deflect the runner to " server "(encounter)")
-   :async true
-   :effect (req (let [dest (server->zone state server)
-                      ice (count (get-in corp (conj dest :ices)))
-                      phase (if (pos? ice) :encounter-ice :movement)]
-                  (redirect-run state side server phase)
-                  (start-next-phase state side eid)))})
+  ([cost]
+   {:prompt "Choose a server to deflect the runner to"
+    :label "Deflect the runner to any server"
+    :choices (req (cancellable servers))
+    :req (req (if-not cost
+                true
+                (can-pay? state side (assoc eid :source card :source-type :ability) target nil
+                          (if (int? cost) [:credit cost] cost))))
+    :effect (req (continue-ability
+                   state side
+                   (boop-sub target cost)
+                   card nil))})
+  ([server cost]
+   {:msg (msg "deflect the runner. The Runner is now running on " server)
+    :label (str "Deflect the runner to " server "(encounter)")
+    :async true
+    :cost (if cost
+            (if (int? cost) [:credit cost] cost)
+            nil)
+    :effect (req (let [dest (server->zone state server)
+                       ice (count (get-in corp (conj dest :ices)))
+                       phase (if (pos? ice) :encounter-ice :movement)]
+                   (redirect-run state side server phase)
+                   (start-next-phase state side eid)))}))
 
 ;; card implementations
 
@@ -333,6 +350,9 @@
 (defcard "ONR Endless Corridor"
   {:subroutines [end-the-run
                  end-the-run]})
+
+(defcard "ONR Entrapment"
+  {:subroutines [(boop-sub 2)]})
 
 (defcard "ONR Fetch 4.0.1"
   {:subroutines [(trace-tag 3)]})
@@ -468,6 +488,12 @@
                  end-the-run
                  end-the-run]})
 
+(defcard "ONR Trapdoor"
+  {:install-req (req (filter #{"HQ" "R&D"} targets))
+   :subroutines [(assoc (boop-sub nil)
+                        :choices
+                        (req (cancellable (remove #{"HQ" "R&D" "Archives"} servers))))]})
+
 (defcard "ONR Triggerman"
   {:subroutines [trash-program-sub
                  end-the-run]})
@@ -482,6 +508,9 @@
 
 (defcard "ONR Quandary"
   {:subroutines [end-the-run]})
+
+(defcard "ONR Vortex"
+  {:subroutines [(boop-sub 2)]})
 
 (defcard "ONR Wall of Ice"
   {:subroutines [(do-net-damage 2)
