@@ -15,13 +15,13 @@
    [game.core.cost-fns :refer [install-cost play-cost rez-cost]]
    [game.core.costs :refer [total-available-credits]]
    [game.core.damage :refer [damage damage-prevent]]
-   [game.core.def-helpers :refer [breach-access-bonus defcard offer-jack-out
+   [game.core.def-helpers :refer [breach-access-bonus defcard offer-jack-out runner-recur
                                   reorder-choice]]
    [game.core.drawing :refer [draw]]
-   [game.core.effects :refer [register-lingering-effect]]
+   [game.core.effects :refer [register-lingering-effect gather-effects]]
    [game.core.eid :refer [complete-with-result effect-completed make-eid
                           make-result]]
-   [game.core.engine :refer [not-used-once? pay register-events
+   [game.core.engine :refer [not-used-once? pay register-events gather-events pay
                              resolve-ability trigger-event trigger-event-simult
                              unregister-events unregister-floating-events]]
    [game.core.events :refer [first-event? first-run-event? run-events
@@ -73,6 +73,32 @@
    [jinteki.utils :refer :all]
    [jinteki.validator :refer [legal?]]))
 
+(defn- handle-if-unique
+  ([state side card handler] (handle-if-unique state side card handler nil))
+  ([state side card handler targets] (handle-if-unique state side card handler targets false))
+  ([state side card handler targets debug]
+   (let [matching-events
+         (seq (filter #(= (:ability-name handler) (:ability-name (:ability %)))
+                      (gather-events state side (:event handler) targets)))]
+     (when debug
+       (do
+         (system-msg state side (str "event type: " (:event handler)))
+         (system-msg state side (str (gather-events state side (:event handler) targets)))
+         ))
+     (when-not matching-events
+       (do (when debug (system-msg state side (str "registered " (:ability-name handler))))
+           (register-events state side card [handler]))))))
+
+(defn- register-effect-once [state side card effect]
+  (let [em (gather-effects state side (:type effect))
+        matches (filter #(= (:ability-name %) (:ability-name effect)) em)]
+    (when (empty? matches)
+      (register-lingering-effect
+        state side card
+        effect))))
+
+;; card implementations
+
 (defcard "ONR All-Hands"
   {:makes-run true
    :implementation "Can't use Noisy is manual"
@@ -114,6 +140,43 @@
     :async true
     :effect (effect (draw eid 5))}})
 
+(defcard "ONR Deal with Militech"
+  {:on-play
+   {:req (req (and (some #(has-subtype? % "Icebreaker") (all-installed state :runner))
+                   (some #(has-subtype? (:card (first %)) "Research") (turn-events state side :agenda-stolen))))
+    :effect (req (doseq [icebreaker (filter #(has-subtype? % "Icebreaker") (all-installed state :runner))]
+                   (add-counter state side icebreaker :militech 1))
+                 (register-effect-once
+                   state side card
+                   {:type :breaker-strength
+                    :ability-name "Militech Counters"
+                    :req (req true)
+                    :value (req (get-counters (get-card state target) :militech))}))}})
+
+(defcard "ONR Demolition Run"
+  {:makes-run true
+   :on-play {:async true
+             :prompt "Choose a server"
+             :choices (req runnable-servers)
+             :effect (effect (make-run eid target card))}
+   :events [(successful-run-replace-breach
+              {:this-card-run true
+               :mandatory true
+               :ability
+               {:async true
+                :effect (req (let [ice-to-trash (filter #(and (ice? %) (rezzed? %)
+                                                              (= (first (:server run))
+                                                                 (second (get-zone %))))
+                                                        (all-installed state :corp))]
+                               (continue-ability
+                                 state side
+                                 {:msg (msg "trash " (str/join ", " (map :title ice-to-trash)) " and take 3 tags")
+                                 :async true
+                                 :effect (req (wait-for (trash-cards state side (make-eid state eid) ice-to-trash {:cause-card card})
+                                                        (gain-tags state :corp eid 3)))}
+                                card nil)))}})]})
+
+
 (defcard "ONR Edited Shipping Manifests"
   {:makes-run true
    :on-play {:req (req hq-runnable)
@@ -132,6 +195,9 @@
                                 (lose-credits state :corp creds-lost)
                                 (wait-for (gain-tags state :runner 1)
                                           (gain-credits state :runner eid 10)))))}})]})
+
+(defcard "ONR Gideon's Pawnshop"
+  {:on-play (runner-recur)})
 
 (defcard "ONR Ice and Data's Guide to the Net"
   (letfn [(outermost-ice [state server]

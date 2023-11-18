@@ -16,7 +16,7 @@
    [game.core.damage :refer [damage damage-prevent]]
    [game.core.def-helpers :refer [breach-access-bonus defcard offer-jack-out trash-on-empty get-x-fn]]
    [game.core.drawing :refer [draw]]
-   [game.core.effects :refer [any-effects get-effect-maps register-lingering-effect
+   [game.core.effects :refer [any-effects gather-effects register-lingering-effect
                               unregister-effects-for-card]]
    [game.core.eid :refer [effect-completed make-eid]]
    [game.core.engine :refer [ability-as-handler dissoc-req not-used-once?  gather-events pay
@@ -151,22 +151,6 @@
                         card nil))}
         card nil))))
 
-(defn handle-if-unique
-  ([state side card handler] (handle-if-unique state side card handler nil))
-  ([state side card handler targets] (handle-if-unique state side card handler targets false))
-  ([state side card handler targets debug]
-   (let [matching-events
-         (seq (filter #(= (:ability-name handler) (:ability-name (:ability %)))
-                      (gather-events state side (:event handler) targets)))]
-     (when debug
-       (do
-         (system-msg state side (str "event type: " (:event handler)))
-         (system-msg state side (str (gather-events state side (:event handler) targets)))
-         ))
-     (when-not matching-events
-       (do (when debug (system-msg state side (str "registered " (:ability-name handler))))
-           (register-events state side card [handler]))))))
-
 (defn- daemon-abilities []
   [{:label "Install and host a program"
     :cost [:click 1]
@@ -194,13 +178,37 @@
 
 (defn- dice-roll [] (inc (rand-int 6)))
 
-(defn- register-effect-once [state side card target-side effect]
-  (let [em (get-effect-maps state target-side (:type effect))
+(defn- handle-if-unique
+  ([state side card handler] (handle-if-unique state side card handler nil))
+  ([state side card handler targets] (handle-if-unique state side card handler targets false))
+  ([state side card handler targets debug]
+   (let [matching-events
+         (seq (filter #(= (:ability-name handler) (:ability-name (:ability %)))
+                      (gather-events state side (:event handler) targets)))]
+     (when debug
+       (do
+         (system-msg state side (str "event type: " (:event handler)))
+         (system-msg state side (str (gather-events state side (:event handler) targets)))
+         ))
+     (when-not matching-events
+       (do (when debug (system-msg state side (str "registered " (:ability-name handler))))
+           (register-events state side card [handler]))))))
+
+(defn- register-effect-once [state side card effect]
+  (let [em (gather-effects state side (:type effect))
         matches (filter #(= (:ability-name %) (:ability-name effect)) em)]
     (when (empty? matches)
       (register-lingering-effect
         state side card
         effect))))
+
+;; (defn- register-effect-once [state side card target-side effect]
+;;   (let [em (get-effect-maps state target-side (:type effect))
+;;         matches (filter #(= (:ability-name %) (:ability-name effect)) em)]
+;;     (when (empty? matches)
+;;       (register-lingering-effect
+;;         state side card
+;;         effect))))
 
 ;; card implementations
 
@@ -754,7 +762,7 @@
              :effect (req
                        (add-counter state :corp (get-card state (:identity corp)) :gremlin 1)
                        (register-effect-once
-                         state side card :corp
+                         state side card
                          {:type :hand-size
                           :ability-name "Gremlins"
                           :req (req (= :corp side))
@@ -995,7 +1003,7 @@
                                      (some #(same-card? % target) valid-targets))))}
              :effect (req (add-counter state side (get-card state target) :pattel 1)
                           (register-effect-once
-                            state side card :corp
+                            state side card
                             {:type :ice-strength
                              :ability-name "Pattel's Virus"
                              :value (req (- (get-counters (get-card state target) :pattel)))}))

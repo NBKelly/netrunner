@@ -20,9 +20,9 @@
    [game.core.def-helpers :refer [corp-recur defcard do-brain-damage
                                   reorder-choice get-x-fn]]
    [game.core.drawing :refer [draw]]
-   [game.core.effects :refer [register-lingering-effect]]
+   [game.core.effects :refer [register-lingering-effect gather-effects]]
    [game.core.eid :refer [effect-completed make-eid make-result]]
-   [game.core.engine :refer [pay register-events resolve-ability]]
+   [game.core.engine :refer [pay register-events resolve-ability gather-events]]
    [game.core.events :refer [first-event? last-turn? no-event? not-last-turn?
                              turn-events]]
    [game.core.flags :refer [can-score? clear-persistent-flag! in-corp-scored?
@@ -61,7 +61,7 @@
    [game.utils :refer :all]
    [jinteki.utils :refer :all]))
 
-(defn handle-debt-collections
+(defn- handle-debt-collections
   ([debt]
    (letfn [(debt-abi []
              {:event :corp-gain
@@ -95,6 +95,32 @@
                     state side (get-card state card)
                     [(debt-abi)]))
                 (gain-debt state side eid debt))})))
+
+(defn- handle-if-unique
+  ([state side card handler] (handle-if-unique state side card handler nil))
+  ([state side card handler targets] (handle-if-unique state side card handler targets false))
+  ([state side card handler targets debug]
+   (let [matching-events
+         (seq (filter #(= (:ability-name handler) (:ability-name (:ability %)))
+                      (gather-events state side (:event handler) targets)))]
+     (when debug
+       (do
+         (system-msg state side (str "event type: " (:event handler)))
+         (system-msg state side (str (gather-events state side (:event handler) targets)))
+         ))
+     (when-not matching-events
+       (do (when debug (system-msg state side (str "registered " (:ability-name handler))))
+           (register-events state side card [handler]))))))
+
+(defn- register-effect-once [state side card effect]
+  (let [em (gather-effects state side (:type effect))
+        matches (filter #(= (:ability-name %) (:ability-name effect)) em)]
+    (when (empty? matches)
+      (register-lingering-effect
+        state side card
+        effect))))
+
+;; card implementations
 
 (defcard "ONR Accounts Receivable"
   {:on-play
@@ -147,6 +173,49 @@
                                             card nil))})
                              card nil)))}}))
 
+(defcard "ONR Emergency Rig"
+  (letfn [(kludge-event []
+            {:event :corp-turn-begins
+             :unregister-once-resolved true
+             :ability-name "Kludge Counters"
+             :async true
+             :effect (req (let [cards-with-counters (filter #(pos? (get-counters % :kludge))
+                                                            (all-installed state :corp))]
+                            (when-not (empty? cards-with-counters)
+                              (system-msg state side "removes a Kludge counter from each piece of ice (ONR Emergency Rig)")
+                              (register-events
+                                state side (:identity corp)
+                                [(kludge-event)]))
+                            (doseq [c cards-with-counters]
+                              (let [new-counters (dec (get-counters c :kludge))]
+                                (add-counter state side c :kludge -1)
+                                (when (zero? new-counters)
+                                  (do
+                                    ;;(system-msg state :corp
+                                    ;;            (str "derezzes " (card-str state c) " when removing Kludge counters"))
+                                    (derez state :corp (get-card state c))))))
+                            (effect-completed state side eid)))})]
+    {:on-play
+     {:choices :credit
+      :prompt "Pay how much?"
+      :async true
+      :effect (req
+                (let [ccost target]
+                  (if (zero? ccost)
+                    (effect-completed state side eid)
+                    (continue-ability
+                      state side
+                      {:prompt "choose an ice to rez"
+                       :choices {:card #(and (not (rezzed? %))
+                                             (ice? %))}
+                       :async true
+                       :msg (msg "rez " (card-str state target) " at no cost and place " ccost " Kludge counters on it")
+                       :effect (req (wait-for (rez state side target {:ignore-cost :all-costs})
+                                              (handle-if-unique state side (:identity corp) (kludge-event))
+                                              (add-counter state side (get-card state target) :kludge ccost)
+                                              (effect-completed state side eid)))}
+                      card nil))))}}))
+
 ;; this is a nearprint of midseasons - a good test for the trace system
 (defcard "ONR Manhunt"
   {:on-play
@@ -160,3 +229,10 @@
                   :effect (effect (system-msg
                                     (str "gives the Runner " (quantify (- target (second targets)) "tag")))
                                   (gain-tags eid (- target (second targets))))}}}})
+
+(defcard "ONR Scorched Earth"
+  {:on-play
+   {:req (req tagged)
+    :msg "do 4 meat damage"
+    :async true
+    :effect (effect (damage eid :meat 4 {:card card}))}})

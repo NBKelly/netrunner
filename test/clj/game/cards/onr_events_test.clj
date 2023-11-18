@@ -84,6 +84,17 @@
       (is (= 4 (:credit (get-runner))) "Runner did not gain any credits")
       (is (= 0 (:credit (get-corp))) "Corp did not lose any credits")))
 
+(deftest onr-gideons-pawnshop
+  ;; Archived Memories
+  (do-game
+    (new-game {:runner {:deck [(qty "Sure Gamble" 5)]
+                        :hand ["ONR Gideon's Pawnshop"]
+                        :discard ["ONR Networking"]}})
+    (take-credits state :runner)
+    (play-from-hand state :runner "ONR Gideon's Pawnshop")
+    (click-card state :runner "ONR Networking")
+    (is (= ["ONR Networking"] (->> (get-runner) :hand (map :title))) "ONR Networking should be in HQ")))
+
 (deftest onr-inside-job
   ;; Inside Job
   (do-game

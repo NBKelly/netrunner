@@ -2,7 +2,7 @@
   (:require
     [clojure.string :as str]
     [game.core.access :refer [access-bonus]]
-    [game.core.card :refer [active? corp? faceup? get-card get-counters has-subtype? in-discard?]]
+    [game.core.card :refer [active? corp? runner? faceup? get-card get-counters has-subtype? in-discard?]]
     [game.core.card-defs :as card-defs]
     [game.core.damage :refer [damage]]
     [game.core.eid :refer [effect-completed]]
@@ -236,6 +236,19 @@
                        (pred %))}
     :msg (msg "add " (card-str state target {:visible (faceup? target)}) " to HQ")
     :effect (effect (move :corp target :hand))}))
+
+(defn runner-recur
+  ([] (runner-recur (constantly true)))
+  ([pred]
+   {:label "add card from the Heap to the Grip"
+    :prompt "Choose a card to add to the Grip"
+    :waiting-prompt true
+    :show-discard true
+    :choices {:card #(and (runner? %)
+                       (in-discard? %)
+                       (pred %))}
+    :msg (msg "add " (card-str state target) " to the Grip")
+    :effect (effect (move :runner target :hand))}))
 
 (def card-defs-cache (atom {}))
 

@@ -32,9 +32,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   203 / 584
-TESTS:   119 / 203
-NO TEST: 83
+TOTAL:   210 / 584
+TESTS:   122 / 210
+NO TEST: 87
 NO IMP:  1
 --------------------------
 002 + Access through Alpha
@@ -126,10 +126,12 @@ NO IMP:  1
 137 + Data Wall
 
 139 + Deadeye
+140 + Deal with Militech
 
 142 + Death Yo-Yo
 
 145 ^ Deep Thought
+146 ^ Demolition Run
 
 148 + Department of Truth Enhancement
 
@@ -142,6 +144,8 @@ NO IMP:  1
 168 ^ Dwarf
 
 171 + Edited Shipping Manifests
+
+174 ^ Emergency Rig
 
 179 + Endless Corridor
 180 + ONR Enterprise, Inc., Shields
@@ -164,6 +168,8 @@ NO IMP:  1
 221 + Galatea
 222 ^ Garbage In
 
+226 + Gideon's Pawnshop
+
 230 ^ Gremlins
 231 ^ Grubb
 
@@ -185,6 +191,8 @@ NO IMP:  1
 
 265 + Invisibility
 
+267 + Jack Attack
+
 259 + Imperial Guard
 
 268 ^ Jackhammer
@@ -200,6 +208,8 @@ NO IMP:  1
 284 + Lesser Arcana
 
 287 + Liche
+
+289 ^ Lisa Blight
 
 292 + Livewire's Contacts
 
@@ -284,6 +294,8 @@ NO IMP:  1
 
 443 + Scatter Shot
 444 ^ Schematics Search Engine
+
+447 ^ Scorched Earth
 
 449 + Scramble
 
@@ -383,11 +395,13 @@ The following (marked) cards have no tests or implementations:
   117 ^ Crumble (requires braniac id)
   123 ^ Cyfermaster (trivial icebreaker - no test)
   145 ^ Deep Thought
+  146 ^ Demolition Run
   157 ^ Disintegrator
   158 ^ Dogcatcher
   165 ^ Dropp
   167 ^ Dupree
   168 ^ Dwarf
+  174 ^ Emergency Rig
   185 ^ Evil Twin
   210 ^ Force Shield
   215 ^ Forward's Legacy
@@ -403,6 +417,7 @@ The following (marked) cards have no tests or implementations:
   268 ^ Jackhammer
   273 ^ Joan of Arc
   278 ^ Krash
+  289 ^ Lisa Blight
   294 ^ Lockjaw
   296 ^ Loony Goon
   309 ^ Matador
@@ -425,6 +440,7 @@ The following (marked) cards have no tests or implementations:
   414 ^ Reflector
   420 ^ Replicator
   444 ^ Schematics Search Engine
+  447 ^ Scorched Earth
   453 ^ SeeYa
   459 ^ Shaka
   460 ^ Shield
@@ -448,4 +464,4 @@ The following (marked) cards have no tests or implementations:
   575 ^ Worm
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 174
+Random card to implement: 552

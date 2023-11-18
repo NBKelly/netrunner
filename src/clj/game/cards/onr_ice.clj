@@ -194,6 +194,12 @@
                                                 card nil))}}})]
       (merge cdef {:on-rez (purchase-sub-abi 0)}))))
 
+(defn- cannot-jack-out
+  []
+  {:subroutines [{:label "The Runner cannot jack out for the remainder of this run"
+                  :msg "prevent the Runner from jacking out"
+                  :effect (req (prevent-jack-out state side))}]})
+
 ;; card implementations
 
 (defcard "ONR Banpei"
@@ -339,6 +345,10 @@
   {:rez-cost-bonus (req (used-noisy-discount state 5))
    :subroutines [trash-program-sub
                  end-the-run]})
+
+(defcard "ONR Jack Attack"
+  {:subroutines [(cannot-jack-out)
+                 (trace-tag 5)]})
 
 (defcard "ONR Keeper"
   {:subroutines [end-the-run]})

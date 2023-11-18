@@ -591,10 +591,9 @@
   (trivial-trash-program "ONR Imperial Guard" 0)
   (trivial-etr "ONR Imperial Guard" 1))
 
-(deftest ^:kaocha/pending onr-jack-attack
-  ;; cannot jack out
-  (trace-tag 1 "ONR Jack Attack")
-  )
+(deftest onr-jack-attack
+  ;; TODO - write test for 'can't jack out'
+  (trace-tag 1 "ONR Jack Attack" 1))
 
 (deftest onr-keeper
   (trivial-etr "ONR Keeper"))

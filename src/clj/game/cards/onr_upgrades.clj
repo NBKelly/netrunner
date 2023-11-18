@@ -59,6 +59,50 @@
    [game.utils :refer :all]
    [jinteki.utils :refer :all]))
 
+(defcard "ONR Lisa Blight"
+  {:abilities [{:async true
+                :label "duplicate a subroutine"
+                :req (req
+                       (and
+                         this-server run
+                         (can-pay? state :corp (assoc eid :source card :source-type :ability)
+                                   [:credit 1 :randomly-trash-from-hand 1] nil)
+                         (some #(and (ice? %)
+                                        (rezzed? %)
+                                        (pos? (count (:subroutines %)))
+                                        (same-server? % card))
+                                  (all-installed state :corp))))
+                :effect (req (continue-ability
+                               state side
+                               {:prompt "Choose an ice protecting this server"
+                                :async true
+                                :choices {:card #(and (ice? %)
+                                                      (rezzed? %)
+                                                      (pos? (count (:subroutines %)))
+                                                      (same-server? % card))}
+                                :effect (req
+                                          (let [target-ice target
+                                                from-cid (:cid card)]
+                                            (continue-ability
+                                              state side
+                                              {:cost [:credit 1 :randomly-trash-from-hand 1]
+                                               :prompt "Duplicate a subroutine"
+                                               :choices (req (concat (map #(make-label (:sub-effect %)) (:subroutines target-ice)) ["Cancel"]))
+                                               :msg (msg "repeat '" target "' subroutine on " (card-str state target-ice) " until the end of the run")
+                                               :effect (req
+                                                         (let [sub (nth (:subroutines target-ice) (:idx (first targets)))]
+                                                           (insert-extra-sub! state side target-ice sub from-cid (:index sub) {:printed false :variable true})
+                                                           (register-events
+                                                             state side card
+                                                             [{:event :run-ends
+                                                               :unregister-once-resolved true
+                                                               :req (req true)
+                                                               :duration :end-of-run
+                                                               :effect (req
+                                                                         (remove-sub! state side target-ice #(= from-cid (:from-cid %))))}])))}
+                                              card nil)))}
+                               card nil))}]})
+
 (defcard "ONR Marcel DeSoleil"
   {:abilities [{:async true
                 :label "duplicate a subroutine"

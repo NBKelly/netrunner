@@ -66,3 +66,21 @@
     (play-from-hand state :corp "ONR Manhunt")
     (click-prompt state :corp "3")
     (is (= 3 (count-tags state)) "Runner should have 3 tags")))
+
+(deftest onr-scorched-earth
+  ;; Scorched Earth
+  (do-game
+      (new-game {:corp {:deck ["ONR Scorched Earth"]}
+                 :runner {:deck [(qty "Sure Gamble" 3) (qty "Lucky Find" 3)]}})
+      (gain-tags state :runner 1)
+      (play-from-hand state :corp "ONR Scorched Earth")
+      (is (= 1 (count (:hand (get-runner)))) "Runner has 1 card in hand")))
+
+(deftest onr-scorched-earth-not-tagged
+    ;; not tagged
+    (do-game
+      (new-game {:corp {:deck ["ONR Scorched Earth"]}
+                 :runner {:deck [(qty "Sure Gamble" 3) (qty "Lucky Find" 3)]}})
+      (play-from-hand state :corp "ONR Scorched Earth")
+      (is (= 3 (:click (get-corp))) "Corp not charged a click")
+      (is (= 5 (count (:hand (get-runner)))) "Runner did not take damage")))
