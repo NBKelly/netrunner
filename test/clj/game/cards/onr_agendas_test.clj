@@ -7,6 +7,19 @@
             [game.macros-test :refer :all]
             [clojure.test :refer :all]))
 
+(deftest onr-corporate-retreat
+  ;; Government Takeover
+  (do-game
+    (new-game {:corp {:deck ["ONR Corporate Retreat" "Ice Wall"]}})
+    (play-and-score state "ONR Corporate Retreat")
+    (is (= 5 (:credit (get-corp))) "Should start with 5 credits")
+    (let [gt-scored (get-scored state :corp 0)]
+      (card-ability state :corp gt-scored 0)
+      (is (= 7 (:credit (get-corp))) "Should gain 2 credits from 5 to 7")
+      (play-from-hand state :corp "Ice Wall" "HQ")
+      (card-ability state :corp gt-scored 0)
+      (is (= 7 (:credit (get-corp))) "Should not be able to use the ability!"))))
+
 (deftest onr-ice-transmutation
   (do-game
     (new-game {:corp {:hand ["Hydra" "ONR Ice Transmutation"]

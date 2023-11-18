@@ -32,8 +32,8 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   199 / 584
-TESTS:   116 / 199
+TOTAL:   200 / 584
+TESTS:   117 / 200
 NO TEST: 82
 NO IMP:  1
 --------------------------
@@ -99,6 +99,8 @@ NO IMP:  1
 088 + Colonel Failure
 
 096 + Corporate Guard(R) Temps
+
+099 + Corporate Retreat
 
 103 ^ Corrosion
 
@@ -440,4 +442,4 @@ The following (marked) cards have no tests or implementations:
   575 ^ Worm
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 99
+Random card to implement: 171

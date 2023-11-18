@@ -60,6 +60,19 @@
    [game.utils :refer :all]
    [jinteki.utils :refer :all]))
 
+(defcard "ONR Corporate Retreat"
+  (let [ev {:silent (req true)
+           :effect (effect (update! (assoc-in card [:special :corporate-retreat-disabled] true)))}]
+    {:events [(assoc ev :event :rez)
+              (assoc ev :event :corp-install)]
+     :abilities [{:cost [:click 1]
+                  :req (req (not (get-in card [:special :corporate-retreat-disabled])))
+                  :async true
+                  :keep-menu-open :while-clicks-left
+                  :effect (effect (gain-credits eid 2))
+                  :msg "gain 2 [Credits]"}]}))
+
+
 (defcard "ONR Ice Transmutation"
   {:implementation "Only doubles subroutines natural to the card (even if non-printed). I've chosen to apply this on encounter."
    :on-score {:req (req (some #(and (ice? %) (rezzed? %)) (all-installed-corp state)))
