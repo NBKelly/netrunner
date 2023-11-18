@@ -327,6 +327,21 @@
        (run-continue state :encounter-ice)
        (is (= x (core/get-strength (refresh vanil))))))))
 
+(defn- purchase-subroutine-on-rez
+  [name sub cost]
+  (do-game
+    (new-game {:corp {:credits 50
+                      :hand [name]}})
+    (play-from-hand state :corp name "HQ")
+    (let [ice (get-ice state :hq 0)]
+      (rez state :corp ice)
+      (dotimes [n (inc (rand-int 5))]
+        (changes-val-macro
+          (- cost) (:credit (get-corp))
+          (str "spent " cost " to buy a '" sub "' subroutine")
+          (click-prompt state :corp "Yes")
+          (is (= sub (:label (last (:subroutines (refresh ice))))) "Sub correct")
+          (is (= (inc n) (count (:subroutines (refresh ice)))) "right number of subs"))))))
 
 
 ;; trivial-etr
@@ -518,9 +533,9 @@
 (deftest onr-fire-wall
   (trivial-etr "ONR Fire Wall"))
 
-(deftest ^:kaocha/pending onr-food-fight
+(deftest onr-food-fight
   ;; spend 2x credits, gain x etr subs (pay on rez)
-  )
+  (purchase-subroutine-on-rez "ONR Food Fight" "End the run" 2))
 
 (deftest ^:kaocha/pending onr-fragmentation-storm
   ;; trace: trash program, etr, cannot run unless pay
@@ -567,7 +582,7 @@
   (trivial-etr "ONR Ice Pick Willie" 1))
 
 (deftest ^:kaocha/pending onr-iceberg
-  (trivial-etr "ONR Iceberg")
+  (trivial-damage 1 "ONR Iceberg")
   ;; 2c each: purchase etr subs on encounter
   )
 
@@ -672,6 +687,7 @@
   )
 
 (deftest ^:kaocha/pending onr-riddler
+
   ;; purchase subroutines on encounter (etr) for 2 each
   )
 
@@ -683,9 +699,8 @@
 (deftest onr-rock-is-strong
   (trivial-etr "ONR Rock is Strong"))
 
-(deftest ^:kaocha/pending onr-sandstorm
-  ;; buy etr subs for 2 each when rezzed
-  )
+(deftest onr-sandstorm
+  (purchase-subroutine-on-rez "ONR Sandstorm" "End the run" 2))
 
 (deftest onr-scaffolding
   (gain-x-and-bounce-on-pass 1 "ONR Scaffolding")

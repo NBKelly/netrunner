@@ -66,7 +66,7 @@
    [game.utils :refer :all]
    [jinteki.utils :refer :all]
    ;; imported from ice
-   [game.cards.ice :refer [end-the-run end-the-run-unless-runner-pays gain-credits-sub give-tags trash-program-sub do-psi]]
+   [game.cards.ice :refer [end-the-run end-the-run-unless-runner-pays gain-credits-sub give-tags trash-program-sub do-psi reset-variable-subs]]
    ))
 
 (defn onr-trace-ability
@@ -173,6 +173,26 @@
                                    :req (req (and (same-card? card target)
                                                   (get-in card [:special :change-subtype :from])))
                                    :value (req (get-in card [:special :change-subtype :from]))}]}))
+
+(defn- purchase-subroutines-on-rez
+  [sub cost cdef]
+  (let [subcost (if (int? cost) [:credit cost] cost)]
+    (letfn [(purchase-sub-abi [qty]
+              {:optional
+               {:req (req (can-pay? state side
+                                    (assoc eid :source card :source-type :ability)
+                                    card nil subcost))
+                :prompt (msg "Purchase a" (when-not (zero? qty) "nother")
+                             " '" (:label sub) "' subroutine?")
+                :yes-ability {:cost subcost
+                              :async true
+                              :msg (msg "purchase a" (when-not (zero? qty) "nother")
+                                        " '" (:label sub) "' subroutine")
+                              :effect (effect (reset-variable-subs card (inc qty) sub)
+                                              (continue-ability
+                                                (purchase-sub-abi (inc qty))
+                                                card nil))}}})]
+      (merge cdef {:on-rez (purchase-sub-abi 0)}))))
 
 ;; card implementations
 
@@ -302,6 +322,9 @@
 (defcard "ONR Fire Wall"
   {:subroutines [end-the-run]})
 
+(defcard "ONR Food Fight"
+  (purchase-subroutines-on-rez end-the-run 2 {}))
+
 (defcard "ONR Galatea"
   (change-subtype-on-rez "Wall" "Code Gate" 1 {:subroutines [end-the-run]}))
 
@@ -379,6 +402,9 @@
 
 (defcard "ONR Rock is Strong"
   {:subroutines [end-the-run]})
+
+(defcard "ONR Sandstorm"
+  (purchase-subroutines-on-rez end-the-run 2 {}))
 
 (defcard "ONR Scaffolding"
   {:events [(bounce-and-corp-gains 1)]
