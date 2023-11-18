@@ -12,6 +12,9 @@ This is a fork of the netrunner client used for jinteki.net, with the goal of po
 * Make an ONR legal format
 * card art for the special id's (even if it's bad)
 * draft/sealed generator to allow for a sealed format
+* describe-counters command that lets you see the types and quantities of counters on a card (there are lots of them...)
+* explain-counter command that explains what a counter does (what does a militech counter do? what about an I-Spy counter?)
+* Ephemeral counters that live in servers
 
 # Netrunner in the browser
 
