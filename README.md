@@ -8,7 +8,7 @@ This is a fork of the netrunner client used for jinteki.net, with the goal of po
 * Two special ID's have been created, which some mechanics rely on (a small handful of the viruses, ONR style purging)
 * ONR cards that refer to trace do not interact with ANR cards that refer to trace. Other than that, almost all
 
-![1996 Implementation Graph](graph_implementation.jpg?raw=true)
+![1996 Implementation Graph](graph-implementation.jpg)
 
 ## TODO
 * Make an ONR legal format
