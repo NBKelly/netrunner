@@ -1060,7 +1060,7 @@
   (quantify (value cost) "agenda point"))
 (defmethod payable? :agenda-point
   [cost state side eid card]
-  (<= (get-in @state [side :agenda-point]) (value cost)))
+  (<= (value cost) (get-in @state [side :agenda-point])))
 (defmethod handler :agenda-point
   [cost state side eid card actions]
   (do (register-lingering-effect

@@ -50,17 +50,21 @@
 (deftest onr-i-got-a-rock
   (do-game
     (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
-                      :hand ["ONR I Got a Rock"]}
+                      :hand ["ONR I Got a Rock" "City Works Project"]}
                :runner {:hand [(qty "Sure Gamble" 16)]}})
     (play-from-hand state :corp "ONR I Got a Rock" "New remote")
     (let [rock (get-content state :remote1 0)]
       (rez state :corp rock)
       (card-ability state :corp (refresh rock) 0)
-      (is (= 16 (count (:hand (get-runner)))) "BOOM! should not be played as runner has no tags")
+      (is (= 16 (count (:hand (get-runner)))) "IGAR should not be played as runner has no tags")
       (gain-tags state :runner 2)
+      (card-ability state :corp (refresh rock) 0)
+      (is (= 16 (count (:hand (get-runner))))
+          "IGAR should not be played as the corp can't pay 3 agenda points")
+      (play-and-score state "City Works Project")
       (is (zero? (count (:discard (get-runner)))) "Runner should have 0 cards in discard")
       (card-ability state :corp (refresh rock) 0)
-      (is (= 15 (count (:discard (get-runner)))) "Runner should take 7 damage"))))
+      (is (= 15 (count (:discard (get-runner)))) "Runner should take 15 damage"))))
 
 (deftest onr-krumz-test
   (do-game

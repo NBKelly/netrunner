@@ -90,7 +90,7 @@
                 :msg "do 15 meat damage"
                 :req (req (<= 2 (count-tags state)))
                 :async true
-                :effect (effect (damage eid :meat 7 {:card card}))}]})
+                :effect (effect (damage eid :meat 15 {:card card}))}]})
 
 (defcard "ONR Krumz"
   {:recurring 1

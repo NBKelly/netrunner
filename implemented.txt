@@ -467,4 +467,4 @@ The following (marked) cards have no tests or implementations:
   575 ^ Worm
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 357
+Random card to implement: 44
