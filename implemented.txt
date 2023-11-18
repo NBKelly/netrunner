@@ -33,9 +33,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   232 / 584
-TESTS:   133 / 232
-NO TEST: 98
+TOTAL:   234 / 584
+TESTS:   134 / 234
+NO TEST: 99
 NO IMP:  1
 --------------------------
 002 + Access through Alpha
@@ -306,6 +306,8 @@ NO IMP:  1
 420 ^ Replicator
 421 + Rescheduler
 
+427 ^ Rio de Janeiro City Grid (random, hard to test)
+
 429 + Rockerboy Promotion
 430 + Rock is Strong
 
@@ -479,6 +481,7 @@ The following (marked) cards have no tests or implementations:
   412 ^ Redecorator
   414 ^ Reflector
   420 ^ Replicator
+  427 ^ Rio de Janeiro City Grid (random, hard to test)
   444 ^ Schematics Search Engine
   447 ^ Scorched Earth
   453 ^ SeeYa
@@ -505,4 +508,4 @@ The following (marked) cards have no tests or implementations:
   575 ^ Worm
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 135
+Random card to implement: 362

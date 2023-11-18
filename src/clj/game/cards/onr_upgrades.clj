@@ -59,6 +59,10 @@
    [game.utils :refer :all]
    [jinteki.utils :refer :all]))
 
+(defn- dice-roll [] (inc (rand-int 6)))
+
+;; card implementations
+
 (defcard "ONR Lisa Blight"
   {:abilities [{:async true
                 :label "duplicate a subroutine"
@@ -180,6 +184,21 @@
                                                               :effect (effect (derez c))}])
                                                           (effect-completed state side eid)))))}
                       card nil))}]}))
+
+(defcard "ONR Rio de Janeiro City Grid"
+  {:events [{:event :pass-ice
+             :req (req (and (rezzed? (:ice context))
+                            (same-server? (:ice context) card)))
+             :async true
+             :effect (req (let [di (dice-roll)]
+                            (continue-ability
+                              state side
+                              {:msg (msg "roll a " di "(1d6)" (when (= 1 di) " - and ends the run!"))
+                               :effect (req (if (= 1 di)
+                                              (end-run state :corp eid card)
+                                              (effect-completed state side eid)))
+                               :async true}
+                              card nil)))}]})
 
 (defcard "ONR Tokyo-Chiba Infighting"
   {:events [{:event :run-ends
