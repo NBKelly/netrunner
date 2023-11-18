@@ -2,11 +2,14 @@
 This is a fork of the netrunner client used for jinteki.net, with the goal of porting over all the features, functionality, and cards of 1996 netrunner.
 
 ## Implementation status:
-* 200 / 584 cards implemented so far
-* 117 of those with unit tests
+* 232 / 584 cards implemented so far
+* 133 of those with unit tests
 * The ONR trace mechanic has been implemented
+* Systems developed to allow for the unique virus mechanics (counter have effects outside of their programs)
 * Two special ID's have been created, which some mechanics rely on (a small handful of the viruses, ONR style purging)
 * ONR cards that refer to trace do not interact with ANR cards that refer to trace. Other than that, almost all
+
+This little graph is a visual representation of the implementation status so far. Green for tests, orange for no tests, and red for "I'm not implementing that (only 1 hit so far)"
 
 ![1996 Implementation Graph](graph-implementation.jpg)
 
