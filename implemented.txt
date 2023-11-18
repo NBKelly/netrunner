@@ -32,8 +32,8 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   200 / 584
-TESTS:   117 / 200
+TOTAL:   201 / 584
+TESTS:   118 / 201
 NO TEST: 82
 NO IMP:  1
 --------------------------
@@ -140,6 +140,8 @@ NO IMP:  1
 
 167 ^ Dupree
 168 ^ Dwarf
+
+171 + Edited Shipping Manifests
 
 179 + Endless Corridor
 180 + ONR Enterprise, Inc., Shields
@@ -273,6 +275,8 @@ NO IMP:  1
 430 + Rock is Strong
 
 434 + Runner Sensei
+
+437 + Rustbelt HQ Branch
 
 439 + Sandstorm
 
@@ -442,4 +446,4 @@ The following (marked) cards have no tests or implementations:
   575 ^ Worm
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 171
+Random card to implement: 437

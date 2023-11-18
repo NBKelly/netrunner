@@ -114,6 +114,24 @@
     :async true
     :effect (effect (draw eid 5))}})
 
+(defcard "ONR Edited Shipping Manifests"
+  {:makes-run true
+   :on-play {:req (req hq-runnable)
+             :async true
+             :effect (effect (make-run eid :hq card))}
+   :events [(successful-run-replace-breach
+              {:target-server :hq
+               :this-card-run true
+               :mandatory (req (pos? (:credit corp)))
+               :ability
+               {:async true
+                :req (req (pos? (:credit corp)))
+                :msg (msg "force the Corp to lose 1[Credits], gain 10[Credits] and a tag")
+                :effect (req (let [creds-lost (min 1 (:credit corp))]
+                               (wait-for
+                                (lose-credits state :corp creds-lost)
+                                (wait-for (gain-tags state :runner 1)
+                                          (gain-credits state :runner eid 10)))))}})]})
 
 (defcard "ONR Ice and Data's Guide to the Net"
   (letfn [(outermost-ice [state server]

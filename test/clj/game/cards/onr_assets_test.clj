@@ -83,3 +83,11 @@
       3 (:credit (get-corp))
       "Corp gains 3 credits"
       (card-ability state :corp rml 0)))))
+
+(deftest onr-rustbelt-hq-branch
+  ;; Cybernetics Court
+  (do-game
+    (new-game {:corp {:deck ["ONR Rustbelt HQ Branch"]}})
+    (play-from-hand state :corp "ONR Rustbelt HQ Branch" "New remote")
+    (rez state :corp (get-content state :remote1 0))
+    (is (= 7 (hand-size :corp)) "Corp should have hand size of 7")))

@@ -57,6 +57,33 @@
     (play-from-hand state :runner "ONR Bodyweight [TM] Synthetic Blood")
     (is (= 5 (count (:hand (get-runner)))) "Runner should draw 5 cards")))
 
+(deftest onr-edited-shipping-manifests-steal
+    ;; Use ability
+    (do-game
+      (new-game {:runner {:deck [(qty "ONR Edited Shipping Manifests" 3)]}})
+      (take-credits state :corp)
+      (is (= 8 (:credit (get-corp))) "Corp has 8 credits")
+      ;; play Account Siphon, use ability
+      (play-run-event state "ONR Edited Shipping Manifests" :hq)
+      ;;(click-prompt state :runner "Account Siphon")
+      (is (= 1 (count-tags state)) "Runner took 1 tags")
+      (is (= 14 (:credit (get-runner))) "Runner gained 10 credits")
+      (is (= 7 (:credit (get-corp))) "Corp lost 1 credits")))
+
+(deftest onr-edited-shipping-manifests-access
+    ;; Access
+    (do-game
+      (new-game {:runner {:deck [(qty "ONR Edited Shipping Manifests" 3)]}})
+      (take-credits state :corp) ; pass to runner's turn by taking credits
+      (core/lose state :corp :credit 8)
+      (is (= 0 (:credit (get-corp))) "Corp has 0 credits")
+      ;; play another Siphon, do not use ability
+      (play-run-event state "ONR Edited Shipping Manifests" :hq)
+      ;;(click-prompt state :runner "Breach HQ")
+      ;;(is (zero? (count-tags state)) "Runner did not take any tags")
+      (is (= 4 (:credit (get-runner))) "Runner did not gain any credits")
+      (is (= 0 (:credit (get-corp))) "Corp did not lose any credits")))
+
 (deftest onr-inside-job
   ;; Inside Job
   (do-game

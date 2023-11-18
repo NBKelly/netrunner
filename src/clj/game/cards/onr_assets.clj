@@ -109,6 +109,9 @@
                                          (add-counter state side card :credit (- credits) {:placed true})
                                          (effect-completed state side eid))))}]})
 
+(defcard "ONR Rustbelt HQ Branch"
+  {:static-abilities [(corp-hand-size+ 2)]})
+
 (defcard "ONR Stereogram Antibody"
   {:on-access {:req (req (in-discard? card))
                :msg "do 1 net damage and shuffle itself into R&D"
