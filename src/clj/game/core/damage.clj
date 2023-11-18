@@ -2,7 +2,7 @@
   (:require
     [game.core.card :refer [get-title]]
     [game.core.eid :refer [complete-with-result effect-completed make-eid]]
-    [game.core.engine :refer [checkpoint queue-event trigger-event trigger-event-simult]]
+    [game.core.engine :refer [checkpoint queue-event trigger-event trigger-event-sync trigger-event-simult]]
     [game.core.flags :refer [cards-can-prevent? get-prevent-list]]
     [game.core.moving :refer [trash-cards get-trash-event]]
     [game.core.prompt-state :refer [add-to-prompt-queue remove-from-prompt-queue]]
@@ -185,10 +185,10 @@
    (swap! state update-in [:damage :damage-bonus] dissoc type)
    (swap! state update-in [:damage :damage-prevent] dissoc type)
    ;; alert listeners that damage is about to be calculated.
-   (trigger-event state side :pre-damage type card n)
-   (let [active-player (get-in @state [:active-player])]
-     (if unpreventable
-       (resolve-damage state side eid type (damage-count state side type n args) args)
-       (wait-for (check-damage-prevention state side type n active-player)
-                 (wait-for (check-damage-prevention state side type n (if (= active-player :corp) :runner :corp))
-                           (resolve-damage state side eid type (damage-count state side type n args) args)))))))
+   (wait-for (trigger-event-sync state side (make-eid state eid) :pre-damage type card n)
+             (let [active-player (get-in @state [:active-player])]
+               (if unpreventable
+                 (resolve-damage state side eid type (damage-count state side type n args) args)
+                 (wait-for (check-damage-prevention state side type n active-player)
+                           (wait-for (check-damage-prevention state side type n (if (= active-player :corp) :runner :corp))
+                                     (resolve-damage state side eid type (damage-count state side type n args) args))))))))

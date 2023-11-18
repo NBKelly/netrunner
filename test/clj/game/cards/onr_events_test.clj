@@ -90,10 +90,27 @@
     (new-game {:runner {:deck [(qty "Sure Gamble" 5)]
                         :hand ["ONR Gideon's Pawnshop"]
                         :discard ["ONR Networking"]}})
-    (take-credits state :runner)
+    (take-credits state :corp)
     (play-from-hand state :runner "ONR Gideon's Pawnshop")
     (click-card state :runner "ONR Networking")
     (is (= ["ONR Networking"] (->> (get-runner) :hand (map :title))) "ONR Networking should be in HQ")))
+
+(deftest onr-hot-tip-for-wns
+  (do-game
+    (new-game {:corp {:hand ["ONR Black Ice Quality Assurance"]}
+               :runner {:hand ["ONR Hot Tip for WNS"]}})
+    (take-credits state :corp)
+    (changes-val-macro
+      0 (:agenda-point (get-runner))
+      "can't play yet"
+      (play-from-hand state :runner "ONR Hot Tip for WNS"))
+    (run-empty-server state :hq)
+    (click-prompt state :runner "Steal")
+    (changes-val-macro
+      1 (:agenda-point (get-runner))
+      "+1 AP"
+      (play-from-hand state :runner "ONR Hot Tip for WNS"))))
+
 
 (deftest onr-inside-job
   ;; Inside Job

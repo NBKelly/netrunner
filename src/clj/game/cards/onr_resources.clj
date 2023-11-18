@@ -179,6 +179,14 @@
                                 card nil)
                               (effect-completed state side eid))))}]})
 
+(defcard "ONR Junkyard BBS"
+  {:abilities [{:cost [:credit 1 :click 1]
+                :req (req (not (empty? (:discard runner))))
+                :label "add the top card of your discard to your hand"
+                :msg (msg "move " (:title (last (:discard runner))) " to their hand")
+                :effect (effect (move :runner (last (:discard runner)) :hand)
+                                (trigger-event :searched-stack nil))}]})
+
 (defcard "ONR Submarine Uplink"
   ;; this forces you to jackout after the current encounter
   {:abilities [{:onr-base-link true

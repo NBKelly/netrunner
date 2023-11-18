@@ -110,3 +110,21 @@
     (play-from-hand state :corp "ONR Rustbelt HQ Branch" "New remote")
     (rez state :corp (get-content state :remote1 0))
     (is (= 7 (hand-size :corp)) "Corp should have hand size of 7")))
+
+(deftest onr-solo-squad
+  ;; Private Security Force
+  (do-game
+    (new-game {:corp {:deck [(qty "ONR Solo Squad" 10)]}})
+    (gain-tags state :runner 1)
+    (play-from-hand state :corp "ONR Solo Squad" "New remote")
+    (let [psf-scored (get-content state :remote1 0)]
+      (rez state :corp psf-scored)
+      (card-ability state :corp (refresh psf-scored) 0)
+      (is (= 1 (count (:discard (get-runner)))))
+      (take-credits state :corp)
+      (take-credits state :runner)
+      (dotimes [_ 3]
+        (card-ability state :corp (refresh psf-scored) 0))
+      (is (= 3 (count (:discard (get-runner)))))
+      (is (= :corp (:winner @state)) "Corp wins")
+      (is (= "Flatline" (:reason @state)) "Win condition reports flatline"))))

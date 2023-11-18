@@ -89,6 +89,15 @@
 
 ;; Card definitions
 
+(defcard "ONR Arasaka Portable Prototype"
+  {:recurring 3
+   :additional-cost [:agenda-point 1]
+   :static-abilities [(mu+ 3)]
+   :interactions {:pay-credits {:req (req (and run
+                                               (= :ability (:source-type eid))
+                                               (has-subtype? target "Icebreaker")))
+                                :type :recurring}}})
+
 (defcard "ONR Bodyweight [TM] Data Crèche"
   {:implementation "Occurs after the run ends"
    :static-abilities [(mu+ 1)]

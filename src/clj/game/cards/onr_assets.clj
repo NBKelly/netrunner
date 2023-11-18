@@ -122,6 +122,13 @@
 (defcard "ONR Rustbelt HQ Branch"
   {:static-abilities [(corp-hand-size+ 2)]})
 
+(defcard "ONR Solo Squad"
+  {:abilities [{:req (req tagged)
+                :cost [:click 1]
+                :keep-menu-open :while-clicks-left
+                :effect (effect (damage eid :meat 1 {:card card}))
+                :msg "do 1 meat damage"}]})
+
 (defcard "ONR Stereogram Antibody"
   {:on-access {:req (req (in-discard? card))
                :msg "do 1 net damage and shuffle itself into R&D"

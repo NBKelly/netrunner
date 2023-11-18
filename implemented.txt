@@ -32,9 +32,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   217 / 584
-TESTS:   128 / 217
-NO TEST: 88
+TOTAL:   221 / 584
+TESTS:   129 / 221
+NO TEST: 91
 NO IMP:  1
 --------------------------
 002 + Access through Alpha
@@ -48,6 +48,8 @@ NO IMP:  1
 012 + All-Hands
 
 015 + Anonymous Tip
+
+018 ^ Arasaka Portable Prototype
 
 020 ^ Armageddon
 
@@ -180,6 +182,8 @@ NO IMP:  1
 
 238 ^ Highlighter
 
+244 + Hot Tip for WNS
+
 248 + Hunter
 
 250 ^ Ice and Data's Guide to the Net (update the req for this one!)
@@ -187,6 +191,7 @@ NO IMP:  1
 
 253 + Ice Pick Willie
 254 + Ice Transmutation
+255 ^ Identity Donor (janky impl)
 
 257 + I Got a Rock
 258 ^ Imp
@@ -202,6 +207,7 @@ NO IMP:  1
 268 ^ Jackhammer
 
 273 ^ Joan of Arc
+274 ^ Junkyard BBS
 
 276 + Keeper
 277 + Kilroy Was Here
@@ -327,6 +333,8 @@ NO IMP:  1
 481 ^ Snowball
 482 + Snowbank
 
+484 + Solo Squad
+
 486 ^ Speed Trap
 487 + Sphinx 2006
 
@@ -387,6 +395,7 @@ NO IMP:  1
 The following (marked) cards have no tests or implementations:
   007 ^ Afreet
   009 ^ AI Boon (rng card)
+  018 ^ Arasaka Portable Prototype
   020 ^ Armageddon
   037 ^ Bartmoss Memorial Icebreaker
   041 ^ Big Frackin' Gun
@@ -423,9 +432,11 @@ The following (marked) cards have no tests or implementations:
   238 ^ Highlighter
   250 ^ Ice and Data's Guide to the Net (update the req for this one!)
   251 ^ Ice and Data Special Report
+  255 ^ Identity Donor (janky impl)
   258 ^ Imp
   268 ^ Jackhammer
   273 ^ Joan of Arc
+  274 ^ Junkyard BBS
   278 ^ Krash
   289 ^ Lisa Blight
   294 ^ Lockjaw
@@ -474,4 +485,4 @@ The following (marked) cards have no tests or implementations:
   575 ^ Worm
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 55
+Random card to implement: 244

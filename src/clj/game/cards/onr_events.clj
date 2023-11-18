@@ -68,6 +68,7 @@
    [game.core.toasts :refer [toast]]
    [game.core.update :refer [update!]]
    [game.core.virus :refer [get-virus-counters]]
+   [game.core.winning :refer [check-win-by-agenda]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [game.utils :refer :all]
    [jinteki.utils :refer :all]
@@ -199,6 +200,20 @@
 (defcard "ONR Gideon's Pawnshop"
   {:on-play (runner-recur)})
 
+(defcard "ONR Hot Tip for WNS"
+  {:on-play
+   {:req (req (some #(has-subtype? (:card (first %)) "Black Ops") (turn-events state side :agenda-stolen)))
+    :msg "gain 1 agenda points";; 👀
+    :effect (req (register-lingering-effect
+                   state side nil
+                   {:type :user-agenda-points
+                    ;; `target` is either `:corp` or `:runner`
+                    :req (req (= :runner target))
+                    :value 1})
+                 (update-all-agenda-points state side)
+                 (check-win-by-agenda state side))}})
+
+
 (defcard "ONR Ice and Data's Guide to the Net"
   (letfn [(outermost-ice [state server]
             (last (:ices (get-in @state (cons :corp (server->zone state server))))))
@@ -247,6 +262,32 @@
                                :effect (req (expose-chain state side eid targets))
                                }
                               card nil)))}}))
+
+(defcard "ONR Identity Donor"
+  {:additional-cost [:agenda-point 50] ;; ghetto way of stopping regular cast
+   ;; todo - would it be possible to hide what card is triggering I wonder? this works for now though
+   :events [{:event :pre-damage
+             :async true
+             :location :hand
+             :optional
+             {:prompt "Play identity donor to prevent damage and give 2 bad publicity?"
+              :waiting-prompt "Runner to resolve pre-damage events"
+              :player :runner
+              :async true
+              :req (req (and (= :meat (first targets))
+                             (can-pay? state side
+                                       (assoc eid :source card :source-type :play)
+                                       card nil [:credit (play-cost state side (assoc card :additional-cost nil))])))
+              :yes-ability {:msg (msg "play itself in response to meat damage")
+                            :async true
+                            :effect (req (play-instant
+                                           state side eid
+                                           ;; {:no-additional-cost true}) - prob no need
+                                           (assoc card :additional-cost nil) nil))}}}]
+   :msg "prevent all meat damage, and give the Corp 2 Bad Publicity points"
+   :async true
+   :effect (req (damage-prevent state :runner :meat Integer/MAX_VALUE)
+                (gain-bad-publicity state :runner eid 2))})
 
 (defcard "ONR Inside Job"
   {:makes-run true
