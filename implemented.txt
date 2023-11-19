@@ -35,10 +35,10 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   250 / 584
-TESTS:   137 / 250
-NO TEST: 112
-NO IMP:  1
+TOTAL:   253 / 584
+TESTS:   137 / 253
+NO TEST: 114
+NO IMP:  2
 --------------------------
 002 + Access through Alpha
 003 + Access to Arasaka
@@ -147,7 +147,7 @@ NO IMP:  1
 
 139 + Deadeye
 140 + Deal with Militech
-
+141 ^ Death from Above
 142 + Death Yo-Yo
 
 144 ^ Dedicated Response Team
@@ -155,6 +155,8 @@ NO IMP:  1
 146 ^ Demolition Run
 
 148 + Department of Truth Enhancement
+
+154 ^ Diplomatic Immunity
 
 157 ^ Disintegrator
 158 ^ Dogcatcher
@@ -167,6 +169,7 @@ NO IMP:  1
 
 171 + Edited Shipping Manifests
 
+173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
 174 ^ Emergency Rig
 
 179 + Endless Corridor
@@ -455,9 +458,11 @@ The following (marked) cards have no tests or implementations:
   123 ^ Cyfermaster (trivial icebreaker - no test)
   124 ^ Danshi's Second ID
   126 ^ Databroker
+  141 ^ Death from Above
   144 ^ Dedicated Response Team
   145 ^ Deep Thought
   146 ^ Demolition Run
+  154 ^ Diplomatic Immunity
   157 ^ Disintegrator
   158 ^ Dogcatcher
   159 ^ Dog Pile
@@ -538,5 +543,6 @@ The following (marked) cards have no tests or implementations:
   573 ^ Wizard's Book
   575 ^ Worm
   576 ^ Wrecking Ball
+  173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 327
+Random card to implement: 543

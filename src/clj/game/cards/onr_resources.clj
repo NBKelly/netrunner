@@ -275,6 +275,35 @@
                 :async true
                 :effect (effect (gain-credits eid 10))}]})
 
+(defcard "ONR Death from Above"
+  {:events [(successful-run-replace-breach
+              {:target-server :remote
+               :ability {:cost [:trash-can]
+                         :effect (effect (trash-cards eid (:content run-server)))
+                         :msg "trash all cards in the server for no cost"
+                         :async true}})]})
+
+(defcard "ONR Diplomatic Immunity"
+  (let [reset {:silent (req true)
+               :effect (effect (update! (assoc-in (get-card state card) [:special :immunity-disabled] false)))}]
+  {:corp-abilities [{:label "disable diplomatic immunity"
+                     :msg "disable diplomatic immunity"
+                     :cost [:agenda-point 1]
+                     :effect (effect (update! (assoc-in (get-card state card) [:special :immunity-disabled] true)))}]
+   :events [(assoc reset :event :runner-turn-ends)
+            (assoc reset :event :corp-turn-ends)
+            {:event :pre-damage
+             :req (req (and (= target :meat)
+                            (not (get-in card [:special :immunity-disabled]))))
+             :msg "prevent all meat damage"
+             :effect (effect (damage-prevent :meat Integer/MAX_VALUE))}]}))
+
+(defcard "ONR Elena Laskova"
+  {:implementation "Manual - use card ability"
+   :abilities [{:label "Gain a credit (manual)"
+                :msg "gain a credit (manual)"
+                :effect (effect (gain-credits eid 1))}]})
+
 (defcard "ONR N.E.T.O."
   (letfn [(shuffle-back [state side cards targets set-aside-eid]
             (doseq [c (get-set-aside state :runner set-aside-eid)]
