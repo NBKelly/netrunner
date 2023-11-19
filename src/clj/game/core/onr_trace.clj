@@ -108,12 +108,16 @@
                  (queue-event state :trace-revealed {:card (get-card state card)})
                  (wait-for (checkpoint state nil (make-eid state eid))
                            (let [runner-link (current-link state)
-                                 success (>= corp-bid runner-link)
+                                 cheating (any-effects state side :trace-automatic-success)
+                                 success (or (>= corp-bid runner-link) cheating)
                                  corp-strength corp-bid]
                              (when (was-link-changed state)
                                (system-msg state side (str "has had their trace attempt adjusted to Strength " corp-strength " - "
                                                            (if success
-                                                             "beating" "losing to")
+                                                             (if cheating
+                                                               "automatically beating"
+                                                               "beating")
+                                                             "losing to")
                                                            " the Runner's " runner-link " Link")))
                              (let [which-ability (assoc (if success
                                                           (:successful trace)

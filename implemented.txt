@@ -35,9 +35,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   241 / 584
-TESTS:   136 / 241
-NO TEST: 104
+TOTAL:   244 / 584
+TESTS:   137 / 244
+NO TEST: 106
 NO IMP:  1
 --------------------------
 002 + Access through Alpha
@@ -81,12 +81,14 @@ NO IMP:  1
 052 + Bodyweight [TM] Synthetic Blood
 053 + Bolter Cluster
 054 + Bolter Swarm
+055 ^ Bolt-Hole
 
 057 ^ Boring Bit
 058 + ONR Braindance Campaign
 059 ^ Brain Drain (random, untestable?)
 060 + ONR Brain Wash
 
+062 + Broker
 063 ^ Bug Zapper
 064 ^ Bulldozer
 065 ^ Butcher Boy (test once viruses are done!)
@@ -94,6 +96,8 @@ NO IMP:  1
 067 + Canis Minor
 068 + Caryatid
 069 ^ Cascade (test once viruses are done!)
+
+074 ^ Chiba Bank Account
 
 076 + Chihuahua
 
@@ -427,6 +431,7 @@ The following (marked) cards have no tests or implementations:
   047 ^ Black Widow
   048 ^ Blink (no test, this is an rng card!)
   050 ^ Boardwalk (random reveal...)
+  055 ^ Bolt-Hole
   057 ^ Boring Bit
   059 ^ Brain Drain (random, untestable?)
   063 ^ Bug Zapper
@@ -512,6 +517,7 @@ The following (marked) cards have no tests or implementations:
   501 ^ Succubus
   503 ^ Sunburst Cranial Interface
   509 ^ Synchronized Attack on HQ
+  522 ^ The Shell Traders (write a test later)
   526 ^ Tinweasel
   553 ^ Vewy Vewy Quiet
   562 ^ Walking Wall
@@ -522,4 +528,4 @@ The following (marked) cards have no tests or implementations:
   575 ^ Worm
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 552
+Random card to implement: 375

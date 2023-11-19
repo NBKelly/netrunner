@@ -171,6 +171,32 @@
       (click-prompt state :runner "Done"))
     (is (= 0 (count-tags state)) "Runner should have 0 tags")))
 
+(deftest onr-broker
+  ;; Kati Jones - Click to store and take
+  (do-game
+    (new-game {:runner {:deck ["ONR Broker"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "ONR Broker")
+    (is (= 2 (:credit (get-runner))))
+    (let [kati (get-resource state 0)]
+      (card-ability state :runner kati 0)
+      (is (= 2 (:click (get-runner))))
+      (is (= 3 (get-counters (refresh kati) :credit)) "Store 3cr on Kati")
+      (card-ability state :runner kati 0)
+      (is (= 2 (:click (get-runner))) "Second use of Kati should not be allowed")
+      (is (= 3 (get-counters (refresh kati) :credit)) "Second use of Kati should not be allowed")
+      (take-credits state :runner 2)
+      (is (= 4 (:credit (get-runner))) "Pass turn, take 2cr")
+      (take-credits state :corp)
+      (card-ability state :runner kati 0)
+      (is (= 6 (get-counters (refresh kati) :credit)) "Store 3cr more on Kati")
+      (take-credits state :runner 3)
+      (is (= 7 (:credit (get-runner))) "Pass turn, take 3cr")
+      (take-credits state :corp)
+      (card-ability state :runner (refresh kati) 1)
+      (is (= 13 (:credit (get-runner))) "Take 6cr from Kati")
+      (is (zero? (get-counters (refresh kati) :credit)) "No counters left on Kati"))))
+
 (deftest field-reporter-for-ice-and-data
   (do-game
     (new-game {:corp {:hand [(qty "Vanilla" 3)]}

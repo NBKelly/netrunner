@@ -158,10 +158,60 @@
              :msg "gain 1[Credit]"
              :effect (effect (gain-credits eid 1))}]})
 
+(defcard "ONR Bolt-Hole"
+  {:interactions {:prevent [{:type #{:meat}
+                             :req (req true)}]}
+   :abilities [{:label "Prevent 2 meat damage"
+                :msg "prevent 2 meat damage"
+                :cost [:trash-can]
+                :effect (effect (damage-prevent :meat 2))}]})
+
+(defcard "ONR Broker"
+  {:abilities [{:cost [:click 1]
+                :msg "store 3 [Credits]"
+                :once :per-turn
+                :effect (effect (add-counter card :credit 3))}
+               {:cost [:click 1]
+                :msg (msg "gain " (get-counters card :credit) " [Credits]")
+                :once :per-turn
+                :label "Take all credits"
+                :async true
+                :effect (effect (add-counter card :credit (- (get-counters card :credit)))
+                                (gain-credits eid (get-counters card :credit)))}]})
+
+(defcard "ONR Chiba Bank Account"
+  {:abilities [{:label "Gain 4 [Credits]"
+                :msg "gain 4 [Credits]"
+                :cost [:trash-can :credit 1]
+                :async true
+                :effect (effect (gain-credits eid 4))}]})
+
 (defcard "ONR Corporate Ally"
   {:static-abilities [{:type :advancement-requirement
                        :value 1}]
    :additional-cost [:agenda-point 1]})
+
+(defcard "ONR Crash Space"
+  {:implementation "both players still bid on traces as normal, it's just the result that's fixed"
+   :leave-play (effect (system-msg "uses ONR Crash Space to lose 2[Credits]")
+                       (lose-credits eid 2))
+   :abilities [{:label "Trash this space"
+                :cost [:click 1]
+                :msg "trash itself"
+                :async true
+                :effect (effect (trash eid card {:cause-card card}))}]
+   :events [{:event :runner-turn-begins
+             :msg "gain 1 [Credits]"
+             :async true
+             :effect (effect (gain-credits eid 1))}
+            {:event :successful-trace
+             :player :corp
+             :msg "give the Runner an additional tag"
+             :async true
+             :effect (req (gain-tags state :runner eid 1))}]
+   :static-abilities [{:type :trace-automatic-success
+                       :req (req true)
+                       :value true}]})
 
 (defcard "ONR N.E.T.O."
   (letfn [(shuffle-back [state side cards targets set-aside-eid]
@@ -257,8 +307,7 @@
                ]})
 
 (defcard "ONR Swiss Bank Account"
-  {:implemention "Interrupts are not implemented."
-   :abilities [{:label "Gain 2 [Credits]"
+  {:abilities [{:label "Gain 2 [Credits]"
                 :msg "gain 2 [Credits]"
                 :cost [:trash-can]
                 :async true
@@ -268,7 +317,6 @@
                 :cost [:trash-can :credit 3]
                 :async true
                 :effect (effect (gain-credits eid 6))}]})
-
 
 (defcard "ONR The Shell Traders"
   (let [shellpilled
