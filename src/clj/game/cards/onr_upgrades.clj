@@ -185,6 +185,25 @@
                                                           (effect-completed state side eid)))))}
                       card nil))}]}))
 
+(defcard "ONR Red Herrings"
+  {:on-trash
+   {:req (req (and (= :runner side)
+                   (:run @state)))
+    :effect (effect (register-lingering-effect
+                      card
+                      {:type :steal-additional-cost
+                       :duration :end-of-run
+                       :req (req (or (= (get-zone target) (:previous-zone card))
+                                     (= (central->zone (get-zone target))
+                                        (butlast (:previous-zone card)))))
+                       :value (req [[:credit 5]
+                                    {:source card :source-type :ability}])}))}
+   :static-abilities [{:type :steal-additional-cost
+                       :req (req (or (in-same-server? card target)
+                                     (from-same-server? card target)))
+                       :value (req [[:credit 5]
+                                    {:source card :source-type :ability}])}]})
+
 (defcard "ONR Rio de Janeiro City Grid"
   {:events [{:event :pass-ice
              :req (req (and (rezzed? (:ice context))

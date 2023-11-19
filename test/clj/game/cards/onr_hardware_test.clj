@@ -41,7 +41,7 @@
       (let [ppvp (get-hardware state 0)]
         (changes-val-macro -1 (:credit (get-runner))
                            "Used 1 credit from "
-                           (card-ability state (get-program state 0) 0)
+                           (card-ability state :runner (get-program state 0) 0)
                            (click-card state :runner ppvp)))))
 
 (deftest onr-raven-microcyb-eagle

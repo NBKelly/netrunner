@@ -35,8 +35,8 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   235 / 584
-TESTS:   134 / 235
+TOTAL:   236 / 584
+TESTS:   135 / 236
 NO TEST: 100
 NO IMP:  1
 --------------------------
@@ -301,7 +301,7 @@ NO IMP:  1
 408 ^ R&D-Protocol Files
 
 412 ^ Redecorator
-
+413 + Red Herrings
 414 ^ Reflector
 415 + Reinforced Wall
 
@@ -513,4 +513,4 @@ The following (marked) cards have no tests or implementations:
   575 ^ Worm
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 410
+Random card to implement: 144
