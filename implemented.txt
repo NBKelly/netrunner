@@ -35,9 +35,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   240 / 584
-TESTS:   136 / 240
-NO TEST: 103
+TOTAL:   241 / 584
+TESTS:   136 / 241
+NO TEST: 104
 NO IMP:  1
 --------------------------
 002 + Access through Alpha
@@ -362,6 +362,7 @@ NO IMP:  1
 490 ^ Startup Immolator
 
 492 ^ Stereogram Antibody (Do this later, was just lazy)
+493 ^ Stategic Planning Group
 
 499 ^ Submarine Uplink (do this test later - fetch + uplink should be fine)
 500 + Subsidiary Branch
@@ -504,6 +505,7 @@ The following (marked) cards have no tests or implementations:
   486 ^ Speed Trap
   490 ^ Startup Immolator
   492 ^ Stereogram Antibody (Do this later, was just lazy)
+  493 ^ Stategic Planning Group
   499 ^ Submarine Uplink (do this test later - fetch + uplink should be fine)
   501 ^ Succubus
   503 ^ Sunburst Cranial Interface
@@ -518,4 +520,4 @@ The following (marked) cards have no tests or implementations:
   575 ^ Worm
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 23
+Random card to implement: 552

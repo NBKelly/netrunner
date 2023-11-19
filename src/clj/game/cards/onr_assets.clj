@@ -20,7 +20,7 @@
    [game.core.damage :refer [damage damage-prevent]]
    [game.core.def-helpers :refer [corp-recur corp-rez-toast defcard
                                   reorder-choice trash-on-empty get-x-fn]]
-   [game.core.drawing :refer [draw first-time-draw-bonus max-draw
+   [game.core.drawing :refer [draw first-time-draw-bonus max-draw draw-bonus
                               remaining-draws]]
    [game.core.effects :refer [register-lingering-effect]]
    [game.core.eid :refer [complete-with-result effect-completed is-basic-advance-action? make-eid]]
@@ -137,3 +137,30 @@
                                       (move state :corp card :deck nil)
                                       (shuffle! state :corp :deck)
                                       (effect-completed state side eid)))}})
+
+(defcard "ONR Strategic Planning Group"
+  {:derezzed-events [corp-rez-toast]
+   :events [{:event :pre-corp-draw
+             :msg "draw 1 additional card"
+             ;; The req catches draw events that happened before the card was installed
+             :effect (req (draw-bonus state side 1))}
+            {:event :corp-draw
+             :interactive (req true)
+             :async true
+             :effect (req (let [drawn corp-currently-drawing]
+                            (continue-ability
+                              state side
+                              (when (seq drawn)
+                                {:waiting-prompt true
+                                 :prompt (str "Choose a card to add to the bottom of R&D")
+                                 :choices {:max 1
+                                           :card #(some (fn [c] (same-card? c %)) drawn)
+                                           :all true}
+                                 :effect (req (doseq [c (reverse targets)]
+                                                (system-msg state side
+                                                            (str "uses " (:title card) " to add the "
+                                                                 (pprint/cl-format nil "~:R" (inc (first (keep-indexed #(when (same-card? c %2) %1) drawn))))
+                                                                 " card drawn to the bottom of R&D"))
+                                                (move state side c :deck)
+                                                (remove-from-currently-drawing state side c)))})
+                              card nil)))}]})
