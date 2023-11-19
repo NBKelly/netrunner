@@ -163,6 +163,51 @@
                        :value 1}]
    :additional-cost [:agenda-point 1]})
 
+(defcard "ONR N.E.T.O."
+  (letfn [(shuffle-back [state side cards targets set-aside-eid]
+            (doseq [c (get-set-aside state :runner set-aside-eid)]
+              (move state :runner
+                    c :deck))
+            (system-msg state side (str "shuffles " (- (count cards) (count targets)) " cards back into the stack"))
+            (shuffle! state side :deck))]
+    {:abilities [{:cost [:click 1]
+                  :label "look at the top 4 cards of the stack"
+                  :async true
+                  :effect (req (set-aside-for-me state :runner eid (take 4 (:deck runner)))
+                               (let [cards (get-set-aside state :runner eid)
+                                     set-aside-eid eid
+                                     valid (count (filter #(or (event? %) (resource? %)) cards))
+                                     max-amt (min valid
+                                                  (total-available-credits state :runner eid card))]
+                                 (continue-ability
+                                   state side
+                                   (if (zero? max-amt)
+                                     {:waiting-prompt true
+                                      :prompt "You can't do anything"
+                                      :choices ["I understand"]
+                                      :async true
+                                      :effect (req (shuffle-back state side cards [] set-aside-eid)
+                                                   (effect-completed state side eid))}
+                                     {:waiting-prompt true
+                                      :choices {:card #(and (or (event? %)
+                                                                (resource? %))
+                                                            (some (fn [c] (same-card? % c)) cards))
+                                                :max max-amt}
+                                      :async true
+                                      :effect (req (wait-for (pay state :runner (make-eid state eid) card [:credit (count targets)])
+                                                             (system-msg state side (str "pays " (count targets)
+                                                                                         "[Credits] and moves "
+                                                                                         (str/join ", " (map :title targets))
+                                                                                         " to the grip"))
+                                                             ;; showing is not revealing lmao
+                                                             (doseq [c targets]
+                                                               (move state side c :hand))
+                                                             (shuffle-back state side cards targets set-aside-eid)
+                                                             (effect-completed state side eid)))
+                                      :cancel-effect (req (shuffle-back state side cards [] set-aside-eid)
+                                                          (effect-completed state side eid))})
+                                   card nil)))}]}))
+
 (defcard "ONR Runner Sensei"
   {:abilities [(base-link-abi 2 4)
                (boost-link-abi 2 1)]

@@ -61,7 +61,17 @@
 
 (defn- dice-roll [] (inc (rand-int 6)))
 
+(defn- onr-ambush [impl]
+  (merge {:implementation "(classic) Installed ambushes must be rezzed to take effect, unless otherwise noted"} impl))
+
 ;; card implementations
+
+(defcard "ONR Dedicated Response Team"
+  (onr-ambush
+    {:on-access {:req (req (and tagged (rezzed? card)))
+                 :msg "do 3 meat damage"
+                 :async true
+                 :effect (effect (damage eid :meat 3 {:card card}))}}))
 
 (defcard "ONR Lisa Blight"
   {:abilities [{:async true

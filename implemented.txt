@@ -35,9 +35,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   236 / 584
-TESTS:   135 / 236
-NO TEST: 100
+TOTAL:   238 / 584
+TESTS:   135 / 238
+NO TEST: 102
 NO IMP:  1
 --------------------------
 002 + Access through Alpha
@@ -141,6 +141,7 @@ NO IMP:  1
 
 142 + Death Yo-Yo
 
+144 ^ Dedicated Response Team
 145 ^ Deep Thought
 146 ^ Demolition Run
 
@@ -262,7 +263,7 @@ NO IMP:  1
 326 ^ Mystery Box
 
 329 + Nerve Labyrinth
-
+330 ^ N.E.T.O.
 331 ^ Netspace Inverter
 
 335 + Networking
@@ -434,6 +435,7 @@ The following (marked) cards have no tests or implementations:
   103 ^ Corrosion
   117 ^ Crumble (requires braniac id)
   123 ^ Cyfermaster (trivial icebreaker - no test)
+  144 ^ Dedicated Response Team
   145 ^ Deep Thought
   146 ^ Demolition Run
   157 ^ Disintegrator
@@ -472,6 +474,7 @@ The following (marked) cards have no tests or implementations:
   323 ^ Mouse
   325 ^ MS-todon
   326 ^ Mystery Box
+  330 ^ N.E.T.O.
   331 ^ Netspace Inverter
   350 ^ Omnitech Wet Drive
   363 ^ Pattel's Virus
@@ -513,4 +516,4 @@ The following (marked) cards have no tests or implementations:
   575 ^ Worm
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 144
+Random card to implement: 377
