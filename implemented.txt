@@ -35,9 +35,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   284 / 584
-TESTS:   146 / 284
-NO TEST: 135
+TOTAL:   285 / 584
+TESTS:   146 / 285
+NO TEST: 136
 NO IMP:  3
 --------------------------
 002 + Access through Alpha
@@ -56,6 +56,7 @@ NO IMP:  3
 
 020 ^ Armageddon
 
+026 ^ Aujourd'Oui
 027 + Back Door to Hilliard
 028 + Back Door to Netwatch
 029 + Back Door to Orbital Air
@@ -474,6 +475,7 @@ The following (marked) cards have no tests or implementations:
   009 ^ AI Boon (rng card)
   018 ^ Arasaka Portable Prototype
   020 ^ Armageddon
+  026 ^ Aujourd'Oui
   037 ^ Bartmoss Memorial Icebreaker
   041 ^ Big Frackin' Gun
   044 ^ Black Dahlia
@@ -608,4 +610,4 @@ The following (marked) cards have no tests or implementations:
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 78
+Random card to implement: 445
