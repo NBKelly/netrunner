@@ -1,7 +1,7 @@
 (ns game.core.process-actions
   (:require
    [clojure.string :as str]
-   [game.core.actions :refer [click-advance click-credit click-draw click-run
+   [game.core.actions :refer [click-advance click-credit click-draw click-run click-forgo-action
                               close-deck do-purge generate-install-list
                               generate-runnable-zones move-card expend-ability
                               play play-ability play-corp-ability
@@ -56,6 +56,7 @@
    "draw" #'click-draw
    "dynamic-ability" #'play-dynamic-ability
    "end-phase-12" #'end-phase-12
+   "forgo-click" #'click-forgo-action
    "start-next-phase" #'start-next-phase
    "end-turn" #'end-turn
    "generate-install-list" #'generate-install-list

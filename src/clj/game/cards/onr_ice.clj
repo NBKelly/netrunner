@@ -27,7 +27,7 @@
    [game.core.finding :refer [find-cid]]
    [game.core.flags :refer [can-rez? card-flag? prevent-draw prevent-jack-out
                             register-run-flag! register-turn-flag! run-flag? zone-locked?]]
-   [game.core.gaining :refer [gain-credits lose-clicks lose-credits]]
+   [game.core.gaining :refer [gain-credits lose-clicks lose-credits gain-click-debt]]
    [game.core.hand-size :refer [hand-size]]
    [game.core.hosting :refer [host]]
    [game.core.ice :refer [add-sub add-sub! any-subs-broken? break-sub get-current-ice get-run-ices ice-strength-bonus
@@ -675,6 +675,13 @@
 
 (defcard "ONR Sumo 2008"
   (change-subtype-on-rez "Sentry" "Wall" 1 {:subroutines [end-the-run]}))
+
+(defcard "ONR TKO 2.0"
+  {:subroutines [{:label "End the run, Runner forgoes next action"
+                  :msg "End the run, and the Runner forgoes their next action"
+                  :async true
+                  :effect (req (wait-for (gain-click-debt state :runner (make-eid state eid) 1)
+                                         (end-run state side eid card)))}]})
 
 (defcard "ONR Too Many Doors"
   {:subroutines [(do-psi end-the-run)]})

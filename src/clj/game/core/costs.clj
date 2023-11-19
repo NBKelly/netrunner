@@ -10,7 +10,7 @@
    [game.core.eid :refer [complete-with-result make-eid]]
    [game.core.engine :refer [checkpoint resolve-ability trigger-event-sync]]
    [game.core.flags :refer [is-scored?]]
-   [game.core.gaining :refer [deduct lose]]
+   [game.core.gaining :refer [deduct lose gain-click-debt]]
    [game.core.moving :refer [discard-from-hand forfeit mill move trash trash-cards]]
    [game.core.payment :refer [cost-name handler label payable? value stealth-value]]
    [game.core.pick-counters :refer [pick-credit-providing-cards pick-virus-counters-to-spend]]
@@ -51,6 +51,29 @@
               (complete-with-result state side eid {:msg (str "spends " (label cost))
                                                     :type :click
                                                     :value (value cost)}))))
+
+(defmethod cost-name :forgo-next-click [_] :forgo-next-click)
+(defmethod value :forgo-next-click [[_ cost-value]] cost-value)
+(defmethod label :forgo-next-click [cost]
+  (str "forgo next "
+       (->> (repeat "[Click]")
+            (take (value cost))
+            (apply str))))
+;; this is incurring debt - we can always do this
+(defmethod payable? :forgo-next-click
+  [cost state side _ _]
+  (req true))
+;;  (<= 0 (- (get-in @state [side :click]) (value cost))))
+(defmethod handler :forgo-next-click
+  [cost state side eid card actions]
+  (gain-click-debt state side (make-eid state eid) (value cost))
+  (wait-for (trigger-event-sync state side (make-eid state eid)
+                                (if (= side :corp) :corp-forgos-next-click :runner-forgos-next-click)
+                                nil (value cost) (:ability-idx (:source-info eid)))
+            (complete-with-result state side eid {:msg (str "will " (label cost))
+                                                  :type :forgo-next-click
+                                                  :value (value cost)})))
+
 
 ;; Lose Click
 (defn lose-click-label

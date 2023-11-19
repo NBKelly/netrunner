@@ -67,7 +67,7 @@
 (defmethod stats-area "Runner" [runner]
   (let [ctrl (stat-controls-for-side :runner)]
     (fn [runner]
-      (let [{:keys [user click credit run-credit memory link tag
+      (let [{:keys [user click credit run-credit action-debt memory link tag
                     brain-damage active]} @runner
             base-credit (- credit run-credit)
             plus-run-credit (when (pos? run-credit) (str "+" run-credit))
@@ -92,6 +92,10 @@
                show-tagged (or is-tagged (pos? total))]
            (ctrl :tag [:div (tr [:game.tag-count] base additional total)
                        (when show-tagged [:div.warning "!"])]))
+         (when (pos? action-debt)
+           (ctrl
+             :action-debt
+             [:div (str action-debt " " (tr [:game.action-debt "Actions to Forgo"]))]))
          (ctrl
           :brain-damage
           [:div (str brain-damage " " (tr [:game.brain-damage "Core Damage"]))])]))))
@@ -99,7 +103,7 @@
 (defmethod stats-area "Corp" [corp]
   (let [ctrl (stat-controls-for-side :corp)]
     (fn [corp]
-      (let [{:keys [user click credit run-credit bad-publicity active]} @corp
+      (let [{:keys [user click credit run-credit action-debt bad-publicity active]} @corp
             base-credit (- credit run-credit)
             plus-run-credit (when (pos? run-credit) (str "+" run-credit))
             icons? (get-in @app-state [:options :player-stats-icons] true)]
@@ -111,6 +115,10 @@
            [:<>
             (ctrl :click [:div (tr [:game.click-count] click)])
             (ctrl :credit [:div (tr [:game.credit-count] base-credit run-credit -1)])])
+         (when (pos? action-debt)
+           (ctrl
+             :action-debt
+             [:div (str action-debt " " (tr [:game.action-debt "Actions to Forgo"]))]))
          (let [{:keys [base additional]} bad-publicity]
            (ctrl :bad-publicity [:div (tr [:game.bad-pub-count] base additional)]))]))))
 

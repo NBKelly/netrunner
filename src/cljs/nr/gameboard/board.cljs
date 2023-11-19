@@ -1629,6 +1629,12 @@
       (if (= side :corp) (tr [:game.mandatory-draw "Mandatory Draw"]) (tr [:game.take-clicks "Take Clicks"]))])
    (when (= side :runner)
      [:div
+      (when
+          (playable? (get-in @me [:basic-action-card :abilities 6]))
+        [cond-button (tr [:game.forgo-click "Forgo Action"])
+         (and (not (or @runner-phase-12 @corp-phase-12))
+              (playable? (get-in @me [:basic-action-card :abilities 6])))
+         #(send-command "forgo-click")])
       [cond-button (tr [:game.remove-tag "Remove Tag"])
        (and (not (or @runner-phase-12 @corp-phase-12))
             (playable? (get-in @me [:basic-action-card :abilities 5]))
@@ -1637,6 +1643,8 @@
       [:div.run-button.menu-container
        [cond-button (tr [:game.run "Run"])
         (and (not (or @runner-phase-12 @corp-phase-12))
+             ;; can't run if we owe actions !!!
+             (not (playable? (get-in @me [:basic-action-card :abilities 6])))
              (pos? (:click @me)))
         #(do (send-command "generate-runnable-zones")
              (if (= :run-button (:source @card-menu))
@@ -1653,6 +1661,12 @@
                            #(do (close-card-menu)
                                 (send-command "run" {:server label}))])
                         servers))]]]])
+   (when (and (= side :corp)
+              (playable? (get-in @me [:basic-action-card :abilities 7])))
+     [cond-button (tr [:game.forgo-click "Forgo Action"])
+      (and (not (or @runner-phase-12 @corp-phase-12))
+           (playable? (get-in @me [:basic-action-card :abilities 7])))
+      #(send-command "forgo-click")])
    (when (= side :corp)
      [cond-button (tr [:game.purge "Purge"])
       (and (not (or @runner-phase-12 @corp-phase-12))

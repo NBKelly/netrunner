@@ -83,6 +83,16 @@
           (deduct state side [cost-type amount])))
     (trigger-event state side (if (= side :corp) :corp-lose :runner-lose) [cost-type amount])))
 
+(defn gain-click-debt
+  "Utility function for gaining click debt"
+  ([state side eid amount] (gain-click-debt state side eid amount nil))
+  ([state side eid amount args]
+   (if (and amount
+            (pos? amount))
+     (do (gain state side :action-debt amount)
+         (trigger-event-sync state side eid (if (= :debt side) :corp-action-debt-gain :runner-action-debt-gain) amount args))
+     (effect-completed state side eid))))
+
 (defn gain-debt
   "Utility function for gaining debt"
   ([state side eid amount] (gain-debt state side eid amount nil))
@@ -91,6 +101,18 @@
             (pos? amount))
      (do (gain state side :debt amount)
          (trigger-event-sync state side eid (if (= :debt side) :corp-debt-gain :runner-debt-gain) amount args))
+     (effect-completed state side eid))))
+
+(defn lose-click-debt
+  "Utility function for triggering events"
+  ([state side eid amount] (lose-click-debt state side eid amount nil))
+  ([state side eid amount args]
+   (if (and amount
+            (or (= :all amount)
+                (pos? amount))
+            (pos? (:action-debt (side @state))))
+     (do (lose state side :action-debt amount)
+         (trigger-event-sync state side eid (if (= :corp side) :corp-action-debt-loss :runner-action-debt-loss) amount args))
      (effect-completed state side eid))))
 
 (defn lose-debt

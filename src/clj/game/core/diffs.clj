@@ -225,6 +225,7 @@
    :set-aside
    :click
    :credit
+   :action-debt
    :toast
    :hand-size
    :keep

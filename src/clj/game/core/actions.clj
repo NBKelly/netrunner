@@ -76,6 +76,11 @@
   [state side _]
   (play-ability state side {:card (get-in @state [side :basic-action-card]) :ability 0}))
 
+(defn click-forgo-action
+  "Click to forgo an action"
+  [state side _]
+  (play-ability state side {:card (get-in @state [side :basic-action-card]) :ability (if (= :corp side) 7 6)}))
+
 (defn move-card
   "Called when the user drags a card from one zone to another."
   [state side {:keys [card server]}]

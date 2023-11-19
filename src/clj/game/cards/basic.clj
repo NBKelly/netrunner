@@ -9,10 +9,12 @@
    [game.core.eid :refer [effect-completed]]
    [game.core.engine :refer [trigger-event]]
    [game.core.flags :refer [can-advance? untrashable-while-resources?]]
-   [game.core.gaining :refer [gain-credits]]
+   [game.core.gaining :refer [gain-credits lose-click-debt]]
    [game.core.installing :refer [corp-can-pay-and-install? corp-install
                                  runner-can-pay-and-install? runner-install]]
+   [game.macros :refer [continue-ability]]
    [game.core.moving :refer [trash]]
+   [game.core.payment :refer [can-pay?]]
    [game.core.play-instants :refer [can-play-instant? play-instant]]
    [game.core.props :refer [add-prop]]
    [game.core.purging :refer [purge]]
@@ -28,6 +30,7 @@
 
 (defcard "Corp Basic Action Card"
   {:abilities [{:label "Gain 1 [Credits]"
+                :req (req (zero? (:action-debt corp)))
                 :cost [:click]
                 :msg "gain 1 [Credits]"
                 :async true
@@ -37,7 +40,8 @@
                                        (play-sfx state side "click-credit")
                                        (effect-completed state side eid)))}
                {:label "Draw 1 card"
-                :req (req (not-empty (:deck corp)))
+                :req (req (and (not-empty (:deck corp))
+                               (zero? (:action-debt corp))))
                 :cost [:click]
                 :msg "draw 1 card"
                 :async true
@@ -48,6 +52,7 @@
                {:label "Install 1 agenda, asset, upgrade, or piece of ice from HQ"
                 :async true
                 :req (req (and (not-empty (:hand corp))
+                               (zero? (:action-debt corp))
                                (in-hand? target)
                                (or (agenda? target)
                                    (asset? target)
@@ -75,6 +80,7 @@
                {:label "Play 1 operation"
                 :async true
                 :req (req (and (not-empty (:hand corp))
+                               (zero? (:action-debt corp))
                                (in-hand? target)
                                (operation? target)
                                (can-play-instant? state :corp (assoc eid :source :action :source-type :play)
@@ -85,7 +91,8 @@
                 :cost [:click 1 :credit 1]
                 :async true
                 :msg (msg "advance " (card-str state target))
-                :req (req (can-advance? state side target))
+                :req (req (and (can-advance? state side target)
+                               (zero? (:action-debt corp))))
                 :effect (effect (update-advancement-requirement target)
                                 (add-prop (get-card state target) :advance-counter 1)
                                 (play-sfx "click-advance")
@@ -93,7 +100,8 @@
                {:label "Trash 1 resource if the Runner is tagged"
                 :cost [:click 1 :credit 2]
                 :async true
-                :req (req tagged)
+                :req (req (and tagged
+                               (zero? (:action-debt corp))))
                 :prompt "Choose a resource to trash"
                 :msg (msg "trash " (:title target))
                 :choices {:req (req (if (and (seq (filter (fn [c] (untrashable-while-resources? c)) (all-active-installed state :runner)))
@@ -102,16 +110,41 @@
                                       (resource? target)))}
                 :effect (effect (trash eid target nil))}
                {:label "Purge virus counters"
-                :cost [:click 3]
-                :msg "purge all virus counters"
+                ;; onr corps forgo actions to purge, instead of spending 3 clicks
+                :req (req (if (= (:faction (:identity corp)) "ONR Corp")
+                            true
+                            (can-pay? state side eid card nil [:click 3])))
                 :async true
-                :effect (req (play-sfx state side "virus-purge")
-                             (purge state side eid))}]})
+                ;; I understand this looks a bit ugly
+                ;; there should be no functional change unless playing onr
+                ;; this action cards is no longer basic...
+                :effect (req
+                          (let [purge-abi
+                                {:async true
+                                 :msg "purge all virus counters"
+                                 :effect (req (play-sfx state side "virus-purge")
+                                              (purge state side eid))}]
+                            (continue-ability
+                              state side
+                              (if (= (:faction (:identity corp)) "ONR Corp")
+                                {:optional
+                                 {:prompt (msg "Purge Virus Counters? "
+                                               "(you will forgo your next three actions)")
+                                  :waiting-prompt "Corp to decide if they want to purge"
+                                  :yes-ability (assoc purge-abi :cost [:forgo-next-click 3])}}
+                                (assoc purge-abi :cost [:click 3]))
+                              card nil)))}
+               {:label "Forgo an Action"
+                :cost [:click]
+                :msg "forgo a click"
+                :req (req (pos? (:action-debt corp)))
+                :effect (req (lose-click-debt state side eid 1))}]})
 
 (defcard "Runner Basic Action Card"
   {:abilities [{:label "Gain 1 [Credits]"
                 :cost [:click]
                 :msg "gain 1 [Credits]"
+                :req (req (zero? (:action-debt runner)))
                 :async true
                 :effect (req (wait-for (gain-credits state side 1 :runner-click-credit)
                                        (swap! state update-in [:stats side :click :credit] (fnil inc 0))
@@ -119,7 +152,8 @@
                                        (play-sfx state side "click-credit")
                                        (effect-completed state side eid)))}
                {:label "Draw 1 card"
-                :req (req (not-empty (:deck runner)))
+                :req (req (and (not-empty (:deck runner))
+                               (zero? (:action-debt runner))))
                 :cost [:click]
                 :msg "draw 1 card"
                 :effect (req (trigger-event state side :runner-click-draw (-> @state side :deck (nth 0)))
@@ -129,6 +163,7 @@
                {:label "Install 1 program, resource, or piece of hardware from the grip"
                 :async true
                 :req (req (and (not-empty (:hand runner))
+                               (zero? (:action-debt runner))
                                (in-hand? target)
                                (or (hardware? target)
                                    (program? target)
@@ -143,6 +178,7 @@
                {:label "Play 1 event"
                 :async true
                 :req (req (and (not-empty (:hand runner))
+                               (zero? (:action-debt runner))
                                (in-hand? target)
                                (event? target)
                                (can-play-instant? state :runner (assoc eid :source :action :source-type :play)
@@ -151,11 +187,18 @@
                                            target {:base-cost [:click 1]}))}
                {:label "Run any server"
                 :async true
+                :req (req (zero? (:action-debt runner)))
                 :effect (effect (make-run eid target nil {:click-run true}))}
                {:label "Remove 1 tag"
                 :cost [:click 1 :credit 2]
                 :msg "remove 1 tag"
-                :req (req tagged)
+                :req (req (and tagged
+                               (zero? (:action-debt runner))))
                 :async true
                 :effect (effect (play-sfx "click-remove-tag")
-                                (lose-tags eid 1))}]})
+                                (lose-tags eid 1))}
+               {:label "Forgo an Action"
+                :cost [:click]
+                :msg "forgo a click"
+                :req (req (pos? (:action-debt runner)))
+                :effect (req (lose-click-debt state side eid 1))}]})
