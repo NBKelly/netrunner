@@ -7,7 +7,7 @@ This is a fork of the netrunner client used for jinteki.net, with the goal of po
 * The ONR trace mechanic has been implemented
 * Systems developed to allow for the unique virus mechanics (counters have effects outside of their programs)
 * Two special ID's have been created, which some mechanics rely on (a small handful of the viruses, ONR style purging)
-* ONR cards that refer to trace do not interact with ANR cards that refer to trace. Other than that, almost all
+* ONR cards that refer to trace do not interact with ANR cards that refer to trace. Other than that, almost all cards should be (mostly) interoperable
 
 This little graph is a visual representation of the implementation status so far. Green for tests, orange for no tests, and red for "I'm not implementing that (only 2 hits so far)"
 
