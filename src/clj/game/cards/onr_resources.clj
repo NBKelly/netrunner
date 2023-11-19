@@ -268,3 +268,68 @@
                 :cost [:trash-can :credit 3]
                 :async true
                 :effect (effect (gain-credits eid 6))}]})
+
+
+(defcard "ONR The Shell Traders"
+  (let [shellpilled
+        (fn [card]
+          (and (pos? (get-counters card :shell))
+               (= (:zone card) [:set-aside])))
+        shellpilled-cards
+        (fn [runner]
+          (filter shellpilled (:set-aside runner)))
+         remove-counter
+         {:async true
+          :req (req (not
+                      (empty? (shellpilled-cards runner))))
+          :msg (msg "remove 1 shell counter from " (:title target))
+          :choices {:req (req (shellpilled-cards runner))}
+          :effect (req (do (add-counter state side target :shell -1)
+                           (if (pos? (get-counters (get-card state target) :shell))
+                             (effect-completed state side eid)
+                             (runner-install state side eid (dissoc target :counter) {:ignore-install-cost true}))))}]
+     {:flags {:drip-economy true}
+      :abilities [{:async true
+                   :label "Set aside a program or piece of hardware"
+                   :cost [:click 1]
+                   :keep-menu-open :while-clicks-left
+                   :prompt "Choose a program or piece of hardware in the grip"
+                   :choices {:card #(and (or (program? %)
+                                             (hardware? %))
+                                         (in-hand? %)
+                                         (runner? %))}
+                   :effect (req (if (not (pos? (:cost target)))
+                                  (runner-install state side (assoc eid :source card :source-type :runner-install) target nil)
+                                  (do (set-aside state side eid [(assoc target :counter {:shell (:cost target)})])
+                                      (effect-completed state side eid))))
+                   :msg (msg "set aside " (:title target))}
+                  (assoc remove-counter
+                         :label "Remove 1 shell counter from a card"
+                         :cost [:credit 1])
+                  {:async true
+                   :label "Remove a shell counter from a card"
+                   :choices {:req (req (shellpilled-cards runner))}
+                   :req (req (seq (shellpilled-cards runner)))
+                   :effect (effect
+                             (continue-ability
+                               (let [paydowntarget target
+                                     num-counters (get-counters (get-card state paydowntarget) :shell)]
+                                 {:async true
+                                  :prompt "How many shell counters do you want to remove?"
+                                  :choices {:number (req (min num-counters
+                                                              (total-available-credits state :runner eid card)))}
+                                  :effect (req (wait-for
+                                                 (pay state :runner (make-eid state eid) card [:credit target])
+                                                 (if-let [payment-str (:msg async-result)]
+                                                   (do (system-msg state side
+                                                                   (str (build-spend-msg payment-str "use") (:title card)
+                                                                        " to remove " (quantify target "shll counter")
+                                                                        " from " (:title paydowntarget)))
+                                                       (if (= num-counters target)
+                                                         (runner-install state side (assoc eid :source card :source-type :runner-install) (dissoc paydowntarget :counter) {:ignore-install-cost true})
+                                                         (do (add-counter state side paydowntarget :shell (- target))
+                                                             (effect-completed state side eid))))
+                                                   (effect-completed state side eid))))})
+                               card nil))}]
+      :implementation "this can put your cards in limbo. This is the intended design"
+      :events [(assoc remove-counter :event :runner-turn-begins)]}))

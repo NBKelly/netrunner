@@ -377,6 +377,8 @@ NO IMP:  1
 
 519 + The Deck
 
+522 ^ The Shell Traders (write a test later)
+
 526 ^ Tinweasel
 
 528 + Tokyo-Chiba Infighting
