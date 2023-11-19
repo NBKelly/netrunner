@@ -21,7 +21,7 @@
    [game.core.damage :refer [damage damage-prevent]]
    [game.core.def-helpers :refer [breach-access-bonus defcard offer-jack-out
                                   reorder-choice trash-on-empty do-net-damage]]
-   [game.core.drawing :refer [draw click-draw-bonus]]
+   [game.core.drawing :refer [draw click-draw-bonus draw-bonus]]
    [game.core.effects :refer [register-lingering-effect]]
    [game.core.eid :refer [complete-with-result effect-completed make-eid]]
    [game.core.engine :refer [not-used-once? pay register-events
@@ -191,6 +191,45 @@
                        :value 1}]
    :additional-cost [:agenda-point 1]})
 
+(defcard "ONR Crash Everett, Inventive Fixer"
+  {:events [{:event :pre-runner-draw
+             :msg "draw 1 additional card"
+             ;; The req catches draw events that happened before the card was installed
+             :effect (req (draw-bonus state side 1))}
+            {:event :runner-draw
+             :interactive (req true)
+             :async true
+             :effect (req (let [drawn runner-currently-drawing]
+                            (continue-ability
+                              state side
+                              (when (seq drawn)
+                                {:waiting-prompt true
+                                 :prompt (str "Choose a card to manipulate")
+                                 :async true
+                                 :choices {:max 1
+                                           :card #(some (fn [c] (same-card? c %)) drawn)
+                                           :all true}
+                                 :effect (req (let [chosen-card target]
+                                                  (continue-ability
+                                                    state side
+                                                    {:prompt "choose one"
+                                                     :choices [(str "Trash " (:title chosen-card))
+                                                               (str "Move " (:title chosen-card) " to top")]
+                                                     :async true
+                                                     :msg (msg (if (= target (str "Trash " (:title chosen-card)))
+                                                                 (str "trash " (:title chosen-card))
+                                                                 (str "add the "
+                                                                      (pprint/cl-format nil "~:R" (inc (first (keep-indexed #(when (same-card? chosen-card %2) %1) drawn))))
+                                                                      " card drawn to the top of the stack")))
+                                                     :effect (req
+                                                               (remove-from-currently-drawing state side chosen-card)
+                                                               (if (= target (str "Trash " (:title chosen-card)))
+                                                                 (trash state side eid chosen-card {:cause-card card})
+                                                                 (do (move state side chosen-card :deck {:front true})
+                                                                     (effect-completed state side eid))))}
+                                                    chosen-card nil)))})
+                              card nil)))}]})
+
 (defcard "ONR Crash Space"
   {:implementation "both players still bid on traces as normal, it's just the result that's fixed"
    :leave-play (effect (system-msg "uses ONR Crash Space to lose 2[Credits]")
@@ -212,6 +251,29 @@
    :static-abilities [{:type :trace-automatic-success
                        :req (req true)
                        :value true}]})
+
+(defcard "ONR Credit Subversion"
+  {:events [{:event :run-ends
+             :optional {:req (req (and (:successful target)
+                                       (= [:hq] (:server target))))
+                        :prompt "Make the corp lose 3[Credits]?"
+                        :yes-ability {:cost [:trash-can]
+                                      :msg "force the corp to lose 3[Credits]"
+                                      :effect (req (lose-credits state :corp eid (min 3 (:credit corp))))}}}]})
+
+(defcard "ONR Danshi's Second ID"
+  {:abilities [{:label "Remove 3 tags"
+                :msg "remove 3 tags"
+                :cost [:click 1 :trash-can]
+                :async true
+                :effect (effect (lose-tags :runner eid 3))}]})
+
+(defcard "ONR Databroker"
+  {:abilities [{:label "Gain 10 [Credits]"
+                :msg "gain 10 [Credits]"
+                :cost [:click 1 :agenda-point 1 :trash-can]
+                :async true
+                :effect (effect (gain-credits eid 10))}]})
 
 (defcard "ONR N.E.T.O."
   (letfn [(shuffle-back [state side cards targets set-aside-eid]

@@ -35,9 +35,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   244 / 584
-TESTS:   137 / 244
-NO TEST: 106
+TOTAL:   250 / 584
+TESTS:   137 / 250
+NO TEST: 112
 NO IMP:  1
 --------------------------
 002 + Access through Alpha
@@ -121,16 +121,21 @@ NO IMP:  1
 106 + Cortical Scanner
 107 + Cortical Scrub
 
+111 ^ Crash Everett
+
 113 + Credit Blocks
+
+115 ^ Credit Subversion
 
 117 ^ Crumble (requires braniac id)
 
 120 + Crystal Wall
 
+122 ^ Crash Space
 123 ^ Cyfermaster (trivial icebreaker - no test)
-
+124 ^ Danshi's Second ID
 125 + D'Arc Knight
-
+126 ^ Databroker
 127 + Datacomb
 128 + Data Darts
 
@@ -438,12 +443,18 @@ The following (marked) cards have no tests or implementations:
   064 ^ Bulldozer
   065 ^ Butcher Boy (test once viruses are done!)
   069 ^ Cascade (test once viruses are done!)
+  074 ^ Chiba Bank Account
   085 ^ Codecracker
   086 ^ Codeslinger
   091 ^ Corporate Ally
   103 ^ Corrosion
+  111 ^ Crash Everett
+  115 ^ Credit Subversion
   117 ^ Crumble (requires braniac id)
+  122 ^ Crash Space
   123 ^ Cyfermaster (trivial icebreaker - no test)
+  124 ^ Danshi's Second ID
+  126 ^ Databroker
   144 ^ Dedicated Response Team
   145 ^ Deep Thought
   146 ^ Demolition Run
@@ -528,4 +539,4 @@ The following (marked) cards have no tests or implementations:
   575 ^ Worm
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 375
+Random card to implement: 327
