@@ -55,7 +55,7 @@
    [game.core.payment :refer [build-spend-msg can-pay?]]
    [game.core.pick-counters :refer [pick-virus-counters-to-spend]]
    [game.core.play-instants :refer [play-instant]]
-   [game.core.prompts :refer [cancellable]]
+   [game.core.prompts :refer [cancellable clear-wait-prompt]]
    [game.core.props :refer [add-counter add-icon remove-icon]]
    [game.core.revealing :refer [reveal]]
    [game.core.rezzing :refer [derez rez]]
@@ -78,7 +78,7 @@
    [game.core.threat :refer [threat-level]]
    [game.core.update :refer [update!]]
    [game.core.virus :refer [get-virus-counters number-of-runner-virus-counters]]
-   [game.core.winning :refer [check-win-by-agenda]]
+   [game.core.winning :refer [check-win-by-agenda win]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [game.utils :refer :all]
    [game.core.onr-trace :refer [boost-link set-base-link cancel-successful-trace]]
@@ -105,6 +105,8 @@
      :label (str "+" val " Link")
      :msg (str "gain +" val " Link")
      :effect (req (boost-link state val))}))
+
+(defn- dice-roll [] (inc (rand-int 6)))
 
 ;; card implementations
 
@@ -360,6 +362,92 @@
    :interactions {:pay-credits {:req (req (= :trace (:source-type eid)))
                                 :type :recurring}}})
 
+(defcard "ONR Karl de Veres, Corporate Stooge"
+  {:events [{:event :successful-run
+             :silent (req true)
+             :async true
+             :msg "gain 1 [Credits]"
+             :effect (effect (gain-credits eid 1))}]})
+
+(defcard "ONR Leland, Corporate Bodyguard"
+  {:interactions {:prevent [{:type #{:tag :meat}
+                             :req (req true)}]}
+   :abilities [{:label "Prevent 1 meat damage"
+                :msg "prevent 1 meat damage"
+                :cost [:credit 1]
+                :effect (effect (damage-prevent :meat 1))}
+               {:async true
+                :cost [:trash-can]
+                :msg "avoid 1 tag"
+                :effect (effect (tag-prevent :runner eid 1))}]})
+
+(defcard "ONR Liberated Savings Account"
+  {:abilities [{:label "Gain 11 [Credits]"
+                :msg "gain 11 [Credits]"
+                :cost [:trash-can :credit 7]
+                :async true
+                :effect (effect (gain-credits eid 11))}]})
+
+(defcard "ONR Loan from Chiba"
+  {:flags {:runner-phase-12 (req (some #(card-flag? % :drip-economy true) (all-active-installed state :runner)))}
+   :on-install {:async true
+                :msg "gain 12 [Credits]"
+                :effect (effect (gain-credits eid 12))}
+   :events [{:event :runner-turn-begins
+             :msg (msg "lose " (if (zero? (get-in @state [:runner :credit]))
+                                 "0 [Credits] (runner has no credits to lose)"
+                                 "1 [Credits]"))
+             :once :per-turn
+             :async true
+             :effect (effect (lose-credits eid 1))}
+            {:event :runner-turn-ends
+             :interactive (get-autoresolve :auto-fire (complement never?))
+             :silent (get-autoresolve :auto-fire never?)
+             :optional {:waiting-prompt "Runner to decide to trash ONR Loan from Chiba"
+                        :prompt "Trash ONR Loan from Chiba?"
+                        :player :runner
+                        :autoresolve (get-autoresolve :auto-fire)
+                        :yes-ability {:msg "trash ONR Loan from Chiba"
+                                      :async true
+                                      :effect (effect (trash eid card {:cause :runner-ability}))}
+                        :no-ability {:effect (effect (system-msg "chooses not to trash ONR Loan from Chiba"))}}}]
+   :abilities [;; set autoresolve
+               (set-autoresolve :auto-fire "ONR Loan from Chiba")
+               ;; manually lose 1 credit (for ordering)
+               {:label "Lose 1 [Credits] (start of turn)"
+                :msg (msg (if (zero? (get-in @state [:runner :credit]))
+                            "lose 0 [Credits] (runner has no credits to lose)"
+                            "lose 1 [Credits]"))
+                :req (req (:runner-phase-12 @state))
+                :once :per-turn
+                :async true
+                :effect (effect (lose-credits eid 1))}]
+   ;; when chiba leaves play, runner pays 10 or loses
+   :uninstall (effect
+                (continue-ability
+                  {:player :runner
+                   :async true
+                   :waiting-prompt "Runner to choose an option"
+                   :prompt "Pay 10 to avoid losing the game?"
+                   :effect (req
+                             (clear-wait-prompt state :corp)
+                             (if (= target "Pay 10")
+                               (wait-for (pay state side (make-eid state eid) card [:credit 10])
+                                         (system-msg state side
+                                                     (str "pays 10 [Credits] to avoid losing the game due to ONR Loan from Chiba"))
+                                         (complete-with-result state side eid card))
+                               (do
+                                 (system-msg state side "loses the game after being unable to repay ONR Loan from Chiba")
+                                 (win state :corp "\"default\"")
+                                 (complete-with-result state side eid card))))
+                   ;; only offer payment choice if it can be made
+                   :choices (req (if (can-pay? state :runner (assoc eid :source card
+                                                                    :source-type :ability)
+                                               card (:title target) [:credit 10])
+                                   ["Pay 10" "Lose the game"]
+                                   ["Lose the game"]))}
+                  card nil))})
+
 (defcard "ONR N.E.T.O."
   (letfn [(shuffle-back [state side cards targets set-aside-eid]
             (doseq [c (get-set-aside state :runner set-aside-eid)]
@@ -404,6 +492,89 @@
                                       :cancel-effect (req (shuffle-back state side cards [] set-aside-eid)
                                                           (effect-completed state side eid))})
                                    card nil)))}]}))
+
+(defcard "ONR Nomad Allies"
+  {:interactions {:prevent [{:type #{:tag}
+                             :req (req true)}]}
+   :abilities [{:label "Remove 1 tag"
+                :msg "remove 1 tags"
+                :cost [:click 1 :credit 1]
+                :async true
+                :effect (effect (lose-tags :runner eid 1))}
+               {:async true
+                :cost [:trash-can]
+                :msg "avoid 1 tag"
+                :effect (effect (tag-prevent :runner eid 1))}]})
+
+(defcard "ONR Precision Bribery"
+  {:implementation "No new remotes installs is manual"
+   :static-abilities [{:type :prevent-new-remote
+                       :req (req true)
+                       :value true}]
+   :corp-abilities [{:label "Trash Precision Bribery"
+                     :async true
+                     :cost [:click 1 :credit 4]
+                     :req (req (= :corp side))
+                     :effect (effect (system-msg :corp "spends [Click] and 4 [Credits] to trash Precision Bribery")
+                                     (trash :corp eid card {:cause-card card}))}]})
+
+(defcard "ONR Preying Mantis"
+  (let [ability {:msg "gain [Click]"
+                 :once :per-turn
+                 :label "Gain [Click] (start of turn)"
+                 :effect (effect (gain-clicks 1)
+                                 (update! (assoc-in card [:special :joshua-b] true)))}]
+    {:flags {:runner-phase-12 (req true)}
+     :events [{:event :runner-turn-begins
+               :optional {:prompt "Gain [Click]?"
+                          :once :per-turn
+                          :yes-ability ability}}
+              {:event :runner-turn-ends
+               :interactive (req true)
+               :req (req (get-in card [:special :joshua-b]))
+               :async true
+               :effect (effect
+                         (update! (assoc-in card [:special :joshua-b] false))
+                         (damage eid :brain 1 {:unpreventable true}))
+               :msg "suffer 1 brain damage"}]
+     :abilities [ability]}))
+
+(defcard "ONR Quest for Cattekin"
+  {:events [{:event :runner-turn-begins
+             :async true
+             :effect (req (let [di (dice-roll)]
+                            (continue-ability
+                              state side
+                              (cond
+                                (= di 6)
+                                {:msg (msg "roll a 6(1d6), trashes " (:title card) " and will gain an additional action for the remainder of the game")
+                                 :async true
+                                 :effect (req (wait-for (trash state side (make-eid state eid) card {:cause-card card})
+                                                        (gain-clicks state :runner 1)
+                                                        (gain state :runner :click-per-turn 1)
+                                                        (effect-completed state side eid)))}
+                                (= di 1)
+                                {:msg (msg "roll a 1(1d6), and suffers 1 brain damage")
+                                 :async true
+                                 :effect (effect (damage eid :brain 1))}
+                                (= di 2)
+                                {:msg (msg "roll a 2(1d6), and suffers 1 net damage")
+                                 :async true
+                                 :effect (effect (damage eid :net 1))}
+                                :else
+                                {:msg (msg "roll a " di "(1d6), and continues questing")
+                                 :async true})
+                              card nil)))}]})
+
+(defcard "ONR R&D Mole"
+  {:events [{:event :breach-server
+             :async true
+             :req (req (#{:rd} target))
+             :optional {:req (req (can-pay? state side (assoc eid :source card :source-type :ability) card nil [:credit 4]))
+                        :prompt (msg "Pay 4[Credits]: Access 2 additional cards from R&D?")
+                        :yes-ability {:cost [:credit 4 :trash-can]
+                                      :msg "access 2 additional cards from R&D"
+                                      :effect (effect (access-bonus :rd 2))}}}]})
 
 (defcard "ONR Runner Sensei"
   {:abilities [(base-link-abi 2 4)

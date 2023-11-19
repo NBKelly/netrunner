@@ -276,6 +276,32 @@
       "+2 drip from Journo"
       (take-credits state :runner))))
 
+(deftest onr-karl-de-veres-your-name-is-long
+  ;; Desperado - Gain 1 MU and gain 1 credit on successful run
+  (do-game
+    (new-game {:runner {:deck [(qty "ONR Karl de Veres, Corporate Stooge" 3)]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "ONR Karl de Veres, Corporate Stooge")
+    (run-empty-server state :archives)
+    (is (= 4 (:credit (get-runner))) "Got 1c for successful run on Desperado")))
+
+(deftest onr-preying-mantis
+  ;; Joshua B. - Take 1 tag at turn end if you choose to gain the extra click
+  (do-game
+    (new-game {:runner {:deck [(qty "ONR Preying Mantis" 2)]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "ONR Preying Mantis")
+    (take-credits state :runner)
+    (take-credits state :corp)
+    (is (= 4 (:click (get-runner))) "Runner has 4 clicks")
+    (is (:runner-phase-12 @state) "Runner is in Step 1.2")
+    (card-ability state :runner (get-resource state 0) 0)
+    (is (= 5 (:click (get-runner))) "Gained extra click from PM")
+    (end-phase-12 state :runner)
+    (is (zero? (count (:discard (get-runner)))) "Runner has no discards")
+    (take-credits state :runner)
+    (is (= 1 (count (:discard (get-runner)))) "Runner took brain")))
+
 (deftest onr-runner-sensei
   ;; Trace 6 - Give the runner 1 tag for each point your trace exceeded their link
   (do-game

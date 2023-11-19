@@ -9,7 +9,7 @@
                                 rez-cost]]
     [game.core.eid :refer [complete-with-result effect-completed eid-set-defaults make-eid]]
     [game.core.engine :refer [checkpoint register-pending-event pay queue-event register-events trigger-event-simult unregister-events]]
-    [game.core.effects :refer [register-static-abilities unregister-static-abilities]]
+    [game.core.effects :refer [any-effects register-static-abilities unregister-static-abilities]]
     [game.core.flags :refer [turn-flag? zone-locked?]]
     [game.core.hosting :refer [host]]
     [game.core.ice :refer [update-breaker-strength]]
@@ -59,6 +59,10 @@
     ;; Installing not locked
     (install-locked? state :corp)
     :lock-install
+    ;; there's a 'no new remotes' effect
+    (and (any-effects state side :prevent-new-remote)
+         (not (in-coll? (conj (keys (get-remotes state)) :archives :rd :hq) (second slot))))
+    :prevent-new-remote
     ;; A Teia cannot have more than two servers
     (and (clojure.string/starts-with? (:title (get-in @state [:corp :identity])) "A Teia")
          (not (:disabled (get-in @state [:corp :identity])))
@@ -96,6 +100,9 @@
       ;; Earth station cannot have more than one remote server
       :earth-station
       (reason-toast (str "Unable to install " title " in new remote: Earth Station limit"))
+      ;; some effect is preventing it
+      :prevent-new-remote
+      (reason-toast (str "A card effect is preventing new remotes!"))
       ;; A Teia can only have two remotes
       :a-teia
       (reason-toast (str "Unable to install " title " in new remote: A Teia limit"))

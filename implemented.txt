@@ -35,10 +35,10 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   259 / 584
-TESTS:   140 / 259
-NO TEST: 117
-NO IMP:  2
+TOTAL:   269 / 584
+TESTS:   142 / 269
+NO TEST: 124
+NO IMP:  3
 --------------------------
 002 + Access through Alpha
 003 + Access to Arasaka
@@ -213,6 +213,7 @@ NO IMP:  2
 236 ^ Hell's Run
 
 238 ^ Highlighter
+239 ^ Loan from Chiba
 
 244 + Hot Tip for WNS
 
@@ -242,14 +243,17 @@ NO IMP:  2
 
 273 ^ Joan of Arc
 274 ^ Junkyard BBS
-
+275 + Karl de Veres, Corporate Stooge
 276 + Keeper
 277 + Kilroy Was Here
 278 ^ Krash
 279 + Krumz
 280 + Laser Wire
 
+282 ^ Leland, Corporate Bodyguard
+
 284 + Lesser Arcana
+285 ^ Liberated Savings Account
 
 287 + Liche
 
@@ -272,6 +276,7 @@ NO IMP:  2
 309 ^ Matador
 310 + Mazer
 
+312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
 313 ^ Microtech AI Interface
 
 317 + Minotaur
@@ -294,6 +299,8 @@ NO IMP:  2
 
 340 + Newsgroup Filter
 
+343 ^ Nomad Allies
+
 346 + Olivia Salazar
 
 350 ^ Omnitech Wet Drive
@@ -310,10 +317,13 @@ NO IMP:  2
 376 + Poltergiest
 377 + Polymer Breakthrough
 
+381 ^ Precision Bribery
+382 + Preying Mantis
+
 392 ^ Psychic Friend
 
 395 + Quandary (trivial ETR ice - no test)
-
+396 ^ Quest for Cattekin
 397 ^ Rabbit
 398 ^ Raffles
 399 ^ Ramming Piston
@@ -322,7 +332,7 @@ NO IMP:  2
 403 ^ Raven Microcyb Owl
 404 ^ Raymond Ellison
 405 + Razor Wire
-
+407 ^ R&D Mole
 408 ^ R&D-Protocol Files
 
 412 ^ Redecorator
@@ -493,6 +503,7 @@ The following (marked) cards have no tests or implementations:
   234 ^ Hammer
   236 ^ Hell's Run
   238 ^ Highlighter
+  239 ^ Loan from Chiba
   246 ^ HQ Mole
   250 ^ Ice and Data's Guide to the Net (update the req for this one!)
   251 ^ Ice and Data Special Report
@@ -502,6 +513,8 @@ The following (marked) cards have no tests or implementations:
   273 ^ Joan of Arc
   274 ^ Junkyard BBS
   278 ^ Krash
+  282 ^ Leland, Corporate Bodyguard
+  285 ^ Liberated Savings Account
   289 ^ Lisa Blight
   294 ^ Lockjaw
   296 ^ Loony Goon
@@ -515,16 +528,20 @@ The following (marked) cards have no tests or implementations:
   326 ^ Mystery Box
   330 ^ N.E.T.O.
   331 ^ Netspace Inverter
+  343 ^ Nomad Allies
   350 ^ Omnitech Wet Drive
   363 ^ Pattel's Virus
   366 ^ Pile Driver
+  381 ^ Precision Bribery
   392 ^ Psychic Friend
+  396 ^ Quest for Cattekin
   397 ^ Rabbit
   398 ^ Raffles
   399 ^ Ramming Piston
   401 ^ Raptor
   403 ^ Raven Microcyb Owl
   404 ^ Raymond Ellison
+  407 ^ R&D Mole
   408 ^ R&D-Protocol Files
   412 ^ Redecorator
   414 ^ Reflector
@@ -558,5 +575,6 @@ The following (marked) cards have no tests or implementations:
   575 ^ Worm
   576 ^ Wrecking Ball
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
+  312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 97
+Random card to implement: 302
