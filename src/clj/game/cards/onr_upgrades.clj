@@ -44,7 +44,7 @@
    [game.core.revealing :refer [reveal]]
    [game.core.rezzing :refer [rez derez get-rez-cost]]
    [game.core.runs :refer [end-run force-ice-encounter jack-out redirect-run
-                           set-next-phase start-next-phase]]
+                           set-next-phase start-next-phase gain-corp-run-credits]]
    [game.core.say :refer [system-msg]]
    [game.core.servers :refer [central->zone from-same-server? in-same-server?
                               is-central? protecting-same-server? same-server?
@@ -194,6 +194,32 @@
                                                               :effect (effect (derez c))}])
                                                           (effect-completed state side eid)))))}
                       card nil))}]}))
+
+(defcard "ONR Raymond Ellison"
+  (letfn [(resolve-abi [x state orig-card eid]
+            (continue-ability
+              state :corp
+              {:prompt "remove an advancement counter?"
+               :choices {:card #(and (in-same-server? % orig-card)
+                                     (not (ice? %))
+                                     (pos? (get-counters % :advancement)))}
+               :waiting-prompt true
+               :async true
+               :effect (req
+                         (add-prop state :corp target :advance-counter -1 {:placed true})
+                         (resolve-abi (inc x) state orig-card eid))
+               :cancel-effect (req (continue-ability
+                                     state side
+                                     {:msg (msg "remove " x " advancement counters from cards in this server and gain " (* 3 x) " credits for this run")
+                                      :async true
+                                      :effect (req (gain-corp-run-credits state side eid (* x 3)))}
+                                     card nil))}
+              orig-card nil))]
+    {:abilities [{:label "trade advancements for run credits"
+                  :req (req (and run this-server))
+                  :cost [:trash-can]
+                  :async true
+                  :effect (req (resolve-abi 0 state card eid))}]}))
 
 (defcard "ONR Red Herrings"
   {:on-trash

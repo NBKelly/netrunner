@@ -99,16 +99,18 @@
 (defmethod stats-area "Corp" [corp]
   (let [ctrl (stat-controls-for-side :corp)]
     (fn [corp]
-      (let [{:keys [user click credit bad-publicity active]} @corp
+      (let [{:keys [user click credit run-credit bad-publicity active]} @corp
+            base-credit (- credit run-credit)
+            plus-run-credit (when (pos? run-credit) (str "+" run-credit))
             icons? (get-in @app-state [:options :player-stats-icons] true)]
         [:div.stats-area
          (if icons?
            [:div.icon-grid
             (ctrl :click [:div click " " [:span.anr-icon.click]])
-            (ctrl :credit [:div credit " " [:span.anr-icon.credit]])]
+            (ctrl :credit [:div base-credit plus-run-credit " " [:span.anr-icon.credit]])]
            [:<>
             (ctrl :click [:div (tr [:game.click-count] click)])
-            (ctrl :credit [:div (tr [:game.credit-count] credit -1)])])
+            (ctrl :credit [:div (tr [:game.credit-count] base-credit run-credit -1)])])
          (let [{:keys [base additional]} bad-publicity]
            (ctrl :bad-publicity [:div (tr [:game.bad-pub-count] base additional)]))]))))
 

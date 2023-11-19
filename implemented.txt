@@ -35,9 +35,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   238 / 584
-TESTS:   135 / 238
-NO TEST: 102
+TOTAL:   240 / 584
+TESTS:   136 / 240
+NO TEST: 103
 NO IMP:  1
 --------------------------
 002 + Access through Alpha
@@ -285,6 +285,7 @@ NO IMP:  1
 372 + Pocket Virtual Reality
 
 376 + Poltergiest
+377 + Polymer Breakthrough
 
 392 ^ Psychic Friend
 
@@ -296,7 +297,7 @@ NO IMP:  1
 401 ^ Raptor
 402 + Raven Microcyb Eagle
 403 ^ Raven Microcyb Owl
-
+404 ^ Raymond Ellison
 405 + Razor Wire
 
 408 ^ R&D-Protocol Files
@@ -485,6 +486,7 @@ The following (marked) cards have no tests or implementations:
   399 ^ Ramming Piston
   401 ^ Raptor
   403 ^ Raven Microcyb Owl
+  404 ^ Raymond Ellison
   408 ^ R&D-Protocol Files
   412 ^ Redecorator
   414 ^ Reflector
@@ -516,4 +518,4 @@ The following (marked) cards have no tests or implementations:
   575 ^ Worm
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 377
+Random card to implement: 23

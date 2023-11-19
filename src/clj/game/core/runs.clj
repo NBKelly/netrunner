@@ -504,6 +504,11 @@
      (set-current-ice state))))
 
 ;; Non timing stuff
+(defn gain-corp-run-credits
+  [state _ eid n]
+  (swap! state update-in [:corp :run-credit] (fnil + 0 0) n)
+  (gain-credits state :corp eid n))
+
 (defn gain-run-credits
   "Add temporary credits that will disappear when the run is over."
   [state _ eid n]
@@ -762,7 +767,9 @@
   (let [run (:run @state)
         run-eid (:eid run)]
     (swap! state assoc-in [:runner :register :last-run] run)
+    (swap! state update-in [:corp :credit] - (get-in @state [:corp :run-credit]))
     (swap! state update-in [:runner :credit] - (get-in @state [:runner :run-credit]))
+    (swap! state assoc-in [:corp :run-credit] 0)
     (swap! state assoc-in [:runner :run-credit] 0)
     (swap! state assoc :run nil)
     (swap! state dissoc-in [:end-run :ended])

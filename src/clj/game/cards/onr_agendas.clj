@@ -107,6 +107,13 @@
                        :req (req (same-card? target (get-in card [:special :transmutation])))
                        :value 1}]})
 
+(defcard "ONR Polymer Breakthrough"
+  {:events [{:event :corp-turn-begins
+             :msg "gain 1 [Credits]"
+             :async true
+             :effect (effect (gain-credits eid 1))}]})
+
+
 (defcard "ONR Subsidiary Branch"
   {:move-zone (req (when (and (in-scored? card)
                               (= :corp (:scored-side card)))

@@ -39,6 +39,16 @@
       (run-continue state :pass-ice)
       (is (= 3 (count (:subroutines (refresh hydra))))))))
 
+(deftest onr-polymer-breakthrough
+  ;; Rezeki - gain 1c when turn begins
+  (do-game
+    (new-game {:corp {:deck ["ONR Polymer Breakthrough"]}})
+    (play-and-score state "ONR Polymer Breakthrough")
+    (take-credits state :corp)
+    (let [credits (:credit (get-corp))]
+      (take-credits state :runner)
+      (is (= (:credit (get-corp)) (+ credits 1)) "Gain 1 from Polymer Breakthrough"))))
+
 (deftest onr-subsidiary-branch
     ;; Gain an additional click
     (do-game

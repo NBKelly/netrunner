@@ -249,6 +249,7 @@
 
 (def corp-keys
   [:servers
+   :run-credit
    :bad-publicity])
 
 (defn servers-summary
