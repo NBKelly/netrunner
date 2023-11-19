@@ -1,7 +1,7 @@
 (ns game.core.flags
   (:require
     [game.core.board :refer [all-active all-installed]]
-    [game.core.card :refer [agenda? get-advancement-requirement get-cid get-counters installed? in-scored? rezzed?]]
+    [game.core.card :refer [agenda? get-advancement-requirement get-cid get-counters installed? in-scored? rezzed? has-subtype?]]
     [game.core.card-defs :refer [card-def]]
     [game.core.effects :refer [any-effects]]
     [game.core.eid :refer [make-eid]]
@@ -191,7 +191,7 @@
   :unique fails unique check
   :req does not meet rez requirement"
   [state side card]
-  (let [uniqueness (:uniqueness card)
+  (let [uniqueness (or (:uniqueness card) (has-subtype? card "Unique"))
         rez-req (:rez-req (card-def card))]
     (cond
       ;; Card on same side?

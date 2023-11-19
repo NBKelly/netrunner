@@ -5,6 +5,8 @@ Features:
   Done:
     traces (not complete yet though - there are trace interrupts and other things to implement)
     Hidden Resources (some functions may leak info - figure these out later, and avoid using :title card if it can be helped)
+    Unique subtype is implemented
+    Decks have the install trash like ANR does
     Regions can only be installed if you can afford to rez them, and must immediately be
       rezzed on install (maybe some issues will arise with this in the future, idk)
   Todo:
@@ -33,9 +35,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   234 / 584
-TESTS:   134 / 234
-NO TEST: 99
+TOTAL:   235 / 584
+TESTS:   134 / 235
+NO TEST: 100
 NO IMP:  1
 --------------------------
 002 + Access through Alpha
@@ -103,6 +105,8 @@ NO IMP:  1
 086 ^ Codeslinger
 
 088 + Colonel Failure
+
+091 ^ Corporate Ally
 
 096 + Corporate Guard(R) Temps
 
@@ -426,6 +430,7 @@ The following (marked) cards have no tests or implementations:
   069 ^ Cascade (test once viruses are done!)
   085 ^ Codecracker
   086 ^ Codeslinger
+  091 ^ Corporate Ally
   103 ^ Corrosion
   117 ^ Crumble (requires braniac id)
   123 ^ Cyfermaster (trivial icebreaker - no test)
@@ -508,4 +513,4 @@ The following (marked) cards have no tests or implementations:
   575 ^ Worm
   576 ^ Wrecking Ball
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 362
+Random card to implement: 410

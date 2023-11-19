@@ -5,7 +5,7 @@
     [clojure.string :as str]
     [cond-plus.core :refer [cond+]]
     [game.core.board :refer [clear-empty-remotes all-installed-runner-type all-active-installed]]
-    [game.core.card :refer [active? facedown? faceup? get-card get-cid get-title in-discard? in-hand? installed? rezzed? program? console? unique?]]
+    [game.core.card :refer [active? deck? facedown? faceup? get-card get-cid get-title in-discard? in-hand? installed? rezzed? program? console? unique?]]
     [game.core.card-defs :refer [card-def]]
     [game.core.effects :refer [get-effect-maps unregister-lingering-effects]]
     [game.core.eid :refer [complete-with-result effect-completed make-eid]]
@@ -1059,7 +1059,12 @@
                       (filter console?))
         consoles (when (< 1 (count consoles))
                    (butlast consoles))
-        cards-to-trash (-> (concat corp-uniques runner-uniques consoles)
+        ;; onr decks are like consoles
+        decks (->> (get-in @state [:runner :rig :hardware])
+                   (filter deck?))
+        decks (when (< 1 (count decks))
+                   (butlast decks))
+        cards-to-trash (-> (concat corp-uniques runner-uniques consoles decks)
                            distinct
                            seq)]
     (if cards-to-trash

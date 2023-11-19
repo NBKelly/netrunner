@@ -158,6 +158,11 @@
              :msg "gain 1[Credit]"
              :effect (effect (gain-credits eid 1))}]})
 
+(defcard "ONR Corporate Ally"
+  {:static-abilities [{:type :advancement-requirement
+                       :value 1}]
+   :additional-cost [:agenda-point 1]})
+
 (defcard "ONR Runner Sensei"
   {:abilities [(base-link-abi 2 4)
                (boost-link-abi 2 1)]

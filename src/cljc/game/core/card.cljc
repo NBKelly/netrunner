@@ -291,9 +291,16 @@
   (and (hardware? card)
        (has-subtype? card "Console")))
 
+(defn deck?
+  [card]
+  (and (hardware? card)
+       (has-subtype? card "Deck")))
+
+
 (defn unique?
   [card]
-  (:uniqueness card))
+  (or (has-subtype? card "Unique")
+      (:uniqueness card)))
 
 (defn corp-installable-type?
   "Is the card of an acceptable type to be installed in a server"
