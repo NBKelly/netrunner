@@ -197,7 +197,64 @@
       (is (= 13 (:credit (get-runner))) "Take 6cr from Kati")
       (is (zero? (get-counters (refresh kati) :credit)) "No counters left on Kati"))))
 
-(deftest field-reporter-for-ice-and-data
+(deftest onr-executive-file-clerk
+  ;; Executive Wiretaps
+  (do-game
+    (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                      :hand ["Hostile Takeover" "PAD Campaign" "Ice Wall" "Hedge Fund" "Cayambe Grid"]}
+               :runner {:hand ["ONR Executive File Clerk"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "ONR Executive File Clerk")
+    (card-ability state :runner (get-resource state 0) 0)
+    (is (last-log-contains? state "Runner pays 2 [Credits] and trashes ONR Executive File Clerk to use ONR Executive File Clerk to reveal Cayambe Grid, Hedge Fund, Hostile Takeover, Ice Wall, and PAD Campaign from HQ."))))
+
+(deftest onr-expendable-family-member
+  ;; Decoy - Trash to avoid 1 tag
+  (do-game
+    (new-game {:corp {:deck ["SEA Source"]}
+               :runner {:deck ["ONR Expendable Family Member"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "ONR Expendable Family Member")
+    (run-empty-server state :archives)
+    (take-credits state :runner)
+    (play-from-hand state :corp "SEA Source")
+    (click-prompt state :corp "0")
+    (click-prompt state :runner "0")
+    (is (not (no-prompt? state :runner)) "Runner prompted to avoid tag")
+    (card-ability state :runner (get-resource state 0) 0)
+    (is (= 1 (count (:discard (get-runner)))) "Decoy trashed")
+    (is (zero? (count-tags state)) "Tag avoided")))
+
+(deftest onr-fall-guy
+  ;; Decoy - Trash to avoid 1 tag
+  (do-game
+    (new-game {:corp {:deck ["SEA Source"]}
+               :runner {:deck ["ONR Fall Guy"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "ONR Fall Guy")
+    (run-empty-server state :archives)
+    (take-credits state :runner)
+    (play-from-hand state :corp "SEA Source")
+    (click-prompt state :corp "0")
+    (click-prompt state :runner "0")
+    (is (not (no-prompt? state :runner)) "Runner prompted to avoid tag")
+    (card-ability state :runner (get-resource state 0) 0)
+    (is (= 1 (count (:discard (get-runner)))) "Decoy trashed")
+    (is (zero? (count-tags state)) "Tag avoided")))
+
+(deftest onr-floating-runner-bbs
+  ;; Rezeki - gain 1c when turn begins
+  (do-game
+    (new-game {:runner {:deck ["ONR Floating Runner BBS"]
+                        :credits 6}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "ONR Floating Runner BBS")
+    (take-credits state :runner)
+    (let [credits (:credit (get-runner))]
+      (take-credits state :corp)
+      (is (= (:credit (get-runner)) (+ credits 1)) "Gain 1 from ONR Floating Runner BBS"))))
+
+(deftest onr-field-reporter-for-ice-and-data
   (do-game
     (new-game {:corp {:hand [(qty "Vanilla" 3)]}
                :runner {:hand ["ONR Field Reporter for Ice and Data"]}})

@@ -35,9 +35,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   253 / 584
-TESTS:   137 / 253
-NO TEST: 114
+TOTAL:   259 / 584
+TESTS:   140 / 259
+NO TEST: 117
 NO IMP:  2
 --------------------------
 002 + Access through Alpha
@@ -178,6 +178,12 @@ NO IMP:  2
 
 185 ^ Evil Twin
 
+188 + Executive File Clerk
+
+190 + Expendable Family Member
+
+195 + Fall Guy
+
 202 + Fetch 4.0.1
 203 + Field Reporter for Ice and Data
 204 + Filter
@@ -195,6 +201,7 @@ NO IMP:  2
 222 ^ Garbage In
 223 + Gatekeeper
 
+225 ^ Get Ready to Rumble
 226 + Gideon's Pawnshop
 227 ^ Glacier
 
@@ -203,9 +210,13 @@ NO IMP:  2
 
 234 ^ Hammer
 
+236 ^ Hell's Run
+
 238 ^ Highlighter
 
 244 + Hot Tip for WNS
+
+246 ^ HQ Mole
 
 248 + Hunter
 249 + Hunting Pack
@@ -475,11 +486,14 @@ The following (marked) cards have no tests or implementations:
   215 ^ Forward's Legacy
   219 ^ Fubar
   222 ^ Garbage In
+  225 ^ Get Ready to Rumble
   227 ^ Glacier
   230 ^ Gremlins
   231 ^ Grubb
   234 ^ Hammer
+  236 ^ Hell's Run
   238 ^ Highlighter
+  246 ^ HQ Mole
   250 ^ Ice and Data's Guide to the Net (update the req for this one!)
   251 ^ Ice and Data Special Report
   255 ^ Identity Donor (janky impl)
@@ -545,4 +559,4 @@ The following (marked) cards have no tests or implementations:
   576 ^ Wrecking Ball
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 543
+Random card to implement: 97

@@ -133,6 +133,7 @@
                                                                      :suppress-event true})
                               (queue-event state :damage {:amount n
                                                           :card card
+                                                          :side side
                                                           :damage-type dmg-type
                                                           :cards-trashed cards-trashed})
                               (let [trash-event (get-trash-event side false)

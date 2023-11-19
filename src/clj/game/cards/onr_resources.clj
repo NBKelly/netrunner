@@ -304,6 +304,62 @@
                 :msg "gain a credit (manual)"
                 :effect (effect (gain-credits eid 1))}]})
 
+(defcard "ONR Executive File Clerk"
+  {:abilities [{:cost [:credit 2 :trash-can]
+                :msg (msg "reveal " (enumerate-str (sort (map :title (:hand corp)))) " from HQ")
+                :async true
+                :effect (effect (reveal eid (:hand corp)))}]})
+
+(defcard "ONR Expendable Family Member"
+  {:interactions {:prevent [{:type #{:tag}
+                             :req (req true)}]}
+   :abilities [{:async true
+                :cost [:trash-can :credit 1]
+                :msg "avoid 1 tag"
+                :effect (effect (tag-prevent :runner eid 1))}]})
+
+(defcard "ONR Fall Guy"
+  {:interactions {:prevent [{:type #{:tag}
+                             :req (req true)}]}
+   :abilities [{:async true
+                :cost [:trash-can]
+                :msg "avoid 1 tag"
+                :effect (effect (tag-prevent :runner eid 1))}]})
+
+(defcard "ONR Floating Runner BBS"
+  {:events [{:event :runner-turn-begins
+             :msg "gain 1 [Credits]"
+             :async true
+             :effect (effect (gain-credits eid 1))}]})
+
+(defcard "ONR Get Ready to Rumble"
+  {:events [{:event :damage
+             :optional {:waiting-prompt true
+                        :req (req (and
+                                    (pos? (:amount context))
+                                    (= :corp (:side context))
+                                    (= :meat (:damage-type context))))
+                        :prompt "Force the corp to discard 2 at random?"
+                        :yes-ability {:cost [:trash-can]
+                                      :msg "force the Corp to discard 2 cards at random"
+                                      :async true
+                                      :effect (effect (trash-cards :corp eid (take 2 (shuffle (:hand corp))) {:cause-card card}))}}}]})
+
+(defcard "ONR HQ Mole"
+  {:events [{:event :breach-server
+             :async true
+             :req (req (#{:hq} target))
+             :optional {:req (req (can-pay? state side (assoc eid :source card :source-type :ability) card nil [:credit 4]))
+                        :prompt (msg "Pay 4[Credits]: Access 2 additional cards from HQ?")
+                        :yes-ability {:cost [:credit 4 :trash-can]
+                                      :msg "access 2 additional cards from HQ"
+                                      :effect (effect (access-bonus :hq 2))}}}]})
+
+(defcard "ONR Hell's Run"
+  {:recurring 1
+   :interactions {:pay-credits {:req (req (= :trace (:source-type eid)))
+                                :type :recurring}}})
+
 (defcard "ONR N.E.T.O."
   (letfn [(shuffle-back [state side cards targets set-aside-eid]
             (doseq [c (get-set-aside state :runner set-aside-eid)]

@@ -146,16 +146,19 @@
 ;; recursively handle runner link choices until the runner says "Done!"
 (defn runner-link-repeat
   [state _ eid card {:keys [link-card trace-card] :as trace} abilities]
-  (let [abis (filter #(can-pay? state :runner nil
-                               (assoc eid :source link-card :source-type :resource)
-                               nil nil (:cost %)) abilities)
+  (let [abis (filter #(can-pay? state :runner
+                                (make-eid state (assoc eid :source-type :trace))
+                                nil nil (and true (:cost %))) abilities)
+        ;; todo - figure out why this doesn't work? ^^ - should be able to use the sourced credits
+        ;;   -- actually I got it to work - but it doesn't without the and true there
+        ;;      idk what the issue is?
         ;; you must establish base link before you can use the other abilities
         ;; and you may only establish base link once!
         abis (filter #(or (and (nil? (get-in @state [:onr-trace :base]))
                                (:onr-base-link %))
                           (and (get-in @state [:onr-trace :base])
                                (not (:onr-base-link %)))) abis)
-        abis (filter #(can-trigger? state :runner eid % link-card nil) abis)
+        abis (filter #(can-trigger? state :runner (assoc eid :source link-card :source-type :trace) % link-card nil) abis)
         build-label (fn [abi] (str (:cost-label abi) ": " (:label abi)))
         labels (into [] (concat (map build-label abis) ["Done"]))
         zipped (map vector abis labels)
@@ -170,7 +173,7 @@
                (if (= target "Done")
                  (onr-resolve-trace state corp eid trace-card trace)
                  (let [abi (chosen-abi target)]
-                   (wait-for (resolve-ability state :runner abi card nil)
+                   (wait-for (resolve-ability state :runner (make-eid state (assoc eid :source link-card :source-type :trace)) abi card nil)
                              (runner-spent-trace state (second (:cost abi))) ;; this wont work if there are non credit costs!
                              (continue-ability state side
                                                (runner-link-repeat
