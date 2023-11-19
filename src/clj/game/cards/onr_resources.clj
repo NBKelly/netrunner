@@ -59,7 +59,7 @@
    [game.core.props :refer [add-counter add-icon remove-icon]]
    [game.core.revealing :refer [reveal]]
    [game.core.rezzing :refer [derez rez]]
-   [game.core.runs :refer [bypass-ice can-run-server? get-runnable-zones
+   [game.core.runs :refer [active-encounter? bypass-ice can-run-server? get-runnable-zones continue
                            gain-run-credits get-current-encounter
                            jack-out
                            update-current-encounter
@@ -328,6 +328,18 @@
                 :msg "avoid 1 tag"
                 :effect (effect (tag-prevent :runner eid 1))}]})
 
+(defcard "ONR Field Reporter for Ice and Data"
+  {:events [{:event :runner-turn-ends
+             :async true
+             :effect (req (let [ice-summoned (count (filter #(ice? (:card (first %))) (turn-events state side :rez)))]
+                            (if (pos? ice-summoned)
+                              (continue-ability
+                                state side
+                                {:msg (msg "gain " ice-summoned "[Credits]")
+                                 :effect (effect (gain-credits eid ice-summoned))}
+                                card nil)
+                              (effect-completed state side eid))))}]})
+
 (defcard "ONR Floating Runner BBS"
   {:events [{:event :runner-turn-begins
              :msg "gain 1 [Credits]"
@@ -361,6 +373,14 @@
   {:recurring 1
    :interactions {:pay-credits {:req (req (= :trace (:source-type eid)))
                                 :type :recurring}}})
+
+(defcard "ONR Junkyard BBS"
+  {:abilities [{:cost [:credit 1 :click 1]
+                :req (req (not (empty? (:discard runner))))
+                :label "add the top card of your discard to your hand"
+                :msg (msg "move " (:title (last (:discard runner))) " to their hand")
+                :effect (effect (move :runner (last (:discard runner)) :hand)
+                                (trigger-event :searched-stack nil))}]})
 
 (defcard "ONR Karl de Veres, Corporate Stooge"
   {:events [{:event :successful-run
@@ -576,6 +596,80 @@
                                       :msg "access 2 additional cards from R&D"
                                       :effect (effect (access-bonus :rd 2))}}}]})
 
+(defcard "ONR Restrictive Net Zoning"
+  {:on-install {:prompt "Choose a server"
+                :choices (req servers)
+                :effect (effect (update! (assoc card :card-target target)))}
+   :static-abilities [{:type :install-cost
+                       :req (req (let [serv (:server (second targets))]
+                                   (and (= serv (:card-target card))
+                                        (ice? target))))
+                       :value 2}]})
+
+(defcard "ONR Rigged Investments"
+  (let [ability {:once :per-turn
+                 :label "Take 1 [Credits] (start of turn)"
+                 :req (req (:runner-phase-12 @state))
+                 :msg (msg "gain " (min 1 (get-counters card :credit)) " [Credits]")
+                 :async true
+                 :effect (req (let [credits (min 1 (get-counters card :credit))]
+                                (add-counter state side card :credit (- credits))
+                                (gain-credits state :runner eid credits)))}]
+    {:data {:counter {:credit 12}}
+     :flags {:drip-economy true}
+     :abilities [ability]
+     :events [(assoc ability :event :runner-turn-begins)
+              (trash-on-empty :credit)]}))
+
+(defcard "ONR Ronin Around"
+  (letfn [(shuffle-back [state side cards targets set-aside-eid]
+            (doseq [c (get-set-aside state :runner set-aside-eid)]
+              (move state :runner
+                    c :deck))
+            (system-msg state side (str "shuffles " (- (count cards) (count targets)) " cards back into the stack"))
+            (shuffle! state side :deck))]
+    {:abilities [{:cost [:click 1]
+                  :label "look at the top 5 cards of the stack"
+                  :async true
+                  :effect (req (set-aside-for-me state :runner eid (take 5 (:deck runner)))
+                               (let [cards (get-set-aside state :runner eid)
+                                     set-aside-eid eid
+                                     valid (count (filter #(or (hardware? %)) cards))
+                                     max-amt (min valid
+                                                  (total-available-credits state :runner eid card))]
+                                 (continue-ability
+                                   state side
+                                   (if (zero? max-amt)
+                                     {:waiting-prompt true
+                                      :prompt "You can't do anything"
+                                      :choices ["I understand"]
+                                      :async true
+                                      :effect (req (shuffle-back state side cards [] set-aside-eid)
+                                                   (effect-completed state side eid))}
+                                     {:waiting-prompt true
+                                      :choices {:card #(and (or (hardware? %))
+                                                            (some (fn [c] (same-card? % c)) cards))
+                                                :max max-amt}
+                                      :async true
+                                      :effect (req (wait-for (pay state :runner (make-eid state eid) card [:credit (count targets)])
+                                                             (system-msg state side (str "pays " (count targets)
+                                                                                         "[Credits] and moves "
+                                                                                         (str/join ", " (map :title targets))
+                                                                                         " to the grip"))
+                                                             ;; showing is not revealing lmao
+                                                             (doseq [c targets]
+                                                               (move state side c :hand))
+                                                             (shuffle-back state side cards targets set-aside-eid)
+                                                             (effect-completed state side eid)))
+                                      :cancel-effect (req (shuffle-back state side cards [] set-aside-eid)
+                                                          (effect-completed state side eid))})
+                                   card nil)))}
+                 {:cost [:click 1 :credit 2]
+                  :choices {:card #(and (corp? %)
+                                        (installed? %))}
+                  :effect (effect (expose eid target))
+                  :msg "expose 1 card"}]}))
+
 (defcard "ONR Runner Sensei"
   {:abilities [(base-link-abi 2 4)
                (boost-link-abi 2 1)]
@@ -585,25 +679,82 @@
              :msg "gain 1[Credit]"
              :effect (effect (gain-credits eid 1))}]})
 
-(defcard "ONR Field Reporter for Ice and Data"
-  {:events [{:event :runner-turn-ends
-             :async true
-             :effect (req (let [ice-summoned (count (filter #(ice? (:card (first %))) (turn-events state side :rez)))]
-                            (if (pos? ice-summoned)
-                              (continue-ability
-                                state side
-                                {:msg (msg "gain " ice-summoned "[Credits]")
-                                 :effect (effect (gain-credits eid ice-summoned))}
-                                card nil)
-                              (effect-completed state side eid))))}]})
+(defcard "ONR Sandbox Dig"
+  {:abilities [{:cost [:trash-can :credit 3]
+                :label "look at the top 3 cards of R&D"
+                :msg "look at the top 3 cards of R&D"
+                :async true
+                :effect (req (continue-ability
+                               state side
+                               {:waiting-prompt true
+                                :prompt (msg "The top 3 cards of R&D are " (str/join ", " (map :title (take 3 (:deck corp)))))
+                                :choices ["I understand"]}
+                               card nil))}]})
 
-(defcard "ONR Junkyard BBS"
-  {:abilities [{:cost [:credit 1 :click 1]
-                :req (req (not (empty? (:discard runner))))
-                :label "add the top card of your discard to your hand"
-                :msg (msg "move " (:title (last (:discard runner))) " to their hand")
-                :effect (effect (move :runner (last (:discard runner)) :hand)
-                                (trigger-event :searched-stack nil))}]})
+(defcard "ONR Short-Term Contract"
+  {:data {:counter {:credit 12}}
+   :events [(trash-on-empty :credit)]
+   :abilities [{:cost [:click 1]
+                :keep-menu-open :while-clicks-left
+                :label "gain 2 [Credits]"
+                :msg (msg "gain " (min 2 (get-counters card :credit)) " [Credits]")
+                :async true
+                :effect (req (let [credits (min 2 (get-counters card :credit))]
+                               (add-counter state side card :credit (- credits))
+                               (gain-credits state :runner eid credits)))}]})
+
+(defcard "ONR Silicon Saloon Franchise"
+  {:abilities [{:cost [:click 1]
+                :msg "gain 1 [Credits] and draw 1 card"
+                :async true
+                :effect (req (wait-for (gain-credits state side 1)
+                                       (draw state side eid 1)))}]})
+
+
+(defcard "ONR Simulacrum"
+  {:abilities [{:label (str "Bypass AP being encountered")
+                :cost [:trash-can]
+                :req (req (and (active-encounter? state)
+                               (has-subtype? current-ice "AP")))
+                :msg (msg "bypass " (:title current-ice))
+                :effect (req (bypass-ice state)
+                             (continue state :runner nil))}]})
+
+(defcard "ONR Smith's Pawnshop"
+  (let [ability {:async true
+                 :label "trash a card to gain 2 [Credits]"
+                 :once :per-turn
+                 :req (req (>= (count (all-installed state :runner)) 2))
+                 :choices {:not-self true
+                           :req (req (and (runner? target)
+                                          (installed? target)))}
+                 :msg (msg "trash " (:title target) " and gain 2 [Credits]")
+                 :cancel-effect (effect (system-msg (str "declines to use " (:title card)))
+                                        (effect-completed eid))
+                 :effect (req (wait-for (trash state side target {:unpreventable true :cause-card card})
+                                        (gain-credits state side eid 2)))}]
+    {:flags {:runner-phase-12 (req (>= (count (all-installed state :runner)) 2))}
+     :events [(assoc ability
+                     :event :runner-turn-begins
+                     :interactive (req true))]
+     :abilities [ability]}))
+
+(defcard "ONR Streetware Distributor"
+  (let [start-of-turn-ability {:once :per-turn
+                               :label "Take 1 [Credits] (start of turn)"
+                               :req (req (and (:runner-phase-12 @state)
+                                              (pos? (get-counters card :credit))))
+                               :msg "take 1 [Credits]"
+                               :async true
+                               :effect (req (add-counter state side card :credit -1)
+                                         (gain-credits state side eid 1))}]
+    {:flags {:drip-economy (req (pos? (get-counters card :credit)))}
+     :abilities [{:cost [:click 1]
+                  :msg "place 3 [Credits]"
+                  :req (req (not (:runner-phase-12 @state)))
+                  :effect (req (add-counter state side card :credit 3))}
+                 start-of-turn-ability]
+     :events [(assoc start-of-turn-ability :event :runner-turn-begins)]}))
 
 (defcard "ONR Submarine Uplink"
   ;; this forces you to jackout after the current encounter
@@ -635,6 +786,18 @@
                 :cost [:trash-can :credit 3]
                 :async true
                 :effect (effect (gain-credits eid 6))}]})
+
+(defcard "ONR Technician Lover"
+  {:abilities [{:cost [:click 1]
+                :label "look at the top card of R&D"
+                :msg "look at the top card of R&D"
+                :async true
+                :effect (req (continue-ability
+                               state side
+                               {:waiting-prompt true
+                                :prompt (msg "The top card of R&D is " (:title (first (:deck corp))))
+                                :choices ["I understand"]}
+                               card nil))}]})
 
 (defcard "ONR The Shell Traders"
   (let [shellpilled
@@ -699,3 +862,65 @@
                                card nil))}]
       :implementation "this can put your cards in limbo. This is the intended design"
       :events [(assoc remove-counter :event :runner-turn-begins)]}))
+
+(defcard "The Short Circuit"
+  {:abilities [{:label "Search the stack for a program and add it to the grip"
+                :prompt "Choose a program"
+                :msg (msg "add " (:title target) " from the stack to the grip")
+                :choices (req (cancellable (filter #(and (program? %))
+                                                   (:deck runner)) :sorted))
+                :cost [:click 1 :credit 1]
+                :keep-menu-open :while-clicks-left
+                :effect (effect (trigger-event :searched-stack nil)
+                                (shuffle! :deck)
+                                (move target :hand))}]})
+
+(defcard "ONR The Springboard"
+  {:events [{:event :trace-revealed
+             :optional {:prompt "Gain 1 link?"
+                        :waiting-prompt true
+                        :yes-ability (boost-link-abi 1 1)}}]})
+
+(defcard "ONR Time to Collect"
+  {:interactions {:prevent [{:type #{:trash-resource}
+                             :req (req (= :corp (:active-player @state)))}]}
+   :abilities [{:label "Prevent another installed resource from being trashed"
+                :cost [:trash-can]
+                :effect (effect (trash-prevent :resource 1))}]})
+
+(defcard "ONR Top Runner's Conference"
+  {:events [{:event :run
+             :msg "trash itself"
+             :async true
+             :effect (effect (trash eid card))}
+            {:event :runner-turn-begins
+             :async true
+             :effect (effect (gain-credits eid 2))}]})
+
+(defcard "ONR Trauma Team [TM]"
+  {:on-install {:async true
+                :effect (req (add-counter state :runner card :trauma 2)
+                             (effect-completed state :runner eid))}
+   :interactions {:prevent [{:type #{:meat}
+                             :req (req true)}]}
+   :abilities [{:label "Add a trauma counter"
+                :cost [:click 1]
+                :msg "place a trauma counter on itself"
+                :effect (req (add-counter state :runner card :trauma 1))}
+               {:label "Prevent 1 meat damage"
+                :cost [:trauma 1]
+                :effect (req (damage-prevent state side :meat 1))}]})
+
+(defcard "ONR Umbrella Policy"
+  {:interactions {:prevent [{:type #{:trash-program :trash-hardware}
+                             :req (req true)}]}
+   :abilities [{:cost [:trash-can]
+                :label "prevent a program trash"
+                :effect (effect (trash-prevent :program 1)
+                                (trash-prevent :hardware 1))}]})
+
+(defcard "ONR Wired Switchboard"
+  {:events [{:event :trace-revealed
+             :optional {:prompt "Gain 3 link?"
+                        :waiting-prompt true
+                        :yes-ability (boost-link-abi [:trash-can] 3)}}]})

@@ -302,6 +302,27 @@
     (take-credits state :runner)
     (is (= 1 (count (:discard (get-runner)))) "Runner took brain")))
 
+(deftest onr-restrictive-net-zoning
+  ;; Diwan - Full test
+  (do-game
+    (new-game {:corp {:deck [(qty "Ice Wall" 3) (qty "Fire Wall" 3) (qty "Crisium Grid" 2)]
+                      :hand []}
+               :runner {:deck ["ONR Restrictive Net Zoning"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "ONR Restrictive Net Zoning")
+    (click-prompt state :runner "HQ")
+    (take-credits state :runner)
+    (is (= 8 (:credit (get-corp))) "8 credits for corp at start of second turn")
+    (starting-hand state :corp ["Ice Wall"])
+    (play-from-hand state :corp "Ice Wall" "R&D")
+    (is (= 8 (:credit (get-corp))) "Restrictive Net Zoning did not charge extra for install on another server")
+    (starting-hand state :corp ["Ice Wall"])
+    (play-from-hand state :corp "Ice Wall" "HQ")
+    (is (= 6 (:credit (get-corp))) "Restrictive Net Zoning charged 2cr to install ice protecting the named server")
+    (starting-hand state :corp ["Crisium Grid"])
+    (play-from-hand state :corp "Crisium Grid" "HQ")
+    (is (= 6 (:credit (get-corp))) "Restrictive Net Zoning did not charge")))
+
 (deftest onr-runner-sensei
   ;; Trace 6 - Give the runner 1 tag for each point your trace exceeded their link
   (do-game
@@ -326,6 +347,81 @@
       (click-prompt state :runner "Done"))
     (is (= 0 (count-tags state)) "Runner should have 0 tags")))
 
+(deftest onr-silicon-saloon-franchise
+  ;; Professional Contacts - Click to gain 1 credit and draw 1 card
+  (do-game
+    (new-game {:runner {:credits 8
+                        :deck [(qty "ONR Silicon Saloon Franchise" 3)
+                               (qty "Sure Gamble" 2)
+                               (qty "Shiv" 2)]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "ONR Silicon Saloon Franchise")
+    (let [proco (get-resource state 0)]
+      (card-ability state :runner proco 0)
+      (is (= 2 (:click (get-runner))) "Spent 1 click")
+      (is (= 1 (:credit (get-runner))) "Gained 1 credit")
+      (is (= 5 (count (:hand (get-runner)))) "Drew 1 card")
+      (card-ability state :runner proco 0)
+      (is (= 1 (:click (get-runner))) "Spent 1 click")
+      (is (= 2 (:credit (get-runner))) "Gained 1 credit")
+      (is (= 6 (count (:hand (get-runner)))) "Drew 1 card"))))
+
+;; Aesop's Pawnshop
+(deftest smith-s-pawnshop-manual-use
+  ;; Manual use
+  (do-game
+   (new-game {:runner {:deck ["ONR Smith's Pawnshop" "Cache"]}})
+   (take-credits state :corp)
+   (play-from-hand state :runner "ONR Smith's Pawnshop")
+   (play-from-hand state :runner "Cache")
+   (let [orig-credits (:credit (get-runner))
+         ap (get-resource state 0)
+         cache (get-program state 0)]
+     (card-ability state :runner ap 0)
+     (click-card state :runner cache)
+     (card-ability state :runner ap 0)
+     (is (not (prompt-is-type? state :runner :select)) "Aesop's has already been used this turn")
+     (let [ap (get-resource state 0)
+           cache (get-in @state [:runner :discard 0])]
+       (is (= (+ 2 orig-credits) (:credit (get-runner))) "Should have only gained 3 credits")
+       (is (not= cache nil) "Cache should be in Heap")
+       (is (not= ap nil) "Aesops should still be installed")))))
+
+(deftest smith-s-pawnshop-triggered-at-start-of-turn
+  ;; Triggered at start of turn
+  (do-game
+   (new-game {:runner {:deck ["ONR Smith's Pawnshop" "Daily Casts"]}})
+   (take-credits state :corp)
+   (play-from-hand state :runner "ONR Smith's Pawnshop")
+   (play-from-hand state :runner "Daily Casts")
+   (take-credits state :runner)
+   (take-credits state :corp)
+   (end-phase-12 state :runner)
+   (let [dc (get-resource state 1)]
+     (changes-val-macro
+      2 (:credit (get-runner))
+      "ONR Smith's sells Daily Casts before it triggers so only 2 credits gained"
+      (click-prompt state :runner "Aesop's Pawnshop")
+      (click-card state :runner dc))
+     (is (= (refresh dc) nil) "Daily Casts should be in Heap"))))
+
+(deftest onr-streetware-distributor-basic-functionality
+    ;; basic functionality
+    (do-game
+      (new-game {:runner {:deck ["ONR Streetware Distributor"]}})
+      (take-credits state :corp)
+      (play-from-hand state :runner "ONR Streetware Distributor")
+      (changes-val-macro
+        3 (get-counters (get-resource state 0) :credit)
+        "Gains 3 credits"
+        (card-ability state :runner (get-resource state 0) 0))
+      (take-credits state :runner)
+      (changes-val-macro
+        1 (:credit (get-runner))
+        "Gain 1 credit from Smartware Distributor"
+        (take-credits state :corp))
+      (is (= 2 (get-counters (get-resource state 0) :credit)) "Smartware Distributor has 2 credits left")))
+
 (deftest onr-swiss-bank-account
   (do-game
     (new-game {:runner {:hand [(qty "ONR Swiss Bank Account" 2)]}})
@@ -339,3 +435,27 @@
     (let [fall (get-resource state 0)]
       (card-ability state :runner fall 1)
       (is (= 10 (:credit (get-runner)))))))
+
+(deftest onr-umbrella-policy
+  ;; Sacrificial Construct - Trash to prevent trash of installed program or hardware
+  (do-game
+    (new-game {:runner {:deck [(qty "ONR Umbrella Policy" 2) "Cache"
+                               "Motivation" "Astrolabe"]}})
+    (take-credits state :corp)
+    (core/gain state :runner :click 1)
+    (play-from-hand state :runner "ONR Umbrella Policy")
+    (play-from-hand state :runner "ONR Umbrella Policy")
+    (play-from-hand state :runner "Cache")
+    (play-from-hand state :runner "Motivation")
+    (play-from-hand state :runner "Astrolabe")
+    (take-credits state :runner)
+    (trash state :runner (get-resource state 2))
+    (is (no-prompt? state :runner) "Sac Con not prompting to prevent resource trash")
+    (trash state :runner (get-program state 0))
+    (card-ability state :runner (get-resource state 0) 0)
+    (is (= 2 (count (:discard (get-runner)))) "Sac Con trashed")
+    (is (= 1 (count (get-program state))) "Cache still installed")
+    (trash state :runner (get-hardware state 0))
+    (card-ability state :runner (get-resource state 0) 0)
+    (is (= 3 (count (:discard (get-runner)))) "Sac Con trashed")
+    (is (= 1 (count (get-hardware state))) "Astrolabe still installed")))

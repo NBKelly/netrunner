@@ -35,9 +35,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   269 / 584
-TESTS:   142 / 269
-NO TEST: 124
+TOTAL:   284 / 584
+TESTS:   146 / 284
+NO TEST: 135
 NO IMP:  3
 --------------------------
 002 + Access through Alpha
@@ -345,15 +345,19 @@ NO IMP:  3
 420 ^ Replicator
 421 + Rescheduler
 
+423 ^ Restrictive Net Zoning
+
 427 ^ Rio de Janeiro City Grid (random, hard to test)
 
 429 + Rockerboy Promotion
 430 + Rock is Strong
 
+432 ^ Ronin Around
+
 434 + Runner Sensei
 
 437 + Rustbelt HQ Branch
-
+438 ^ Sandbox Dig
 439 + Sandstorm
 
 441 + Scaffolding
@@ -374,15 +378,20 @@ NO IMP:  3
 459 ^ Shaka
 460 ^ Shield
 
+463 ^ Short-Term Contract
 464 + Shotgun Wire
 465 + Shredder Uplink Protocol
 466 ^ Signpost
+467 + Silicon Saloon Franchise
+
+470 ^ Simulacrum (look at abagnale for test)
 
 474 ^ Skeleton Passkeys
 
 476 ^ Skullcap
 477 + Sleeper
 478 + Smarteye
+479 + Smith's Pawnshop
 
 481 ^ Snowball
 482 + Snowbank
@@ -397,6 +406,8 @@ NO IMP:  3
 492 ^ Stereogram Antibody (Do this later, was just lazy)
 493 ^ Stategic Planning Group
 
+495 + Streetware Distributor
+
 499 ^ Submarine Uplink (do this test later - fetch + uplink should be fine)
 500 + Subsidiary Branch
 501 ^ Succubus
@@ -408,24 +419,32 @@ NO IMP:  3
 
 509 ^ Synchronized Attack on HQ
 
+513 ^ Technician Lover
+
 519 + The Deck
 
 522 ^ The Shell Traders (write a test later)
+523 ^ The Short Circuit
 
+525 ^ Time to Collect
 526 ^ Tinweasel
 
 528 + Tokyo-Chiba Infighting
 529 + Too Many Doors
+530 ^ Top Runner's Conference
 
 532 + Toughonium Wall
 533 + Trapdoor
 
+535 ^ Trauma Team [TM]
 536 + Triggerman
 
 538 + Tumblers
 
 541 ? Twenty-Four-Hour Surviellance (unimplemented)
 542 + Twisty Passages
+
+545 + Umbrella Policy
 
 553 ^ Vewy Vewy Quiet
 
@@ -439,6 +458,7 @@ NO IMP:  3
 
 570 ^ Wild Card
 
+572 ^ Wired Switchboard
 573 ^ Wizard's Book
 574 + World Domination 👀
 575 ^ Worm
@@ -546,13 +566,18 @@ The following (marked) cards have no tests or implementations:
   412 ^ Redecorator
   414 ^ Reflector
   420 ^ Replicator
+  423 ^ Restrictive Net Zoning
   427 ^ Rio de Janeiro City Grid (random, hard to test)
+  432 ^ Ronin Around
+  438 ^ Sandbox Dig
   444 ^ Schematics Search Engine
   447 ^ Scorched Earth
   453 ^ SeeYa
   459 ^ Shaka
   460 ^ Shield
+  463 ^ Short-Term Contract
   466 ^ Signpost
+  470 ^ Simulacrum (look at abagnale for test)
   474 ^ Skeleton Passkeys
   476 ^ Skullcap
   481 ^ Snowball
@@ -564,17 +589,23 @@ The following (marked) cards have no tests or implementations:
   501 ^ Succubus
   503 ^ Sunburst Cranial Interface
   509 ^ Synchronized Attack on HQ
+  513 ^ Technician Lover
   522 ^ The Shell Traders (write a test later)
+  523 ^ The Short Circuit
+  525 ^ Time to Collect
   526 ^ Tinweasel
+  530 ^ Top Runner's Conference
+  535 ^ Trauma Team [TM]
   553 ^ Vewy Vewy Quiet
   562 ^ Walking Wall
   565 ^ Washed-Up Solo Construct
   567 ^ ONR Weapons Depot
   570 ^ Wild Card
+  572 ^ Wired Switchboard
   573 ^ Wizard's Book
   575 ^ Worm
   576 ^ Wrecking Ball
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 302
+Random card to implement: 78

@@ -1077,6 +1077,29 @@
          :type :agenda-point
          :value (value cost)})))
 
+;; TraumaCounter (lmao)
+(defmethod cost-name :trauma [_] :trauma)
+(defmethod value :trauma [[_ cost-value]] cost-value)
+(defmethod label :trauma [cost]
+  (if (< 1 (value cost))
+    (quantify (value cost) "hosted trauma counter")
+    "hosted trauma counter"))
+(defmethod payable? :trauma
+  [cost state side eid card]
+  (<= 0 (- (get-counters card :trauma) (value cost))))
+(defmethod handler :trauma
+  [cost state side eid card actions]
+  (let [title (:title card)
+        card (update! state side (update-in card [:counter :trauma] - (value cost)))]
+    (wait-for (trigger-event-sync state side :counter-added card)
+              (complete-with-result
+                state side eid
+                {:msg (str "spends "
+                           (quantify (value cost) (str "hosted trauma counter"))
+                           " from on " title)
+                 :type :trauma
+                 :value (value cost)}))))
+
 ;; PowerCounter
 (defmethod cost-name :power [_] :power)
 (defmethod value :power [[_ cost-value]] cost-value)
