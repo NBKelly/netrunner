@@ -120,6 +120,36 @@
         state side card
         effect))))
 
+(defn- give-tags
+  "Basic give runner n tags subroutine."
+  [n]
+  {:label (str "Give the Runner " (quantify n "tag"))
+   :msg (str "give the Runner " (quantify n "tag"))
+   :async true
+   :effect (effect (gain-tags :corp eid n))})
+
+
+(defn- trace-ability
+  "Run a trace with specified base strength.
+  If successful trigger specified ability"
+  ([base {:keys [label] :as ability}]
+   {:label (str "Trace " base " - " label)
+    :trace {:base base
+            :label label
+            :successful ability}})
+  ([base ability un-ability]
+   (let [label (str (:label ability) " / " (:label un-ability))]
+     {:label (str "Trace " base " - " label)
+      :trace {:base base
+              :label label
+              :successful ability
+              :unsuccessful un-ability}})))
+
+(defn- tag-trace
+  "Trace ability for giving a tag, at specified base strength"
+  ([base] (tag-trace base 1))
+  ([base n] (trace-ability base (give-tags n))))
+
 ;; card implementations
 
 (defcard "ONR Accounts Receivable"
@@ -127,6 +157,19 @@
    {:msg "gain 9 [Credits]"
     :async true
     :effect (effect (gain-credits eid 9))}})
+
+(defcard "ONR Annual Reviews"
+  {:on-play
+   {:msg "draw 3 cards"
+    :async true
+    :effect (effect (draw eid 3))}})
+
+(defcard "ONR Audit of Call Records"
+  {:on-play
+   {:req (req (< 1 (count (last-turn? state :runner :made-run))))
+    :async true
+    :effect (effect
+              (continue-ability (tag-trace 5) card nil))}})
 
 (defcard "ONR Badtimes"
   {:on-play {:req (req tagged)
@@ -136,6 +179,29 @@
                             (assoc (mu+ -2) :duration :end-of-turn))
                           (update-mu state))}})
 
+(defcard "ONR Chance Observation"
+  {:on-play
+   {:req (req (< 0 (count (last-turn? state :runner :made-run))))
+    :async true
+    :effect (effect
+              (continue-ability (tag-trace 5) card nil))}})
+
+(defcard "ONR Closed Accounts"
+  {:on-play
+   {:req (req tagged)
+    :msg (msg "force the Runner to lose all " (:credit runner) " [Credits]")
+    :async true
+    :effect (effect (lose-credits :runner eid :all))}})
+
+(defcard "ONR Corporate Detective Agency"
+  {:on-play
+   {:req (req tagged)
+    :msg (msg "trash " (enumerate-str (map :title (sort-by :title targets))))
+    :choices {:max 2
+              :card #(and (installed? %)
+                          (resource? %))}
+    :async true
+    :effect (effect (trash-cards :runner eid targets {:cause-card card}))}})
 
 (defcard "ONR Corporate Guard(R) Temps"
   (letfn [(gain-click-event [x]
@@ -173,6 +239,32 @@
                                             card nil))})
                              card nil)))}}))
 
+(defcard "ONR Corporate Shuffle"
+  {:on-play
+   {:async true
+    :effect (req (wait-for
+                   (draw state side 5)
+                   (system-msg state side (str "uses " (:title card) " to draw "
+                                               (quantify (count async-result) "card")))
+                   (continue-ability
+                     state side
+                     {:prompt "Choose a cards in HQ to shuffle into R&D"
+                      :choices {:max 1
+                                :all true
+                                :card #(and (corp? %)
+                                            (in-hand? %))}
+                      :msg (msg "shuffle " (quantify (count targets) "card") " from HQ into R&D")
+                      :effect (req (doseq [c targets]
+                                     (move state side c :deck))
+                                   (shuffle! state side :deck))}
+                     card nil)))}})
+
+(defcard "ONR Credit Consolidation"
+  {:on-play
+   {:msg "gain 15 [Credits]"
+    :async true
+    :effect (effect (gain-credits eid 15))}})
+
 (defcard "ONR Data Sifters"
   {:on-play
    {:req (req (last-turn? state :runner :trashed-card))
@@ -182,6 +274,14 @@
     :effect (req
               (system-msg state side (last-turn? state :runner :trashed-card))
               (gain-tags state :corp eid 1))}})
+
+(defcard "ONR Datapool (R) by Zetatech"
+  {:on-play
+   {:req (req tagged)
+    :msg "give the Runner 2 tags"
+    :async true
+    :effect (effect (gain-tags :corp eid 2))}})
+
 
 (defcard "ONR Emergency Rig"
   (letfn [(kludge-event []

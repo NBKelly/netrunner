@@ -36,9 +36,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   286 / 584
-TESTS:   146 / 286
-NO TEST: 137
+TOTAL:   294 / 584
+TESTS:   152 / 294
+NO TEST: 139
 NO IMP:  3
 --------------------------
 002 + Access through Alpha
@@ -51,12 +51,14 @@ NO IMP:  3
 009 ^ AI Boon (rng card)
 012 + All-Hands
 
+014 + Annual Reviews
 015 + Anonymous Tip
 
 018 ^ Arasaka Portable Prototype
 
 020 ^ Armageddon
 
+025 ^ Audit of Call Records
 026 ^ Aujourd'Oui
 027 + Back Door to Hilliard
 028 + Back Door to Netwatch
@@ -99,12 +101,14 @@ NO IMP:  3
 068 + Caryatid
 069 ^ Cascade (test once viruses are done!)
 
+071 ^ Chance Observation
+
 074 ^ Chiba Bank Account
 
 076 + Chihuahua
 
 080 + Cloak
-
+081 + Closed Accounts
 082 + Clown
 
 085 ^ Codecracker
@@ -114,9 +118,12 @@ NO IMP:  3
 
 091 ^ Corporate Ally
 
+094 + Corporate Detective Agency
+
 096 + Corporate Guard(R) Temps
 
 099 + Corporate Retreat
+100 + ONR Corporate Shuffle
 
 103 ^ Corrosion
 
@@ -126,7 +133,7 @@ NO IMP:  3
 111 ^ Crash Everett
 
 113 + Credit Blocks
-
+114 + Credit Consolidation
 115 ^ Credit Subversion
 
 117 ^ Crumble (requires braniac id)
@@ -142,6 +149,7 @@ NO IMP:  3
 128 + Data Darts
 
 132 + Data Naga
+133 + Datappol (R) by Zetatech
 
 135 + Data Sifters
 136 + Data Wall 2.0
@@ -476,6 +484,7 @@ The following (marked) cards have no tests or implementations:
   009 ^ AI Boon (rng card)
   018 ^ Arasaka Portable Prototype
   020 ^ Armageddon
+  025 ^ Audit of Call Records
   026 ^ Aujourd'Oui
   037 ^ Bartmoss Memorial Icebreaker
   041 ^ Big Frackin' Gun
@@ -490,6 +499,7 @@ The following (marked) cards have no tests or implementations:
   064 ^ Bulldozer
   065 ^ Butcher Boy (test once viruses are done!)
   069 ^ Cascade (test once viruses are done!)
+  071 ^ Chance Observation
   074 ^ Chiba Bank Account
   085 ^ Codecracker
   086 ^ Codeslinger
@@ -612,4 +622,4 @@ The following (marked) cards have no tests or implementations:
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 488
+Random card to implement: 39
