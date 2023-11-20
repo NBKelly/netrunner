@@ -27,8 +27,16 @@ Card Updates:
       sunburst cranial interface, Vewy Vewy Quiet)
     Write tests for noisy cards (bulldozer, jackhammer, hammer, fubar, Pile Driver,
     	  	    	  	Ramming Piston, Wrecking Ball)
-    Write trivial test templates for program trashing
     double check walking wall, glacier, mobile barricade
+    Write trivial test templates for most hardware functions
+      * (recurring credits tests, damage prevent tests, tag avoid tests, etc)
+      *  (already done mu/hand size)
+    Write trivial test templates for most program functions (paying for str, breaking x type)
+
+Testing philosophy:
+  A good unit test should look like the card is described
+  Instead of being a random sequence of events happening
+  Ugly tests are for ugly bugs
 
 Keys:
   + test done
@@ -37,8 +45,8 @@ Keys:
 
 --------------------------
 TOTAL:   345 / 584
-TESTS:   176 / 345
-NO TEST: 166
+TESTS:   190 / 345
+NO TEST: 152
 NO IMP:  3
 --------------------------
 002 + Access through Alpha
@@ -54,7 +62,7 @@ NO IMP:  3
 014 + Annual Reviews
 015 + Anonymous Tip
 
-018 ^ Arasaka Portable Prototype
+018 + Arasaka Portable Prototype
 019 + Armadillo Armored Road Home
 020 ^ Armageddon
 021 + Armored Fridge
@@ -130,10 +138,10 @@ NO IMP:  3
 
 103 ^ Corrosion
 
-105 ^ Cortical Cybermodem
+105 + Cortical Cybermodem
 106 + Cortical Scanner
 107 + Cortical Scrub
-108 ^ Cortical Stimulators
+108 + Cortical Stimulators
 
 111 ^ Crash Everett
 
@@ -170,7 +178,7 @@ NO IMP:  3
 146 ^ Demolition Run
 
 148 + Department of Truth Enhancement
-149 ^ Dermatech Bodyplating
+149 + Dermatech Bodyplating
 
 154 ^ Diplomatic Immunity
 
@@ -228,7 +236,7 @@ NO IMP:  3
 226 + Gideon's Pawnshop
 227 ^ Glacier
 
-229 ^ "Green Knight" Surge Buffers
+229 + "Green Knight" Surge Buffers
 230 ^ Gremlins
 231 ^ Grubb
 
@@ -282,7 +290,7 @@ NO IMP:  3
 287 + Liche
 288 ^ Lifesaver [TM] Nanosurgeons
 289 ^ Lisa Blight
-290 ^ Little Black Box
+290 + Little Black Box
 
 292 + Livewire's Contacts
 
@@ -317,7 +325,7 @@ NO IMP:  3
 325 ^ MS-todon
 326 ^ Mystery Box
 
-328 ^ Nasuko Cycle
+328 + Nasuko Cycle
 329 + Nerve Labyrinth
 330 ^ N.E.T.O.
 331 ^ Netspace Inverter
@@ -341,7 +349,7 @@ NO IMP:  3
 
 355 + Overtime Incentives
 
-357 ^ Pandora's Deck
+357 + Pandora's Deck
 
 361 + Parraline 5750
 
@@ -350,7 +358,7 @@ NO IMP:  3
 365 + π in the 'Face
 366 ^ Pile Driver
 
-368 ^ ONR PK-6089a
+368 + PK-6089a
 369 + Planning Consultants
 
 372 + Pocket Virtual Reality
@@ -374,7 +382,7 @@ NO IMP:  3
 399 ^ Ramming Piston
 401 ^ Raptor
 402 + Raven Microcyb Eagle
-403 ^ Raven Microcyb Owl
+403 + Raven Microcyb Owl
 404 ^ Raymond Ellison
 405 + Razor Wire
 406 ^ R&D Interface
@@ -462,7 +470,7 @@ NO IMP:  3
 500 + Subsidiary Branch
 501 ^ Succubus
 502 + Sumo 2008
-503 ^ Sunburst Cranial Interface
+503 + Sunburst Cranial Interface
 504 + Superglue
 
 507 + Swiss Bank Account
@@ -472,7 +480,7 @@ NO IMP:  3
 
 512 + Team Restructuring
 513 ^ Technician Lover
-514 ^ Techtronica [TM] Utility Suit
+514 + Techtronica [TM] Utility Suit
 
 519 + The Deck
 
@@ -505,7 +513,7 @@ NO IMP:  3
 
 553 ^ Vewy Vewy Quiet
 
-555 ^ Vintage Camaro
+555 + Vintage Camaro
 
 561 + Vortex
 562 ^ Walking Wall
@@ -527,13 +535,12 @@ NO IMP:  3
 579 + Zetatech Portastation
 580 + Zetatech Software Installer
 581 + Zombie
-582 ^ ZZ22 Speed Chip
+582 + ZZ22 Speed Chip
 --------------------------
 --------------------------
 The following (marked) cards have no tests or implementations:
   007 ^ Afreet
   009 ^ AI Boon (rng card)
-  018 ^ Arasaka Portable Prototype
   020 ^ Armageddon
   025 ^ Audit of Call Records
   026 ^ Aujourd'Oui
@@ -556,8 +563,6 @@ The following (marked) cards have no tests or implementations:
   086 ^ Codeslinger
   091 ^ Corporate Ally
   103 ^ Corrosion
-  105 ^ Cortical Cybermodem
-  108 ^ Cortical Stimulators
   111 ^ Crash Everett
   115 ^ Credit Subversion
   117 ^ Crumble (requires braniac id)
@@ -569,7 +574,6 @@ The following (marked) cards have no tests or implementations:
   144 ^ Dedicated Response Team
   145 ^ Deep Thought
   146 ^ Demolition Run
-  149 ^ Dermatech Bodyplating
   154 ^ Diplomatic Immunity
   157 ^ Disintegrator
   158 ^ Dogcatcher
@@ -586,7 +590,6 @@ The following (marked) cards have no tests or implementations:
   222 ^ Garbage In
   225 ^ Get Ready to Rumble
   227 ^ Glacier
-  229 ^ "Green Knight" Surge Buffers
   230 ^ Gremlins
   231 ^ Grubb
   234 ^ Hammer
@@ -607,7 +610,6 @@ The following (marked) cards have no tests or implementations:
   285 ^ Liberated Savings Account
   288 ^ Lifesaver [TM] Nanosurgeons
   289 ^ Lisa Blight
-  290 ^ Little Black Box
   294 ^ Lockjaw
   296 ^ Loony Goon
   307 ^ Mastermind
@@ -620,17 +622,14 @@ The following (marked) cards have no tests or implementations:
   323 ^ Mouse
   325 ^ MS-todon
   326 ^ Mystery Box
-  328 ^ Nasuko Cycle
   330 ^ N.E.T.O.
   331 ^ Netspace Inverter
   338 ^ New Blood
   343 ^ Nomad Allies
   349 ^ Omnitech "Spinal Tap" Cybermodem (random, needs a rng fix for tests)
   350 ^ Omnitech Wet Drive
-  357 ^ Pandora's Deck
   363 ^ Pattel's Virus
   366 ^ Pile Driver
-  368 ^ ONR PK-6089a
   378 ^ Power Grid Overload
   381 ^ Precision Bribery
   392 ^ Psychic Friend
@@ -639,7 +638,6 @@ The following (marked) cards have no tests or implementations:
   398 ^ Raffles
   399 ^ Ramming Piston
   401 ^ Raptor
-  403 ^ Raven Microcyb Owl
   404 ^ Raymond Ellison
   406 ^ R&D Interface
   407 ^ R&D Mole
@@ -673,10 +671,8 @@ The following (marked) cards have no tests or implementations:
   493 ^ Stategic Planning Group
   499 ^ Submarine Uplink (do this test later - fetch + uplink should be fine)
   501 ^ Succubus
-  503 ^ Sunburst Cranial Interface
   509 ^ Synchronized Attack on HQ
   513 ^ Technician Lover
-  514 ^ Techtronica [TM] Utility Suit
   522 ^ The Shell Traders (write a test later)
   523 ^ The Short Circuit
   525 ^ Time to Collect
@@ -687,7 +683,6 @@ The following (marked) cards have no tests or implementations:
   546 ^ Underworld Mole
   548 ^ Urban Renewal
   553 ^ Vewy Vewy Quiet
-  555 ^ Vintage Camaro
   562 ^ Walking Wall
   565 ^ Washed-Up Solo Construct
   567 ^ ONR Weapons Depot
@@ -696,8 +691,7 @@ The following (marked) cards have no tests or implementations:
   573 ^ Wizard's Book
   575 ^ Worm
   576 ^ Wrecking Ball
-  582 ^ ZZ22 Speed Chip
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 16
+Random card to implement: 511

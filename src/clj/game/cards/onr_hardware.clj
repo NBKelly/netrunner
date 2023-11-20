@@ -89,6 +89,39 @@
 
 (defn- dice-roll [] (inc (rand-int 6)))
 
+;; (defn- deep-merge [v & vs]
+;;   (letfn [(rec-merge [v1 v2]
+;;             (if (and (map? v1) (map? v2))
+;;               (merge-with deep-merge v1 v2)
+;;               v2))]
+;;     (if (some identity vs)
+;;       (reduce #(rec-merge %1 %2) v vs)
+;;       (last vs))))
+
+ (defn- deep-merge [a & maps]
+   (if (map? a)
+     (apply merge-with deep-merge a maps)
+     (apply merge-with deep-merge maps)))
+
+(defn- generic-prevent-damage
+  ([x type]
+   {:interactions {:prevent [{:type #{type}
+                              :req (req (not-used-once? state {:once :per-turn} card))}]}
+    :abilities [{:cost [:credit 0]
+                 :once :per-turn
+                 :label (str "Prevent " x " " (name type) " damage")
+                 :msg (msg "prevent " x " " (name type) " damage")
+                 :effect (effect (damage-prevent type x))}]})
+  ([x typea typeb]
+   {:interactions {:prevent [{:type #{typea typeb}
+                              :req (req (not-used-once? state {:once :per-turn} card))}]}
+    :abilities [{:cost [:credit 0]
+                 :once :per-turn
+                 :label (str "Prevent " x " " (name typea) " or " (name typeb) " damage")
+                 :msg (msg "prevent " x " " (name typea) " or " (name typeb) " damage")
+                 :effect (effect (damage-prevent typea x)
+                                 (damage-prevent typeb x))}]}))
+
 ;; Card definitions
 
 (defcard "ONR \"Armadillo\" Armored Road Home"
@@ -112,12 +145,7 @@
    :recurring 2})
 
 (defcard "ONR \"Green Knight\" Surge Buffers"
-  {:interactions {:prevent [{:type #{:net}
-                             :req (req true)}]}
-   :abilities [{:cost [:credit 0]
-                :once :per-turn
-                :msg "prevent 1 net damage"
-                :effect (effect (damage-prevent :net 1))}]})
+  (generic-prevent-damage 1 :net))
 
 (defcard "ONR Arasaka Portable Prototype"
   {:recurring 3
@@ -180,6 +208,7 @@
 (defcard "ONR Corolla Speed Chip"
   {:recurring 1
    :interactions {:pay-credits {:req (req (and (= :ability (:source-type eid))
+                                               run
                                                (has-subtype? target "Killer")
                                                (has-subtype? target "Icebreaker")))
                                 :type :recurring}}})
@@ -194,23 +223,10 @@
                                 :type :recurring}}})
 
 (defcard "ONR Cortical Stimulators"
-  {:interactions {:prevent [{:type #{:net :brain}
-                             :req (req true)}]}
-   :abilities [{:cost [:credit 0]
-                :once :per-turn
-                :msg "prevent 1 net or brain damage"
-                :effect (effect
-                          (damage-prevent :brain 1)
-                          (damage-prevent :net 1))}]})
+  (generic-prevent-damage 1 :net :brain))
 
 (defcard "ONR Dermatech Bodyplating"
-  {:interactions {:prevent [{:type #{:meat}
-                             :req (req true)}]}
-   :abilities [{:cost [:credit 0]
-                :once :per-turn
-                :msg "prevent 1 meat damage"
-                :effect (effect
-                          (damage-prevent :meat 1))}]})
+    (generic-prevent-damage 1 :meat))
 
 (defcard "ONR Eurocorpse [TM] Spin Chip"
   {:recurring 2
@@ -260,19 +276,12 @@
                 :effect (req (draw state :runner eid 2))}]})
 
 (defcard "ONR Little Black Box"
-  {:recurring 1
-   :static-abilities [(runner-hand-size+ 1)
-                      (mu+ 1)]
-   :interactions {:pay-credits {:req (req (= :trace (:source-type eid)))
-                                :type :recurring}
-                  :prevent [{:type #{:net :brain}
-                             :req (req true)}]}
-   :abilities [{:cost [:credit 0]
-                :once :per-turn
-                :msg "prevent 1 net or brain damage"
-                :effect (effect
-                          (damage-prevent :brain 1)
-                          (damage-prevent :net 1))}]})
+  (deep-merge (generic-prevent-damage 1 :net :brain)
+              {:interactions {:pay-credits {:req (req (= :trace (:source-type eid)))
+                                            :type :recurring}}
+               :recurring 1
+               :static-abilities [(runner-hand-size+ 1)
+                                  (mu+ 1)]}))
 
 (defcard "ONR Lucidrine [TM] Drip Feed"
   {:implementation "uses power counters instead of Drip counters"
@@ -346,6 +355,7 @@
                              :req (req true)}]}
    :abilities [{:async true
                 :cost [:credit 3]
+                :label "avoid 1 tag"
                 :msg "avoid 1 tag"
                 :effect (effect (tag-prevent :runner eid 1))}]})
 
@@ -416,19 +426,16 @@
                                                (not (has-subtype? target "Noisy"))))
                                 :type :recurring}}})
 
+
+
 (defcard "ONR Raven Microcyb Eagle"
-  {:interactions {:prevent [{:type #{:net}
-                             :req (req (not-used-once? state (first (:abilities card)) card))}]
-                  :pay-credits {:req (req (and run
-                                               (= :ability (:source-type eid))
-                                               (has-subtype? target "Icebreaker")))
-                                :type :recurring}}
-  :static-abilities [(mu+ 1)]
-  :abilities [{:cost [:credit 0]
-               :once :per-turn
-               :msg "prevent 1 net damage"
-               :effect (effect (damage-prevent :net 1))}]
-  :recurring 1})
+  (deep-merge (generic-prevent-damage 1 :net)
+              {:interactions {:pay-credits {:req (req (and run
+                                                           (= :ability (:source-type eid))
+                                                           (has-subtype? target "Icebreaker")))
+                                            :type :recurring}}
+               :static-abilities [(mu+ 1)]
+               :recurring 1}))
 
 (defcard "ONR Record Reconstructor"
   (let [ability (successful-run-replace-breach
@@ -462,17 +469,11 @@
                                 :type :recurring}}})
 
 (defcard "ONR Techtronica [TM] Utility Suit"
-  {:recurring 5
-   :static-abilities [(mu+ 1)]
-   :interactions {:pay-credits {:req (req (= :trace (:source-type eid)))
-                                :type :recurring}
-                  :prevent [{:type #{:meat}
-                             :req (req true)}]}
-   :abilities [{:cost [:credit 0]
-                :once :per-turn
-                :msg "prevent 1 meat damage"
-                :effect (effect
-                          (damage-prevent :meat 1))}]})
+  (deep-merge (generic-prevent-damage 1 :meat)
+              {:recurring 5
+               :static-abilities [(mu+ 1)]
+               :interactions {:pay-credits {:req (req (= :trace (:source-type eid)))
+                                            :type :recurring}}}))
 
 (defcard "ONR The Deck"
   {:abilities [(base-link-abi 0 5)
@@ -497,7 +498,8 @@
   {:recurring 2
    :interactions {:pay-credits {:req (req (and (= :ability (:source-type eid))
                                                (has-subtype? target "Killer")
-                                               (has-subtype? target "Icebreaker")))
+                                               (has-subtype? target "Icebreaker")
+                                               run))
                                 :type :recurring}}})
 
 
