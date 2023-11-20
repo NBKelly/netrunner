@@ -2,7 +2,7 @@
   (:require
     [game.core.agendas :refer [update-all-advancement-requirements update-all-agenda-points]]
     [game.core.board :refer [all-active]]
-    [game.core.card :refer [agenda? condition-counter? corp? get-agenda-points get-card get-zone in-discard? in-hand? in-scored? operation? rezzed?]]
+    [game.core.card :refer [agenda? get-counters condition-counter? corp? get-agenda-points get-card get-zone in-discard? in-hand? in-scored? operation? rezzed?]]
     [game.core.card-defs :refer [card-def]]
     [game.core.cost-fns :refer [card-ability-cost trash-cost steal-cost]]
     [game.core.effects :refer [any-effects register-static-abilities register-lingering-effect sum-effects unregister-lingering-effects]]
@@ -179,6 +179,10 @@
         points (get-agenda-points c)]
     (system-msg state :runner (str "steals " (:title c) " and gains " (quantify points "agenda point")))
     (swap! state update-in [:runner :register :stole-agenda] #(+ (or % 0) (:agendapoints c 0)))
+    (swap! state update-in
+           [:runner :register :stolen-agenda-advancements]
+           #(+ (or % 0)
+               (get-counters card :advancement)))
     (play-sfx state side "agenda-steal")
     (when (:breach @state)
       (swap! state assoc-in [:breach :did-steal] true))

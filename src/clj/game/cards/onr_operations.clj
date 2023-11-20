@@ -128,27 +128,28 @@
    :async true
    :effect (effect (gain-tags :corp eid n))})
 
-
-(defn- trace-ability
-  "Run a trace with specified base strength.
+(defn- onr-trace-ability
+  "Run a trace with specified max strength.
   If successful trigger specified ability"
-  ([base {:keys [label] :as ability}]
-   {:label (str "Trace " base " - " label)
-    :trace {:base base
-            :label label
-            :successful ability}})
-  ([base ability un-ability]
+  ([max {:keys [label] :as ability} only-tags]
+   {:label (str "Trace " max " - " label)
+    :onr-trace {:max-strength max
+                :label label
+                :only-tags only-tags
+                :successful ability}})
+  ([max ability un-ability only-tags]
    (let [label (str (:label ability) " / " (:label un-ability))]
-     {:label (str "Trace " base " - " label)
-      :trace {:base base
-              :label label
-              :successful ability
-              :unsuccessful un-ability}})))
+     {:label (str "Trace " max " - " label)
+      :onr-trace {:max-strength max
+                  :label label
+                  :only-tags only-tags
+                  :successful ability
+                  :unsuccessful un-ability}})))
 
-(defn- tag-trace
-  "Trace ability for giving a tag, at specified base strength"
-  ([base] (tag-trace base 1))
-  ([base n] (trace-ability base (give-tags n))))
+(defn- trace-tag
+  ([max] (trace-tag max 1))
+  ([max tags]
+   (onr-trace-ability max (give-tags tags) true)))
 
 ;; card implementations
 
@@ -169,7 +170,7 @@
    {:req (req (< 1 (count (last-turn? state :runner :made-run))))
     :async true
     :effect (effect
-              (continue-ability (tag-trace 5) card nil))}})
+              (continue-ability (trace-tag 5) card nil))}})
 
 (defcard "ONR Badtimes"
   {:on-play {:req (req tagged)
@@ -184,7 +185,7 @@
    {:req (req (< 0 (count (last-turn? state :runner :made-run))))
     :async true
     :effect (effect
-              (continue-ability (tag-trace 5) card nil))}})
+              (continue-ability (trace-tag 5) card nil))}})
 
 (defcard "ONR Closed Accounts"
   {:on-play
@@ -266,9 +267,9 @@
     :effect (effect (gain-credits eid 15))}})
 
 (defcard "ONR Data Sifters"
-  {:on-play
+  {:implementation "Doesn't enforce asset (node) only"
+   :on-play
    {:req (req (last-turn? state :runner :trashed-card))
-    :implementation "Doesn't enforce asset (node) only"
     :msg "give the runner a tag"
     :async true
     :effect (req
@@ -284,15 +285,15 @@
 
 (defcard "ONR Day Shift"
   {:on-play
-   {:msg "gain 2 [Credits] and draw 1 card"
+   {:msg "gain 1 [Credits] and draw 2 cards"
     :async true
-    :effect (req (wait-for (gain-credits state side 2)
-                           (draw state side eid 1)))}})
+    :effect (req (wait-for (gain-credits state side 1)
+                           (draw state side eid 2)))}})
 
 (defcard "ONR Edgerunner, Inc., Temps"
-  {:on-play
+  {:implementation "You may forgo these clicks to purge viruses. Manually adjust clicks you don't use."
+   :on-play
    {:msg "gain [Click][Click][Click] for install actions"
-    :implementation "You may forgo these clicks to purge viruses. Manually adjust clicks you don't use."
     :effect (effect (gain-clicks 3))}})
 
 (defcard "ONR Efficiency Experts"
@@ -412,9 +413,257 @@
     :effect (req (wait-for (gain-tags state :corp (make-eid state eid) 1)
                            (gain-credits state side eid 1)))}})
 
+(defcard "ONR New Blood"
+  (letfn [(sun []
+            {:prompt "Choose 2 pieces of ice to swap"
+             :choices {:card #(and (installed? %)
+                                   (ice? %))
+                       :max 2}
+             :async true
+             :effect (req (if (= (count targets) 2)
+                            (do (swap-ice state side (first targets) (second targets))
+                                ;;(system-msg state side
+                                ;;            (str "uses " (:title card) " to swap "
+                                ;;                 (card-str state (first targets))
+                                ;;                 " with "
+                                ;;                 (card-str state (second targets))))
+                                (continue-ability state side (sun) card nil))
+                            (do (system-msg state side "has finished rearranging ice")
+                                (effect-completed state side eid))))})]
+    {:implementation "Exposed cards are already concealed - I might add a public info system a bit later - for now I'm just not printing swaps at all"
+     :on-play
+     {:prompt "Choose a server"
+      :choices (req servers)
+      :msg (msg "rearrange ice")
+      :async true
+      :effect (req (continue-ability state side (sun) card nil))}}))
+
+(defcard "ONR Night Shift"
+  {:on-play
+   {:msg "gain 2 [Credits] and draw 1 cards"
+    :async true
+    :effect (req (wait-for (gain-credits state side 2)
+                           (draw state side eid 1)))}})
+
+(defcard "ONR Off-Site Backups"
+  {:on-play (corp-recur)})
+
+(defcard "ONR Overtime Incentives"
+  {:on-play
+   {:msg "gain [Click][Click]"
+    :effect (effect (gain-clicks 2))}})
+
+(defcard "ONR Planning Consultants"
+  {:on-play
+   {:msg "rearrange the top 5 cards of R&D"
+    :waiting-prompt true
+    :async true
+    :effect (effect (continue-ability
+                      (let [from (take 5 (:deck corp))]
+                        (when (pos? (count from))
+                          (reorder-choice :corp :runner from '()
+                                          (count from) from)))
+                      card nil))}})
+
+(defcard "ONR Power Grid Overload"
+  {:on-play
+   {:req (req tagged)
+    :effect (req (let [cards (filter #(and (hardware? %)
+                                           ;; onr has the S!
+                                           (not (has-subtype? % "Cybernetics"))
+                                           (not (has-subtype? % "Cybernetic")))
+                                     (all-installed state :runner))
+                       max-amt (min (count cards) (total-available-credits state :corp (assoc eid :source card :source-type :play) card))]
+                   (continue-ability
+                     state side
+                     (if (zero? max-amt)
+                       {:waiting-prompt true
+                        :prompt "You can't do anything"
+                        :choices ["I understand"]}
+                       {:waiting-prompt true
+                        :choices {:card #(some (fn [c] (same-card? % c)) cards)
+                                  :max max-amt}
+                        :async true
+                        :effect (req (wait-for (pay state :corp (make-eid state (assoc eid :source card :source-type :play)) card [:credit (count targets)])
+                                               (system-msg state side (str "pays " (count targets)
+                                                                           "[Credits] to use " (:title card) " to trash "
+                                                                           (str/join ", " (map :title targets))))
+                                               (trash-cards state side eid targets)))})
+                     card nil)))}})
+
+(defcard "ONR Project Consultants"
+  (letfn [(ability [x]
+            {:prompt (msg "Choose an installed card to place advancement counters on (" x " remaining)")
+             :async true
+             :waiting-prompt true
+             :choices {:card #(and (corp? %)
+                                   (can-be-advanced? %)
+                                   (installed? %))}
+             :msg (msg "place 1 advancement counter on " (card-str state target))
+             :effect (req (wait-for (add-prop state side target :advance-counter 1 {:placed true})
+                                    (if (> x 1)
+                                      (continue-ability state side (ability (dec x)) card nil)
+                                      (effect-completed state side eid))))})]
+    {:on-play
+     {:async true
+      :effect (effect (continue-ability (ability 4) card nil))}}))
+
+(defcard "ONR Punitive Counterstrike"
+  {:on-play
+   {:req (req (<= 1 (count-tags state)))
+    :msg "do 2 meat damage"
+    :async true
+    :effect (effect (damage eid :meat 2 {:card card}))}})
+
+(defcard "ONR Reclamation Project"
+  {:on-play
+   {:req (req (some ice? (:discard corp)))
+    :async true
+    :effect (req (let [max-ct (count (filter ice? (:discard corp)))]
+                   (continue-ability
+                     state side
+                     {:prompt "Choose ice to add to HQ"
+                      :waiting-prompt true
+                      :show-discard true
+                      :choices {:card #(and (ice? %)
+                                            (in-discard? %))
+                                :max max-ct}
+                      :async true
+                      :msg (msg "adds " (str/join ", " (map :title targets)) " to HQ")
+                      :effect (req (wait-for (reveal state side targets)
+                                             (doseq [c targets]
+                                               (move state :corp c :hand))
+                                             (effect-completed state side eid)))}
+                     card nil)))}})
+
+(defcard "ONR Rent-to-Own Contract"
+  (letfn [(term-general-event []
+            {:event :runner-turn-ends
+             :silent (req true)
+             :unregister-once-resolved true
+             :ability-name "Term Counters"
+             :async true
+             :effect (req (let [cards-with-counters (filter #(pos? (get-counters % :term)) (all-installed state :corp))]
+                            (when-not (zero? (count cards-with-counters))
+                               (register-events
+                                 state side
+                                 (:identity corp)
+                                 [(term-general-event)]))
+                            (doseq [target-card cards-with-counters]
+                              (let [abi-name (str "Term Counters (" (:title target-card) ")")]
+                                (register-events
+                                  state side
+                                  (:identity corp)
+                                  [{:event :corp-turn-begins
+                                    :unregister-once-resolved true
+                                    :ability-name abi-name
+                                    :silent false
+                                    :req (req true)
+                                    :interactive (req true)
+                                    :async true
+                                    :effect (req (let [new-target (get-card state target-card)]
+                                                   (if (zero? (get-counters new-target :term))
+                                                     (effect-completed state side eid)
+                                                     (continue-ability
+                                                       state side
+                                                       {:msg (msg (if (> 2 (:credit corp))
+                                                                    "add a Term counter to "
+                                                                    "lose 2 credits and remove a Term counter from ")
+                                                                  (card-str state new-target))
+                                                        :async true
+                                                        :effect (req (if (> 2 (:credit corp))
+                                                                       (do (add-counter state side new-target :term 1)
+                                                                           (effect-completed state side eid))
+                                                                       (do (add-counter state side new-target :term -1)
+                                                                           (lose-credits state side eid 2))))}
+                                                       card nil))))}])))
+                            (effect-completed state side eid)))})]
+    {:on-play
+     {:req (req (some #(and (ice? %) (not (rezzed? %))) (all-installed state :corp)))
+      :choices {:card #(and (ice? %)
+                            (not (rezzed? %))
+                            (installed? %))}
+      :msg (msg "rezzes " (card-str state target) " at no cost, and place " (:cost target) " Term counters on it")
+      :effect (req (wait-for (rez state side target {:ignore-cost :all-costs :no-msg true})
+                             (handle-if-unique state side (:identity corp) (term-general-event))
+                             (add-counter state side (get-card state target) :term (:cost target))
+                             (effect-completed state side eid)))}}))
+
+(defcard "ONR Schlaghund Pointers"
+  {:implementation "Restriction is not enforced" ;; todo - add a "not first turn"
+   :on-play {:onr-trace {:max-strength 3
+                         :label "Give the Runner a tag"
+                         :corp-extra-bid-cost 1
+                         :only-tags true
+                         :successful (give-tags 1)}}})
+
 (defcard "ONR Scorched Earth"
   {:on-play
    {:req (req tagged)
     :msg "do 4 meat damage"
     :async true
     :effect (effect (damage eid :meat 4 {:card card}))}})
+
+(defcard "ONR Silver Lining Recovery Protocol"
+  {:on-play
+   {:req (req (pos? (:stolen-agenda-advancements runner-reg-last 0)))
+    :msg (msg "gain " (* 3 (:stolen-agenda-advancements runner-reg-last 0)) " [Credits]")
+    :effect (effect (gain-credits eid (* 3 (:stolen-agenda-advancements runner-reg-last 0))))}})
+
+(defcard "ONR Systematic Layoffs"
+  (letfn [(ability [x]
+            {:prompt (msg "Choose an installed card to place advancement counters on (" x " remaining)")
+             :async true
+             :waiting-prompt true
+             :choices {:card #(and (corp? %)
+                                   (can-be-advanced? %)
+                                   (installed? %))}
+             :msg (msg "place 1 advancement counter on " (card-str state target))
+             :effect (req (wait-for (add-prop state side target :advance-counter 1 {:placed true})
+                                    (if (> x 1)
+                                      (continue-ability state side (ability (dec x)) card nil)
+                                      (effect-completed state side eid))))})]
+    {:on-play
+     {:async true
+      :effect (effect (continue-ability (ability 2) card nil))}}))
+
+(defcard "ONR Team Restructuring"
+  {:on-play
+   {:choices {:max 2
+              :card #(and (corp? %)
+                          (installed? %)
+                          (can-be-advanced? %))}
+    :msg (msg "place 1 advancement token on " (quantify (count targets) "card"))
+    :effect (req (doseq [t targets]
+                   (add-prop state :corp t :advance-counter 1 {:placed true})))}})
+
+(defcard "ONR Trojan Horse"
+  {:on-play
+   {:req (req (last-turn? state :runner :stole-agenda))
+    :msg "give the runner a tag"
+    :async true
+    :effect (req (gain-tags state :corp eid 1))}})
+
+(defcard "ONR Underworld Mole"
+  {:implementation "None of the restrictions are enforced!"
+   :on-play
+   {:onr-trace
+    {:max-strength 4
+     :req (req (last-turn? state :runner :installed-resource))
+     :successful {:msg (msg "trash " (:title target) " and give the Runner a tag")
+                  :prompt "trash a card"
+                  :choices {:card #(and (installed? %)
+                                        (resource? %))}
+                  :async true
+                  :cancel-effect (req
+                                   (system-msg state side "gives the Runner a tag")
+                                   (gain-tags state :corp eid 1))
+                  :effect (req (wait-for (trash state side target {:cause-card card})
+                                         (gain-tags state :corp eid 1)))}}}})
+
+(defcard "ONR Urban Renewal"
+  {:on-play
+   {:req (req tagged)
+    :msg "do 5 meat damage"
+    :async true
+    :effect (effect (damage eid :meat 5 {:card card}))}})

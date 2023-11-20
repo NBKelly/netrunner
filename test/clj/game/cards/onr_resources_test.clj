@@ -401,7 +401,7 @@
      (changes-val-macro
       2 (:credit (get-runner))
       "ONR Smith's sells Daily Casts before it triggers so only 2 credits gained"
-      (click-prompt state :runner "Aesop's Pawnshop")
+      (click-prompt state :runner "ONR Smith's Pawnshop")
       (click-card state :runner dc))
      (is (= (refresh dc) nil) "Daily Casts should be in Heap"))))
 

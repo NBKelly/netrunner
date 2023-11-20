@@ -83,11 +83,10 @@
      (or (get-in @state [:onr-trace :base]) 0)))
 
 (defn- onr-resolve-trace
-  [state side eid card {:keys [link-card max-strength label corp-credits corp-bid] :as trace}]
+  [state side eid card {:keys [link-card max-strength label corp-credits corp-bid corp-strength] :as trace}]
   "The runner has already paid, now the corp pays. and then we resolve the effects"
   (let [runner-link (current-link state)
-        success (>= corp-bid runner-link)
-        corp-strength corp-bid]
+        success (>= corp-strength runner-link)]
     (clear-wait-prompt state :corp)
     ;;(show-wait-prompt state :corp
     ;;                (str "Runner to resolve Link"))
@@ -97,7 +96,7 @@
     (continue-ability
       state :corp
       {:cost [:credit corp-bid]
-       :msg (msg "attempt to trace the Runner - "
+       :msg (msg "attempt to trace the Runner with Link Strength " corp-strength " - "
                  (if success
                    "beating" "losing to")
                  " the Runner's " runner-link " Link")
@@ -109,8 +108,7 @@
                  (wait-for (checkpoint state nil (make-eid state eid))
                            (let [runner-link (current-link state)
                                  cheating (any-effects state side :trace-automatic-success)
-                                 success (or (>= corp-bid runner-link) cheating)
-                                 corp-strength corp-bid]
+                                 success (or (>= corp-strength runner-link) cheating)]
                              (when (was-link-changed state)
                                (system-msg state side (str "has had their trace attempt adjusted to Strength " corp-strength " - "
                                                            (if success
@@ -126,7 +124,7 @@
                                (system-say state side (str "The trace was " (when-not success "un") "successful."))
                                (wait-for (trigger-event-simult state :corp (if success :successful-trace :unsuccessful-trace)
                                                                nil ;; No special functions
-                                                               {:corp-strength corp-bid ;;TODO - this might be wrong
+                                                               {:corp-strength corp-strength ;;TODO - this might be wrong
                                                                 :runner-strength runner-link
                                                                 :only-tags (:only-tags trace)
                                                                 :successful success
@@ -187,7 +185,7 @@
     (runner-link-repeat state _ eid card trace abilities)))
 
 (defn- onr-runner-trace-response
-  [state side eid card {:keys [label runner-credits corp-bid runner-links] :as trace}]
+  [state side eid card {:keys [label runner-credits runner-links] :as trace}]
   ;; if there are no links, then the runner can't really do anything
   (if-not (seq runner-links)
     ;; there's no links possible
@@ -207,25 +205,31 @@
 
 (defn- onr-trace-start
   "Starts the onr trace process by having the corp secretly decide how many credits to spend"
-  [state side eid card {:keys [max-strength label corp-credits] :as trace}]
+  [state side eid card {:keys [max-strength label corp-credits corp-extra-bid-cost] :as trace}]
   (system-msg state side (str "uses " (:title card) " to initiate a trace with max strength "
                               max-strength
                               (when label
                                 (str " (" label ")"))))
   (show-wait-prompt state :runner
                     (str "Corp to secretly bid on the trace"))
-  (let [max-bid (min max-strength corp-credits)
+  (let [corp-bid-cost (+ 1 (sum-effects state side :corp-trace-bid-additional-cost)
+                         (or corp-extra-bid-cost 0))
+        max-bid (min max-strength (quot corp-credits corp-bid-cost))
         runner-link (filter #(has-subtype? % "Base Link") (all-active-installed state :runner))]
   ;  ;; if there is no link card, then the trace automatically succeeds?
     ;; The corp still needs to bid though
     (continue-ability
       state :corp
-      {:prompt (msg "secretly bid up to " max-bid " credits")
+      {:prompt (msg "secretly boost the trace up to "
+                    max-bid
+                    (when (> corp-bid-cost 1)
+                      (str "(each point costs " corp-bid-cost " [Credits])")))
        :choices {:number (req max-bid)}
        :async true
        :effect (req
                  (clear-wait-prompt state :runner)
-                 (onr-runner-trace-response state side eid card (assoc trace :corp-bid target
+                 (onr-runner-trace-response state side eid card (assoc trace :corp-strength target
+                                                                       :corp-bid (* target corp-bid-cost)
                                                                        :runner-links runner-link
                                                                        :trace-card card)))}
       card nil)))

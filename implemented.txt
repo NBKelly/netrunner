@@ -36,9 +36,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   300 / 584
-TESTS:   157 / 300
-NO TEST: 140
+TOTAL:   317 / 584
+TESTS:   166 / 317
+NO TEST: 148
 NO IMP:  3
 --------------------------
 002 + Access through Alpha
@@ -311,13 +311,19 @@ NO IMP:  3
 335 + Networking
 336 + Neural Blade
 
+338 ^ New Blood
+
 340 + Newsgroup Filter
 
+342 + Night Shift
 343 ^ Nomad Allies
 
+345 + Off-Site Backups
 346 + Olivia Salazar
 
 350 ^ Omnitech Wet Drive
+
+355 + Overtime Incentives
 
 361 + Parraline 5750
 
@@ -326,15 +332,21 @@ NO IMP:  3
 365 + π in the 'Face
 366 ^ Pile Driver
 
+369 + Planning Consultants
+
 372 + Pocket Virtual Reality
 
 376 + Poltergiest
 377 + Polymer Breakthrough
+378 ^ Power Grid Overload
 
 381 ^ Precision Bribery
 382 + Preying Mantis
 
+388 + Project Consultants
+
 392 ^ Psychic Friend
+393 + Punitive Counterstrike
 
 395 + Quandary (trivial ETR ice - no test)
 396 ^ Quest for Cattekin
@@ -348,6 +360,7 @@ NO IMP:  3
 405 + Razor Wire
 407 ^ R&D Mole
 408 ^ R&D-Protocol Files
+409 ^ Reclamation Project
 
 412 ^ Redecorator
 413 + Red Herrings
@@ -355,7 +368,7 @@ NO IMP:  3
 415 + Reinforced Wall
 
 418 + Rent-I-Con
-
+419 ^ Rent-to-Own Contract
 420 ^ Replicator
 421 + Rescheduler
 
@@ -379,6 +392,7 @@ NO IMP:  3
 443 + Scatter Shot
 444 ^ Schematics Search Engine
 
+446 ^ Schlaghund Pointers
 447 ^ Scorched Earth
 
 449 + Scramble
@@ -397,6 +411,7 @@ NO IMP:  3
 465 + Shredder Uplink Protocol
 466 ^ Signpost
 467 + Silicon Saloon Franchise
+468 ^ Silver Lining Recovery Protocol
 
 470 ^ Simulacrum (look at abagnale for test)
 
@@ -432,7 +447,9 @@ NO IMP:  3
 507 + Swiss Bank Account
 
 509 ^ Synchronized Attack on HQ
+510 + Systematic Layoffs
 
+512 + Team Restructuring
 513 ^ Technician Lover
 
 519 + The Deck
@@ -452,13 +469,16 @@ NO IMP:  3
 
 535 ^ Trauma Team [TM]
 536 + Triggerman
-
+537 + Trojan Horse
 538 + Tumblers
 
 541 ? Twenty-Four-Hour Surviellance (unimplemented)
 542 + Twisty Passages
 
 545 + Umbrella Policy
+546 ^ Underworld Mole
+
+548 ^ Urban Renewal
 
 553 ^ Vewy Vewy Quiet
 
@@ -566,10 +586,12 @@ The following (marked) cards have no tests or implementations:
   326 ^ Mystery Box
   330 ^ N.E.T.O.
   331 ^ Netspace Inverter
+  338 ^ New Blood
   343 ^ Nomad Allies
   350 ^ Omnitech Wet Drive
   363 ^ Pattel's Virus
   366 ^ Pile Driver
+  378 ^ Power Grid Overload
   381 ^ Precision Bribery
   392 ^ Psychic Friend
   396 ^ Quest for Cattekin
@@ -581,20 +603,24 @@ The following (marked) cards have no tests or implementations:
   404 ^ Raymond Ellison
   407 ^ R&D Mole
   408 ^ R&D-Protocol Files
+  409 ^ Reclamation Project
   412 ^ Redecorator
   414 ^ Reflector
+  419 ^ Rent-to-Own Contract
   420 ^ Replicator
   423 ^ Restrictive Net Zoning
   427 ^ Rio de Janeiro City Grid (random, hard to test)
   432 ^ Ronin Around
   438 ^ Sandbox Dig
   444 ^ Schematics Search Engine
+  446 ^ Schlaghund Pointers
   447 ^ Scorched Earth
   453 ^ SeeYa
   459 ^ Shaka
   460 ^ Shield
   463 ^ Short-Term Contract
   466 ^ Signpost
+  468 ^ Silver Lining Recovery Protocol
   470 ^ Simulacrum (look at abagnale for test)
   474 ^ Skeleton Passkeys
   476 ^ Skullcap
@@ -615,6 +641,8 @@ The following (marked) cards have no tests or implementations:
   527 ^ TKO 2.0
   530 ^ Top Runner's Conference
   535 ^ Trauma Team [TM]
+  546 ^ Underworld Mole
+  548 ^ Urban Renewal
   553 ^ Vewy Vewy Quiet
   562 ^ Walking Wall
   565 ^ Washed-Up Solo Construct
@@ -627,4 +655,4 @@ The following (marked) cards have no tests or implementations:
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 349
+Random card to implement: 152

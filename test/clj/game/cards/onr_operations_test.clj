@@ -146,8 +146,8 @@
     (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
                       :hand ["ONR Day Shift"]}})
     (play-from-hand state :corp "ONR Day Shift")
-    (is (= (+ 5 -1 +3) (:credit (get-corp))) "Corp should gain net 2 credits")
-    (is (= 1 (count (:hand (get-corp)))) "Corp should draw 1 card")))
+    (is (= (+ 5 +1) (:credit (get-corp))) "Corp should gain net 1 credits")
+    (is (= 2 (count (:hand (get-corp)))) "Corp should draw 2 cards")))
 
 (deftest onr-efficiency-experts
   ;; Beanstalk Royalties
@@ -224,6 +224,94 @@
       (play-from-hand state :corp "ONR Netwatch Credit Voucher")
       (is (= 2 (count-tags state)) "Runner gained a tag"))))
 
+(deftest onr-night-shift
+  ;; Green Level Clearance
+  (do-game
+    (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                      :hand ["ONR Night Shift"]}})
+    (play-from-hand state :corp "ONR Night Shift")
+    (is (= (+ 5 +2) (:credit (get-corp))) "Corp should gain net 2 credits")
+    (is (= 1 (count (:hand (get-corp)))) "Corp should draw 1 card")))
+
+(deftest onr-off-site-backups
+  ;; Archived Memories
+  (do-game
+    (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                      :hand ["ONR Off-Site Backups"]
+                      :discard ["Hostile Takeover"]}})
+    (play-from-hand state :corp "ONR Off-Site Backups")
+    (click-card state :corp "Hostile Takeover")
+    (is (= ["Hostile Takeover"] (->> (get-corp) :hand (map :title))) "Hostile Takeover should be in HQ")))
+
+(deftest onr-overtime-incentives
+  ;; Biotic Labor - Gain 2 clicks
+  (do-game
+    (new-game {:corp {:deck ["ONR Overtime Incentives"]}})
+    (play-from-hand state :corp "ONR Overtime Incentives")
+    (is (= 1 (:credit (get-corp))))
+    (is (= 4 (:click (get-corp))) "Spent 1 click to gain 2 additional clicks")))
+
+(deftest onr-planning-consultants
+  ;; Precognition - Full test
+  (do-game
+    (new-game {:corp {:deck ["ONR Planning Consultants" "Caprice Nisei" "Adonis Campaign"
+                             "Quandary" "Jackson Howard" "Global Food Initiative"]}})
+    (starting-hand state :corp ["ONR Planning Consultants"])
+    (play-from-hand state :corp "ONR Planning Consultants")
+    (click-prompt state :corp (find-card "Caprice Nisei" (:deck (get-corp))))
+    (click-prompt state :corp (find-card "Adonis Campaign" (:deck (get-corp))))
+    (click-prompt state :corp (find-card "Quandary" (:deck (get-corp))))
+    (click-prompt state :corp (find-card "Jackson Howard" (:deck (get-corp))))
+    (click-prompt state :corp (find-card "Global Food Initiative" (:deck (get-corp))))
+    ;; try starting over
+    (click-prompt state :corp "Start over")
+    (click-prompt state :corp (find-card "Global Food Initiative" (:deck (get-corp))))
+    (click-prompt state :corp (find-card "Jackson Howard" (:deck (get-corp))))
+    (click-prompt state :corp (find-card "Quandary" (:deck (get-corp))))
+    (click-prompt state :corp (find-card "Adonis Campaign" (:deck (get-corp))))
+    (click-prompt state :corp (find-card "Caprice Nisei" (:deck (get-corp)))) ;this is the top card of R&D
+    (click-prompt state :corp "Done")
+    (is (= "Caprice Nisei" (:title (first (:deck (get-corp))))))
+    (is (= "Adonis Campaign" (:title (second (:deck (get-corp))))))
+    (is (= "Quandary" (:title (second (rest (:deck (get-corp)))))))
+    (is (= "Jackson Howard" (:title (second (rest (rest (:deck (get-corp))))))))
+    (is (= "Global Food Initiative" (:title (second (rest (rest (rest (:deck (get-corp)))))))))))
+
+(deftest onr-project-consultants
+  ;; Shipment from Vladisibirsk
+  (do-game
+    (new-game {:corp {:credits 30
+                      :hand [(qty "ONR Project Consultants" 2) "Ice Wall" "Hostile Takeover" "PAD Campaign" "Bio Vault"]}})
+    (core/gain state :corp :click 3)
+    (play-from-hand state :corp "Ice Wall" "HQ")
+    (play-from-hand state :corp "Hostile Takeover" "New remote")
+    (play-from-hand state :corp "PAD Campaign" "New remote")
+    (play-from-hand state :corp "Bio Vault" "New remote")
+    (play-from-hand state :corp "ONR Project Consultants")
+    (click-card state :corp "Ice Wall")
+    (click-card state :corp "Hostile Takeover")
+    (click-card state :corp "Hostile Takeover")
+    (click-card state :corp "Hostile Takeover")
+    (is (= 1 (get-counters (get-ice state :hq 0) :advancement)))
+    (is (= 3 (get-counters (get-content state :remote1 0) :advancement)))
+        (play-from-hand state :corp "ONR Project Consultants")
+    (dotimes [_ 4]
+      (click-card state :corp "Bio Vault"))
+    (is (= 4 (get-counters (get-content state :remote3 0) :advancement)))))
+
+(deftest onr-punitive-counterstrike
+  ;; Traffic Accident
+  (do-game
+    (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                      :hand ["ONR Punitive Counterstrike"]}
+               :runner {:hand [(qty "Sure Gamble" 5)]}})
+    (play-from-hand state :corp "ONR Punitive Counterstrike")
+    (is (= 5 (count (:hand (get-runner)))) "Runner shouldn't take damage as they're not tagged")
+    (gain-tags state :runner 1)
+    (play-from-hand state :corp "ONR Punitive Counterstrike")
+    (is (= 3 (count (:hand (get-runner)))) "Runner should take 2 damage")))
+
+
 (deftest onr-scorched-earth
   ;; Scorched Earth
   (do-game
@@ -241,3 +329,61 @@
       (play-from-hand state :corp "ONR Scorched Earth")
       (is (= 3 (:click (get-corp))) "Corp not charged a click")
       (is (= 5 (count (:hand (get-runner)))) "Runner did not take damage")))
+
+(deftest onr-systematic-layoffs
+  ;; Shipment from Vladisibirsk
+  (do-game
+    (new-game {:corp {:credits 30
+                      :hand [(qty "ONR Systematic Layoffs" 2) "Ice Wall" "Hostile Takeover" "PAD Campaign" "Bio Vault"]}})
+    (core/gain state :corp :click 3)
+    (play-from-hand state :corp "Ice Wall" "HQ")
+    (play-from-hand state :corp "Hostile Takeover" "New remote")
+    (play-from-hand state :corp "PAD Campaign" "New remote")
+    (play-from-hand state :corp "Bio Vault" "New remote")
+    (play-from-hand state :corp "ONR Systematic Layoffs")
+    (click-card state :corp "Ice Wall")
+    (click-card state :corp "Hostile Takeover")
+    (is (= 1 (get-counters (get-ice state :hq 0) :advancement)))
+    (is (= 1 (get-counters (get-content state :remote1 0) :advancement)))
+        (play-from-hand state :corp "ONR Systematic Layoffs")
+    (dotimes [_ 2]
+      (click-card state :corp "Bio Vault"))
+    (is (= 2 (get-counters (get-content state :remote3 0) :advancement)))))
+
+(deftest onr-team-restructuring
+  ;; NGO Front
+  (do-game
+    (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                      :hand ["ONR Team Restructuring" "Ice Wall" "NGO Front"]}})
+    (play-from-hand state :corp "Ice Wall" "HQ")
+    (play-from-hand state :corp "NGO Front" "New remote")
+    (play-from-hand state :corp "ONR Team Restructuring")
+    (click-card state :corp "Ice Wall")
+    (click-card state :corp "NGO Front")
+    (is (= 1 (get-counters (get-ice state :hq 0) :advancement)) "Ice Wall should be advanced")
+    (is (= 1 (get-counters (get-content state :remote1 0) :advancement)) "NGO should be advanced")))
+
+(deftest onr-trojan-horse
+  ;; Distributed Tracing
+  (do-game
+    (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                      :hand ["ONR Trojan Horse" "Hostile Takeover"]}})
+    (play-from-hand state :corp "Hostile Takeover" "New remote")
+    (play-from-hand state :corp "ONR Trojan Horse")
+    (is (no-prompt? state :corp) "Corp should have no prompt without agenda stolen")
+    (take-credits state :corp)
+    (run-empty-server state :remote1)
+    (click-prompt state :runner "Steal")
+    (take-credits state :runner)
+    (play-from-hand state :corp "ONR Trojan Horse")
+    (is (= 1 (count-tags state)) "Runner took 1 tag")))
+
+(deftest onr-urban-renewal
+  ;; Scorched Earth
+  (do-game
+    (new-game {:corp {:credits 6
+                      :deck ["ONR Urban Renewal"]}
+               :runner {:hand [(qty "Sure Gamble" 3) (qty "Lucky Find" 3)]}})
+      (gain-tags state :runner 1)
+      (play-from-hand state :corp "ONR Urban Renewal")
+      (is (= 1 (count (:hand (get-runner)))) "Runner has 1 card in hand")))
