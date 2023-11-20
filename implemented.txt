@@ -36,9 +36,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   317 / 584
-TESTS:   166 / 317
-NO TEST: 148
+TOTAL:   345 / 584
+TESTS:   173 / 345
+NO TEST: 169
 NO IMP:  3
 --------------------------
 002 + Access through Alpha
@@ -55,8 +55,10 @@ NO IMP:  3
 015 + Anonymous Tip
 
 018 ^ Arasaka Portable Prototype
-
+019 + Armadillo Armored Road Home
 020 ^ Armageddon
+021 + Armored Fridge
+022 + Artemis 2020
 
 025 ^ Audit of Call Records
 026 ^ Aujourd'Oui
@@ -116,6 +118,7 @@ NO IMP:  3
 
 088 + Colonel Failure
 
+090 + Corolla Speed Chip
 091 ^ Corporate Ally
 
 094 + Corporate Detective Agency
@@ -127,8 +130,10 @@ NO IMP:  3
 
 103 ^ Corrosion
 
+105 ^ Cortical Cybermodem
 106 + Cortical Scanner
 107 + Cortical Scrub
+108 ^ Cortical Stimulators
 
 111 ^ Crash Everett
 
@@ -165,12 +170,15 @@ NO IMP:  3
 146 ^ Demolition Run
 
 148 + Department of Truth Enhancement
+149 ^ Dermatech Bodyplating
 
 154 ^ Diplomatic Immunity
 
 157 ^ Disintegrator
 158 ^ Dogcatcher
 159 ^ Dog Pile
+
+163 + "Drifter" Mobile Environment
 
 165 ^ Dropp
 166 + Dumpster
@@ -186,6 +194,8 @@ NO IMP:  3
 179 + Endless Corridor
 180 + ONR Enterprise, Inc., Shields
 181 + Entrapment
+
+183 + Eurocorpse [TM] Spin Chip
 
 185 ^ Evil Twin
 
@@ -218,6 +228,7 @@ NO IMP:  3
 226 + Gideon's Pawnshop
 227 ^ Glacier
 
+229 ^ "Green Knight" Surge Buffers
 230 ^ Gremlins
 231 ^ Grubb
 
@@ -229,7 +240,7 @@ NO IMP:  3
 239 ^ Loan from Chiba
 
 244 + Hot Tip for WNS
-
+245 ^ HQ Interface
 246 ^ HQ Mole
 
 248 + Hunter
@@ -269,8 +280,9 @@ NO IMP:  3
 285 ^ Liberated Savings Account
 
 287 + Liche
-
+288 ^ Lifesaver [TM] Nanosurgeons
 289 ^ Lisa Blight
+290 ^ Little Black Box
 
 292 + Livewire's Contacts
 
@@ -291,7 +303,9 @@ NO IMP:  3
 
 312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
 313 ^ Microtech AI Interface
-
+314 ^ Microtech Backup Drive
+315 ^ Microtech 'Trode Set
+316 + Militech MRAM Chip
 317 + Minotaur
 
 319 + Misleading Access Menus
@@ -303,6 +317,7 @@ NO IMP:  3
 325 ^ MS-todon
 326 ^ Mystery Box
 
+328 ^ Nasuko Cycle
 329 + Nerve Labyrinth
 330 ^ N.E.T.O.
 331 ^ Netspace Inverter
@@ -321,9 +336,12 @@ NO IMP:  3
 345 + Off-Site Backups
 346 + Olivia Salazar
 
+349 ^ Omnitech "Spinal Tap" Cybermodem (random, needs a rng fix for tests)
 350 ^ Omnitech Wet Drive
 
 355 + Overtime Incentives
+
+357 ^ Pandora's Deck
 
 361 + Parraline 5750
 
@@ -332,6 +350,7 @@ NO IMP:  3
 365 + π in the 'Face
 366 ^ Pile Driver
 
+368 ^ ONR PK-6089a
 369 + Planning Consultants
 
 372 + Pocket Virtual Reality
@@ -358,10 +377,12 @@ NO IMP:  3
 403 ^ Raven Microcyb Owl
 404 ^ Raymond Ellison
 405 + Razor Wire
+406 ^ R&D Interface
 407 ^ R&D Mole
 408 ^ R&D-Protocol Files
 409 ^ Reclamation Project
 
+411 ^ Record Reconstructor
 412 ^ Redecorator
 413 + Red Herrings
 414 ^ Reflector
@@ -451,6 +472,7 @@ NO IMP:  3
 
 512 + Team Restructuring
 513 ^ Technician Lover
+514 ^ Techtronica [TM] Utility Suit
 
 519 + The Deck
 
@@ -475,12 +497,15 @@ NO IMP:  3
 541 ? Twenty-Four-Hour Surviellance (unimplemented)
 542 + Twisty Passages
 
+544 ^ Tycho Mem Chip
 545 + Umbrella Policy
 546 ^ Underworld Mole
 
 548 ^ Urban Renewal
 
 553 ^ Vewy Vewy Quiet
+
+555 ^ Vintage Camaro
 
 561 + Vortex
 562 ^ Walking Wall
@@ -497,10 +522,12 @@ NO IMP:  3
 574 + World Domination 👀
 575 ^ Worm
 576 ^ Wrecking Ball
-
+577 ^ WuTech Mem Chip
+578 ^ Zetatech Memchip
 579 + Zetatech Portastation
 580 + Zetatech Software Installer
 581 + Zombie
+582 ^ ZZ22 Speed Chip
 --------------------------
 --------------------------
 The following (marked) cards have no tests or implementations:
@@ -529,6 +556,8 @@ The following (marked) cards have no tests or implementations:
   086 ^ Codeslinger
   091 ^ Corporate Ally
   103 ^ Corrosion
+  105 ^ Cortical Cybermodem
+  108 ^ Cortical Stimulators
   111 ^ Crash Everett
   115 ^ Credit Subversion
   117 ^ Crumble (requires braniac id)
@@ -540,6 +569,7 @@ The following (marked) cards have no tests or implementations:
   144 ^ Dedicated Response Team
   145 ^ Deep Thought
   146 ^ Demolition Run
+  149 ^ Dermatech Bodyplating
   154 ^ Diplomatic Immunity
   157 ^ Disintegrator
   158 ^ Dogcatcher
@@ -556,12 +586,14 @@ The following (marked) cards have no tests or implementations:
   222 ^ Garbage In
   225 ^ Get Ready to Rumble
   227 ^ Glacier
+  229 ^ "Green Knight" Surge Buffers
   230 ^ Gremlins
   231 ^ Grubb
   234 ^ Hammer
   236 ^ Hell's Run
   238 ^ Highlighter
   239 ^ Loan from Chiba
+  245 ^ HQ Interface
   246 ^ HQ Mole
   250 ^ Ice and Data's Guide to the Net (update the req for this one!)
   251 ^ Ice and Data Special Report
@@ -573,24 +605,32 @@ The following (marked) cards have no tests or implementations:
   278 ^ Krash
   282 ^ Leland, Corporate Bodyguard
   285 ^ Liberated Savings Account
+  288 ^ Lifesaver [TM] Nanosurgeons
   289 ^ Lisa Blight
+  290 ^ Little Black Box
   294 ^ Lockjaw
   296 ^ Loony Goon
   307 ^ Mastermind
   309 ^ Matador
   313 ^ Microtech AI Interface
+  314 ^ Microtech Backup Drive
+  315 ^ Microtech 'Trode Set
   321 ^ Mobile Barricade
   322 ^ Morphing Tool
   323 ^ Mouse
   325 ^ MS-todon
   326 ^ Mystery Box
+  328 ^ Nasuko Cycle
   330 ^ N.E.T.O.
   331 ^ Netspace Inverter
   338 ^ New Blood
   343 ^ Nomad Allies
+  349 ^ Omnitech "Spinal Tap" Cybermodem (random, needs a rng fix for tests)
   350 ^ Omnitech Wet Drive
+  357 ^ Pandora's Deck
   363 ^ Pattel's Virus
   366 ^ Pile Driver
+  368 ^ ONR PK-6089a
   378 ^ Power Grid Overload
   381 ^ Precision Bribery
   392 ^ Psychic Friend
@@ -601,9 +641,11 @@ The following (marked) cards have no tests or implementations:
   401 ^ Raptor
   403 ^ Raven Microcyb Owl
   404 ^ Raymond Ellison
+  406 ^ R&D Interface
   407 ^ R&D Mole
   408 ^ R&D-Protocol Files
   409 ^ Reclamation Project
+  411 ^ Record Reconstructor
   412 ^ Redecorator
   414 ^ Reflector
   419 ^ Rent-to-Own Contract
@@ -634,6 +676,7 @@ The following (marked) cards have no tests or implementations:
   503 ^ Sunburst Cranial Interface
   509 ^ Synchronized Attack on HQ
   513 ^ Technician Lover
+  514 ^ Techtronica [TM] Utility Suit
   522 ^ The Shell Traders (write a test later)
   523 ^ The Short Circuit
   525 ^ Time to Collect
@@ -641,9 +684,11 @@ The following (marked) cards have no tests or implementations:
   527 ^ TKO 2.0
   530 ^ Top Runner's Conference
   535 ^ Trauma Team [TM]
+  544 ^ Tycho Mem Chip
   546 ^ Underworld Mole
   548 ^ Urban Renewal
   553 ^ Vewy Vewy Quiet
+  555 ^ Vintage Camaro
   562 ^ Walking Wall
   565 ^ Washed-Up Solo Construct
   567 ^ ONR Weapons Depot
@@ -652,7 +697,10 @@ The following (marked) cards have no tests or implementations:
   573 ^ Wizard's Book
   575 ^ Worm
   576 ^ Wrecking Ball
+  577 ^ WuTech Mem Chip
+  578 ^ Zetatech Memchip
+  582 ^ ZZ22 Speed Chip
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 152
+Random card to implement: 475
