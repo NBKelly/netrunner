@@ -2,9 +2,9 @@
 This is a fork of the netrunner client used for jinteki.net, with the goal of porting over all the features, functionality, and cards of 1996 netrunner.
 
 ## Implementation status:
-* 285 / 584 cards implemented so far
-* 146 of those with unit tests
-* The ONR trace mechanic has been implemented
+* 317 / 584 cards implemented so far
+* 166 of those with unit tests
+* The ONR trace mechanic has been implemented, with all the quirks (cancelling, cost multiplication, base link cards, post-trace link adjustment, max strength manipulation, secret bidding, etc)
 * Systems developed to allow for the unique virus mechanics (counters have effects outside of their programs)
 * Two special ID's have been created, which some mechanics rely on (a small handful of the viruses, ONR style purging)
 * ONR cards that refer to trace do not interact with ANR cards that refer to trace. Other than that, almost all cards should be (mostly) interoperable
@@ -16,7 +16,7 @@ This little graph is a visual representation of the implementation status so far
 ## TODO
 * Make an ONR legal format
 * card art for the special id's (even if it's bad)
-* draft/sealed generator to allow for a sealed format
+* seeded (in terms of repeatable rng) draft/sealed generator to allow for an easily accessible sealed format
 * describe-counters command that lets you see the types and quantities of counters on a card (there are lots of them...)
 * explain-counter command that explains what a counter does (what does a militech counter do? what about an I-Spy counter?)
 * Ephemeral counters that live in servers
