@@ -6,6 +6,27 @@
             [game.macros-test :refer :all]
             [clojure.test :refer :all]))
 
+(defn- provides-memory
+  [card x]
+  (do-game
+    (new-game {:runner {:hand [card]
+                        :credits 50}})
+    (take-credits state :corp)
+    (play-from-hand state :runner card)
+    (is (= (+ 4 x) (core/available-mu state)) (str "Gain " x " memory"))))
+
+(defn- provides-hand-size
+  [card x]
+  (do-game
+    (new-game {:runner {:credits 50
+                        :hand [card]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner card)
+    (is (= (+ 5 x) (hand-size :runner)) (str card " provides " x " hand size"))))
+
+;;; tests below here
+
+
 (deftest onr-armadillo-armored-road-home
     ;; Pay-credits prompt
     (do-game
@@ -143,18 +164,10 @@
       (is (= 4 (:click (get-runner))) "Didn't gain extra click"))))
 
 (deftest onr-mram-chip
-  (do-game
-    (new-game {:runner {:hand ["ONR MRAM Chip"]}})
-    (take-credits state :corp)
-    (play-from-hand state :runner "ONR MRAM Chip")
-    (is (= 7 (hand-size :runner)))))
+  (provides-hand-size "ONR MRAM Chip" 2))
 
 (deftest onr-mram-chip
-  (do-game
-    (new-game {:runner {:hand ["ONR Militech MRAM Chip"]}})
-    (take-credits state :corp)
-    (play-from-hand state :runner "ONR Militech MRAM Chip")
-    (is (= 8 (hand-size :runner)))))
+  (provides-hand-size "ONR Militech MRAM Chip" 3))
 
 (deftest onr-parraline-5750
     ;; Pay-credits prompt
@@ -212,6 +225,15 @@
       (click-prompt state :runner "1 [Credits]: +1 Link"))
     (click-prompt state :runner "Done")
     (is (= 0 (count-tags state)) "Runner should have 0 tags")))
+
+(deftest onr-tycho-mem-chip
+  (provides-memory "ONR Tycho Mem Chip" 3))
+
+(deftest onr-wutech-mem-chip
+  (provides-memory "ONR WuTech Mem Chip" 1))
+
+(deftest onr-zetatech-mem-chip
+  (provides-memory "ONR Zetatech Mem Chip" 2))
 
 (deftest zetatech-portastation-pay-credits-prompt
     ;; Pay-credits prompt

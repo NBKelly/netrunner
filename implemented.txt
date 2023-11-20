@@ -37,8 +37,8 @@ Keys:
 
 --------------------------
 TOTAL:   345 / 584
-TESTS:   173 / 345
-NO TEST: 169
+TESTS:   176 / 345
+NO TEST: 166
 NO IMP:  3
 --------------------------
 002 + Access through Alpha
@@ -497,7 +497,7 @@ NO IMP:  3
 541 ? Twenty-Four-Hour Surviellance (unimplemented)
 542 + Twisty Passages
 
-544 ^ Tycho Mem Chip
+544 + Tycho Mem Chip
 545 + Umbrella Policy
 546 ^ Underworld Mole
 
@@ -522,8 +522,8 @@ NO IMP:  3
 574 + World Domination 👀
 575 ^ Worm
 576 ^ Wrecking Ball
-577 ^ WuTech Mem Chip
-578 ^ Zetatech Memchip
+577 + WuTech Mem Chip
+578 + Zetatech Memchip
 579 + Zetatech Portastation
 580 + Zetatech Software Installer
 581 + Zombie
@@ -684,7 +684,6 @@ The following (marked) cards have no tests or implementations:
   527 ^ TKO 2.0
   530 ^ Top Runner's Conference
   535 ^ Trauma Team [TM]
-  544 ^ Tycho Mem Chip
   546 ^ Underworld Mole
   548 ^ Urban Renewal
   553 ^ Vewy Vewy Quiet
@@ -697,10 +696,8 @@ The following (marked) cards have no tests or implementations:
   573 ^ Wizard's Book
   575 ^ Worm
   576 ^ Wrecking Ball
-  577 ^ WuTech Mem Chip
-  578 ^ Zetatech Memchip
   582 ^ ZZ22 Speed Chip
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 475
+Random card to implement: 16
