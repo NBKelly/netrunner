@@ -36,9 +36,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   294 / 584
-TESTS:   152 / 294
-NO TEST: 139
+TOTAL:   300 / 584
+TESTS:   157 / 300
+NO TEST: 140
 NO IMP:  3
 --------------------------
 002 + Access through Alpha
@@ -154,7 +154,7 @@ NO IMP:  3
 135 + Data Sifters
 136 + Data Wall 2.0
 137 + Data Wall
-
+138 + Day Shift
 139 + Deadeye
 140 + Deal with Militech
 141 ^ Death from Above
@@ -177,8 +177,9 @@ NO IMP:  3
 167 ^ Dupree
 168 ^ Dwarf
 
+170 ^ Edgerunner, Inc., Temps
 171 + Edited Shipping Manifests
-
+172 + Efficiency Experts
 173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
 174 ^ Emergency Rig
 
@@ -193,6 +194,8 @@ NO IMP:  3
 190 + Expendable Family Member
 
 195 + Fall Guy
+
+197 + Falsified-Transactions Expert
 
 202 + Fetch 4.0.1
 203 + Field Reporter for Ice and Data
@@ -274,7 +277,7 @@ NO IMP:  3
 294 ^ Lockjaw
 
 296 ^ Loony Goon
-
+300 + Management Shake-Up
 301 + Manhunt
 
 303 + Marcel DeSoleil
@@ -303,6 +306,7 @@ NO IMP:  3
 329 + Nerve Labyrinth
 330 ^ N.E.T.O.
 331 ^ Netspace Inverter
+332 + Netwatch Credit Voucher
 
 335 + Networking
 336 + Neural Blade
@@ -523,6 +527,7 @@ The following (marked) cards have no tests or implementations:
   165 ^ Dropp
   167 ^ Dupree
   168 ^ Dwarf
+  170 ^ Edgerunner, Inc., Temps
   174 ^ Emergency Rig
   185 ^ Evil Twin
   210 ^ Force Shield
@@ -622,4 +627,4 @@ The following (marked) cards have no tests or implementations:
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 39
+Random card to implement: 349

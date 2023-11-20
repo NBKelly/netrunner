@@ -140,6 +140,65 @@
     (play-from-hand state :corp "ONR Datapool (R) by Zetatech")
     (is (= 3 (count-tags state)) "Runner gained 2 tags")))
 
+(deftest onr-day-shift
+  ;; Green Level Clearance
+  (do-game
+    (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                      :hand ["ONR Day Shift"]}})
+    (play-from-hand state :corp "ONR Day Shift")
+    (is (= (+ 5 -1 +3) (:credit (get-corp))) "Corp should gain net 2 credits")
+    (is (= 1 (count (:hand (get-corp)))) "Corp should draw 1 card")))
+
+(deftest onr-efficiency-experts
+  ;; Beanstalk Royalties
+  (do-game
+    (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                      :hand ["ONR Efficiency Experts"]}})
+    (let [credits (:credit (get-corp))]
+      (play-from-hand state :corp "ONR Efficiency Experts")
+      (is (= (+ credits 3) (:credit (get-corp))) "Corp should gain 3"))))
+
+(deftest onr-falsified-transactions-expert
+  ;; Trick of Light
+  (do-game
+      (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                        :hand ["ONR Falsified-Transactions Expert" "Ice Wall" "NGO Front"]
+                        :credits 10}})
+      (core/gain state :corp :click 6)
+      (play-from-hand state :corp "Ice Wall" "HQ")
+      (play-from-hand state :corp "NGO Front" "New remote")
+      (let [ngo (get-content state :remote1 0)
+            iw (get-ice state :hq 0)]
+        (advance state (refresh ngo) 3)
+        (is (= 3 (get-counters (refresh ngo) :advancement)) "NGO Front should have 3 counters")
+        (play-from-hand state :corp "ONR Falsified-Transactions Expert")
+        (click-card state :corp iw)
+        (click-card state :corp ngo)
+        (click-prompt state :corp "3")
+        (is (= 3 (get-counters (refresh iw) :advancement)) "Ice Wall is now advanced")
+        (is (zero? (get-counters (refresh ngo) :advancement)) "NGO Front should have 0 counters"))))
+
+(deftest onr-management-shakeup
+  ;; Shipment from Vladisibirsk
+  (do-game
+    (new-game {:corp {:credits 20
+                      :hand [(qty "ONR Management Shake-Up" 2) "Ice Wall" "Hostile Takeover" "PAD Campaign" "Bio Vault"]}})
+    (core/gain state :corp :click 3)
+    (play-from-hand state :corp "Ice Wall" "HQ")
+    (play-from-hand state :corp "Hostile Takeover" "New remote")
+    (play-from-hand state :corp "PAD Campaign" "New remote")
+    (play-from-hand state :corp "Bio Vault" "New remote")
+    (play-from-hand state :corp "ONR Management Shake-Up")
+    (click-card state :corp "Ice Wall")
+    (click-card state :corp "Hostile Takeover")
+    (click-card state :corp "Hostile Takeover")
+    (is (= 1 (get-counters (get-ice state :hq 0) :advancement)))
+    (is (= 2 (get-counters (get-content state :remote1 0) :advancement)))
+        (play-from-hand state :corp "ONR Management Shake-Up")
+    (dotimes [_ 3]
+      (click-card state :corp "Bio Vault"))
+    (is (= 3 (get-counters (get-content state :remote3 0) :advancement)))))
+
 (deftest onr-manhunt
   ;; Trace 6 - Give the runner 1 tag for each point your trace exceeded their link
   (do-game
@@ -151,6 +210,19 @@
     (play-from-hand state :corp "ONR Manhunt")
     (click-prompt state :corp "3")
     (is (= 3 (count-tags state)) "Runner should have 3 tags")))
+
+(deftest onr-netwatch-credit-voucher
+  ;; Big Brother - Give the Runner 2 tags if already tagged
+  (do-game
+    (new-game {:corp {:deck ["ONR Netwatch Credit Voucher"]}})
+    (play-from-hand state :corp "ONR Netwatch Credit Voucher")
+    (is (= 1 (count (:hand (get-corp)))) "Card not played because Runner has no tags")
+    (gain-tags state :runner 1)
+    (changes-val-macro
+      +1 (:credit (get-corp))
+      "gained 1 from play"
+      (play-from-hand state :corp "ONR Netwatch Credit Voucher")
+      (is (= 2 (count-tags state)) "Runner gained a tag"))))
 
 (deftest onr-scorched-earth
   ;; Scorched Earth

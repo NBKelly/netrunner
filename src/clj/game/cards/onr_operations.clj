@@ -282,6 +282,24 @@
     :async true
     :effect (effect (gain-tags :corp eid 2))}})
 
+(defcard "ONR Day Shift"
+  {:on-play
+   {:msg "gain 2 [Credits] and draw 1 card"
+    :async true
+    :effect (req (wait-for (gain-credits state side 2)
+                           (draw state side eid 1)))}})
+
+(defcard "ONR Edgerunner, Inc., Temps"
+  {:on-play
+   {:msg "gain [Click][Click][Click] for install actions"
+    :implementation "You may forgo these clicks to purge viruses. Manually adjust clicks you don't use."
+    :effect (effect (gain-clicks 3))}})
+
+(defcard "ONR Efficiency Experts"
+  {:on-play
+   {:msg "gain 3 [Credits]"
+    :async true
+    :effect (effect (gain-credits eid 3))}})
 
 (defcard "ONR Emergency Rig"
   (letfn [(kludge-event []
@@ -326,6 +344,52 @@
                                               (effect-completed state side eid)))}
                       card nil))))}}))
 
+(defcard "ONR Falsified-Transactions Expert"
+  {:on-play
+   {:prompt "Choose an installed card you can advance"
+    :req (req (let [advanceable (some can-be-advanced? (get-all-installed state))
+                    num-installed (count (get-all-installed state))]
+                 (and advanceable
+                      (> num-installed 1))))
+    :choices {:card #(and (can-be-advanced? %)
+                          (installed? %))}
+    :async true
+    :effect (effect
+              (continue-ability
+                (let [card-to-advance target]
+                  {:async true
+                   :prompt "Choose another installed card"
+                   :choices {:card #(and (not (same-card? card-to-advance %))
+                                         (installed? %))}
+                   :effect (effect
+                             (continue-ability
+                               (let [source target]
+                                 {:prompt "How many advancement counters do you want to move?"
+                                  :choices (take (inc (get-counters source :advancement)) ["0" "1" "2" "3"])
+                                  :msg (msg "move " target " advancement counters from "
+                                            (card-str state source) " to " (card-str state card-to-advance))
+                                  :effect (effect (add-prop :corp card-to-advance :advance-counter (str->int target) {:placed true})
+                                                  (add-prop :corp source :advance-counter (- (str->int target)) {:placed true}))})
+                               card nil))})
+                card nil))}})
+
+(defcard "ONR Management Shake-Up"
+  (letfn [(ability [x]
+            {:prompt (msg "Choose an installed card to place advancement counters on (" x " remaining)")
+             :async true
+             :waiting-prompt true
+             :choices {:card #(and (corp? %)
+                                   (can-be-advanced? %)
+                                   (installed? %))}
+             :msg (msg "place 1 advancement counter on " (card-str state target))
+             :effect (req (wait-for (add-prop state side target :advance-counter 1 {:placed true})
+                                    (if (> x 1)
+                                      (continue-ability state side (ability (dec x)) card nil)
+                                      (effect-completed state side eid))))})]
+    {:on-play
+     {:async true
+      :effect (effect (continue-ability (ability 3) card nil))}}))
+
 ;; this is a nearprint of midseasons - a good test for the trace system
 (defcard "ONR Manhunt"
   {:on-play
@@ -339,6 +403,14 @@
                   :effect (effect (system-msg
                                     (str "gives the Runner " (quantify (- target (second targets)) "tag")))
                                   (gain-tags eid (- target (second targets))))}}}})
+
+(defcard "ONR Netwatch Credit Voucher"
+  {:on-play
+   {:req (req tagged)
+    :msg "give the Runner a tag and gain [Credit]"
+    :async true
+    :effect (req (wait-for (gain-tags state :corp (make-eid state eid) 1)
+                           (gain-credits state side eid 1)))}})
 
 (defcard "ONR Scorched Earth"
   {:on-play
