@@ -44,9 +44,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   345 / 584
-TESTS:   190 / 345
-NO TEST: 152
+TOTAL:   356 / 584
+TESTS:   193 / 356
+NO TEST: 160
 NO IMP:  3
 --------------------------
 002 + Access through Alpha
@@ -55,8 +55,9 @@ NO IMP:  3
 005 + Accounts Receivable
 
 007 ^ Afreet
-008 + Code Corpse
+008 ^ AI Board Member
 009 ^ AI Boon (rng card)
+010 ^ AI Chief Financial Officer
 012 + All-Hands
 
 014 + Annual Reviews
@@ -67,6 +68,7 @@ NO IMP:  3
 020 ^ Armageddon
 021 + Armored Fridge
 022 + Artemis 2020
+023 ^ Artificial Security Directors
 
 025 ^ Audit of Call Records
 026 ^ Aujourd'Oui
@@ -83,9 +85,10 @@ NO IMP:  3
 037 ^ Bartmoss Memorial Icebreaker
 
 041 ^ Big Frackin' Gun
+042 + Bioweapons Engineering
 
 044 ^ Black Dahlia
-
+045 ^ Black Ice Quality Assurance
 046 + Blackmail
 047 ^ Black Widow
 048 ^ Blink (no test, this is an rng card!)
@@ -112,6 +115,7 @@ NO IMP:  3
 069 ^ Cascade (test once viruses are done!)
 
 071 ^ Chance Observation
+072 + Charity Takeover
 
 074 ^ Chiba Bank Account
 
@@ -121,6 +125,7 @@ NO IMP:  3
 081 + Closed Accounts
 082 + Clown
 
+084 + Code Corpse
 085 ^ Codecracker
 086 ^ Codeslinger
 
@@ -128,13 +133,16 @@ NO IMP:  3
 
 090 + Corolla Speed Chip
 091 ^ Corporate Ally
-
+092 ^ Corporate Boon
+093 ^ Corporate Coup
 094 + Corporate Detective Agency
-
+095 ^ Corporate Downsizing
 096 + Corporate Guard(R) Temps
+097 ^ Corporate Headhunters
 
 099 + Corporate Retreat
-100 + ONR Corporate Shuffle
+100 + Corporate Shuffle
+101 + Corporate War
 
 103 ^ Corrosion
 
@@ -540,13 +548,17 @@ NO IMP:  3
 --------------------------
 The following (marked) cards have no tests or implementations:
   007 ^ Afreet
+  008 ^ AI Board Member
   009 ^ AI Boon (rng card)
+  010 ^ AI Chief Financial Officer
   020 ^ Armageddon
+  023 ^ Artificial Security Directors
   025 ^ Audit of Call Records
   026 ^ Aujourd'Oui
   037 ^ Bartmoss Memorial Icebreaker
   041 ^ Big Frackin' Gun
   044 ^ Black Dahlia
+  045 ^ Black Ice Quality Assurance
   047 ^ Black Widow
   048 ^ Blink (no test, this is an rng card!)
   050 ^ Boardwalk (random reveal...)
@@ -562,6 +574,10 @@ The following (marked) cards have no tests or implementations:
   085 ^ Codecracker
   086 ^ Codeslinger
   091 ^ Corporate Ally
+  092 ^ Corporate Boon
+  093 ^ Corporate Coup
+  095 ^ Corporate Downsizing
+  097 ^ Corporate Headhunters
   103 ^ Corrosion
   111 ^ Crash Everett
   115 ^ Credit Subversion
@@ -694,4 +710,4 @@ The following (marked) cards have no tests or implementations:
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 23
+Random card to implement: 351

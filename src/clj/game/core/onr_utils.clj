@@ -1,15 +1,25 @@
 (ns game.core.onr-utils
   (:require
-   [game.core.onr-trace :refer [boost-link set-base-link cancel-successful-trace]]
-   [game.macros :refer [continue-ability effect msg req wait-for]]
-   [game.core.effects :refer [gather-effects register-lingering-effect]]
-   [game.core.engine :refer [not-used-once? register-events gather-events]]
    [game.core.damage :refer [damage-prevent]]
+   [game.core.effects :refer [gather-effects register-lingering-effect]]
+   [game.core.eid :refer [complete-with-result make-eid]]
+   [game.core.engine :refer [not-used-once? register-events gather-events]]
+   [game.core.gaining :refer [lose-click-debt gain-clicks]]
+   [game.core.onr-trace :refer [boost-link set-base-link cancel-successful-trace]]
    [game.core.say :refer [system-msg]]
    [game.core.tags :refer [gain-tags]]
+   [game.macros :refer [continue-ability effect msg req wait-for]]
    [game.utils :refer [quantify]]
    ))
 
+
+(defn gain-or-forgo
+  [state side eid]
+  (if (pos? (or (get-in @state [side :action-debt]) 0))
+    (wait-for (lose-click-debt state side (make-eid state eid) 1)
+              (complete-with-result state side eid "Forgo Click"))
+    (do (gain-clicks state side 1)
+        (complete-with-result state side eid "Gain Click"))))
 
 (defn- give-tags
   "Basic give runner n tags subroutine."

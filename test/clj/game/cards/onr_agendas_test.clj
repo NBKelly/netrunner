@@ -7,6 +7,24 @@
             [game.macros-test :refer :all]
             [clojure.test :refer :all]))
 
+(deftest onr-bioweapons-engineering
+  ;; The Cleaners
+  (do-game
+      (new-game {:corp {:deck ["ONR Bioweapons Engineering" "Scorched Earth"]}
+                 :runner {:deck [(qty "Sure Gamble" 3) (qty "Diesel" 3)]}})
+      (play-and-score state "ONR Bioweapons Engineering")
+      (gain-tags state :runner 1)
+      (play-from-hand state :corp "Scorched Earth")
+      (is (zero? (count (:hand (get-runner)))) "5 damage dealt to Runner")))
+
+;; Hostile Takeover
+(deftest onr-charity-takeover
+  (do-game
+    (new-game {:corp {:deck ["ONR Charity Takeover"]}})
+    (play-and-score state "ONR Charity Takeover")
+    (is (= 14 (:credit (get-corp))) "Gain 9 credits")
+    (is (= 1 (count-bad-pub state)) "Take 1 bad publicity")))
+
 (deftest onr-corporate-retreat
   ;; Government Takeover
   (do-game
@@ -19,6 +37,17 @@
       (play-from-hand state :corp "Ice Wall" "HQ")
       (card-ability state :corp gt-scored 0)
       (is (= 7 (:credit (get-corp))) "Should not be able to use the ability!"))))
+
+(deftest onr-corporate-war
+  ;; Corporate War
+  (do-game
+    (new-game {:corp {:deck [(qty "ONR Corporate War" 2)]}})
+    (is (= 5 (:credit (get-corp))))
+    (play-and-score state "ONR Corporate War")
+    (is (zero? (:credit (get-corp))) "Lost all credits")
+    (core/gain state :corp :credit 12)
+    (play-and-score state "Corporate War")
+    (is (= 24 (:credit (get-corp))) "Had 12 credits when scoring, gained another 12")))
 
 (deftest onr-ice-transmutation
   (do-game
