@@ -141,6 +141,41 @@
     :async true
     :effect (effect (draw eid 5))}})
 
+(defcard "ONR Boostergang Connections"
+  (letfn [(tutor [x]
+            {:prompt (msg "Choose a card (" x " remaining)")
+             :msg "add a card from the stack to the grip"
+             :choices (req (cancellable (distinct (:deck runner)) :sorted))
+             :async true
+             :cancel-effect (effect (shuffle! :deck)
+                                    (effect-completed eid))
+             :effect (req (trigger-event state side :searched-stack nil)
+                             (move state side target :hand)
+                             (if (> x 1)
+                               (continue-ability
+                                 state side
+                                 (tutor (dec x))
+                                 card nil)
+                               (do (shuffle! state side :deck)
+                                   (effect-completed state side eid))))})]
+  {:on-play
+   {:msg (msg "trash thier hand and search for up to " (count (:hand runner)) " cards from the stack")
+    :async true
+    :effect (req (let [to-search (count (:hand runner))]
+                   (wait-for (trash-cards state side (make-eid state eid) (:hand runner))
+                             (continue-ability
+                               state side
+                               (tutor to-search)
+                               card nil))))}}))
+
+
+(defcard "ONR Cruising for Netwatch"
+  {:on-play
+   {:msg "gain 1 [Credits] and draw 2 cards"
+    :async true
+    :effect (req (wait-for (gain-credits state side 1)
+                           (draw state side eid 2)))}})
+
 (defcard "ONR Deal with Militech"
   {:on-play
    {:req (req (and (some #(has-subtype? % "Icebreaker") (all-installed state :runner))
@@ -363,6 +398,29 @@
     :async true
     :effect (effect (gain-credits eid 9))}})
 
+(defcard "ONR On the Fast Track"
+  (letfn [(trashed-transaction [state] ;;onr/1996nr interop
+            (seq (filter #(or (has-subtype? % "Transactions") (has-subtype? % "Transaction"))
+                         (map :card (map first (turn-events state :runner :runner-trash))))))
+          (trashed-advertisement [state]
+            (seq (filter #(has-subtype? % "Advertisement")
+                         (map :card (map first (turn-events state :runner :runner-trash))))))]
+          ;; (map second)
+          ;;        (map :card)
+          ;;        (filter #(has-subtype? % "Advertisement"))
+          ;; seq))]
+    {:on-play
+     {:req (req (or (trashed-transaction state) (trashed-advertisement state)))
+      :msg (msg (if (trashed-advertisement state)
+                  "gain 8 [Credits]"
+                  "gain 6 [Credits]"))
+      :async true
+      :effect (req (gain-credits state side eid (if (trashed-advertisement state) 8 6)))
+     }}))
+
+
+
+
 (defcard "ONR Panzer Run"
   {:on-play
    {:msg "gain 4 [Credits] and draw 2 cards"
@@ -396,6 +454,27 @@
                 :msg (msg "make the Corp lose " target " [Credits]")
                 :effect (req (lose-credits state :corp eid target))}})]})
 
+(defcard "ONR Remote Detonator"
+  {:on-play {:req (req (pos? (count (:successful-run runner-reg))))
+             :async true
+             :effect (req (let [target-servers (distinct (map zone->name (:successful-run runner-reg)))]
+                            (continue-ability
+                              state side
+                              {:prompt "Blow up rezzed ice where?"
+                               :choices target-servers
+                               :async true
+                               :msg (msg "trash all rezzed ice protecting " target " and take 3 tags")
+                               :effect (req (let [zone (second (server->zone state target))
+                                                  target-ice (filter #(and (rezzed? %) (ice? %)
+                                                                          (= [:servers zone :ices] (:zone %)))
+                                                                     (all-installed state :corp))]
+                                              (if (not (empty? target-ice))
+                                                (wait-for (trash-cards state side (make-eid state eid) target-ice)
+                                                          (system-msg state side (str "trashes " (str/join (map :title target-ice)) " protecting " target))
+                                                          (gain-tags state :corp eid 3))
+                                                (gain-tags state :corp eid 3))))}
+                              card nil)))}})
+
 (defcard "ONR Synchronized Attack on HQ"
   {:on-play
    {:implementation "ERRATUM - For each card stored in HQ, Corp either
@@ -428,3 +507,12 @@
                              (wait-for (trash-cards state :corp cards-to-trash {:cause-card card})
                                        (system-msg state :corp (str "discards " (quantify (count cards-to-trash) " card") " from HQ"))
                                        (effect-completed state side eid)))))}})
+
+
+(defcard "ONR Valu-Pak Software Bundle"
+  {:implementation "Gain (1 credit and 5 actions) for installing programs. You may forgo these clicks. Manually remove clicks and credits you don't use."
+   :msg (msg "gain 1 credit and 5 consecutive actions for installing cards")
+   :effect (req (wait-for (gain-credits state side (make-eid state eid) 1)
+                          (gain-clicks state side 5)
+                          (effect-completed state side eid)))
+   :async true})

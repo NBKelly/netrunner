@@ -57,6 +57,19 @@
     (play-from-hand state :runner "ONR Bodyweight [TM] Synthetic Blood")
     (is (= 5 (count (:hand (get-runner)))) "Runner should draw 5 cards")))
 
+(deftest onr-cruising-for-netwatch
+  ;; Build Script
+  (do-game
+    (new-game {:corp {:deck [(qty "Hedge Fund" 5)]}
+               :runner {:deck [(qty "Sure Gamble" 5)]
+                        :hand ["ONR Cruising for Netwatch"]}})
+    (take-credits state :corp)
+    (let [credits (:credit (get-runner))
+          hand (dec (count (:hand (get-runner))))]
+      (play-from-hand state :runner "ONR Cruising for Netwatch")
+      (is (= (inc credits) (:credit (get-runner))) "Gained 1 credit")
+      (is (= (+ 2 hand) (count (:hand (get-runner)))) "Drew 2 cards"))))
+
 (deftest onr-edited-shipping-manifests-steal
     ;; Use ability
     (do-game

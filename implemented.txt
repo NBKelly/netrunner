@@ -44,9 +44,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   395 / 584
-TESTS:   200 / 395
-NO TEST: 192
+TOTAL:   401 / 584
+TESTS:   201 / 401
+NO TEST: 197
 NO IMP:  3
 --------------------------
 002 + Access through Alpha
@@ -99,7 +99,7 @@ NO IMP:  3
 053 + Bolter Cluster
 054 + Bolter Swarm
 055 ^ Bolt-Hole
-
+056 ^ Boostergang Connections
 057 ^ Boring Bit
 058 + ONR Braindance Campaign
 059 ^ Brain Drain (random, untestable?)
@@ -158,7 +158,7 @@ NO IMP:  3
 113 + Credit Blocks
 114 + Credit Consolidation
 115 ^ Credit Subversion
-
+116 + Cruising for Netwatch
 117 ^ Crumble (requires braniac id)
 
 120 + Crystal Wall
@@ -373,6 +373,8 @@ NO IMP:  3
 349 ^ Omnitech "Spinal Tap" Cybermodem (random, needs a rng fix for tests)
 350 ^ Omnitech Wet Drive
 
+352 ^ On the Fast Track
+
 355 + Overtime Incentives
 
 357 + Pandora's Deck
@@ -433,6 +435,7 @@ NO IMP:  3
 413 + Red Herrings
 414 ^ Reflector
 415 + Reinforced Wall
+416 ^ Remote Detonator
 
 418 + Rent-I-Con
 419 ^ Rent-to-Own Contract
@@ -552,6 +555,8 @@ NO IMP:  3
 547 ^ Unlisted Research Lab
 548 ^ Urban Renewal
 
+551 ^ Valu-Pak Software Bundle
+
 553 ^ Vewy Vewy Quiet
 
 555 + Vintage Camaro
@@ -581,6 +586,7 @@ NO IMP:  3
 --------------------------
 --------------------------
 The following (marked) cards have no tests or implementations:
+  006 ^ ACME Savings and Loan
   007 ^ Afreet
   008 ^ AI Board Member
   009 ^ AI Boon (rng card)
@@ -598,6 +604,7 @@ The following (marked) cards have no tests or implementations:
   048 ^ Blink (no test, this is an rng card!)
   050 ^ Boardwalk (random reveal...)
   055 ^ Bolt-Hole
+  056 ^ Boostergang Connections
   057 ^ Boring Bit
   059 ^ Brain Drain (random, untestable?)
   063 ^ Bug Zapper
@@ -696,6 +703,7 @@ The following (marked) cards have no tests or implementations:
   347 ^ Omni Kismet, Ph. D.
   349 ^ Omnitech "Spinal Tap" Cybermodem (random, needs a rng fix for tests)
   350 ^ Omnitech Wet Drive
+  352 ^ On the Fast Track
   359 ^ Panzer Run
   363 ^ Pattel's Virus
   366 ^ Pile Driver
@@ -721,6 +729,7 @@ The following (marked) cards have no tests or implementations:
   411 ^ Record Reconstructor
   412 ^ Redecorator
   414 ^ Reflector
+  416 ^ Remote Detonator
   419 ^ Rent-to-Own Contract
   420 ^ Replicator
   423 ^ Restrictive Net Zoning
@@ -762,6 +771,7 @@ The following (marked) cards have no tests or implementations:
   546 ^ Underworld Mole
   547 ^ Unlisted Research Lab
   548 ^ Urban Renewal
+  551 ^ Valu-Pak Software Bundle
   553 ^ Vewy Vewy Quiet
   556 ^ Viral 15
   562 ^ Walking Wall
@@ -776,4 +786,4 @@ The following (marked) cards have no tests or implementations:
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 6
+Random card to implement: 379
