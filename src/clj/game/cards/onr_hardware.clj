@@ -65,62 +65,11 @@
    [game.core.onr-trace :refer [boost-link set-base-link cancel-successful-trace]]
    [game.core.set-aside :refer [set-aside get-set-aside]]
    [game.core.sabotage :refer [sabotage-ability]]
-   [game.core.mark :refer [identify-mark-ability]]))
-
-(defn- base-link-abi
-  [cost val]
-  (let [cost (if (integer? cost) [:credit cost] cost)]
-    {:onr-base-link true
-     :req (req true)
-     :cost cost
-     :base-link val
-     :label (str "Base Link " val)
-     :msg (str "set their Base Link to " val)
-     :effect (req (set-base-link state val))}))
-
-(defn- boost-link-abi
-  [cost val]
-  (let [cost (if (integer? cost) [:credit cost] cost)]
-    {:onr-boost-link true
-     :cost cost
-     :label (str "+" val " Link")
-     :msg (str "gain +" val " Link")
-     :effect (req (boost-link state val))}))
-
-(defn- dice-roll [] (inc (rand-int 6)))
-
-;; (defn- deep-merge [v & vs]
-;;   (letfn [(rec-merge [v1 v2]
-;;             (if (and (map? v1) (map? v2))
-;;               (merge-with deep-merge v1 v2)
-;;               v2))]
-;;     (if (some identity vs)
-;;       (reduce #(rec-merge %1 %2) v vs)
-;;       (last vs))))
-
- (defn- deep-merge [a & maps]
-   (if (map? a)
-     (apply merge-with deep-merge a maps)
-     (apply merge-with deep-merge maps)))
-
-(defn- generic-prevent-damage
-  ([x type]
-   {:interactions {:prevent [{:type #{type}
-                              :req (req (not-used-once? state {:once :per-turn} card))}]}
-    :abilities [{:cost [:credit 0]
-                 :once :per-turn
-                 :label (str "Prevent " x " " (name type) " damage")
-                 :msg (msg "prevent " x " " (name type) " damage")
-                 :effect (effect (damage-prevent type x))}]})
-  ([x typea typeb]
-   {:interactions {:prevent [{:type #{typea typeb}
-                              :req (req (not-used-once? state {:once :per-turn} card))}]}
-    :abilities [{:cost [:credit 0]
-                 :once :per-turn
-                 :label (str "Prevent " x " " (name typea) " or " (name typeb) " damage")
-                 :msg (msg "prevent " x " " (name typea) " or " (name typeb) " damage")
-                 :effect (effect (damage-prevent typea x)
-                                 (damage-prevent typeb x))}]}))
+   [game.core.mark :refer [identify-mark-ability]]
+   [game.core.onr-utils :refer [base-link-abi boost-link-abi dice-roll
+                                deep-merge generic-prevent-damage
+                                handle-if-unique register-effect-once]]
+   ))
 
 ;; Card definitions
 

@@ -84,29 +84,9 @@
    [game.core.onr-trace :refer [boost-link set-base-link cancel-successful-trace]]
    [jinteki.utils :refer :all]
    [jinteki.validator :refer [legal?]]
-   [medley.core :refer [find-first]]))
-
-(defn- base-link-abi
-  [cost val]
-  (let [cost (if (integer? cost) [:credit cost] cost)]
-    {:onr-base-link true
-     :req (req true)
-     :cost cost
-     :base-link val
-     :label (str "Base Link " val)
-     :msg (str "set their Base Link to " val)
-     :effect (req (set-base-link state val))}))
-
-(defn- boost-link-abi
-  [cost val]
-  (let [cost (if (integer? cost) [:credit cost] cost)]
-    {:onr-boost-link true
-     :cost cost
-     :label (str "+" val " Link")
-     :msg (str "gain +" val " Link")
-     :effect (req (boost-link state val))}))
-
-(defn- dice-roll [] (inc (rand-int 6)))
+   [medley.core :refer [find-first]]
+   [game.core.onr-utils :refer :all]
+   ))
 
 ;; card implementations
 
@@ -353,6 +333,7 @@
 
 (defcard "ONR Executive File Clerk"
   {:abilities [{:cost [:credit 2 :trash-can]
+                :label "look at the cards in HQ"
                 :msg (msg "reveal " (enumerate-str (sort (map :title (:hand corp)))) " from HQ")
                 :async true
                 :effect (effect (reveal eid (:hand corp)))}]})

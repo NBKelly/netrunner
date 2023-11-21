@@ -59,7 +59,23 @@
    [game.core.virus :refer [number-of-virus-counters]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [game.utils :refer :all]
-   [jinteki.utils :refer :all]))
+   [jinteki.utils :refer :all]
+
+   [game.core.onr-utils :refer [base-link-abi boost-link-abi dice-roll
+                                deep-merge generic-prevent-damage
+                                handle-if-unique
+                                onr-trace-tag onr-trace-ability
+                                ]]
+   ))
+
+(defn- give-tags
+  "Basic give runner n tags subroutine."
+  [n]
+  {:label (str "Give the Runner " (quantify n "tag"))
+   :msg (str "give the Runner " (quantify n "tag"))
+   :async true
+   :effect (effect (gain-tags :corp eid n))})
+
 
 (defn- handle-debt-collections
   ([debt]
@@ -96,61 +112,6 @@
                     [(debt-abi)]))
                 (gain-debt state side eid debt))})))
 
-(defn- handle-if-unique
-  ([state side card handler] (handle-if-unique state side card handler nil))
-  ([state side card handler targets] (handle-if-unique state side card handler targets false))
-  ([state side card handler targets debug]
-   (let [matching-events
-         (seq (filter #(= (:ability-name handler) (:ability-name (:ability %)))
-                      (gather-events state side (:event handler) targets)))]
-     (when debug
-       (do
-         (system-msg state side (str "event type: " (:event handler)))
-         (system-msg state side (str (gather-events state side (:event handler) targets)))
-         ))
-     (when-not matching-events
-       (do (when debug (system-msg state side (str "registered " (:ability-name handler))))
-           (register-events state side card [handler]))))))
-
-(defn- register-effect-once [state side card effect]
-  (let [em (gather-effects state side (:type effect))
-        matches (filter #(= (:ability-name %) (:ability-name effect)) em)]
-    (when (empty? matches)
-      (register-lingering-effect
-        state side card
-        effect))))
-
-(defn- give-tags
-  "Basic give runner n tags subroutine."
-  [n]
-  {:label (str "Give the Runner " (quantify n "tag"))
-   :msg (str "give the Runner " (quantify n "tag"))
-   :async true
-   :effect (effect (gain-tags :corp eid n))})
-
-(defn- onr-trace-ability
-  "Run a trace with specified max strength.
-  If successful trigger specified ability"
-  ([max {:keys [label] :as ability} only-tags]
-   {:label (str "Trace " max " - " label)
-    :onr-trace {:max-strength max
-                :label label
-                :only-tags only-tags
-                :successful ability}})
-  ([max ability un-ability only-tags]
-   (let [label (str (:label ability) " / " (:label un-ability))]
-     {:label (str "Trace " max " - " label)
-      :onr-trace {:max-strength max
-                  :label label
-                  :only-tags only-tags
-                  :successful ability
-                  :unsuccessful un-ability}})))
-
-(defn- trace-tag
-  ([max] (trace-tag max 1))
-  ([max tags]
-   (onr-trace-ability max (give-tags tags) true)))
-
 ;; card implementations
 
 (defcard "ONR Accounts Receivable"
@@ -170,7 +131,7 @@
    {:req (req (< 1 (count (last-turn? state :runner :made-run))))
     :async true
     :effect (effect
-              (continue-ability (trace-tag 5) card nil))}})
+              (continue-ability (onr-trace-tag 5) card nil))}})
 
 (defcard "ONR Badtimes"
   {:on-play {:req (req tagged)
@@ -185,7 +146,7 @@
    {:req (req (< 0 (count (last-turn? state :runner :made-run))))
     :async true
     :effect (effect
-              (continue-ability (trace-tag 5) card nil))}})
+              (continue-ability (onr-trace-tag 5) card nil))}})
 
 (defcard "ONR Closed Accounts"
   {:on-play

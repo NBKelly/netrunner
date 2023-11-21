@@ -236,7 +236,7 @@
    :msg "place 1 power counter on itself"
    :effect (effect (add-counter card :power 1))})
 
-(defn- trace-ability
+(defn trace-ability
   "Run a trace with specified base strength.
   If successful trigger specified ability"
   ([base {:keys [label] :as ability}]

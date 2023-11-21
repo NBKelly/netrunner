@@ -57,9 +57,11 @@
    [game.core.update :refer [update!]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [game.utils :refer :all]
-   [jinteki.utils :refer :all]))
+   [jinteki.utils :refer :all]
+   [game.core.onr-utils :refer [dice-roll]]
+   ))
 
-(defn- dice-roll [] (inc (rand-int 6)))
+
 
 (defn- onr-ambush [impl]
   (merge {:implementation "(classic) Installed ambushes must be rezzed to take effect, unless otherwise noted"} impl))

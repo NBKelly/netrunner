@@ -60,6 +60,13 @@
    [game.utils :refer :all]
    [jinteki.utils :refer :all]))
 
+
+(defn- gain-or-forgo [])
+
+;; card impl's
+
+(defcard "ONR AI Board Member" {})
+
 (defcard "ONR Corporate Retreat"
   (let [ev {:silent (req true)
            :effect (effect (update! (assoc-in card [:special :corporate-retreat-disabled] true)))}]

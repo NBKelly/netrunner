@@ -66,27 +66,10 @@
    [game.core.onr-trace :refer [boost-link set-base-link cancel-successful-trace]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [game.utils :refer :all]
+   [game.core.onr-utils :refer [base-link-abi boost-link-abi dice-roll
+                                deep-merge generic-prevent-damage
+                                handle-if-unique register-effect-once]]
    [jinteki.utils :refer :all]))
-
-(defn- base-link-abi
-  [cost val]
-  (let [cost (if (integer? cost) [:credit cost] cost)]
-    {:onr-base-link true
-     :req (req true)
-     :cost cost
-     :base-link val
-     :label (str "Base Link " val)
-     :msg (str "set their Base Link to " val)
-     :effect (req (set-base-link state val))}))
-
-(defn- boost-link-abi
-  [cost val]
-  (let [cost (if (integer? cost) [:credit cost] cost)]
-    {:onr-boost-link true
-     :cost cost
-     :label (str "+" val " Link")
-     :msg (str "gain +" val " Link")
-     :effect (req (boost-link state val))}))
 
 ;; deal with stealth/noisy cards
 
@@ -176,31 +159,6 @@
                   (some #(same-card? % target) (:hosted card))))
    :value (- x)})
 
-(defn- dice-roll [] (inc (rand-int 6)))
-
-(defn- handle-if-unique
-  ([state side card handler] (handle-if-unique state side card handler nil))
-  ([state side card handler targets] (handle-if-unique state side card handler targets false))
-  ([state side card handler targets debug]
-   (let [matching-events
-         (seq (filter #(= (:ability-name handler) (:ability-name (:ability %)))
-                      (gather-events state side (:event handler) targets)))]
-     (when debug
-       (do
-         (system-msg state side (str "event type: " (:event handler)))
-         (system-msg state side (str (gather-events state side (:event handler) targets)))
-         ))
-     (when-not matching-events
-       (do (when debug (system-msg state side (str "registered " (:ability-name handler))))
-           (register-events state side card [handler]))))))
-
-(defn- register-effect-once [state side card effect]
-  (let [em (gather-effects state side (:type effect))
-        matches (filter #(= (:ability-name %) (:ability-name effect)) em)]
-    (when (empty? matches)
-      (register-lingering-effect
-        state side card
-        effect))))
 
 ;; (defn- register-effect-once [state side card target-side effect]
 ;;   (let [em (get-effect-maps state target-side (:type effect))

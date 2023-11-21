@@ -67,30 +67,8 @@
    [jinteki.utils :refer :all]
    ;; imported from ice
    [game.cards.ice :refer [end-the-run end-the-run-unless-runner-pays gain-credits-sub give-tags trash-program-sub do-psi reset-variable-subs]]
+   [game.core.onr-utils :refer [onr-trace-ability onr-trace-tag]]
    ))
-
-(defn onr-trace-ability
-  "Run a trace with specified max strength.
-  If successful trigger specified ability"
-  ([max {:keys [label] :as ability} only-tags]
-   {:label (str "Trace " max " - " label)
-    :onr-trace {:max-strength max
-                :label label
-                :only-tags only-tags
-                :successful ability}})
-  ([max ability un-ability only-tags]
-   (let [label (str (:label ability) " / " (:label un-ability))]
-     {:label (str "Trace " max " - " label)
-      :onr-trace {:max-strength max
-                  :label label
-                  :only-tags only-tags
-                  :successful ability
-                  :unsuccessful un-ability}})))
-
-(defn- trace-tag
-  ([max] (trace-tag max 1))
-  ([max tags]
-   (onr-trace-ability max (give-tags tags) true)))
 
 (defn- trace-net
   ([max] (trace-net max 1))
@@ -451,7 +429,7 @@
   {:subroutines [(boop-sub 2)]})
 
 (defcard "ONR Fetch 4.0.1"
-  {:subroutines [(trace-tag 3)]})
+  {:subroutines [(onr-trace-tag 3)]})
 
 (defcard "ONR Filter"
   {:subroutines [end-the-run]})
@@ -475,13 +453,13 @@
                  :abilities [(set-autoresolve :auto-fire "Glacier swap on run")]}))
 
 (defcard "ONR Hunter"
-  {:subroutines [(trace-tag 5)]})
+  {:subroutines [(onr-trace-tag 5)]})
 
 (defcard "ONR Hunting Pack"
   (let [sub-count (fn [state card]
                     (count (filter rezzed? (exterior-ice state card))))
         reset-sub-abi {:label "manually reset subs"
-                       :effect (effect (reset-variable-subs card (sub-count state card) (trace-tag 5) {:variable true :front true}))}]
+                       :effect (effect (reset-variable-subs card (sub-count state card) (onr-trace-tag 5) {:variable true :front true}))}]
     {:abilities [reset-sub-abi]
      :on-rez reset-sub-abi
      :events [(assoc reset-sub-abi :event :derez)
@@ -503,7 +481,7 @@
 
 (defcard "ONR Jack Attack"
   {:subroutines [(cannot-jack-out)
-                 (trace-tag 5)]})
+                 (onr-trace-tag 5)]})
 
 (defcard "ONR Keeper"
   {:subroutines [end-the-run]})
@@ -631,8 +609,8 @@
              :effect (effect (add-counter card :recurring (- (get-counters card :recurring)) nil))
              :req (req (and (= (:ice context) card)
                             (pos? (get-counters card :recurring))))}]
-   :subroutines [(trace-tag 6)
-                 (trace-tag 6)]})
+   :subroutines [(onr-trace-tag 6)
+                 (onr-trace-tag 6)]})
 
 (defcard "ONR Razor Wire"
   {:subroutines [(do-net-damage 2)
