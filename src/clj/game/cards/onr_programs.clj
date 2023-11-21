@@ -84,9 +84,13 @@
 (defn- lose-x-stealth-creds
   [amt]
   {:req (req (pos? amt))
-   :prompt (msg "Lose a stealth credit (" amt " remain)")
+   :prompt (msg "Lose a stealth credit" (when (> amt 1)
+                                          (str " (" amt " remaining)")))
    :async true
-   :choices {:card #(or (pos? (get-counters % :credit)) (pos? (get-counters % :recurring)))}
+   :choices {:card #(and
+                      (has-subtype? % "Stealth")
+                      (or (pos? (get-counters % :credit))
+                          (pos? (get-counters % :recurring))))}
    :effect (req (if (pos? (get-counters target :recurring))
                   (add-counter state side target :recurring -1)
                   (add-counter state side target :credit -1))

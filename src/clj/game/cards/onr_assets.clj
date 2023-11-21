@@ -95,6 +95,14 @@
                        :req (req (ice? target))
                        :value -1}]})
 
+(defcard "ONR Hacker Tracker Central"
+  (let [abi {:effect (req (add-counter state side card :credit 1))
+             :silent (req true)}]
+    {:interactions {:pay-credits {:req (req (= :trace (:source-type eid)))
+                                  :type :credit}}
+     :events [(assoc abi :event :successful-trace)
+              (assoc abi :event :unsuccessful-trace)]}))
+
 (defcard "ONR I Got a Rock"
   {:abilities [{:cost [:click 1 :agenda-point 3]
                 :label "Do 15 meat damage"
