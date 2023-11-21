@@ -44,9 +44,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   356 / 584
-TESTS:   193 / 356
-NO TEST: 160
+TOTAL:   381 / 584
+TESTS:   198 / 381
+NO TEST: 180
 NO IMP:  3
 --------------------------
 002 + Access through Alpha
@@ -168,9 +168,11 @@ NO IMP:  3
 126 ^ Databroker
 127 + Datacomb
 128 + Data Darts
+129 ^ Data Fort Reclamation
+130 + Data Fort Remapping
 
 132 + Data Naga
-133 + Datappol (R) by Zetatech
+133 + Datapool (R) by Zetatech
 
 135 + Data Sifters
 136 + Data Wall 2.0
@@ -187,6 +189,8 @@ NO IMP:  3
 
 148 + Department of Truth Enhancement
 149 + Dermatech Bodyplating
+
+151 ^ Detroit Police Contract
 
 154 ^ Diplomatic Immunity
 
@@ -207,6 +211,8 @@ NO IMP:  3
 173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
 174 ^ Emergency Rig
 
+176 ^ Employee Empowerment
+
 179 + Endless Corridor
 180 + ONR Enterprise, Inc., Shields
 181 + Entrapment
@@ -215,6 +221,7 @@ NO IMP:  3
 
 185 ^ Evil Twin
 
+187 ^ Executive Extraction
 188 + Executive File Clerk
 
 190 + Expendable Family Member
@@ -223,6 +230,7 @@ NO IMP:  3
 
 197 + Falsified-Transactions Expert
 
+201 ^ Fetal AI
 202 + Fetch 4.0.1
 203 + Field Reporter for Ice and Data
 204 + Filter
@@ -239,7 +247,7 @@ NO IMP:  3
 221 + Galatea
 222 ^ Garbage In
 223 + Gatekeeper
-
+224 ^ Genetics-Visionary Acquisition
 225 ^ Get Ready to Rumble
 226 + Gideon's Pawnshop
 227 ^ Glacier
@@ -255,6 +263,7 @@ NO IMP:  3
 238 ^ Highlighter
 239 ^ Loan from Chiba
 
+243 ^ Hostile Takeover
 244 + Hot Tip for WNS
 245 ^ HQ Interface
 246 ^ HQ Mole
@@ -305,13 +314,15 @@ NO IMP:  3
 294 ^ Lockjaw
 
 296 ^ Loony Goon
+
+299 ^ Main-Office Relocation
 300 + Management Shake-Up
 301 + Manhunt
 
 303 + Marcel DeSoleil
-
+304 + Marine Arcology
 305 + Marionette
-
+306 + Marked Accounts
 307 ^ Mastermind
 
 309 ^ Matador
@@ -338,6 +349,7 @@ NO IMP:  3
 330 ^ N.E.T.O.
 331 ^ Netspace Inverter
 332 + Netwatch Credit Voucher
+333 ^ Netwatch Operations Office
 
 335 + Networking
 336 + Neural Blade
@@ -369,16 +381,25 @@ NO IMP:  3
 368 + PK-6089a
 369 + Planning Consultants
 
+371 ^ Please Don't Choke Anyone
 372 + Pocket Virtual Reality
 
+374 ^ Political Coup
+375 + Political Overthrow
 376 + Poltergiest
 377 + Polymer Breakthrough
 378 ^ Power Grid Overload
 
 381 ^ Precision Bribery
 382 + Preying Mantis
+383 + Priority Requisition
 
+385 ^ Private Cybernet Police
+
+387 ^ Project Babylon
 388 + Project Consultants
+389 ^ Project Venice
+390 ^ Project Zurich
 
 392 ^ Psychic Friend
 393 + Punitive Counterstrike
@@ -434,6 +455,7 @@ NO IMP:  3
 
 449 + Scramble
 
+452 ^ Security Purge
 453 ^ SeeYa
 
 455 + Self-Modifying Code
@@ -473,6 +495,7 @@ NO IMP:  3
 493 ^ Stategic Planning Group
 
 495 + Streetware Distributor
+496 ^ Strike Force Kali
 
 499 ^ Submarine Uplink (do this test later - fetch + uplink should be fine)
 500 + Subsidiary Branch
@@ -491,6 +514,7 @@ NO IMP:  3
 514 + Techtronica [TM] Utility Suit
 
 519 + The Deck
+520 ^ Theorem Proof
 
 522 ^ The Shell Traders (write a test later)
 523 ^ The Short Circuit
@@ -512,11 +536,11 @@ NO IMP:  3
 
 541 ? Twenty-Four-Hour Surviellance (unimplemented)
 542 + Twisty Passages
-
+543 ^ Tycho Extension
 544 + Tycho Mem Chip
 545 + Umbrella Policy
 546 ^ Underworld Mole
-
+547 ^ Unlisted Research Lab
 548 ^ Urban Renewal
 
 553 ^ Vewy Vewy Quiet
@@ -586,10 +610,12 @@ The following (marked) cards have no tests or implementations:
   123 ^ Cyfermaster (trivial icebreaker - no test)
   124 ^ Danshi's Second ID
   126 ^ Databroker
+  129 ^ Data Fort Reclamation
   141 ^ Death from Above
   144 ^ Dedicated Response Team
   145 ^ Deep Thought
   146 ^ Demolition Run
+  151 ^ Detroit Police Contract
   154 ^ Diplomatic Immunity
   157 ^ Disintegrator
   158 ^ Dogcatcher
@@ -599,11 +625,15 @@ The following (marked) cards have no tests or implementations:
   168 ^ Dwarf
   170 ^ Edgerunner, Inc., Temps
   174 ^ Emergency Rig
+  176 ^ Employee Empowerment
   185 ^ Evil Twin
+  187 ^ Executive Extraction
+  201 ^ Fetal AI
   210 ^ Force Shield
   215 ^ Forward's Legacy
   219 ^ Fubar
   222 ^ Garbage In
+  224 ^ Genetics-Visionary Acquisition
   225 ^ Get Ready to Rumble
   227 ^ Glacier
   230 ^ Gremlins
@@ -612,6 +642,7 @@ The following (marked) cards have no tests or implementations:
   236 ^ Hell's Run
   238 ^ Highlighter
   239 ^ Loan from Chiba
+  243 ^ Hostile Takeover
   245 ^ HQ Interface
   246 ^ HQ Mole
   250 ^ Ice and Data's Guide to the Net (update the req for this one!)
@@ -628,6 +659,7 @@ The following (marked) cards have no tests or implementations:
   289 ^ Lisa Blight
   294 ^ Lockjaw
   296 ^ Loony Goon
+  299 ^ Main-Office Relocation
   307 ^ Mastermind
   309 ^ Matador
   313 ^ Microtech AI Interface
@@ -640,14 +672,21 @@ The following (marked) cards have no tests or implementations:
   326 ^ Mystery Box
   330 ^ N.E.T.O.
   331 ^ Netspace Inverter
+  333 ^ Netwatch Operations Office
   338 ^ New Blood
   343 ^ Nomad Allies
   349 ^ Omnitech "Spinal Tap" Cybermodem (random, needs a rng fix for tests)
   350 ^ Omnitech Wet Drive
   363 ^ Pattel's Virus
   366 ^ Pile Driver
+  371 ^ Please Don't Choke Anyone
+  374 ^ Political Coup
   378 ^ Power Grid Overload
   381 ^ Precision Bribery
+  385 ^ Private Cybernet Police
+  387 ^ Project Babylon
+  389 ^ Project Venice
+  390 ^ Project Zurich
   392 ^ Psychic Friend
   396 ^ Quest for Cattekin
   397 ^ Rabbit
@@ -671,6 +710,7 @@ The following (marked) cards have no tests or implementations:
   444 ^ Schematics Search Engine
   446 ^ Schlaghund Pointers
   447 ^ Scorched Earth
+  452 ^ Security Purge
   453 ^ SeeYa
   459 ^ Shaka
   460 ^ Shield
@@ -685,10 +725,12 @@ The following (marked) cards have no tests or implementations:
   490 ^ Startup Immolator
   492 ^ Stereogram Antibody (Do this later, was just lazy)
   493 ^ Stategic Planning Group
+  496 ^ Strike Force Kali
   499 ^ Submarine Uplink (do this test later - fetch + uplink should be fine)
   501 ^ Succubus
   509 ^ Synchronized Attack on HQ
   513 ^ Technician Lover
+  520 ^ Theorem Proof
   522 ^ The Shell Traders (write a test later)
   523 ^ The Short Circuit
   525 ^ Time to Collect
@@ -696,7 +738,9 @@ The following (marked) cards have no tests or implementations:
   527 ^ TKO 2.0
   530 ^ Top Runner's Conference
   535 ^ Trauma Team [TM]
+  543 ^ Tycho Extension
   546 ^ Underworld Mole
+  547 ^ Unlisted Research Lab
   548 ^ Urban Renewal
   553 ^ Vewy Vewy Quiet
   562 ^ Walking Wall
@@ -710,4 +754,4 @@ The following (marked) cards have no tests or implementations:
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 351
+Random card to implement: 352

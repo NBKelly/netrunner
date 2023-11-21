@@ -1,27 +1,27 @@
 (ns game.core.moving
   (:require
-    [clojure.string :as string]
-    [game.core.agendas :refer [update-all-agenda-points]]
-    [game.core.board :refer [all-active-installed]]
-    [game.core.card :refer [active? card-index condition-counter? convert-to-agenda corp? facedown? fake-identity? get-card get-title get-zone has-subtype? ice? in-hand? in-play-area? installed? program? resource? rezzed? runner?]]
-    [game.core.card-defs :refer [card-def]]
-    [game.core.effects :refer [register-static-abilities unregister-static-abilities]]
-    [game.core.eid :refer [complete-with-result effect-completed make-eid make-result]]
-    [game.core.engine :as engine :refer [checkpoint dissoc-req register-pending-event queue-event register-default-events register-events should-trigger? trigger-event trigger-event-sync unregister-events]]
-    [game.core.finding :refer [get-scoring-owner]]
-    [game.core.flags :refer [can-trash? card-flag? cards-can-prevent? get-prevent-list untrashable-while-resources? untrashable-while-rezzed? zone-locked?]]
-    [game.core.hosting :refer [remove-from-host]]
-    [game.core.ice :refer [get-current-ice set-current-ice update-breaker-strength]]
-    [game.core.initializing :refer [card-init deactivate reset-card]]
-    [game.core.memory :refer [init-mu-cost]]
-    [game.core.prompts :refer [clear-wait-prompt show-prompt show-wait-prompt]]
-    [game.core.say :refer [enforce-msg system-msg]]
-    [game.core.servers :refer [is-remote? target-server type->rig-zone]]
-    [game.core.update :refer [update!]]
-    [game.core.winning :refer [check-win-by-agenda]]
-    [game.macros :refer [wait-for when-let*]]
-    [game.utils :refer [dissoc-in make-cid remove-once same-card? same-side? to-keyword]]
-    [medley.core :refer [insert-nth]]))
+   [clojure.string :as string]
+   [game.core.agendas :refer [update-all-agenda-points]]
+   [game.core.board :refer [all-active-installed]]
+   [game.core.card :refer [active? card-index condition-counter? convert-to-agenda convert-to-program corp? facedown? fake-identity? get-card get-title get-zone has-subtype? ice? in-hand? in-play-area? installed? program? resource? rezzed? runner?]]
+   [game.core.card-defs :refer [card-def]]
+   [game.core.effects :refer [register-static-abilities unregister-static-abilities]]
+   [game.core.eid :refer [complete-with-result effect-completed make-eid make-result]]
+   [game.core.engine :as engine :refer [checkpoint dissoc-req register-pending-event queue-event register-default-events register-events should-trigger? trigger-event trigger-event-sync unregister-events]]
+   [game.core.finding :refer [get-scoring-owner]]
+   [game.core.flags :refer [can-trash? card-flag? cards-can-prevent? get-prevent-list untrashable-while-resources? untrashable-while-rezzed? zone-locked?]]
+   [game.core.hosting :refer [remove-from-host]]
+   [game.core.ice :refer [get-current-ice set-current-ice update-breaker-strength]]
+   [game.core.initializing :refer [card-init deactivate reset-card]]
+   [game.core.memory :refer [init-mu-cost update-mu]]
+   [game.core.prompts :refer [clear-wait-prompt show-prompt show-wait-prompt]]
+   [game.core.say :refer [enforce-msg system-msg]]
+   [game.core.servers :refer [is-remote? target-server type->rig-zone]]
+   [game.core.update :refer [update!]]
+   [game.core.winning :refer [check-win-by-agenda]]
+   [game.macros :refer [wait-for when-let*]]
+   [game.utils :refer [dissoc-in make-cid remove-once same-card? same-side? to-keyword]]
+   [medley.core :refer [insert-nth]]))
 
 ;; Helpers for move
 (defn- remove-old-card
@@ -585,6 +585,25 @@
     (update-all-agenda-points state side)
     (check-win-by-agenda state side)
     [(get-card state new-stolen) (get-card state new-scored)]))
+
+(defn as-program
+  "Installs the card as a program on the runner side with X memory"
+  [state side card n]
+  (let [card (deactivate state side card)
+        card (convert-to-program card n)]
+    ;;    (system-msg state side (seq card))))
+    (move state side card [:rig :program] {:force true})
+    (init-mu-cost state card)))
+
+(defn as-agenda-card-only
+  "just returns the card (so I can steal it)"
+  [state side card n]
+  (let [card (deactivate state side card)
+        card (convert-to-agenda card n)]
+    card))
+;;(move state side card :scored {:force true})
+;;    (update-all-agenda-points state side)
+;;    (check-win-by-agenda state side)))
 
 (defn as-agenda
   "Adds the given card to the given side's :scored area as an agenda worth n points."

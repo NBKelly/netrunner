@@ -46,8 +46,61 @@
     (play-and-score state "ONR Corporate War")
     (is (zero? (:credit (get-corp))) "Lost all credits")
     (core/gain state :corp :credit 12)
-    (play-and-score state "Corporate War")
+    (play-and-score state "ONR Corporate War")
     (is (= 24 (:credit (get-corp))) "Had 12 credits when scoring, gained another 12")))
+
+(deftest onr-data-fort-remapping
+  ;; Nisei MK II - Remove hosted counter to ETR, check this works in 4.3
+  (do-game
+    (new-game {:corp {:deck ["ONR Data Fort Remapping"]}})
+    (play-and-score state "ONR Data Fort Remapping")
+    (let [scored-nisei (get-scored state :corp 0)]
+      (is (= 1 (get-counters (refresh scored-nisei) :agenda)) "Scored Nisei has one counter")
+      (take-credits state :corp)
+      (run-on state "HQ")
+      (is (= :movement (:phase (:run @state))) "In Movement phase before Success")
+      (card-ability state :corp (refresh scored-nisei) 0)
+      (is (not (:run @state)) "Run ended by using Nisei counter")
+      (is (zero? (get-counters (refresh scored-nisei) :agenda)) "Scored Nisei has no counters"))))
+
+(deftest onr-marked-accounts
+  ;; TGTBT - Give the Runner 1 tag when they access
+  ;; OHG still not working...
+  (do-game
+    (new-game {:corp {:deck [(qty "ONR Marked Accounts" 2) "Old Hollywood Grid"]}})
+    (play-from-hand state :corp "ONR Marked Accounts" "New remote")
+    (play-from-hand state :corp "Old Hollywood Grid" "Server 1")
+    (play-from-hand state :corp "ONR Marked Accounts" "New remote")
+    (take-credits state :corp)
+    (let [tg1 (get-content state :remote1 0)
+          ohg (get-content state :remote1 1)]
+      (rez state :corp ohg)
+      (run-empty-server state "Server 1")
+      (click-card state :runner tg1)
+      ;; Accesses TGTBT but can't steal
+      (is (= 1 (count-tags state)) "Runner took 1 tag from accessing without stealing")
+      (click-prompt state :runner "No action"))
+    (click-prompt state :runner "Pay 4 [Credits] to trash") ;; Trashes OHG
+    (run-empty-server state "Server 2")
+    ;; Accesses TGTBT and can steal
+    (click-prompt state :runner "Steal")
+    (is (= 2 (count-tags state)) "Runner took 1 tag from accessing and stealing")))
+
+(deftest onr-marine-arcology
+  ;; Gila Hands Arcology
+  (do-game
+    (new-game {:corp {:deck ["ONR Marine Arcology"]}})
+    (play-and-score state "ONR Marine Arcology")
+    (is (= 2 (:click (get-corp))) "Should have 2 clicks left")
+    (is (= 5 (:credit (get-corp))) "Should start with 5 credits")
+    (core/gain state :corp :click 2)
+    (let [gha-scored (get-scored state :corp 0)]
+      (card-ability state :corp gha-scored 0)
+      (is (= 2 (:click (get-corp))) "Should spend 2 clicks on Gila Hands")
+      (is (= 8 (:credit (get-corp))) "Should gain 3 credits from 5 to 8")
+      (card-ability state :corp gha-scored 0)
+      (is (zero? (:click (get-corp))) "Should spend 2 clicks on Gila Hands")
+      (is (= 11 (:credit (get-corp))) "Should gain 3 credits from 8 to 11"))))
 
 (deftest onr-ice-transmutation
   (do-game
@@ -68,6 +121,16 @@
       (run-continue state :pass-ice)
       (is (= 3 (count (:subroutines (refresh hydra))))))))
 
+(deftest onr-political-overthrow
+  ;; Government Takeover
+  (do-game
+    (new-game {:corp {:deck ["ONR Political Overthrow"]}})
+    (play-and-score state "ONR Political Overthrow")
+    (is (= 5 (:credit (get-corp))) "Should start with 5 credits")
+    (let [gt-scored (get-scored state :corp 0)]
+      (card-ability state :corp gt-scored 0)
+      (is (= 8 (:credit (get-corp))) "Should gain 3 credits from 5 to 8"))))
+
 (deftest onr-polymer-breakthrough
   ;; Rezeki - gain 1c when turn begins
   (do-game
@@ -77,6 +140,16 @@
     (let [credits (:credit (get-corp))]
       (take-credits state :runner)
       (is (= (:credit (get-corp)) (+ credits 1)) "Gain 1 from Polymer Breakthrough"))))
+
+(deftest onr-priority-requisition
+  ;; Priority Requisition
+  (do-game
+    (new-game {:corp {:deck ["ONR Priority Requisition" "Archer"]}})
+    (play-from-hand state :corp "Archer" "HQ")
+    (let [arc (get-ice state :hq 0)]
+      (play-and-score state "ONR Priority Requisition")
+      (click-card state :corp arc)
+      (is (rezzed? (refresh arc))))))
 
 (deftest onr-subsidiary-branch
     ;; Gain an additional click

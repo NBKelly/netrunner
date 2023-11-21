@@ -486,6 +486,22 @@
              (and (in-discard? card)
                   (faceup? card)))))))
 
+(defn convert-to-program
+  [{:keys [cid code abilities host hosted side title zone implementation]} n]
+  (map->Card
+    {:memoryunits n
+     :cid cid
+     :abilities abilities
+     :code code
+     :host host
+     :hosted hosted
+     :implementation implementation
+     :title title
+     :printed-title title
+     :side "Runner"
+     :type "Program"
+     :zone zone}))
+
 ;; CR 1.8
 ;; 10.1.3. Some abilities add a card to a player’s score area “as an agenda”. When this
 ;;    happens, the card loses all its previous properties and gains only those
@@ -503,6 +519,7 @@
      :host host
      :hosted hosted
      :implementation implementation
+     :title title
      :printed-title title
      :side side
      :type "Agenda"
