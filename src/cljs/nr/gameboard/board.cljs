@@ -1661,6 +1661,12 @@
                            #(do (close-card-menu)
                                 (send-command "run" {:server label}))])
                         servers))]]]])
+   (when (and (= side :corp) ;;payment for acme S&L
+              (playable? (get-in @me [:basic-action-card :abilities 8])))
+     [cond-button (tr [:game.pay-acme "Pay ACME (12 credits)"])
+      (and (not (or @runner-phase-12 @corp-phase-12))
+           (playable? (get-in @me [:basic-action-card :abilities 8])))
+      #(send-command "pay-acme")])
    (when (and (= side :corp)
               (playable? (get-in @me [:basic-action-card :abilities 7])))
      [cond-button (tr [:game.forgo-click "Forgo Action"])

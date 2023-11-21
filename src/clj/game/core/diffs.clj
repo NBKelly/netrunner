@@ -250,6 +250,7 @@
 
 (def corp-keys
   [:servers
+   :acme-loans
    :run-credit
    :bad-publicity])
 

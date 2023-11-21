@@ -1,6 +1,6 @@
 (ns game.cards.basic
   (:require
-   [game.core.agendas :refer [update-advancement-requirement]]
+   [game.core.agendas :refer [update-advancement-requirement update-all-agenda-points]]
    [game.core.board :refer [all-active-installed installable-servers]]
    [game.core.card :refer [agenda? asset? event? get-card hardware? ice?
                            in-hand? operation? program? resource? upgrade?]]
@@ -8,8 +8,9 @@
    [game.core.drawing :refer [draw use-bonus-click-draws!]]
    [game.core.eid :refer [effect-completed]]
    [game.core.engine :refer [trigger-event]]
+   [game.core.effects :refer [register-lingering-effect]]
    [game.core.flags :refer [can-advance? untrashable-while-resources?]]
-   [game.core.gaining :refer [gain-credits lose-click-debt]]
+   [game.core.gaining :refer [gain-credits lose-click-debt deduct]]
    [game.core.installing :refer [corp-can-pay-and-install? corp-install
                                  runner-can-pay-and-install? runner-install]]
    [game.macros :refer [continue-ability]]
@@ -22,6 +23,7 @@
    [game.core.say :refer [play-sfx]]
    [game.core.tags :refer [lose-tags]]
    [game.core.to-string :refer [card-str]]
+   [game.core.winning :refer [check-win-by-agenda]]
    [game.macros :refer [effect msg req wait-for]]
    [game.utils :refer :all]
    [jinteki.utils :refer :all]))
@@ -134,11 +136,25 @@
                                   :yes-ability (assoc purge-abi :cost [:forgo-next-click 3])}}
                                 (assoc purge-abi :cost [:click 3]))
                               card nil)))}
-               {:label "Forgo an Action"
+               {:label "Forgo an Action"  ;; ability #7
                 :cost [:click]
                 :msg "forgo a click"
                 :req (req (pos? (:action-debt corp)))
-                :effect (req (lose-click-debt state side eid 1))}]})
+                :effect (req (lose-click-debt state side eid 1))}
+               {:label "Pay ACME" ;; ability #8
+                :cost [:click 1 :credit 12]
+                :req (req (pos? (:acme-loans corp)))
+                :msg "pay back an ACME Loan (gaining 1 agenda point)"
+                :effect (req (deduct state side [:acme-loans 1])
+                             (register-lingering-effect
+                               state side nil
+                               {:type :user-agenda-points
+                                ;; `target` is either `:corp` or `:runner`
+                                :req (req (= :corp target))
+                                :value 1})
+                             (update-all-agenda-points state side)
+                             (check-win-by-agenda state side))}
+                ]})
 
 (defcard "Runner Basic Action Card"
   {:abilities [{:label "Gain 1 [Credits]"

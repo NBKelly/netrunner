@@ -30,7 +30,7 @@
    [game.core.flags :refer [lock-zone prevent-current
                             prevent-draw
                             register-turn-flag! release-zone]]
-   [game.core.gaining :refer [gain gain-clicks gain-credits lose lose-clicks
+   [game.core.gaining :refer [gain gain-clicks gain-credits lose lose-clicks safe-inc-n
                               lose-credits]]
    [game.core.hand-size :refer [corp-hand-size+ runner-hand-size+]]
    [game.core.hosting :refer [host]]
@@ -64,7 +64,45 @@
    [jinteki.utils :refer :all]
    [game.core.link :refer [get-link]]
    [game.cards.assets :refer [campaign]]
+   [game.core.onr-utils :refer [handle-if-unique]]
    ))
+
+(defcard "ONR ACME Savings and Loan"
+  (letfn [(acme-event []
+            {:event :corp-turn-ends
+             :unregister-once-resolved true
+             :ability-name "ACME debt collection"
+             :async true
+             :effect (req (let [triggers (or (get-in @state [:corp :acme-loans]) 0)
+                                to-spend triggers]
+                            (when-not (zero? triggers)
+                              (register-events state side (:identity corp) [(acme-event)]))
+                            (if-not (can-pay? state side eid card nil [:credit to-spend])
+                              (continue-ability
+                                state side
+                                {:prompt "You gotta pay..."
+                                 :choices ["I understand"]
+                                 :effect (req (do
+                                                (system-msg state side "loses the game after being unable to repay ONR ACME Savings and Loan")
+                                                (win state :runner "\"default\"")))}
+                                card nil)
+                              (wait-for (pay state side (make-eid state eid) card [:credit to-spend])
+                                        (system-msg state side (str "pays " to-spend " [Credits] due to ONR ACME Saings and Loan"))
+                                        (effect-completed state side eid)))))})]
+    {:additional-cost [:agenda-point 1]
+     :implementation "All payments are a single instance - if this matters, send me an @ and I will change it"
+     :on-rez {:msg (msg "gain 12 [Credits]")
+              :cost [:trash-can]
+              :asyc true
+              :effect (req (wait-for (gain-credits state side (make-eid state eid) 12)
+                                     (swap! state update-in [side :acme-loans] (safe-inc-n 1))
+
+                                     ;;(wait-for (trash state side (make-eid state side) (get-card state card))
+                                               ;; register the debt collection event too
+                                     (handle-if-unique
+                                       state side (:identity corp) (acme-event))
+                                     (effect-completed state side eid)))}}))
+
 
 (defcard "ONR Braindance Campaign"
   (campaign 12 2))
@@ -98,7 +136,8 @@
 (defcard "ONR Hacker Tracker Central"
   (let [abi {:effect (req (add-counter state side card :credit 1))
              :silent (req true)}]
-    {:interactions {:pay-credits {:req (req (= :trace (:source-type eid)))
+    {:implementation "each credit spent during a trace increases the maximum trace limit for the corp (I think)"
+     :interactions {:pay-credits {:req (req (= :trace (:source-type eid)))
                                   :type :credit}}
      :events [(assoc abi :event :successful-trace)
               (assoc abi :event :unsuccessful-trace)]}))

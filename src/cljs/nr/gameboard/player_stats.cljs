@@ -103,7 +103,7 @@
 (defmethod stats-area "Corp" [corp]
   (let [ctrl (stat-controls-for-side :corp)]
     (fn [corp]
-      (let [{:keys [user click credit run-credit action-debt bad-publicity active]} @corp
+      (let [{:keys [user click credit run-credit action-debt bad-publicity active acme-loans]} @corp
             base-credit (- credit run-credit)
             plus-run-credit (when (pos? run-credit) (str "+" run-credit))
             icons? (get-in @app-state [:options :player-stats-icons] true)]
@@ -119,6 +119,10 @@
            (ctrl
              :action-debt
              [:div (str action-debt " " (tr [:game.action-debt "Actions to Forgo"]))]))
+         (when (pos? acme-loans)
+           (ctrl
+             :acme-loans
+             [:div (str acme-loans " " (tr [:game.acme-loans "Loans from ACME"]))]))
          (let [{:keys [base additional]} bad-publicity]
            (ctrl :bad-publicity [:div (tr [:game.bad-pub-count] base additional)]))]))))
 

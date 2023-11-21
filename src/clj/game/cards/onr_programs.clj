@@ -443,10 +443,7 @@
              :effect (req (let [counters (get-counters (get-card state (:identity corp)) :butcher-boy)
                                 to-gain (int (/ counters 2))]
                             (when-not (zero? counters)
-                               (register-events
-                                 state side
-                                 (:identity runner)
-                                 [(butcher-boy-event)]))
+                               (register-events state side (:identity runner) [(butcher-boy-event)]))
                             (if-not (zero? to-gain)
                               (do (system-msg state side (str "gains " to-gain "[Credits] from butcher boy counters (ONR Butcher Boy)"))
                                   (gain-credits state :runner eid (int (/ (get-counters (get-card state (:identity corp)) :butcher-boy) 2))))

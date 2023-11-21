@@ -139,6 +139,11 @@
     (pay state side eid card :credit (min choice (get-in @state [side :credit])))
     (effect-completed state side eid)))
 
+(defn pay-acme
+  "Click to pay ACME"
+  [state side _]
+  (play-ability state side {:card (get-in @state [side :basic-action-card]) :ability 8}))
+
 (defn resolve-prompt
   "Resolves a prompt by invoking its effect function with the selected target of the prompt.
   Triggered by a selection of a prompt choice button in the UI."

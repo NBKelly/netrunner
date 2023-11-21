@@ -342,6 +342,7 @@
   {:interactions {:prevent [{:type #{:tag}
                              :req (req true)}]}
    :abilities [{:async true
+                :label "avoid 1 tag"
                 :cost [:trash-can :credit 1]
                 :msg "avoid 1 tag"
                 :effect (effect (tag-prevent :runner eid 1))}]})
@@ -950,3 +951,27 @@
              :optional {:prompt "Gain 3 link?"
                         :waiting-prompt true
                         :yes-ability (boost-link-abi [:trash-can] 3)}}]})
+
+(defcard "ONR Wilson, Weeflerunner Apprentice"
+  {:implementation "Credit spent limit not enforced. You can forgo this action."
+   :interactions {:prevent [{:type #{:meat}
+                             :req (req true)}]}
+   :abilities [{:label "Gain an action for making a run"
+                :once :per-turn
+                :async true
+                :effect (req (wait-for (gain-or-forgo state side (make-eid state eid))
+                                       (continue-ability
+                                         state side
+                                         (if (= "Forgo Click" async-result)
+                                           {:msg "forgo an action"}
+                                           {:msg "gain and action, which must be used to make a run"})
+                                         card nil)))}
+               {:async true
+                :label "Avoid a tag"
+                :cost [:trash-can]
+                :msg "avoid a tag"
+                :effect (effect (tag-prevent :runner eid 1))}
+               {:label "Prevent any amount of meat damage"
+                :msg "prevent all meat damage"
+                :cost [:trash-can]
+                :effect (effect (damage-prevent :meat Integer/MAX_VALUE))}]})

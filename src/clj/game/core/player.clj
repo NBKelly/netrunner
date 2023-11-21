@@ -5,6 +5,7 @@
 
 (defrecord Corp
   [aid
+   acme-loans
    user
    identity
    options
@@ -44,6 +45,7 @@
   [user c-identity options deck deck-id c-quote]
   (map->Corp
     {:aid 0
+     :acme-loans 0
      :user user
      :identity c-identity
      :options options

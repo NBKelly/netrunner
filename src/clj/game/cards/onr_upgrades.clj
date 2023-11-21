@@ -260,6 +260,33 @@
                                                           (effect-completed state side eid)))))}
                       card nil))}]}))
 
+(defcard "ONR Omni Kismet, Ph. D."
+  {:abilities [{:label "Swap an unrezzed ice"
+                :req (req (and (some ice? (:hand corp))
+                               run this-server
+                               (some #(and (not (rezzed? %)) (ice? %)
+                                           (protecting-same-server? card %))
+                                     (all-installed state :corp))))
+                :async true
+                :once :per-run
+                :prompt "Choose an unrezzed ice"
+                :choices {:req (req (and (ice? target)
+                                         (not (rezzed? target))
+                                         (protecting-same-server? card target)))}
+                :waiting-prompt true
+                :effect (req (let [from-field target]
+                               (continue-ability
+                                 state side
+                                 {:async true
+                                  :prompt "Choose a piece of ice from HQ"
+                                  :choices {:card #(and (ice? %)
+                                                        (in-hand? %))}
+                                  :msg (msg "swap " (card-str state from-field)
+                                            " with a piece of ice from HQ")
+                                  :effect (req (swap-cards state :corp from-field target)
+                                               (effect-completed state side eid))}
+                                 card nil)))}]})
+
 (defcard "ONR Raymond Ellison"
   (letfn [(resolve-abi [x state orig-card eid]
             (continue-ability

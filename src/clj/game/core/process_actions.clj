@@ -4,7 +4,7 @@
    [game.core.actions :refer [click-advance click-credit click-draw click-run click-forgo-action
                               close-deck do-purge generate-install-list
                               generate-runnable-zones move-card expend-ability
-                              play play-ability play-corp-ability
+                              pay-acme play play-ability play-corp-ability
                               play-dynamic-ability play-runner-ability play-subroutine play-unbroken-subroutines remove-tag
                               resolve-prompt score select trash-resource view-deck]]
    [game.core.card :refer [get-card]]
@@ -66,6 +66,7 @@
    "keep" #'keep-hand
    "move" #'move-card
    "mulligan" #'mulligan
+   "pay-acme" #'pay-acme
    "play" #'play
    "expend" #'expend-ability
    "purge" #'do-purge

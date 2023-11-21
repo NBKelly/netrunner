@@ -44,16 +44,16 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   393 / 584
-TESTS:   200 / 393
-NO TEST: 190
+TOTAL:   395 / 584
+TESTS:   200 / 395
+NO TEST: 192
 NO IMP:  3
 --------------------------
 002 + Access through Alpha
 003 + Access to Arasaka
 004 + Access to Kiribati
 005 + Accounts Receivable
-
+006 ^ ACME Savings and Loan
 007 ^ Afreet
 008 ^ AI Board Member
 009 ^ AI Boon (rng card)
@@ -368,6 +368,7 @@ NO IMP:  3
 
 345 + Off-Site Backups
 346 + Olivia Salazar
+347 ^ Omni Kismet, Ph. D.
 
 349 ^ Omnitech "Spinal Tap" Cybermodem (random, needs a rng fix for tests)
 350 ^ Omnitech Wet Drive
@@ -565,7 +566,7 @@ NO IMP:  3
 567 ^ ONR Weapons Depot
 
 570 ^ Wild Card
-
+571 ^ Wilson, Weeflerunner Apprentice
 572 ^ Wired Switchboard
 573 ^ Wizard's Book
 574 + World Domination 👀
@@ -692,6 +693,7 @@ The following (marked) cards have no tests or implementations:
   337 ^ Nevinyrral
   338 ^ New Blood
   343 ^ Nomad Allies
+  347 ^ Omni Kismet, Ph. D.
   349 ^ Omnitech "Spinal Tap" Cybermodem (random, needs a rng fix for tests)
   350 ^ Omnitech Wet Drive
   359 ^ Panzer Run
@@ -766,6 +768,7 @@ The following (marked) cards have no tests or implementations:
   565 ^ Washed-Up Solo Construct
   567 ^ ONR Weapons Depot
   570 ^ Wild Card
+  571 ^ Wilson, Weeflerunner Apprentice
   572 ^ Wired Switchboard
   573 ^ Wizard's Book
   575 ^ Worm
@@ -773,4 +776,4 @@ The following (marked) cards have no tests or implementations:
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 351
+Random card to implement: 6
