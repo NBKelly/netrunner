@@ -44,9 +44,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   385 / 584
-TESTS:   199 / 385
-NO TEST: 183
+TOTAL:   392 / 584
+TESTS:   200 / 392
+NO TEST: 189
 NO IMP:  3
 --------------------------
 002 + Access through Alpha
@@ -120,6 +120,8 @@ NO IMP:  3
 074 ^ Chiba Bank Account
 
 076 + Chihuahua
+
+078 ^ Cinderella
 
 080 + Cloak
 081 + Closed Accounts
@@ -216,7 +218,7 @@ NO IMP:  3
 179 + Endless Corridor
 180 + ONR Enterprise, Inc., Shields
 181 + Entrapment
-
+182 ^ ESA Contract
 183 + Eurocorpse [TM] Spin Chip
 
 185 ^ Evil Twin
@@ -239,6 +241,8 @@ NO IMP:  3
 
 209 + Food Fight
 210 ^ Force Shield
+
+213 ^ Fortress Architects
 
 215 ^ Forward's Legacy
 
@@ -354,7 +358,7 @@ NO IMP:  3
 
 335 + Networking
 336 + Neural Blade
-
+337 ^ Nevinyrral
 338 ^ New Blood
 
 340 + Newsgroup Filter
@@ -371,6 +375,8 @@ NO IMP:  3
 355 + Overtime Incentives
 
 357 + Pandora's Deck
+
+359 ^ Panzer Run
 
 361 + Parraline 5750
 
@@ -395,7 +401,7 @@ NO IMP:  3
 381 ^ Precision Bribery
 382 + Preying Mantis
 383 + Priority Requisition
-
+384 + Priority Wreck
 385 ^ Private Cybernet Police
 
 387 ^ Project Babylon
@@ -548,6 +554,7 @@ NO IMP:  3
 553 ^ Vewy Vewy Quiet
 
 555 + Vintage Camaro
+556 ^ Viral 15
 
 561 + Vortex
 562 ^ Walking Wall
@@ -598,6 +605,7 @@ The following (marked) cards have no tests or implementations:
   069 ^ Cascade (test once viruses are done!)
   071 ^ Chance Observation
   074 ^ Chiba Bank Account
+  078 ^ Cinderella
   085 ^ Codecracker
   086 ^ Codeslinger
   091 ^ Corporate Ally
@@ -629,10 +637,12 @@ The following (marked) cards have no tests or implementations:
   170 ^ Edgerunner, Inc., Temps
   174 ^ Emergency Rig
   176 ^ Employee Empowerment
+  182 ^ ESA Contract
   185 ^ Evil Twin
   187 ^ Executive Extraction
   201 ^ Fetal AI
   210 ^ Force Shield
+  213 ^ Fortress Architects
   215 ^ Forward's Legacy
   219 ^ Fubar
   222 ^ Garbage In
@@ -678,10 +688,12 @@ The following (marked) cards have no tests or implementations:
   330 ^ N.E.T.O.
   331 ^ Netspace Inverter
   333 ^ Netwatch Operations Office
+  337 ^ Nevinyrral
   338 ^ New Blood
   343 ^ Nomad Allies
   349 ^ Omnitech "Spinal Tap" Cybermodem (random, needs a rng fix for tests)
   350 ^ Omnitech Wet Drive
+  359 ^ Panzer Run
   363 ^ Pattel's Virus
   366 ^ Pile Driver
   371 ^ Please Don't Choke Anyone
@@ -748,6 +760,7 @@ The following (marked) cards have no tests or implementations:
   547 ^ Unlisted Research Lab
   548 ^ Urban Renewal
   553 ^ Vewy Vewy Quiet
+  556 ^ Viral 15
   562 ^ Walking Wall
   565 ^ Washed-Up Solo Construct
   567 ^ ONR Weapons Depot
@@ -759,4 +772,4 @@ The following (marked) cards have no tests or implementations:
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 207
+Random card to implement: 233

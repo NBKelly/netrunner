@@ -84,6 +84,17 @@
                                (add-counter state side card :credit (- creds))
                                (gain-credits state :corp eid creds)))}]})
 
+(defcard "ONR ESA Contract"
+  {:abilities [{:cost [:click 1]
+                :msg "draw 2 cards"
+                :async true
+                :effect (effect (draw eid 2))}]})
+
+(defcard "ONR Fortress Architects"
+  {:static-abilities [{:type :install-cost
+                       :req (req (ice? target))
+                       :value -1}]})
+
 (defcard "ONR I Got a Rock"
   {:abilities [{:cost [:click 1 :agenda-point 3]
                 :label "Do 15 meat damage"
@@ -112,6 +123,15 @@
   {:recurring 1
    :interactions {:pay-credits {:req (req (= :trace (:source-type eid)))
                                 :type :recurring}}})
+
+(defcard "ONR Nevinyrral"
+  {:in-play [:click-per-turn 1]
+   :on-rez {:effect (req (system-msg state side (str "uses " (:title card) " to gain 1 additional [Click] per turn"))
+                         (when (= :corp (:active-player @state))
+                           (gain-clicks state :corp 1))
+                         (gain state :corp :click-per-turn 1))}
+   :leave-play (req (when (rezzed? card)
+                      (win state :runner "\"Executive Termination\"")))})
 
 (defcard "ONR Rescheduler"
   {:abilities [{:cost [:click 1]

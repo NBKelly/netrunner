@@ -339,6 +339,35 @@
                                                     (same-card? current-ice target)))
                                      :value +1}))}]})
 
+(defcard "ONR Cinderella"
+  (let [abi {:msg "end the run"
+             :async true
+             :label "End the run, trash hardware, do 2 meat"
+             :effect (req (end-run state side (make-eid state eid) card)
+                          (continue-ability
+                            state side
+                            {:prompt "Choose a piece of hardware to trash"
+                             :label "Trash a piece of hardware"
+                             :choices {:card hardware?}
+                             :msg (msg "trash " (:title target))
+                             :async true
+                             :effect (req (wait-for
+                                            (trash state side target {:cause :subroutine})
+                                            (system-msg state :corp
+                                                        (str "uses " (:title card) " to trash " (:title target)))
+                                            (wait-for (damage state side :meat 2 {:unpreventable true
+                                                                                  :card card})
+                                                      (system-msg state :corp
+                                                                  (str "uses " (:title card) " to deal 2 meat damage"))
+                                                      (effect-completed state side eid))))
+                             :cancel-effect (req (wait-for (damage state side :meat 2 {:unpreventable true
+                                                                                       :card card})
+                                                           (system-msg state :corp
+                                                                       (str "uses " (:title card) " to deal 2 meat damage"))
+                                                           (effect-completed state side eid)))}
+                            card nil))}]
+  {:subroutines [(onr-trace-ability 6 abi false)]}))
+
 (defcard "ONR Caryatid"
   (change-subtype-on-rez "Wall" "Code Gate" 1 {:subroutines [end-the-run]}))
 
@@ -690,6 +719,47 @@
 
 (defcard "ONR Quandary"
   {:subroutines [end-the-run]})
+
+(defcard "ONR Viral 15"
+  (let [runner-trash-abi
+        {:prompt "Choose a program to trash"
+         :async true
+         :unregister-once-resolved true
+         :duration :end-of-run
+         :player :runner
+         :msg (msg "trash " (:title target))
+         :choices {:card #(and (installed? %)
+                               (program? %))}
+         :effect (effect (trash eid target {:cause :subroutine}))}]
+    {:subroutines [{:label "+1 [Credits] to Jack out"
+                    :msg (msg "force the runner to pay an additional 1 [Credits] to jack out this run")
+                    :effect (effect (register-lingering-effect
+                                    card
+                                    {:type :jack-out-additional-cost
+                                     :duration :end-of-run
+                                     :value [:credit 1]}))}
+                 ;; start of approach ice
+                 ;; start of approach server
+                 {:label "Trash program after ice unless runner jacks out"
+                  :msg (msg "force the runner to trash a program whenever they pass a rezzed piece of ice this run, unless they jack out")
+                  :async true
+                  :effect (req (register-events
+                                 state side card
+                                 [{:event :pass-ice
+                                   :duration :end-of-run
+                                   :once :per-encounter
+                                   :req (req (rezzed? (:ice context)))
+                                   ;; this registers an event if they don't jack out
+                                   :msg (msg "force the runner to trash a program if they do not jack out")
+                                   :effect (req
+                                             (let [t-ice (:ice context)
+                                                   interior (zero? (:index t-ice))]
+                                               (register-events
+                                                 state side card
+                                                 (if interior
+                                                   [(assoc runner-trash-abi :event :approach-server)]
+                                                   [(assoc runner-trash-abi :event :approach-ice)]))))}])
+                               (effect-completed state side eid))}]}))
 
 (defcard "ONR Vortex"
   {:subroutines [(boop-sub 2)]})

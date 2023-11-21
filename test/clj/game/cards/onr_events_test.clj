@@ -194,3 +194,18 @@
     (run-empty-server state "HQ")
     (click-prompt state :runner "Steal")
     (is (= 5 (:credit (get-runner))) "No credits gained from 2nd agenda access")))
+
+(deftest onr-priority-wreck
+  ;; Vamp - Run HQ and use replace access to pay credits to drain equal amount from Corp
+  (do-game
+    (new-game {:runner {:deck ["ONR Priority Wreck" (qty "Sure Gamble" 3)]}})
+    (take-credits state :corp)
+    (is (= 8 (:credit (get-corp))))
+    (play-from-hand state :runner "Sure Gamble")
+    (play-from-hand state :runner "Sure Gamble")
+    (is (= 13 (:credit (get-runner))))
+    (play-run-event state "ONR Priority Wreck" :hq)
+    ;;(click-prompt state :runner "ONR Priority Wreck") - this one is mandatory!
+    (click-prompt state :runner "8")
+    (is (= 5 (:credit (get-runner))) "Paid 8 credits")
+    (is (zero? (:credit (get-corp))) "Corp lost all 8 credits")))

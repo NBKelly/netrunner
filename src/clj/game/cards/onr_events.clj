@@ -363,6 +363,13 @@
     :async true
     :effect (effect (gain-credits eid 9))}})
 
+(defcard "ONR Panzer Run"
+  {:on-play
+   {:msg "gain 4 [Credits] and draw 2 cards"
+    :async true
+    :effect (req (wait-for (gain-credits state side 4)
+                           (draw state side eid 2)))}})
+
 (defcard "ONR Prearranged Drop"
   {:events [{:event :access
              :req (req (agenda? target))
@@ -372,6 +379,22 @@
              :msg "gain 6 [Credits]"
              :async true
              :effect (effect (gain-credits eid 6))}]})
+
+(defcard "ONR Priority Wreck"
+  {:makes-run true
+   :on-play {:req (req hq-runnable)
+             :async true
+             :effect (effect (make-run eid :hq card))}
+   :events [(successful-run-replace-breach
+              {:target-server :hq
+               :this-card-run true
+               :mandatory true
+               :ability
+               {:async true
+                :prompt "How many [Credits] do you want to spend?"
+                :choices :credit
+                :msg (msg "make the Corp lose " target " [Credits]")
+                :effect (req (lose-credits state :corp eid target))}})]})
 
 (defcard "ONR Synchronized Attack on HQ"
   {:on-play
