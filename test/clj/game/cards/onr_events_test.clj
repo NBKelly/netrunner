@@ -169,3 +169,28 @@
       (play-from-hand state :runner "ONR Networking")
       (is (= 2 (:click (get-runner))) "ONR Networking is a double")
       (is (= (+ credits -3 9) (:credit (get-runner))) "Runner should spend 3 and gain 9"))))
+
+(deftest onr-prearranged-drop
+  ;;
+  (do-game
+    (new-game {:corp {:deck ["NAPD Contract" "Hostile Takeover" "PAD Campaign"]}
+               :runner {:deck ["ONR Prearranged Drop"]}})
+    (play-from-hand state :corp "NAPD Contract" "New remote")
+    (play-from-hand state :corp "PAD Campaign" "New remote")
+    (take-credits state :corp)
+    (core/lose state :runner :credit 2)
+    (play-from-hand state :runner "ONR Prearranged Drop")
+    (is (= 3 (:credit (get-runner))) "Can't afford to steal NAPD")
+    (changes-val-macro
+        0 (:credit (get-runner))
+        "No credits gained from accessing non-agenda cards"
+        (run-empty-server state "Server 2"))
+    (click-prompt state :runner "No action")
+    (run-empty-server state "Server 1")
+    (is (= 9 (:credit (get-runner))) "Gained 6c on access, can steal NAPD")
+    (click-prompt state :runner "Pay to steal")
+    (is (= 2 (:agenda-point (get-runner))) "Stole agenda")
+    (is (= 5 (:credit (get-runner))))
+    (run-empty-server state "HQ")
+    (click-prompt state :runner "Steal")
+    (is (= 5 (:credit (get-runner))) "No credits gained from 2nd agenda access")))

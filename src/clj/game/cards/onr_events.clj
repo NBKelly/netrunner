@@ -200,6 +200,44 @@
 (defcard "ONR Gideon's Pawnshop"
   {:on-play (runner-recur)})
 
+(defcard "ONR Gypsy [TM] Schedule Analyzer"
+  (letfn [(move-gendie-to-hand [state side eid card revealed-card rev-str]
+            (continue-ability
+              state side
+              {:msg (msg "reveal " rev-str " from the top of R&D and store "
+                         (:title revealed-card) " in HQ")
+               :effect (req (move state :corp revealed-card :hand)
+                            (shuffle! state :corp :deck)
+                            (system-msg state :corp "shuffles R&D"))}
+              card nil))
+          (gypsy-search-fn [state side eid card remainder rev-str]
+            (if (not-empty remainder)
+              (let [revealed-card (first remainder)
+                    rest-of-deck (rest remainder)
+                    rev-str (if (= "" rev-str)
+                              (:title revealed-card)
+                              (str rev-str ", " (:title revealed-card)))]
+                (if (agenda? revealed-card)
+                  (move-gendie-to-hand state side eid card revealed-card rev-str)
+                  (gypsy-search-fn state side eid card rest-of-deck rev-str)))
+              (continue-ability
+                state side
+                {:msg (msg "reveal " rev-str " from the top of the stack")
+                 :effect (effect (shuffle! state :corp :deck)
+                                 (system-msg :corp "shuffles R&D"))}
+                card nil)))]
+    {:makes-run true
+     :on-play {:req (req rd-runnable)
+               :async true
+               :effect (effect (make-run eid :rd card))}
+     :events [(successful-run-replace-breach
+                {:target-server :rd
+                 :this-card-run true
+                 :mandatory true
+                 :ability
+                 {:async true
+                  :effect (req (gypsy-search-fn state side eid card (:deck corp) ""))}})]}))
+
 (defcard "ONR Hot Tip for WNS"
   {:on-play
    {:req (req (some #(has-subtype? (:card (first %)) "Black Ops") (turn-events state side :agenda-stolen)))
@@ -324,6 +362,16 @@
    {:msg "gain 9 [Credits]"
     :async true
     :effect (effect (gain-credits eid 9))}})
+
+(defcard "ONR Prearranged Drop"
+  {:events [{:event :access
+             :req (req (agenda? target))
+             :duration :end-of-turn
+             :once :per-turn
+             :unregister-once-resolved true
+             :msg "gain 6 [Credits]"
+             :async true
+             :effect (effect (gain-credits eid 6))}]})
 
 (defcard "ONR Synchronized Attack on HQ"
   {:on-play

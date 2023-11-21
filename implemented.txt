@@ -44,9 +44,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   381 / 584
-TESTS:   198 / 381
-NO TEST: 180
+TOTAL:   385 / 584
+TESTS:   199 / 385
+NO TEST: 183
 NO IMP:  3
 --------------------------
 002 + Access through Alpha
@@ -86,7 +86,7 @@ NO IMP:  3
 
 041 ^ Big Frackin' Gun
 042 + Bioweapons Engineering
-
+043 ^ Bizarre Encryption Scheme
 044 ^ Black Dahlia
 045 ^ Black Ice Quality Assurance
 046 + Blackmail
@@ -255,6 +255,7 @@ NO IMP:  3
 229 + "Green Knight" Surge Buffers
 230 ^ Gremlins
 231 ^ Grubb
+232 ^ Gypsy [TM] Schedule Analyzer
 
 234 ^ Hammer
 
@@ -281,7 +282,7 @@ NO IMP:  3
 258 ^ Imp
 
 263 + Inside Job
-
+264 ^ Investment Firm
 265 + Invisibility
 
 267 + Jack Attack
@@ -390,6 +391,7 @@ NO IMP:  3
 377 + Polymer Breakthrough
 378 ^ Power Grid Overload
 
+380 + Prearranged Drop
 381 ^ Precision Bribery
 382 + Preying Mantis
 383 + Priority Requisition
@@ -581,6 +583,7 @@ The following (marked) cards have no tests or implementations:
   026 ^ Aujourd'Oui
   037 ^ Bartmoss Memorial Icebreaker
   041 ^ Big Frackin' Gun
+  043 ^ Bizarre Encryption Scheme
   044 ^ Black Dahlia
   045 ^ Black Ice Quality Assurance
   047 ^ Black Widow
@@ -638,6 +641,7 @@ The following (marked) cards have no tests or implementations:
   227 ^ Glacier
   230 ^ Gremlins
   231 ^ Grubb
+  232 ^ Gypsy [TM] Schedule Analyzer
   234 ^ Hammer
   236 ^ Hell's Run
   238 ^ Highlighter
@@ -649,6 +653,7 @@ The following (marked) cards have no tests or implementations:
   251 ^ Ice and Data Special Report
   255 ^ Identity Donor (janky impl)
   258 ^ Imp
+  264 ^ Investment Firm
   268 ^ Jackhammer
   273 ^ Joan of Arc
   274 ^ Junkyard BBS
@@ -754,4 +759,4 @@ The following (marked) cards have no tests or implementations:
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 352
+Random card to implement: 207

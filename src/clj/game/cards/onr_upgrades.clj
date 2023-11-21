@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [cond-plus.core :refer [cond+]]
    [game.core.access :refer [access-bonus set-only-card-to-access
-                             installed-access-trigger
+                             installed-access-trigger steal
                              steal-cost-bonus]]
    [game.core.bad-publicity :refer [lose-bad-publicity]]
    [game.core.board :refer [all-active-installed all-installed card->server
@@ -67,6 +67,69 @@
   (merge {:implementation "(classic) Installed ambushes must be rezzed to take effect, unless otherwise noted"} impl))
 
 ;; card implementations
+
+(defcard "ONR Bizarre Encryption Scheme"
+  {:implementation "Applies on breach. If the agenda moves zones afterwards, the effect is (by design) broken"
+   :on-trash {:req (req (and (= :runner side)
+                             (:run @state)))
+              :msg (msg "lingering")
+              :effect (effect
+                        (register-events
+                          card
+                          (let [oc card]
+                            [{:event :access
+                              :duration :end-of-run
+                              :req (and (agenda? target)
+                                        (or (= (get-zone target)
+                                               (:previous-zone oc))
+                                            (= (central->zone (get-zone target))
+                                               (butlast (:previous-zone oc)))))
+                              :msg (msg "protect " (:title target) " until the start of the Runners next turn")
+                              :effect (req (let [old-card target]
+                                             (register-events
+                                               state side (:identity corp)
+                                               [{:event :runner-turn-begins
+                                                 :player runner
+                                                 :unregister-once-resolved true
+                                                 :persistent true
+                                                 :effect (req (steal state :runner eid (get-card state old-card)))
+                                                 :req (req (let [new-card (get-card state old-card)]
+                                                             (and
+                                                               (installed? new-card)
+                                                               (= (:zone new-card) (:zone old-card)))))
+                                                 :msg (msg "steal " (:title old-card))}])))}]))
+                        (register-lingering-effect
+                          card;;(:identity corp);;(get-card state card)
+                          {:type :cannot-steal
+                           :req (req (or (= (get-zone target)
+                                            (:previous-zone card))
+                                         (= (central->zone (get-zone target))
+                                            (butlast (:previous-zone card)))))
+                           :value true
+                           :duration :end-of-run}))}
+   :events [{:event :access
+             :req (req (and (agenda? target)
+                            (or (in-same-server? card target)
+                                (from-same-server? card target))))
+             :msg (msg "protect " (:title target) " until the start of the Runners next turn")
+             :effect (req (let [old-card target]
+                            (register-events
+                              state side (:identity runner)
+                              [{:event :runner-turn-begins
+                                :ability-name "Bizzarely Encrypted Agenda"
+                                :unregister-once-resolved true
+                                :persistent true
+                                :effect (req (steal state :runner eid (get-card state old-card)))
+                                :req (req (let [new-card (get-card state old-card)]
+                                            (and
+                                              (installed? new-card)
+                                              (= (:zone new-card) (:zone old-card)))))
+                                :msg (msg "steal " (:title old-card))}])))}]
+   :static-abilities [{:type :cannot-steal
+                       :duration :end-of-run
+                       :req (req (or (in-same-server? card target)
+                                     (from-same-server? card target)))
+                       :value true}]})
 
 (defcard "ONR Dedicated Response Team"
   (onr-ambush

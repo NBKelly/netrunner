@@ -92,6 +92,22 @@
                 :async true
                 :effect (effect (damage eid :meat 15 {:card card}))}]})
 
+(defcard "ONR Investment Firm"
+  (let [ability {:msg "take 1 [Credits]"
+                 :label "Take 1 [Credits] (start of turn)"
+                 :once :per-turn
+                 :req (req (pos? (get-counters card :credit)))
+                 :async true
+                 :effect (effect (add-counter card :credit -1)
+                                 (gain-credits eid 1))}]
+    {:implementation "Manual - click ONR Investment Firm to place credits counters on itself"
+     :abilities [ability
+                 {:label "Place 2 credits"
+                  :cost [:credit 1]
+                  :msg "place 2 credits on itself"
+                  :effect (effect (add-counter card :credit 2))}]
+     :events [(assoc ability :event :corp-turn-begins)]}))
+
 (defcard "ONR Krumz"
   {:recurring 1
    :interactions {:pay-credits {:req (req (= :trace (:source-type eid)))
