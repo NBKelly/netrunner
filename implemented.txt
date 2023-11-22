@@ -44,9 +44,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   450 / 584
-TESTS:   212 / 450
-NO TEST: 235
+TOTAL:   455 / 584
+TESTS:   212 / 455
+NO TEST: 240
 NO IMP:  3
 --------------------------
 002 + Access through Alpha
@@ -85,6 +85,8 @@ NO IMP:  3
 
 037 ^ Bartmoss Memorial Icebreaker
 
+039 ^ BBS Whispering Campaign
+040 ^ Bel-Digmo Antibody
 041 ^ Big Frackin' Gun
 042 + Bioweapons Engineering
 043 ^ Bizarre Encryption Scheme
@@ -93,7 +95,7 @@ NO IMP:  3
 046 + Blackmail
 047 ^ Black Widow
 048 ^ Blink (no test, this is an rng card!)
-
+049 ^ Blood Cat
 050 ^ Boardwalk (random reveal...)
 051 + Bodyweight [TM] Data Crèche
 052 + Bodyweight [TM] Synthetic Blood
@@ -119,11 +121,11 @@ NO IMP:  3
 072 + Charity Takeover
 
 074 ^ Chiba Bank Account
-
+075 ^ Chicago Branch
 076 + Chihuahua
 
 078 ^ Cinderella
-
+079 ^ City Surveillance
 080 + Cloak
 081 + Closed Accounts
 082 + Clown
@@ -613,12 +615,15 @@ The following (marked) cards have no tests or implementations:
   025 ^ Audit of Call Records
   026 ^ Aujourd'Oui
   037 ^ Bartmoss Memorial Icebreaker
+  039 ^ BBS Whispering Campaign
+  040 ^ Bel-Digmo Antibody
   041 ^ Big Frackin' Gun
   043 ^ Bizarre Encryption Scheme
   044 ^ Black Dahlia
   045 ^ Black Ice Quality Assurance
   047 ^ Black Widow
   048 ^ Blink (no test, this is an rng card!)
+  049 ^ Blood Cat
   050 ^ Boardwalk (random reveal...)
   055 ^ Bolt-Hole
   056 ^ Boostergang Connections
@@ -630,7 +635,9 @@ The following (marked) cards have no tests or implementations:
   069 ^ Cascade (test once viruses are done!)
   071 ^ Chance Observation
   074 ^ Chiba Bank Account
+  075 ^ Chicago Branch
   078 ^ Cinderella
+  079 ^ City Surveillance
   085 ^ Codecracker
   086 ^ Codeslinger
   089 ^ Core Command: Jettison Ice
@@ -839,4 +846,4 @@ The following (marked) cards have no tests or implementations:
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 485
+Random card to implement: 271

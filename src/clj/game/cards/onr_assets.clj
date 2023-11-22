@@ -64,7 +64,7 @@
    [jinteki.utils :refer :all]
    [game.core.link :refer [get-link]]
    [game.cards.assets :refer [campaign]]
-   [game.core.onr-utils :refer [handle-if-unique]]
+   [game.core.onr-utils :refer [handle-if-unique onr-trace-tag]]
    ))
 
 (defcard "ONR ACME Savings and Loan"
@@ -96,16 +96,103 @@
               :asyc true
               :effect (req (wait-for (gain-credits state side (make-eid state eid) 12)
                                      (swap! state update-in [side :acme-loans] (safe-inc-n 1))
-
                                      ;;(wait-for (trash state side (make-eid state side) (get-card state card))
                                                ;; register the debt collection event too
                                      (handle-if-unique
                                        state side (:identity corp) (acme-event))
                                      (effect-completed state side eid)))}}))
 
+(defcard "ONR BBS Whispering Campaign"
+  {:data {:counter {:credit 16}}
+   :events [(trash-on-empty :credit)]
+   :abilities [{:label "Take 2 [Credits] from this asset"
+                :cost [:click 1]
+                :keep-menu-open :while-clicks-left
+                :msg (msg "gain " (min 2 (get-counters card :credit)) " [Credits]")
+                :async true
+                :effect (req (let [credits (min 2 (get-counters card :credit))]
+                               (wait-for (gain-credits state :corp (make-eid state eid) credits)
+                                         (add-counter state side card :credit (- credits) {:placed true})
+                                         (effect-completed state side eid))))}]})
+
+(defcard "ONR Bel-Digmo Antibody"
+  {:flags {:rd-reveal (req true)}
+   :on-rez {:msg (msg "shuffle itself into R&D")
+            :async true
+            :effect (req (move state side card :deck)
+                         (shuffle! state side :deck)
+                         (effect-completed state side eid))}
+   :on-access {:msg "do 1 net damage"
+               :req (req (in-deck? card))
+               :async true
+               :effect (effect (damage eid :net 1 {:card card}))}})
+
+(defcard "ONR Blood Cat"
+  {:abilities [(assoc (onr-trace-tag 5) :cost [:click 1])]})
 
 (defcard "ONR Braindance Campaign"
   (campaign 12 2))
+
+(defcard "ONR Chicago Branch"
+  {:abilities [{:cost [:click 1 :credit 3]
+                :label "place 2 advancement counters"
+                :choices {:card #(and (corp? %)
+                                      (can-be-advanced? %)
+                                      (installed? %))}
+                :msg (msg "place 2 advancement tokens on " (card-str state target))
+                :effect (effect (add-prop target :advance-counter 2 {:placed true}))}]})
+
+(defcard "ONR City Surveillance"
+  (letfn [(pay-or-tag [ct]
+            {:optional
+             {:player :runner
+              :prompt (msg "Pay 1[Credit] to avoid taking a tag?"
+                           (when (> ct 1) (str " (" (dec ct) " remaining)")))
+              :yes-ability {:cost [:credit 1]
+                            :async true
+                            :player :runner
+                            ;;:msg (msg "avoid receiving a tag")
+                            :effect (req
+                                      (system-msg state :runner "pays 1 [Credit] to avoid receiving a tag")
+                                      (if (pos? (dec ct))
+                                           (continue-ability
+                                             state side
+                                             (pay-or-tag (dec ct))
+                                             card nil)
+                                           (effect-completed state side eid)))}
+              :no-ability {:player :corp
+                           :async true
+                           :msg (msg "give the runner a tag")
+                           :effect (req (wait-for (gain-tags state :corp (make-eid state eid) 1)
+                                                  (if (pos? (dec ct))
+                                                    (continue-ability
+                                                      state side
+                                                      (pay-or-tag (dec ct))
+                                                      card nil)
+                                                    (effect-completed state side eid))))}}})]
+  {:derezzed-events [{:event :pre-runner-draw
+                      :async true
+                      :req (req (pos? target))
+                      :effect (req (let [qty target]
+                                     (continue-ability
+                                       state side
+                                       {:optional
+                                        {:req (req (not (rezzed? card)))
+                                         :player :corp
+                                         :prompt (msg "The Runner is about to draw " qty "cards. Rez " (:title card) "?")
+                                         :yes-ability {:async true
+                                                       :effect (effect (rez eid card))}}}
+                                       card nil)))}]
+   :events [{:event :runner-draw
+             :async true
+             :effect (req (let [num-cards (count runner-currently-drawing)]
+                            (if (pos? num-cards)
+                              (continue-ability
+                                state side
+                                (pay-or-tag num-cards)
+                                card nil)
+                              (effect-completed state side eid))))}]}))
+
 
 (defcard "ONR Department of Truth Enhancement"
   {:abilities [{:cost [:click 1]
