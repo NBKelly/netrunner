@@ -1421,4 +1421,35 @@
                   :msg (msg "force the Corp to lose " (min 4 (:credit corp))
                             " [Credits]")
                   :effect (req (let [creds-lost (min 4 (:credit corp))]
-                               (lose-credits state :corp eid creds-lost)))}})]})
+                                 (lose-credits state :corp eid creds-lost)))}})]})
+
+(defcard "ONR Weefle Initiation"
+  {:interactions {:prevent [{:type #{:net :brain :meat}
+                             :req (req true)}]}
+   :makes-run true
+   :implementation "prevent ability on the card uses power counters"
+   :data {:counter {:power 7}}
+   :abilities [{:label "prevent 1 damage"
+                :msg "prevent 1 damage"
+                :cost [:power 1]
+                :effect (effect (damage-prevent :net 1)
+                                (damage-prevent :brain 1)
+                                (damage-prevent :meat 1))}]
+   :on-play {:prompt "Choose a server"
+             :choices (req runnable-servers)
+             :async true
+             :effect (effect (make-run eid target card))}})
+
+(defcard "ONR misc.for-sale"
+  {:on-play
+   {:req (req (some installed?
+                    (all-installed state :runner)))
+    :prompt "Choose any number of installed cards to trash"
+    :choices {:max (req (count (all-installed state :runner)))
+              :card #(and (installed? %)
+                          (runner? %))}
+    :msg (msg "trash " (enumerate-str (map :title targets))
+              " and gain " (* (count targets) 3) " [Credits]")
+    :async true
+    :effect (req (wait-for (trash-cards state side targets {:cause-card card})
+                           (gain-credits state side eid (* (count targets) 3))))}})

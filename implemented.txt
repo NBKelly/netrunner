@@ -44,9 +44,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   440 / 584
-TESTS:   212 / 440
-NO TEST: 225
+TOTAL:   450 / 584
+TESTS:   212 / 450
+NO TEST: 235
 NO IMP:  3
 --------------------------
 002 + Access through Alpha
@@ -347,7 +347,7 @@ NO IMP:  3
 315 ^ Microtech 'Trode Set
 316 + Militech MRAM Chip
 317 + Minotaur
-
+318 ^ misc.for-sale
 319 + Misleading Access Menus
 320 + MIT West Tier
 321 ^ Mobile Barricade
@@ -584,7 +584,7 @@ NO IMP:  3
 
 567 ^ ONR Weapons Depot
 568 ^ Weather-to-Finance Pipe
-
+569 ^ Weefle Initiation
 570 ^ Wild Card
 571 ^ Wilson, Weeflerunner Apprentice
 572 ^ Wired Switchboard
@@ -722,6 +722,7 @@ The following (marked) cards have no tests or implementations:
   313 ^ Microtech AI Interface
   314 ^ Microtech Backup Drive
   315 ^ Microtech 'Trode Set
+  318 ^ misc.for-sale
   321 ^ Mobile Barricade
   322 ^ Morphing Tool
   323 ^ Mouse
@@ -798,17 +799,24 @@ The following (marked) cards have no tests or implementations:
   492 ^ Stereogram Antibody (Do this later, was just lazy)
   493 ^ Stategic Planning Group
   496 ^ Strike Force Kali
+  497 ^ Stumble through Wilderspace
+  498 ^ Subliminal Corruption
   499 ^ Submarine Uplink (do this test later - fetch + uplink should be fine)
   501 ^ Succubus
   509 ^ Synchronized Attack on HQ
   513 ^ Technician Lover
+  515 ^ Temple Microcode Outlet
+  516 ^ Terrorist Reprisal
+  518 ^ Test Spin
   520 ^ Theorem Proof
+  521 ^ The Personal Touch
   522 ^ The Shell Traders (write a test later)
   523 ^ The Short Circuit
   525 ^ Time to Collect
   526 ^ Tinweasel
   527 ^ TKO 2.0
   530 ^ Top Runner's Conference
+  531 ^ Total Genetic Retrofit
   535 ^ Trauma Team [TM]
   543 ^ Tycho Extension
   546 ^ Underworld Mole
@@ -820,6 +828,8 @@ The following (marked) cards have no tests or implementations:
   562 ^ Walking Wall
   565 ^ Washed-Up Solo Construct
   567 ^ ONR Weapons Depot
+  568 ^ Weather-to-Finance Pipe
+  569 ^ Weefle Initiation
   570 ^ Wild Card
   571 ^ Wilson, Weeflerunner Apprentice
   572 ^ Wired Switchboard
@@ -829,4 +839,4 @@ The following (marked) cards have no tests or implementations:
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 458
+Random card to implement: 485
