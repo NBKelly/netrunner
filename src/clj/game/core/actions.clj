@@ -5,7 +5,7 @@
     [clojure.string :as string]
     [game.core.agendas :refer [update-advancement-requirement update-all-advancement-requirements update-all-agenda-points]]
     [game.core.board :refer [get-zones installable-servers]]
-    [game.core.card :refer [get-agenda-points get-card]]
+    [game.core.card :refer [get-agenda-points get-card has-subtype?]]
     [game.core.card-defs :refer [card-def]]
     [game.core.cost-fns :refer [break-sub-ability-cost card-ability-cost score-additional-cost-bonus]]
     [game.core.effects :refer [any-effects]]
@@ -571,6 +571,8 @@
     (implementation-msg state card)
     (set-prop state :corp (get-card state c) :advance-counter 0)
     (swap! state update-in [:corp :register :scored-agenda] #(+ (or % 0) points))
+    (if (has-subtype? card "Black Ops") ;; this is for an onr card
+      (swap! state update-in [:corp :register :scored-black-ops] #(+ (or % 0) 1)))
     (play-sfx state side "agenda-score")
     (when-let [on-score (:on-score (card-def c))]
       (register-pending-event state :agenda-scored c on-score))

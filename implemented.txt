@@ -44,9 +44,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   424 / 584
-TESTS:   207 / 424
-NO TEST: 214
+TOTAL:   440 / 584
+TESTS:   212 / 440
+NO TEST: 225
 NO IMP:  3
 --------------------------
 002 + Access through Alpha
@@ -331,7 +331,7 @@ NO IMP:  3
 299 ^ Main-Office Relocation
 300 + Management Shake-Up
 301 + Manhunt
-
+302 ^ Mantis, Fixer-at-Large
 303 + Marcel DeSoleil
 304 + Marine Arcology
 305 + Marionette
@@ -340,7 +340,7 @@ NO IMP:  3
 
 309 ^ Matador
 310 + Mazer
-
+311 + Meat Upgrade
 312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
 313 ^ Microtech AI Interface
 314 ^ Microtech Backup Drive
@@ -382,7 +382,8 @@ NO IMP:  3
 350 ^ Omnitech Wet Drive
 
 352 ^ On the Fast Track
-
+353 + Open-Ended (R) Mileage Program
+354 ^ Organ Donor
 355 + Overtime Incentives
 
 357 + Pandora's Deck
@@ -395,13 +396,13 @@ NO IMP:  3
 
 365 + π in the 'Face
 366 ^ Pile Driver
-
+367 ^ Pirate Broadcast
 368 + PK-6089a
 369 + Planning Consultants
-
+370 ^ Playful AI (this is untestable...)
 371 ^ Please Don't Choke Anyone
 372 + Pocket Virtual Reality
-
+373 ^ Poisoned Water Supply
 374 ^ Political Coup
 375 + Political Overthrow
 376 + Poltergiest
@@ -419,7 +420,7 @@ NO IMP:  3
 388 + Project Consultants
 389 ^ Project Venice
 390 ^ Project Zurich
-
+391 ^ Promises, Promises
 392 ^ Psychic Friend
 393 + Punitive Counterstrike
 
@@ -437,7 +438,7 @@ NO IMP:  3
 407 ^ R&D Mole
 408 ^ R&D-Protocol Files
 409 ^ Reclamation Project
-
+410 ^ Reconnaissance
 411 ^ Record Reconstructor
 412 ^ Redecorator
 413 + Red Herrings
@@ -456,11 +457,12 @@ NO IMP:  3
 
 429 + Rockerboy Promotion
 430 + Rock is Strong
-
+431 ^ Romp through HQ
 432 ^ Ronin Around
 
 434 + Runner Sensei
-
+435 + Running Interference
+436 ^ Rush Hour
 437 + Rustbelt HQ Branch
 438 ^ Sandbox Dig
 439 + Sandstorm
@@ -472,14 +474,14 @@ NO IMP:  3
 
 446 ^ Schlaghund Pointers
 447 ^ Scorched Earth
-
+448 + Score!
 449 + Scramble
 
 452 ^ Security Purge
 453 ^ SeeYa
 
 455 + Self-Modifying Code
-
+456 ^ Senatorial Field Trip
 457 + Sentinels Prime
 
 459 ^ Shaka
@@ -500,10 +502,10 @@ NO IMP:  3
 477 + Sleeper
 478 + Smarteye
 479 + Smith's Pawnshop
-
+480 + Sneak Preview
 481 ^ Snowball
 482 + Snowbank
-
+483 ^ Social Engineering
 484 + Solo Squad
 
 486 ^ Speed Trap
@@ -516,7 +518,8 @@ NO IMP:  3
 
 495 + Streetware Distributor
 496 ^ Strike Force Kali
-
+497 ^ Stumble through Wilderspace
+498 ^ Subliminal Corruption
 499 ^ Submarine Uplink (do this test later - fetch + uplink should be fine)
 500 + Subsidiary Branch
 501 ^ Succubus
@@ -532,10 +535,13 @@ NO IMP:  3
 512 + Team Restructuring
 513 ^ Technician Lover
 514 + Techtronica [TM] Utility Suit
+515 ^ Temple Microcode Outlet
+516 ^ Terrorist Reprisal
 
+518 ^ Test Spin
 519 + The Deck
 520 ^ Theorem Proof
-
+521 ^ The Personal Touch
 522 ^ The Shell Traders (write a test later)
 523 ^ The Short Circuit
 
@@ -545,7 +551,7 @@ NO IMP:  3
 528 + Tokyo-Chiba Infighting
 529 + Too Many Doors
 530 ^ Top Runner's Conference
-
+531 ^ Total Genetic Retrofit
 532 + Toughonium Wall
 533 + Trapdoor
 
@@ -577,6 +583,7 @@ NO IMP:  3
 565 ^ Washed-Up Solo Construct
 
 567 ^ ONR Weapons Depot
+568 ^ Weather-to-Finance Pipe
 
 570 ^ Wild Card
 571 ^ Wilson, Weeflerunner Apprentice
@@ -709,6 +716,7 @@ The following (marked) cards have no tests or implementations:
   294 ^ Lockjaw
   296 ^ Loony Goon
   299 ^ Main-Office Relocation
+  302 ^ Mantis, Fixer-at-Large
   307 ^ Mastermind
   309 ^ Matador
   313 ^ Microtech AI Interface
@@ -729,10 +737,14 @@ The following (marked) cards have no tests or implementations:
   349 ^ Omnitech "Spinal Tap" Cybermodem (random, needs a rng fix for tests)
   350 ^ Omnitech Wet Drive
   352 ^ On the Fast Track
+  354 ^ Organ Donor
   359 ^ Panzer Run
   363 ^ Pattel's Virus
   366 ^ Pile Driver
+  367 ^ Pirate Broadcast
+  370 ^ Playful AI (this is untestable...)
   371 ^ Please Don't Choke Anyone
+  373 ^ Poisoned Water Supply
   374 ^ Political Coup
   378 ^ Power Grid Overload
   381 ^ Precision Bribery
@@ -740,6 +752,7 @@ The following (marked) cards have no tests or implementations:
   387 ^ Project Babylon
   389 ^ Project Venice
   390 ^ Project Zurich
+  391 ^ Promises, Promises
   392 ^ Psychic Friend
   396 ^ Quest for Cattekin
   397 ^ Rabbit
@@ -751,6 +764,7 @@ The following (marked) cards have no tests or implementations:
   407 ^ R&D Mole
   408 ^ R&D-Protocol Files
   409 ^ Reclamation Project
+  410 ^ Reconnaissance
   411 ^ Record Reconstructor
   412 ^ Redecorator
   414 ^ Reflector
@@ -759,13 +773,16 @@ The following (marked) cards have no tests or implementations:
   420 ^ Replicator
   423 ^ Restrictive Net Zoning
   427 ^ Rio de Janeiro City Grid (random, hard to test)
+  431 ^ Romp through HQ
   432 ^ Ronin Around
+  436 ^ Rush Hour
   438 ^ Sandbox Dig
   444 ^ Schematics Search Engine
   446 ^ Schlaghund Pointers
   447 ^ Scorched Earth
   452 ^ Security Purge
   453 ^ SeeYa
+  456 ^ Senatorial Field Trip
   459 ^ Shaka
   460 ^ Shield
   463 ^ Short-Term Contract
@@ -775,6 +792,7 @@ The following (marked) cards have no tests or implementations:
   474 ^ Skeleton Passkeys
   476 ^ Skullcap
   481 ^ Snowball
+  483 ^ Social Engineering
   486 ^ Speed Trap
   490 ^ Startup Immolator
   492 ^ Stereogram Antibody (Do this later, was just lazy)
@@ -811,4 +829,4 @@ The following (marked) cards have no tests or implementations:
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 39
+Random card to implement: 458

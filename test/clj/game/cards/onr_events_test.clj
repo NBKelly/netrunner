@@ -252,6 +252,20 @@
     (is (zero? (count (:discard (get-runner)))) "Heap should be empty")
     (is (= "ONR MIT West Tier" (:title (get-rfg state :runner 0))) "Levy should be rfg'd")))
 
+(deftest onr-meat-upgrade
+  ;; Lawyer Up - Lose 2 tags and draw 3 cards
+  (do-game
+    (new-game {:runner {:deck ["ONR Meat Upgrade" (qty "Sure Gamble" 3)]}})
+    (take-credits state :corp)
+    (core/move state :runner (find-card "Sure Gamble" (:hand (get-runner))) :deck)
+    (core/move state :runner (find-card "Sure Gamble" (:hand (get-runner))) :deck)
+    (core/move state :runner (find-card "Sure Gamble" (:hand (get-runner))) :deck)
+    (gain-tags state :runner 3)
+    (play-from-hand state :runner "ONR Meat Upgrade")
+    (is (= 3 (count (:hand (get-runner)))) "Drew 3 cards")
+    (is (= 2 (:click (get-runner))) "Spent 2 clicks")
+    (is (= 1 (count-tags state)) "Lost 2 tags")))
+
 (deftest onr-kilroy-was-here
   ;; Demolition Run - Trash at no cost
   (do-game
@@ -295,6 +309,30 @@
       (is (= 2 (:click (get-runner))) "ONR Networking is a double")
       (is (= (+ credits -3 9) (:credit (get-runner))) "Runner should spend 3 and gain 9"))))
 
+(deftest networking
+  ;; Networking
+  (do-game
+    (new-game {:corp {:deck [(qty "Hedge Fund" 5)]}
+               :runner {:hand ["ONR Open-Ended(R) Mileage Program"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "ONR Open-Ended(R) Mileage Program")
+    (is (= "ONR Open-Ended(R) Mileage Program" (-> (get-runner) :hand first :title)) "ONR Open-Ended(R) Mileage Program shouldn't be played")
+    (gain-tags state :runner 4)
+    (let [credits (:credit (get-runner))]
+      (play-from-hand state :runner "ONR Open-Ended(R) Mileage Program")
+      (is (= 3 (count-tags state)) "Runner should lose 1 tag")
+      (click-prompt state :runner "Yes")
+      (is (= (dec credits) (:credit (get-runner))) "Runner should spend 1 on Networking ability")
+      (is (zero? (count (:discard (get-runner)))) "Runner's discard should be empty")
+      (is (= "ONR Open-Ended(R) Mileage Program" (-> (get-runner) :hand first :title))))
+    (let [credits (:credit (get-runner))]
+      (play-from-hand state :runner "ONR Open-Ended(R) Mileage Program")
+      (is (= 2 (count-tags state)) "Runner should lose 1 tag")
+      (click-prompt state :runner "No")
+      (is (= credits (:credit (get-runner))) "Runner should spend 1 on ONR Open-Ended(R) Mileage Program ability")
+      (is (= 1 (count (:discard (get-runner)))) "Runner's discard should be empty")
+      (is (= "ONR Open-Ended(R) Mileage Program" (-> (get-runner) :discard first :title)) "ONR Open-Ended(R) Mileage Program should be in heap"))))
+
 (deftest onr-prearranged-drop
   ;;
   (do-game
@@ -334,3 +372,124 @@
     (click-prompt state :runner "8")
     (is (= 5 (:credit (get-runner))) "Paid 8 credits")
     (is (zero? (:credit (get-corp))) "Corp lost all 8 credits")))
+
+(deftest onr-running-interference
+  ;; Running Interference
+  (do-game
+    (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                      :hand ["Ice Wall" "Archer" "Hostile Takeover"]
+                      :credits 100}
+               :runner {:hand ["ONR Running Interference"]}})
+    (play-and-score state "Hostile Takeover")
+    (play-from-hand state :corp "Archer" "HQ")
+    (play-from-hand state :corp "Ice Wall" "HQ")
+    (take-credits state :corp)
+    (play-from-hand state :runner "ONR Running Interference")
+    (click-prompt state :runner "HQ")
+    (let [archer (get-ice state :hq 0)
+          credits (:credit (get-corp))]
+      (rez state :corp archer)
+      (click-card state :corp (get-scored state :corp 0))
+      (is (no-prompt? state :corp) "Only 1 agenda required to rez")
+      (is (= (- credits (* 2 (:cost archer))) (:credit (get-corp))) "Rezzing Archer costs double")
+      (is (rezzed? (refresh archer)) "Archer is rezzed"))
+    (run-continue-until state :movement)
+    (run-jack-out state)
+    (let [iw (get-ice state :hq 1)
+          credits (:credit (get-corp))]
+      (run-on state "HQ")
+      (rez state :corp iw)
+      (is (no-prompt? state :corp))
+      (is (= (- credits (:cost iw)) (:credit (get-corp))) "Rezzing Ice Wall costs normal"))))
+
+(deftest onr-score
+  ;; Sure Gamble
+  (do-game
+    (new-game {:runner {:deck ["ONR Score!"]}})
+    (take-credits state :corp)
+    (is (= 5 (:credit (get-runner))))
+    (play-from-hand state :runner "ONR Score!")
+    (is (= 9 (:credit (get-runner))))))
+
+(deftest onr-sneak-preview-programs-hosted-after-install-get-returned-to-stack-issue-1081
+    ;; Programs hosted after install get returned to Stack. Issue #1081
+    (do-game
+      (new-game {:corp {:deck ["Wraparound"]}
+                 :runner {:deck [(qty "ONR Sneak Preview" 2) "Morning Star"
+                                 "Knight" "Leprechaun"]}})
+      (play-from-hand state :corp "Wraparound" "HQ")
+      (let [wrap (get-ice state :hq 0)]
+        (rez state :corp wrap))
+      (take-credits state :corp)
+      (core/gain state :runner :credit 5)
+      (trash-from-hand state :runner "Morning Star")
+      (trash-from-hand state :runner "Knight")
+      (let [ms (find-card "Morning Star" (:discard (get-runner)))]
+        (play-from-hand state :runner "Leprechaun")
+        (play-from-hand state :runner "ONR Sneak Preview")
+        (click-prompt state :runner "Heap")
+        (click-prompt state :runner ms))
+      (let [lep (get-program state 0)
+            ms (get-program state 1)]
+        (card-ability state :runner lep 1)
+        (click-card state :runner ms)
+        (is (= "Morning Star" (:title (first (:hosted (refresh lep))))) "Morning Star hosted on Lep"))
+      (take-credits state :runner)
+      (is (= "Morning Star" (:title (first (:deck (get-runner))))) "Morning Star returned to Stack from host")
+      (take-credits state :corp)
+      (let [kn (find-card "Knight" (:discard (get-runner)))]
+        (play-from-hand state :runner "ONR Sneak Preview")
+        (click-prompt state :runner "Heap")
+        (click-prompt state :runner kn))
+      (let [wrap (get-ice state :hq 0)
+            kn (get-program state 1)]
+        (card-ability state :runner kn 0)
+        (click-card state :runner wrap)
+        (is (= "Knight" (:title (first (:hosted (refresh wrap))))) "Knight hosted on Wraparound")
+        (take-credits state :runner)
+        (is (= "Knight" (:title (first (:deck (get-runner))))) "Knight returned to Stack from host ice"))))
+
+(deftest onr-sneak-preview-make-sure-program-remains-installed-if-scavenged
+    ;; Make sure program remains installed if Scavenged
+    (do-game
+      (new-game {:runner {:hand ["ONR Sneak Preview" "Scavenge" "Inti"]
+                          :discard ["Morning Star"]}})
+      (take-credits state :corp)
+      (play-from-hand state :runner "ONR Sneak Preview")
+      (click-prompt state :runner "Heap")
+      (click-prompt state :runner "Morning Star")
+      (is (= 2 (:credit (get-runner))) "Program installed for free")
+      (play-from-hand state :runner "Scavenge")
+      (click-card state :runner "Morning Star")
+      (click-card state :runner "Morning Star")
+      (take-credits state :runner)
+      (is (empty? (:deck (get-runner))) "Morning Star not returned to Stack")
+      (is (= "Morning Star" (:title (get-program state 0))) "Morning Star still installed")))
+
+(deftest onr-sneak-preview-heap-locked-test
+    ;; Heap Locked Test
+    (do-game
+      (new-game {:corp {:deck [(qty "Hedge Fund" 5) "Blacklist"]}
+                 :runner {:hand [(qty "ONR Sneak Preview" 3) "Scavenge" "Inti"]
+                          :deck ["Pelangi"]
+                          :discard ["Morning Star"]}})
+      (play-from-hand state :corp "Blacklist" "New remote")
+      (rez state :corp (refresh (get-content state :remote1 0)))
+      (take-credits state :corp)
+      (play-from-hand state :runner "ONR Sneak Preview")
+      (is (= "Install a program from the stack?" (:msg (prompt-map :runner))) "Stack is only option")
+      (is (= 1 (-> (prompt-map :runner) :choices count)) "Runner has 1 choice")
+      (is (= ["Stack"] (prompt-buttons :runner)) "Runner's only choice is Stack")))
+
+(deftest onr-stakeout
+  ;; Process Automation
+  (do-game
+    (new-game {:corp {:deck [(qty "Hedge Fund" 5)]}
+               :runner {:deck [(qty "Sure Gamble" 5)]
+                        :hand ["ONR Stakeout"]}})
+    (take-credits state :corp)
+    (let [credits (:credit (get-runner))
+          hand (dec (count (:hand (get-runner))))]
+      (play-from-hand state :runner "ONR Stakeout")
+      (is (= (+ 2 credits) (:credit (get-runner))) "Should gain 2 credits")
+      (is (= (inc hand) (count (:hand (get-runner)))) "Should draw 1 card"))))

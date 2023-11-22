@@ -228,8 +228,9 @@
     (runner-link-repeat state _ eid card trace abilities)))
 
 (defn- onr-runner-trace-response
-  [state side eid card {:keys [label runner-credits runner-links] :as trace}]
+  [state side eid card {:keys [label runner-credits runner-links runner-bonus-link] :as trace}]
   ;; if there are no links, then the runner can't really do anything
+  (boost-link state runner-bonus-link)
   (if-not (seq runner-links)
     ;; there's no links possible
     (onr-resolve-trace state side eid card trace)
@@ -248,7 +249,7 @@
 
 (defn- onr-trace-start
   "Starts the onr trace process by having the corp secretly decide how many credits to spend"
-  [state side eid card {:keys [max-strength hacker-tracker label corp-credits corp-extra-bid-cost] :as trace}]
+  [state side eid card {:keys [runner-bonus-link max-strength hacker-tracker label corp-credits corp-extra-bid-cost] :as trace}]
   (system-msg state side (str "uses " (:title card) " to initiate a trace with max strength "
                               max-strength
                               (when label
@@ -267,6 +268,8 @@
                     max-bid
                     (when (pos? hacker-tracker)
                       (str "(" max-strength " base, " hacker-tracker " possible Hacker Trackers )"))
+                    (when (pos? runner-bonus-link)
+                      (str "(runner has " runner-bonus-link " bonus link)"))
                     (when (> corp-bid-cost 1)
                       (str "(each point costs " corp-bid-cost " [Credits])")))
        :choices {:number (req max-bid)}
@@ -298,10 +301,12 @@
                                            (all-installed state :corp))
                    hacker-tracker-credits (map #(get-counters % :credit) hacker-trackers)
                    hacker-tracker-credits (reduce + hacker-tracker-credits)
+                   runner-bonus-link (+ (or (sum-effects state side :link-for-run) 0) (:baselink (:identity (:runner @state))))
                    max-str-adjust (or (sum-effects state side :max-strength card) 0)
                    trace (merge trace {:player :corp
                                        :max-strength (max (+ max-strength max-str-adjust) 0)
                                        :hacker-tracker (or hacker-tracker-credits 0)
+                                       :runner-bonus-link runner-bonus-link
                                        :corp-credits corp-credits
                                        :runner-credits runner-credits})]
                (reset-onr-trace-modifications state)
