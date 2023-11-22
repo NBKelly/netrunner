@@ -55,10 +55,10 @@
    [game.core.revealing :refer [reveal]]
    [game.core.rezzing :refer [derez get-rez-cost rez]]
    [game.core.runs :refer [bypass-ice can-run-server? gain-next-run-credits get-runnable-zones
-                           make-run prevent-access successful-run-replace-breach
+                           make-run prevent-access successful-run-replace-breach end-run
                            total-cards-accessed]]
    [game.core.sabotage :refer [sabotage-ability]]
-   [game.core.say :refer [system-msg]]
+   [game.core.say :refer [system-msg say]]
    [game.core.servers :refer [central->name is-central? is-remote? target-server unknown->kw zone->name
                               zones->sorted-names]]
    [game.core.set-aside :refer [get-set-aside set-aside]]
@@ -72,6 +72,7 @@
    [game.core.winning :refer [check-win-by-agenda]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [game.utils :refer :all]
+   [game.core.onr-utils :refer [dice-roll]]
    [jinteki.utils :refer :all]
    [jinteki.validator :refer [legal?]]))
 
@@ -195,6 +196,7 @@
                 :waiting-prompt "Runner to resolve pre-damage events"
                 :player :runner
                 :req (req (and (> (last targets) (count (:hand runner)));;would this flatline?
+                               (not (nth targets 2)) ;; can be prevented
                                (can-pay? state side
                                          (assoc eid :source card :source-type :play)
                                          card nil [:credit (play-cost state side (assoc-in card [:on-play :additional-cost] nil))])))
@@ -298,6 +300,18 @@
     :effect (req (wait-for (gain-credits state side 1)
                            (draw state side eid 2)))}})
 
+(defcard "ONR Custodial Position"
+  {:makes-run true
+   :on-play {:req (req rd-runnable)
+             :async true
+             :effect (effect (make-run eid :rd card))}
+   :events [{:event :successful-run
+             :silent (req true)
+             :req (req (and (= :rd (target-server context))
+                            this-card-run))
+             :effect (effect (register-events
+                              card [(breach-access-bonus :rd 2 {:duration :end-of-run})]))}]})
+
 (defcard "ONR Deal with Militech"
   {:on-play
    {:req (req (and (some #(has-subtype? % "Icebreaker") (all-installed state :runner))
@@ -310,6 +324,24 @@
                     :ability-name "Militech Counters"
                     :req (req true)
                     :value (req (get-counters (get-card state target) :militech))}))}})
+
+(defcard "ONR Decoy Signal"
+  {:makes-run true
+   :on-play {:prompt "Choose a server"
+             :req (req (some #(can-run-server? state %) servers))
+             :choices (req (filter #(can-run-server? state %) servers))
+             :async true
+             :effect (effect (make-run eid target card))}
+   :events [{:req (req (and ;;(= :approach-ice (:phase run))
+                         ;;this-card-run
+             ;;            (ice? current-ice)
+                         (not (rezzed? current-ice))))
+             :event :approach-ice
+             :label "expose approached ice"
+             :msg "expose the approached ice"
+             :async true
+             :effect (req (wait-for (expose state side (make-eid state eid) current-ice)
+                                    (continue-ability state side (offer-jack-out) card nil)))}]})
 
 (defcard "ONR Demolition Run"
   {:makes-run true
@@ -334,6 +366,55 @@
                                                         (gain-tags state :corp eid 3)))}
                                 card nil)))}})]})
 
+(defcard "ONR Desperate Competitor"
+  {:on-play
+   {:req (req (some #(has-subtype? (:card (first %)) "Gray Ops") (turn-events state side :agenda-stolen)))
+    :msg "score 1 agenda point" ;; 👀
+    :async true
+    :effect (req (gain-agenda-points state side eid 1))}})
+
+(defcard "ONR Disgruntled Ice Technician"
+  {:makes-run true
+   :on-play {:prompt "Choose a server"
+             :choices (req runnable-servers)
+             :async true
+             :effect (effect (make-run eid target card))}
+   :events [{:event :pass-ice
+             :req (req (and (rezzed? (:ice context))
+                            (not-used-once? state {:once :per-run} card)
+                            (all-subs-broken? (:ice context))))
+             :async true
+             :effect
+             (effect
+               (continue-ability
+                 (let [ice (:ice context)]
+                   {:optional
+                      {:prompt (str "Derez " (:title ice) " and end the run?")
+                       :once :per-run
+                       :yes-ability
+                       {:async true
+                        :msg (msg "derez " (card-str state ice) " and end the run")
+                        :effect (req (derez state side ice)
+                                     (end-run state :runner eid card))}}})
+                 card nil))}]})
+
+(defcard "ONR Do the 'Drine [TM]"
+  {:on-play
+   {:req (req (and (> (count (:hand runner)) 2) (pos? (hand-size state :runner))))
+    :async true
+    :prompt "Take how much brain damage?"
+    :choices {:number (req (min (count (:hand runner)) (hand-size state :runner)))
+              :default (req 1)}
+    :msg (msg "take " target " brain damage (cannot be prevented) and gain " (* 4 target) " [Credits]")
+    :effect (req (wait-for (damage state :runner (make-eid state eid) :brain target {:card card :unpreventable true})
+                           (gain-credits state side eid (* 4 target))
+                           (when-not (= 0 target) ;; todo - remove this if anyone complains
+                             (say state side {:text "Worth it"}))))}})
+
+(defcard "ONR Drone for a Day"
+  {:msg "gain 9 [Credits] and take 1 tag"
+   :effect (req (wait-for (gain-tags state :corp 1)
+                          (gain-credits state :runner eid 9)))})
 
 (defcard "ONR Edited Shipping Manifests"
   {:makes-run true
@@ -353,6 +434,107 @@
                                 (lose-credits state :corp creds-lost)
                                 (wait-for (gain-tags state :runner 1)
                                           (gain-credits state :runner eid 10)))))}})]})
+
+(defcard "ONR Executive Wiretaps"
+  {:makes-run true
+   :on-play {:req (req hq-runnable)
+             :async true
+             :effect (effect (make-run eid :hq card))}
+   :events [{:event :successful-run
+             :silent (req true)
+             :req (req (and (= :hq (target-server context))
+                            this-card-run))
+             :effect (effect (register-events
+                              card [(breach-access-bonus :hq 2 {:duration :end-of-run})]))}]})
+
+
+(defcard "ONR Faked Hit"
+  {:on-play {:msg "Give the Corp 1 bad publicity and suffer 2 brain damage"
+             :async true
+             :effect (req (wait-for (gain-bad-publicity state :runner 1)
+                                    (damage state :runner eid :brain 2 {:unpreventable true :card card})))}})
+
+(defcard "ONR Finders Keepers"
+  {:on-play {:async true
+             :effect (req (let [di (dice-roll 3)
+                                sum (reduce + di)]
+                            (continue-ability
+                              state side
+                              {:msg (msg "Gain " sum " [credits] (3d6 - "
+                                         (first di) " "
+                                         (second di) " "
+                                         (last di) ")")
+                               :async true
+                               :effect (effect (gain-credits eid sum))}
+                              card nil)))}})
+
+(defcard "ONR Forged Activation Orders"
+  {:on-play
+   {:choices {:card #(and (ice? %)
+                          (not (rezzed? %)))}
+    :async true
+    :effect (req (let [ice target
+                       serv (zone->name (second (get-zone ice)))
+                       icepos (card-index state ice)]
+                   (continue-ability
+                     state :corp
+                     {:prompt "Choose one"
+                      :choices [(when (and (can-rez? state :corp ice)
+                                           (can-pay? state :corp eid ice nil (get-rez-cost state :corp ice nil)))
+                                  (str "Rez " (card-str state ice)))
+                                (str "Trash " (card-str state ice))]
+                      :async true
+                      :msg (msg "force the Corp to " (decapitalize target))
+                      :waiting-prompt true
+                      :effect (req (if (str/starts-with? target "Rez")
+                                     (rez state :corp eid ice)
+                                     (trash state :corp eid ice {:cause-card card
+                                                                 :cause :forced-to-trash})))}
+                     card nil)))}})
+
+(defcard "ONR Forgotten Backup Chip"
+  {:on-play (runner-recur program?)})
+
+(defcard "ONR Fortress Respecification"
+  (letfn [(sun [serv]
+            {:prompt "Choose 2 pieces of ice to swap"
+             :choices {:card #(and (= [:servers serv :ices] (get-zone %))
+                                   (ice? %))
+                       :max 2}
+             :async true
+             :effect (req (if (= (count targets) 2)
+                            (do (swap-ice state side (first targets) (second targets))
+                                (system-msg state side
+                                            (str "uses " (:title card) " to swap "
+                                                 (card-str state (first targets))
+                                                 " with "
+                                                 (card-str state (second targets))))
+                                (continue-ability state side (sun serv) card nil))
+                            (do (system-msg state side "has finished rearranging ice")
+                                (effect-completed state side eid))))})]
+    {:on-play {:req (req (seq (:successful-run runner-reg)))
+               :msg (msg "rearrange ice protecting " (zone->name (last (:successful-run runner-reg))))
+               :effect (req
+                         (continue-ability
+                           state side
+                           (sun (first (:successful-run runner-reg)))
+                           card nil))}}))
+
+(defcard "ONR Frame-Up"
+  {:on-play {:req (req (and (some #{:hq} (:successful-run runner-reg))
+                            (some #{:rd} (:successful-run runner-reg))))
+             :msg (msg "give the Corp 1 bad publicity")
+             :async true
+             :effect (req (wait-for (gain-bad-publicity state side 1)
+                                    (if (or (some #(has-subtype? (:card (first %)) "Black Ops") (turn-events state side :agenda-stolen))
+                                            (some #(has-subtype? (:card (first %)) "Black Ops") (turn-events state side :runner-trash)))
+                                      (continue-ability
+                                        state side
+                                        {:msg "give the Corp 1 additional bad publicity"
+                                         :async true
+                                         :effect (req (gain-bad-publicity state side eid 1))}
+                                        card nil)
+                                      (effect-completed state side eid))))}})
 
 (defcard "ONR Gideon's Pawnshop"
   {:on-play (runner-recur)})
@@ -463,6 +645,7 @@
               :player :runner
               :async true
               :req (req (and (= :meat (first targets))
+                             (not (nth 2 targets)) ;; can be prevented
                              (can-pay? state side
                                        (assoc eid :source card :source-type :play)
                                        card nil [:credit (play-cost state side (assoc-in card [:on-play :additional-cost] nil))])))

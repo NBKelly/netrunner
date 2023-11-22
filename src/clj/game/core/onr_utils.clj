@@ -97,7 +97,13 @@
      :msg (str "gain +" val " Link")
      :effect (req (boost-link state val))}))
 
-(defn dice-roll [] (inc (rand-int 6)))
+(defn dice-roll
+  ([] (inc (rand-int 6)))
+  ([x] (if-not (pos? x)
+         []
+         (if (= x 1)
+           [(dice-roll)]
+           (concat [(dice-roll)] (dice-roll (dec x)))))))
 
 (defn deep-merge [a & maps]
    (if (map? a)

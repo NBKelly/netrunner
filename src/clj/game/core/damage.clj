@@ -186,7 +186,7 @@
    (swap! state update-in [:damage :damage-bonus] dissoc type)
    (swap! state update-in [:damage :damage-prevent] dissoc type)
    ;; alert listeners that damage is about to be calculated.
-   (wait-for (trigger-event-sync state side (make-eid state eid) :pre-damage type card n)
+   (wait-for (trigger-event-sync state side (make-eid state eid) :pre-damage type card unpreventable n) ;; we should be able to communicate if the damage can be prevented at this point!
              (let [active-player (get-in @state [:active-player])]
                (if unpreventable
                  (resolve-damage state side eid type (damage-count state side type n args) args)

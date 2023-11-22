@@ -44,9 +44,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   405 / 584
-TESTS:   201 / 405
-NO TEST: 201
+TOTAL:   416 / 584
+TESTS:   204 / 416
+NO TEST: 209
 NO IMP:  3
 --------------------------
 002 + Access through Alpha
@@ -163,7 +163,7 @@ NO IMP:  3
 117 ^ Crumble (requires braniac id)
 
 120 + Crystal Wall
-
+121 + Custodial Position
 122 ^ Crash Space
 123 ^ Cyfermaster (trivial icebreaker - no test)
 124 ^ Danshi's Second ID
@@ -185,21 +185,24 @@ NO IMP:  3
 140 + Deal with Militech
 141 ^ Death from Above
 142 + Death Yo-Yo
-
+143 ^ Decoy Signal
 144 ^ Dedicated Response Team
 145 ^ Deep Thought
 146 ^ Demolition Run
 
 148 + Department of Truth Enhancement
 149 + Dermatech Bodyplating
-
+150 ^ Desperate Competitor
 151 ^ Detroit Police Contract
 
 154 ^ Diplomatic Immunity
+155 ^ Disgruntled Ice Technician
 
 157 ^ Disintegrator
 158 ^ Dogcatcher
 159 ^ Dog Pile
+
+161 ^ Do the 'Drine [TM]
 
 163 + "Drifter" Mobile Environment
 
@@ -226,9 +229,10 @@ NO IMP:  3
 
 187 ^ Executive Extraction
 188 + Executive File Clerk
-
+189 + Executive Wiretaps
 190 + Expendable Family Member
 
+194 ^ Faked Hit
 195 + Fall Guy
 
 197 + Falsified-Transactions Expert
@@ -237,15 +241,18 @@ NO IMP:  3
 202 + Fetch 4.0.1
 203 + Field Reporter for Ice and Data
 204 + Filter
-
+205 ^ Finders Keepers (random, need a way to rig tests)
 206 + Fire Wall
 
 209 + Food Fight
 210 ^ Force Shield
+211 + Forged Activation Orders
 
 213 ^ Fortress Architects
-
+214 ^ Fortress Respecification
 215 ^ Forward's Legacy
+
+217 ^ Frame-Up
 
 219 ^ Fubar
 
@@ -636,14 +643,18 @@ The following (marked) cards have no tests or implementations:
   126 ^ Databroker
   129 ^ Data Fort Reclamation
   141 ^ Death from Above
+  143 ^ Decoy Signal
   144 ^ Dedicated Response Team
   145 ^ Deep Thought
   146 ^ Demolition Run
+  150 ^ Desperate Competitor
   151 ^ Detroit Police Contract
   154 ^ Diplomatic Immunity
+  155 ^ Disgruntled Ice Technician
   157 ^ Disintegrator
   158 ^ Dogcatcher
   159 ^ Dog Pile
+  161 ^ Do the 'Drine [TM]
   165 ^ Dropp
   167 ^ Dupree
   168 ^ Dwarf
@@ -653,10 +664,14 @@ The following (marked) cards have no tests or implementations:
   182 ^ ESA Contract
   185 ^ Evil Twin
   187 ^ Executive Extraction
+  194 ^ Faked Hit
   201 ^ Fetal AI
+  205 ^ Finders Keepers (random, need a way to rig tests)
   210 ^ Force Shield
   213 ^ Fortress Architects
+  214 ^ Fortress Respecification
   215 ^ Forward's Legacy
+  217 ^ Frame-Up
   219 ^ Fubar
   222 ^ Garbage In
   224 ^ Genetics-Visionary Acquisition
@@ -791,4 +806,4 @@ The following (marked) cards have no tests or implementations:
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 539
+Random card to implement: 462

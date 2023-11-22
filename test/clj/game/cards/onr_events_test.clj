@@ -70,6 +70,21 @@
       (is (= (inc credits) (:credit (get-runner))) "Gained 1 credit")
       (is (= (+ 2 hand) (count (:hand (get-runner)))) "Drew 2 cards"))))
 
+(deftest onr-custodial-position
+  (do-game
+     (new-game {:corp {:deck [(qty "Quandary" 5)]
+                       :hand [(qty "Quandary" 5)]}
+                :runner {:deck ["ONR Custodial Position"]}})
+     (take-credits state :corp)
+     (play-run-event state "ONR Custodial Position" :rd)
+     (is (accessing state "Quandary"))
+     (click-prompt state :runner "No action")
+     (is (accessing state "Quandary"))
+     (click-prompt state :runner "No action")
+     (is (accessing state "Quandary"))
+     (click-prompt state :runner "No action")
+     (is (not (:run @state)))))
+
 (deftest onr-edited-shipping-manifests-steal
     ;; Use ability
     (do-game
@@ -82,6 +97,18 @@
       (is (= 1 (count-tags state)) "Runner took 1 tags")
       (is (= 14 (:credit (get-runner))) "Runner gained 10 credits")
       (is (= 7 (:credit (get-corp))) "Corp lost 1 credits")))
+
+(deftest onr-executive-wiretaps
+  ;; Legwork
+  (do-game
+    (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                      :hand [(qty "Hostile Takeover" 3)]}
+               :runner {:hand ["ONR Executive Wiretaps"]}})
+    (take-credits state :corp)
+    (play-run-event state "ONR Executive Wiretaps" :hq)
+    (dotimes [_ 3]
+      (click-prompt state :runner "Steal"))
+    (is (not (:run @state)) "Run has finished")))
 
 (deftest onr-edited-shipping-manifests-access
     ;; Access
@@ -96,6 +123,45 @@
       ;;(is (zero? (count-tags state)) "Runner did not take any tags")
       (is (= 4 (:credit (get-runner))) "Runner did not gain any credits")
       (is (= 0 (:credit (get-corp))) "Corp did not lose any credits")))
+
+(deftest onr-forged-activation-orders-corp-chooses-to-trash-the-ice
+    ;; Corp chooses to trash the ice
+    (do-game
+      (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                        :hand ["Ice Wall"]}
+                 :runner {:hand ["ONR Forged Activation Orders"]}})
+      (play-from-hand state :corp "Ice Wall" "HQ")
+      (take-credits state :corp)
+      (play-from-hand state :runner "ONR Forged Activation Orders")
+      (click-card state :runner "Ice Wall")
+      (click-prompt state :corp "Trash ice protecting HQ at position 0")
+      (is (= "Ice Wall" (:title (get-discarded state :corp 0))) "Ice Wall is trashed")))
+
+(deftest onr-forged-activation-orders-corp-chooses-to-rez-the-ice
+    ;; Corp chooses to rez the ice
+    (do-game
+      (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                        :hand ["Ice Wall"]}
+                 :runner {:hand ["ONR Forged Activation Orders"]}})
+      (play-from-hand state :corp "Ice Wall" "HQ")
+      (take-credits state :corp)
+      (play-from-hand state :runner "ONR Forged Activation Orders")
+      (click-card state :runner "Ice Wall")
+      (click-prompt state :corp "Rez ice protecting HQ at position 0")
+      (is (rezzed? (get-ice state :hq 0)) "Ice Wall is rezzed")))
+
+(deftest onr-forged-activation-orders-corp-cannot-rez-the-ice
+    ;; Corp cannot rez the ice
+    (do-game
+      (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                        :hand ["Chiyashi"]}
+                 :runner {:hand ["ONR Forged Activation Orders"]}})
+      (play-from-hand state :corp "Chiyashi" "HQ")
+      (take-credits state :corp)
+      (play-from-hand state :runner "ONR Forged Activation Orders")
+      (click-card state :runner "Chiyashi")
+      (is (= ["Trash ice protecting HQ at position 0"]
+           (mapv :value (:choices (prompt-map :corp)))))))
 
 (deftest onr-gideons-pawnshop
   ;; Archived Memories
