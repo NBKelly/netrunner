@@ -43,7 +43,7 @@
     (play-from-hand state :corp "Hedge Fund")
     (take-credits state :corp)
     (play-run-event state "ONR Blackmail" :hq)
-    (is (= 1 (count (:scored (get-runner)))) "Notoriety moved to score area")
+    (is (= 0 (count (:scored (get-runner)))) "we score without moving the card")
     (is (= 1 (:agenda-point (get-runner))) "Notoriety scored for 1 agenda point")))
 
 (deftest onr-bodyweight-tm-synthetic-blood

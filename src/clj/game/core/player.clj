@@ -32,6 +32,7 @@
    hand-size
    agenda-point
    agenda-point-req
+   agenda-point-debt
    keep
    quote])
 
@@ -63,7 +64,7 @@
      :bad-publicity (map->BadPublicity {:base 0 :additional 0})
      :toast []
      :hand-size (map->HandSize {:base 5 :total 5})
-     :agenda-point 0 :agenda-point-req 7
+     :agenda-point 0 :agenda-point-req 7 :agenda-point-debt 0
      :keep false
      :quote c-quote}))
 
@@ -97,6 +98,7 @@
    hand-size
    agenda-point
    agenda-point-req
+   agenda-point-debt
    hq-access
    rd-access
    rd-access-fn
@@ -134,7 +136,7 @@
               :used 0
               :only-for {}}
      :hand-size (map->HandSize {:base 5 :total 5})
-     :agenda-point 0 :agenda-point-req 7
+     :agenda-point 0 :agenda-point-req 7 :agenda-point-debt 0
      :rd-access-fn seq
      :hq-access-fn shuffle
      :brain-damage 0

@@ -1,9 +1,13 @@
 (ns game.core.gaining
   (:require
+   [game.core.agendas :refer [update-all-agenda-points]]
    [game.core.say :refer [system-msg]]
-    [game.core.eid :refer [make-eid effect-completed]]
-    [game.core.engine :refer [trigger-event trigger-event-sync]]
-    [game.core.toasts :refer [toast]]))
+   [game.core.eid :refer [make-eid effect-completed]]
+   [game.core.effects :refer [register-lingering-effect]]
+   [game.core.engine :refer [trigger-event trigger-event-sync]]
+   [game.core.winning :refer [check-win-by-agenda]]
+   [game.macros :refer [req wait-for]]
+   [game.core.toasts :refer [toast]]))
 
 (defn safe-inc-n
   "Helper function to safely update a value by n. Returns a function to use with `update` / `update-in`"
@@ -83,6 +87,57 @@
           (deduct state side [cost-type amount])))
     (trigger-event state side (if (= side :corp) :corp-lose :runner-lose) [cost-type amount])))
 
+(defn lose-agenda-point-debt
+  "Utility function for losing AP debt"
+  ([state side eid amount] (lose-agenda-point-debt state side eid amount nil))
+  ([state side eid amount args]
+   (if (and amount
+            (or (= :all amount)
+                (pos? amount))
+            (pos? (:agenda-point-debt (side @state))))
+     (do (lose state side :agenda-point-debt amount)
+         (trigger-event-sync state side eid (if (= :corp side) :corp-agenda-point-debt-loss :runner-agenda-point-debt-loss) amount args))
+     (effect-completed state side eid))))
+
+(defn gain-agenda-points
+  "Utility function to pass fake AP through the debt system"
+  ([state side eid amount] (gain-agenda-points state side eid amount nil))
+  ([state side eid amount args]
+   (if (and amount
+            (pos? amount))
+     ;; do we owe debt?
+     (let [ap-debt (or (get-in @state [side :agenda-point-debt]) 0)
+           saved-side side]
+       (if (zero? ap-debt)
+         (do (register-lingering-effect
+               state side nil
+               {:type :user-agenda-points
+                ;; `target` is either `:corp` or `:runner`
+                :req (req (= saved-side target))
+                :value amount})
+             (update-all-agenda-points state side)
+             (check-win-by-agenda state side)
+             (trigger-event-sync state side eid (if (= :corp side) :corp-agenda-point-gain :runner-agenda-point-gain) amount args)
+             (effect-completed state side eid))
+         (if (>= ap-debt amount) ;; this looks correct to me
+           (do
+             (system-msg state side (str "forfiets " amount " agenda points"))
+             (lose-agenda-point-debt state side eid amount args))
+           (do
+             (system-msg state side (str "forfiets " ap-debt " agenda points"))
+             (wait-for (lose-agenda-point-debt state side eid ap-debt args)
+                       (gain-agenda-points state side eid (- amount ap-debt))))))))))
+
+(defn gain-agenda-point-debt
+  "Utility function for agenda debt"
+  ([state side eid amount] (gain-agenda-point-debt state side eid amount nil))
+  ([state side eid amount args]
+   (if (and amount
+            (pos? amount))
+     (do (gain state side :agenda-point-debt amount)
+         (trigger-event-sync state side eid (if (= :corp side) :corp-agenda-point-debt-gain :runner-agenda-point-debt-gain) amount args))
+     (effect-completed state side eid))))
+
 (defn gain-click-debt
   "Utility function for gaining click debt"
   ([state side eid amount] (gain-click-debt state side eid amount nil))
@@ -90,7 +145,7 @@
    (if (and amount
             (pos? amount))
      (do (gain state side :action-debt amount)
-         (trigger-event-sync state side eid (if (= :debt side) :corp-action-debt-gain :runner-action-debt-gain) amount args))
+         (trigger-event-sync state side eid (if (= :corp side) :corp-action-debt-gain :runner-action-debt-gain) amount args))
      (effect-completed state side eid))))
 
 (defn gain-debt

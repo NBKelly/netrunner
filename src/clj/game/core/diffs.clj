@@ -225,6 +225,8 @@
    :set-aside
    :click
    :credit
+   :agenda-point-debt
+   :run-credit
    :action-debt
    :toast
    :hand-size
@@ -251,7 +253,6 @@
 (def corp-keys
   [:servers
    :acme-loans
-   :run-credit
    :bad-publicity])
 
 (defn servers-summary
@@ -304,7 +305,6 @@
 
 (def runner-keys
   [:rig
-   :run-credit
    :link
    :tag
    :memory

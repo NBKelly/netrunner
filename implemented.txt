@@ -44,9 +44,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   401 / 584
-TESTS:   201 / 401
-NO TEST: 197
+TOTAL:   403 / 584
+TESTS:   201 / 403
+NO TEST: 199
 NO IMP:  3
 --------------------------
 002 + Access through Alpha
@@ -59,10 +59,11 @@ NO IMP:  3
 009 ^ AI Boon (rng card)
 010 ^ AI Chief Financial Officer
 012 + All-Hands
-
+013 ^ All-Nighter
 014 + Annual Reviews
 015 + Anonymous Tip
 
+017 ^ Arasaka Owns You
 018 + Arasaka Portable Prototype
 019 + Armadillo Armored Road Home
 020 ^ Armageddon
@@ -591,6 +592,8 @@ The following (marked) cards have no tests or implementations:
   008 ^ AI Board Member
   009 ^ AI Boon (rng card)
   010 ^ AI Chief Financial Officer
+  013 ^ All-Nighter
+  017 ^ Arasaka Owns You
   020 ^ Armageddon
   023 ^ Artificial Security Directors
   025 ^ Audit of Call Records
@@ -786,4 +789,4 @@ The following (marked) cards have no tests or implementations:
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 379
+Random card to implement: 89

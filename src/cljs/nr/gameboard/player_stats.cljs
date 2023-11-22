@@ -68,7 +68,7 @@
   (let [ctrl (stat-controls-for-side :runner)]
     (fn [runner]
       (let [{:keys [user click credit run-credit action-debt memory link tag
-                    brain-damage active]} @runner
+                    brain-damage active agenda-point-debt]} @runner
             base-credit (- credit run-credit)
             plus-run-credit (when (pos? run-credit) (str "+" run-credit))
             icons? (get-in @app-state [:options :player-stats-icons] true)]
@@ -96,6 +96,10 @@
            (ctrl
              :action-debt
              [:div (str action-debt " " (tr [:game.action-debt "Actions to Forgo"]))]))
+         (when (pos? agenda-point-debt)
+           (ctrl
+             :agenda-point-debt
+             [:div (str agenda-point-debt " " (tr [:game.action-debt "Agenda Points Owed"]))]))
          (ctrl
           :brain-damage
           [:div (str brain-damage " " (tr [:game.brain-damage "Core Damage"]))])]))))
@@ -103,7 +107,8 @@
 (defmethod stats-area "Corp" [corp]
   (let [ctrl (stat-controls-for-side :corp)]
     (fn [corp]
-      (let [{:keys [user click credit run-credit action-debt bad-publicity active acme-loans]} @corp
+      (let [{:keys [user click credit run-credit action-debt bad-publicity active acme-loans
+                    agenda-point-debt]} @corp
             base-credit (- credit run-credit)
             plus-run-credit (when (pos? run-credit) (str "+" run-credit))
             icons? (get-in @app-state [:options :player-stats-icons] true)]
@@ -119,6 +124,10 @@
            (ctrl
              :action-debt
              [:div (str action-debt " " (tr [:game.action-debt "Actions to Forgo"]))]))
+         (when (pos? agenda-point-debt)
+           (ctrl
+             :agenda-point-debt
+             [:div (str agenda-point-debt " " (tr [:game.action-debt "Agenda Points Owed"]))]))
          (when (pos? acme-loans)
            (ctrl
              :acme-loans

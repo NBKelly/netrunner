@@ -397,7 +397,7 @@
                              (damage-prevent state :corp :net 1)
                              (damage-prevent state :corp :meat 1)
                              (damage-prevent state :corp :brain 1))}
-               {:label "Gain 1 click"
+               {:label (msg "Gain a click")
                 :cost [:agenda 1]
                 :req (req (= :corp (:active-player @state)))
                 :effect (effect (gain-clicks 1))
@@ -560,12 +560,15 @@
      :abilities [ability]}))
 
 (defcard "ONR World Domination"
-  {:on-score {:msg "gain and additional 4 agenda points 👀"
-              :effect (req (register-lingering-effect
-                             state side nil
-                             {:type :user-agenda-points
-                              ;; `target` is either `:corp` or `:runner`
-                              :req (req (= :corp target))
-                              :value 4})
-                           (update-all-agenda-points state side)
-                           (check-win-by-agenda state side))}})
+  {:on-score {:msg "gain an additional 4 agenda points 👀"}
+   :agendapoints-runner (req 3)
+   :agendapoints-corp (req 7)})
+
+              ;; :effect (req (register-lingering-effect
+              ;;                state side nil
+              ;;                {:type :user-agenda-points
+              ;;                 ;; `target` is either `:corp` or `:runner`
+              ;;                 :req (req (= :corp target))
+              ;;                 :value 4})
+              ;;              (update-all-agenda-points state side)
+              ;;              (check-win-by-agenda state side))}})

@@ -3,9 +3,11 @@
     [game.core.board :refer [get-all-cards]]
     [game.core.card :refer [agenda? map->Card]]
     [game.core.card-defs :refer [card-def]]
-    [game.core.effects :refer [sum-effects]]
+    [game.core.effects :refer [sum-effects register-lingering-effect]]
     [game.core.eid :refer [make-eid]]
-    [game.core.update :refer [update!]]))
+    [game.core.say :refer [system-msg]]
+    [game.core.update :refer [update!]]
+    [game.macros :refer [req]]))
 
 (defn- advancement-requirement
   [state {:keys [advancementcost] :as card}]
@@ -70,9 +72,31 @@
                            (keep :current-points)
                            (reduce + 0))
         total-points (+ user-adjusted-points scored-points)
+        ap-debt (get-in @state [side :agenda-point-debt])
         changed? (not= current-points total-points)]
     (when changed?
-      (swap! state assoc-in [side :agenda-point] total-points))
+      (if (< current-points total-points)
+        (if (pos? ap-debt) ;; we must resolve agenda point debt here
+          (let [ap-gained (- total-points current-points)
+                to-repay (if (>= ap-debt ap-gained) ap-gained ap-debt)
+                resultant-debt (- ap-debt to-repay)
+                total-points (- total-points to-repay)]
+            (do
+              (system-msg state side (str "forfeits " to-repay " agenda points"))
+              ;; fix the new debt
+              (swap! state assoc-in [side :agenda-point-debt] resultant-debt)
+              ;; register the negative points
+              (register-lingering-effect
+                state side nil
+                (let [tg-side side]
+                  {:type :user-agenda-points
+                   ;; `target` is either `:corp` or `:runner`
+                   :req (req (= target tg-side))
+                   :value (- to-repay)}))
+              ;; swap the fixed AP value into state
+              (swap! state assoc-in [side :agenda-point] total-points)))
+          (swap! state assoc-in [side :agenda-point] total-points))
+        (swap! state assoc-in [side :agenda-point] total-points)))
     changed?))
 
 (defn- update-side-agenda-points

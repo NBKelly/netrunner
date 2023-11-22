@@ -31,8 +31,8 @@
    [game.core.flags :refer [any-flag-fn? can-rez? can-trash?
                             clear-all-flags-for-card! clear-run-flag! clear-turn-flag!
                             in-corp-scored? register-run-flag! register-turn-flag! zone-locked?]]
-   [game.core.gaining :refer [gain gain-clicks gain-credits lose lose-clicks
-                              lose-credits]]
+   [game.core.gaining :refer [gain gain-clicks gain-credits lose lose-clicks gain-click-debt
+                              lose-credits gain-agenda-point-debt gain-agenda-points]]
    [game.core.hand-size :refer [corp-hand-size+ hand-size]]
    [game.core.hosting :refer [host]]
    [game.core.ice :refer [all-subs-broken? get-strength pump pump-all-icebreakers
@@ -113,6 +113,96 @@
              :effect (effect (register-events
                               card [(breach-access-bonus :hq 3 {:duration :end-of-run})]))}]})
 
+(defcard "ONR All-Nighter"
+  {:makes-run true
+   :on-play {:prompt "Choose a server"
+             :choices (req runnable-servers)
+             :async true
+             :msg (msg "make a run on " target)
+             :effect (req (wait-for (make-run state side target card)
+                                    (let [card (get-card state card)
+                                          run-again (get-in card [:special :run-again])]
+                                      (if run-again
+                                        (continue-ability
+                                          state side
+                                          {:prompt "Choose a server"
+                                           :choices (req runnable-servers)
+                                           :async true
+                                           :msg (msg "make a run on " target)
+                                           :effect (req (make-run state side eid target card))}
+                                          card nil)
+                                        (effect-completed state side eid)))))}
+   :events [{:event :run-ends
+             :optional {:req (req (and (not (get-in card [:special :run-again]))
+                                       (:unsuccessful target)))
+                        :player :runner
+                        :prompt "Make another run?"
+                        :yes-ability
+                        {:effect (req (let [last-run (get-in @state [:runner :register :last-run])
+                                            attacked-server (first (:server last-run))]
+                                        (update! state side (update card :special
+                                                                    assoc
+                                                                    :run-again attacked-server))))}}}]})
+
+(defcard "ONR Arasaka Owns You"
+  (let [gendie-debt {:msg (msg "forfiet the next three agenda points they score")
+                     :async true
+                     :effect (req (gain-agenda-point-debt state side eid 3))}
+        forgo-four {:msg (msg "forgo their next four actions")
+                    :async true
+                    :effect (req (wait-for (gain-click-debt state side (make-eid state eid) 4)
+                                           (continue-ability state side gendie-debt card nil)))}
+        remove-tags {:msg (msg "remove all tags")
+                     :async true
+                     :effect (req (wait-for (lose-tags state side (make-eid state eid) :all)
+                                            (continue-ability state side forgo-four card nil)))}
+        gain-ten {:msg (msg "gain 10 [Credits]")
+                  :async true
+                  :effect (req (wait-for (gain-credits state side (make-eid state eid) 10)
+                                         (continue-ability state side remove-tags card nil)))}
+        draw-to-hand-size {:msg (msg "draw up to maximum hand size ("
+                                     (quantify (max (- (hand-size state runner) (count (:hand runner))) 0)
+                                     " card") ")")
+                           :async true
+                           :effect (req (let [to-draw (max (- (hand-size state runner) (count (:hand runner))) 0)]
+                                          (wait-for (draw state side (make-eid state eid) to-draw)
+                                                    (continue-ability
+                                                      state side
+                                                      gain-ten card nil))))}]
+    {;; todo - would it be possible to hide what card is triggering I wonder? this works for now though
+     :on-play
+     {:additional-cost [:agenda-point 50] ;; ghetto way of stopping regular cast
+      :msg (msg "prevent all damage")
+      :async true
+      :effect (req (damage-prevent state :runner :meat Integer/MAX_VALUE)
+                   (damage-prevent state :runner :net Integer/MAX_VALUE)
+                   (damage-prevent state :runner :brain Integer/MAX_VALUE)
+                   (when (pos? (:brain-damage runner))
+                     (system-msg state side (str "uses " (:title card) " to cure all brain damage")))
+                   (swap! state update-in [:runner :brain-damage] #(- % %))
+                   (continue-ability
+                     state side
+                     draw-to-hand-size
+                     card nil))
+      ;;, draw up to hand size, gain 10 [Credits], remove all tags and forgo the next four actions")
+      }
+     :events [{:event :pre-damage
+               :async true
+               :location :hand
+               :optional
+               {:prompt (msg "Play " (:title card) "?")
+                :waiting-prompt "Runner to resolve pre-damage events"
+                :player :runner
+                :req (req (and (> (last targets) (count (:hand runner)));;would this flatline?
+                               (can-pay? state side
+                                         (assoc eid :source card :source-type :play)
+                                         card nil [:credit (play-cost state side (assoc-in card [:on-play :additional-cost] nil))])))
+                :yes-ability {:msg (msg "play itself in response to a flatline")
+                              :async true
+                              :effect (req (play-instant
+                                             state side eid
+                                             (assoc-in card [:on-play :additional-cost] nil) {:no-additional-cost true}))}}}]}))
+
 (defcard "ONR Anonymous Tip"
   {:on-play
    {:req (req (some #(and (rezzed? %) (ice? %) (has-subtype? % "Black Ice"))
@@ -132,8 +222,8 @@
                 {:target-server :hq
                  :mandatory true
                  :this-card-run true
-                 :ability {:msg "add itself to their score area as an agenda worth 1 agenda point"
-                           :effect (req (as-agenda state :runner card 1))}})]})
+                 :ability {:msg "score 1 agenda point"
+                           :effect (req (gain-agenda-points state side eid 1))}})]})
 
 (defcard "ONR Bodyweight [TM] Synthetic Blood"
   {:on-play
@@ -276,15 +366,9 @@
 (defcard "ONR Hot Tip for WNS"
   {:on-play
    {:req (req (some #(has-subtype? (:card (first %)) "Black Ops") (turn-events state side :agenda-stolen)))
-    :msg "gain 1 agenda points";; 👀
-    :effect (req (register-lingering-effect
-                   state side nil
-                   {:type :user-agenda-points
-                    ;; `target` is either `:corp` or `:runner`
-                    :req (req (= :runner target))
-                    :value 1})
-                 (update-all-agenda-points state side)
-                 (check-win-by-agenda state side))}})
+    :msg "score 1 agenda point" ;; 👀
+    :async true
+    :effect (req (gain-agenda-points state side eid 1))}})
 
 
 (defcard "ONR Ice and Data's Guide to the Net"
@@ -337,8 +421,7 @@
                               card nil)))}}))
 
 (defcard "ONR Identity Donor"
-  {:additional-cost [:agenda-point 50] ;; ghetto way of stopping regular cast
-   ;; todo - would it be possible to hide what card is triggering I wonder? this works for now though
+  {;; todo - would it be possible to hide what card is triggering I wonder? this works for now though
    :events [{:event :pre-damage
              :async true
              :location :hand
@@ -350,17 +433,18 @@
               :req (req (and (= :meat (first targets))
                              (can-pay? state side
                                        (assoc eid :source card :source-type :play)
-                                       card nil [:credit (play-cost state side (assoc card :additional-cost nil))])))
+                                       card nil [:credit (play-cost state side (assoc-in card [:on-play :additional-cost] nil))])))
               :yes-ability {:msg (msg "play itself in response to meat damage")
                             :async true
                             :effect (req (play-instant
                                            state side eid
                                            ;; {:no-additional-cost true}) - prob no need
-                                           (assoc card :additional-cost nil) nil))}}}]
-   :msg "prevent all meat damage, and give the Corp 2 Bad Publicity points"
-   :async true
-   :effect (req (damage-prevent state :runner :meat Integer/MAX_VALUE)
-                (gain-bad-publicity state :runner eid 2))})
+                                           (assoc-in card [:on-play :additional-cost] nil) {:no-additional-cost true}))}}}]
+   :on-play {:additional-cost [:agenda-point 50] ;; ghetto way of stopping regular cast
+             :msg "prevent all meat damage, and give the Corp 2 Bad Publicity points"
+             :async true
+             :effect (req (damage-prevent state :runner :meat Integer/MAX_VALUE)
+                          (gain-bad-publicity state :runner eid 2))}})
 
 (defcard "ONR Inside Job"
   {:makes-run true
