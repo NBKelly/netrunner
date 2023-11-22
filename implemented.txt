@@ -44,9 +44,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   416 / 584
-TESTS:   204 / 416
-NO TEST: 209
+TOTAL:   424 / 584
+TESTS:   207 / 424
+NO TEST: 214
 NO IMP:  3
 --------------------------
 002 + Access through Alpha
@@ -274,13 +274,13 @@ NO IMP:  3
 236 ^ Hell's Run
 
 238 ^ Highlighter
-239 ^ Loan from Chiba
+239 ^ Hijack
 
 243 ^ Hostile Takeover
 244 + Hot Tip for WNS
 245 ^ HQ Interface
 246 ^ HQ Mole
-
+247 ^ Hunt Club BBS
 248 + Hunter
 249 + Hunting Pack
 250 ^ Ice and Data's Guide to the Net (update the req for this one!)
@@ -289,19 +289,18 @@ NO IMP:  3
 253 + Ice Pick Willie
 254 + Ice Transmutation
 255 ^ Identity Donor (janky impl)
-
+256 ^ If You Want it Done Right...
 257 + I Got a Rock
 258 ^ Imp
+259 + Imperial Guard
 
 263 + Inside Job
 264 ^ Investment Firm
 265 + Invisibility
 
 267 + Jack Attack
-
-259 + Imperial Guard
-
 268 ^ Jackhammer
+269 + Jack 'n' Joe
 
 273 ^ Joan of Arc
 274 ^ Junkyard BBS
@@ -316,17 +315,18 @@ NO IMP:  3
 
 284 + Lesser Arcana
 285 ^ Liberated Savings Account
-
+286 ^ Library Search
 287 + Liche
 288 ^ Lifesaver [TM] Nanosurgeons
 289 ^ Lisa Blight
 290 + Little Black Box
-
+291 ^ Live News Feed
 292 + Livewire's Contacts
-
+293 ^ Loan from Chiba
 294 ^ Lockjaw
 
 296 ^ Loony Goon
+297 + Lucidrine [TM] Booster Drug
 
 299 ^ Main-Office Relocation
 300 + Management Shake-Up
@@ -349,7 +349,7 @@ NO IMP:  3
 317 + Minotaur
 
 319 + Misleading Access Menus
-
+320 + MIT West Tier
 321 ^ Mobile Barricade
 322 ^ Morphing Tool
 323 ^ Mouse
@@ -684,13 +684,15 @@ The following (marked) cards have no tests or implementations:
   234 ^ Hammer
   236 ^ Hell's Run
   238 ^ Highlighter
-  239 ^ Loan from Chiba
+  239 ^ Hijack
   243 ^ Hostile Takeover
   245 ^ HQ Interface
   246 ^ HQ Mole
+  247 ^ Hunt Club BBS
   250 ^ Ice and Data's Guide to the Net (update the req for this one!)
   251 ^ Ice and Data Special Report
   255 ^ Identity Donor (janky impl)
+  256 ^ If You Want it Done Right...
   258 ^ Imp
   264 ^ Investment Firm
   268 ^ Jackhammer
@@ -699,8 +701,11 @@ The following (marked) cards have no tests or implementations:
   278 ^ Krash
   282 ^ Leland, Corporate Bodyguard
   285 ^ Liberated Savings Account
+  286 ^ Library Search
   288 ^ Lifesaver [TM] Nanosurgeons
   289 ^ Lisa Blight
+  291 ^ Live News Feed
+  293 ^ Loan from Chiba
   294 ^ Lockjaw
   296 ^ Loony Goon
   299 ^ Main-Office Relocation
@@ -806,4 +811,4 @@ The following (marked) cards have no tests or implementations:
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 462
+Random card to implement: 39

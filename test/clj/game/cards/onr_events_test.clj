@@ -206,6 +206,52 @@
       (run-continue state)
       (is (= :movement (:phase (get-run))) "Run has bypassed Ice Wall")))
 
+(deftest onr-jack-n-joe
+  ;; Diesel
+  (do-game
+    (new-game {:corp {:deck [(qty "Hedge Fund" 5)]}
+               :runner {:deck [(qty "Sure Gamble" 5)]
+                        :hand ["ONR Jack 'n' Joe"]}})
+    (take-credits state :corp)
+    (let [hand (count (:hand (get-runner)))]
+      (play-from-hand state :runner "ONR Jack 'n' Joe")
+      (is (= (+ hand -1 3) (count (:hand (get-runner)))) "Runner plays Diesel and draws 3 cards"))))
+
+(deftest onr-lucidrine-tm-booster-drug
+  ;; Stimhack - Gain 9 temporary credits and take 1 brain damage after the run
+  (do-game
+    (new-game {:corp {:deck ["Eve Campaign"]}
+               :runner {:deck ["ONR Lucidrine [TM] Booster Drug" "Sure Gamble"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "ONR Lucidrine [TM] Booster Drug")
+    (click-prompt state :runner "HQ")
+    (is (= [:hq] (get-in @state [:run :server])) "Run initiated on HQ")
+    (run-continue state)
+    (is (= 14 (:credit (get-runner))))
+    (is (= 9 (:run-credit (get-runner))) "Gained 9 credits for use during the run")
+    (click-prompt state :runner "Pay 5 [Credits] to trash") ; choose to trash Eve
+    (is (and (zero? (count (:hand (get-corp))))
+             (= 1 (count (:discard (get-corp)))))
+        "Corp hand empty and Eve in Archives")
+    (is (= 5 (:credit (get-runner))))
+    (is (zero? (count (:hand (get-runner)))) "Lost card from Grip to core damage")
+    (is (= 4 (hand-size :runner)))
+    (is (= 1 (:brain-damage (get-runner))))))
+
+(deftest onr-mit-west-tier
+  ;; Levy AR Lab Access
+  (do-game
+    (new-game {:corp {:deck [(qty "Hedge Fund" 5)]}
+               :runner {:deck ["Magnum Opus"]
+                        :hand ["ONR MIT West Tier" "Easy Mark"]
+                        :discard [(qty "Sure Gamble" 3)]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "ONR MIT West Tier")
+    (is (= 5 (count (:hand (get-runner)))) "Runner should draw 5 cards")
+    (is (zero? (count (:deck (get-runner)))) "Stack should be empty")
+    (is (zero? (count (:discard (get-runner)))) "Heap should be empty")
+    (is (= "ONR MIT West Tier" (:title (get-rfg state :runner 0))) "Levy should be rfg'd")))
+
 (deftest onr-kilroy-was-here
   ;; Demolition Run - Trash at no cost
   (do-game

@@ -265,7 +265,7 @@
       state :corp
       {:prompt (msg "secretly boost the trace up to "
                     max-bid
-                    (when hacker-tracker
+                    (when (pos? hacker-tracker)
                       (str "(" max-strength " base, " hacker-tracker " possible Hacker Trackers )"))
                     (when (> corp-bid-cost 1)
                       (str "(each point costs " corp-bid-cost " [Credits])")))

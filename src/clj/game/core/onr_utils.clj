@@ -1,5 +1,6 @@
 (ns game.core.onr-utils
   (:require
+   [game.core.card :refer [has-subtype?]]
    [game.core.damage :refer [damage-prevent]]
    [game.core.effects :refer [gather-effects register-lingering-effect]]
    [game.core.eid :refer [complete-with-result make-eid]]
@@ -12,6 +13,29 @@
    [game.utils :refer [quantify]]
    ))
 
+
+(defn noisy-breaker-used
+  ([state]
+   (letfn [(find-breaker-in-run [cid state]
+             (let [evs (filter #(and (= :breaker-strength-changed (first %)) (= cid (:cid (first (second %))))) (:events (:run @state)))]
+               (first (map #(first (second %)) evs))))
+           ;; this finds the cids of every icebreaker used to break a subroutine during this run
+           (find-breaker-cids [state]
+             (let [broken-sub-events (filter #(= :subroutines-broken (first %)) (:events (:run @state)))
+                   ;; this should just explicitly be the ices that were broken this run
+                   broken-sub-events (map #(:subroutines (first (second %))) broken-sub-events)
+                   broken-subs (filter :broken (flatten broken-sub-events))]
+               (map :breaker broken-subs)))
+           (noisy-breaker-broke-subs-this-run [state]
+             (let [breakers (map #(find-breaker-in-run % state) (find-breaker-cids state))]
+               (some #(= "Noisy" %) (first (map :subtypes breakers)))))
+           (pump-breaker-events [state]
+             (map second (filter #(or (= :pump-breaker (first %)) (= :subroutines-broken (first %))) (:events (:run @state)))))
+           (noisy-was-pumped [state]
+             (some #(has-subtype? % "Noisy") (map first (pump-breaker-events state))))]
+     ;; wow! what a nightmare
+     (or (noisy-breaker-broke-subs-this-run state)
+         (noisy-was-pumped state)))))
 
 (defn gain-or-forgo
   [state side eid]
