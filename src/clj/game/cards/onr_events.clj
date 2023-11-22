@@ -32,7 +32,8 @@
                             clear-all-flags-for-card! clear-run-flag! clear-turn-flag!
                             in-corp-scored? register-run-flag! register-turn-flag! zone-locked?]]
    [game.core.gaining :refer [gain gain-clicks gain-credits lose lose-clicks gain-click-debt
-                              lose-credits gain-agenda-point-debt gain-agenda-points]]
+                              lose-credits gain-agenda-point-debt gain-agenda-points
+                              lose-agenda-points]]
    [game.core.hand-size :refer [corp-hand-size+ hand-size]]
    [game.core.hosting :refer [host]]
    [game.core.ice :refer [all-subs-broken? get-strength pump pump-all-icebreakers
@@ -258,6 +259,37 @@
                                (tutor to-search)
                                card nil))))}}))
 
+;; TODO - write this better
+(defcard "ONR Core Command: Jettison Ice"
+  {:on-play
+   {:req (req (some #{:hq} (:successful-run runner-reg)))
+    :prompt "How many credits do you want to spend?"
+    :choices :credit
+    :effect (effect (continue-ability
+                      (let [spent-credits target]
+                        {:choices {:card #(and (ice? %)
+                                               (rezzed? %)
+                                               (<= (:cost %) target))}
+                         :async true
+                         :effect (effect (trash eid target))
+                         :msg (msg "spend " spent-credits "[Credits] and trash " (:title target))})
+                      card nil))}})
+
+(defcard "ONR Corruption"
+  {:implementation "takes forfieted AP into account. You can't lose the same points more than once"
+   :on-play
+   {:req (req (pos? (- (:scored-agenda runner-reg 0) (:forfiet-agenda-points runner-reg 0))))
+    :msg (msg "lose all agenda points they scored this turn ("
+              (- (:scored-agenda runner-reg 0) (:forfiet-agenda-points runner-reg 0))
+              "), gain 10 [Credits] for each, and have the corp gain that many agenda points")
+    :async true
+    :effect (req (let [transfer (- (:scored-agenda runner-reg 0) (:forfiet-agenda-points runner-reg 0))
+                       creds (* 10 transfer)]
+                   (wait-for (lose-agenda-points state :runner (make-eid state eid) transfer)
+                             (wait-for (gain-credits state :runner creds)
+                                       (system-msg state side (str "gains " creds " [Credits]"))
+                                       (wait-for (gain-agenda-points state :corp transfer)
+                                                 (gain-tags state :corp eid 1))))))}})
 
 (defcard "ONR Cruising for Netwatch"
   {:on-play

@@ -44,9 +44,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   403 / 584
-TESTS:   201 / 403
-NO TEST: 199
+TOTAL:   405 / 584
+TESTS:   201 / 405
+NO TEST: 201
 NO IMP:  3
 --------------------------
 002 + Access through Alpha
@@ -133,7 +133,7 @@ NO IMP:  3
 086 ^ Codeslinger
 
 088 + Colonel Failure
-
+089 ^ Core Command: Jettison Ice
 090 + Corolla Speed Chip
 091 ^ Corporate Ally
 092 ^ Corporate Boon
@@ -148,7 +148,7 @@ NO IMP:  3
 101 + Corporate War
 
 103 ^ Corrosion
-
+104 ^ Corruption
 105 + Cortical Cybermodem
 106 + Cortical Scanner
 107 + Cortical Scrub
@@ -619,12 +619,14 @@ The following (marked) cards have no tests or implementations:
   078 ^ Cinderella
   085 ^ Codecracker
   086 ^ Codeslinger
+  089 ^ Core Command: Jettison Ice
   091 ^ Corporate Ally
   092 ^ Corporate Boon
   093 ^ Corporate Coup
   095 ^ Corporate Downsizing
   097 ^ Corporate Headhunters
   103 ^ Corrosion
+  104 ^ Corruption
   111 ^ Crash Everett
   115 ^ Credit Subversion
   117 ^ Crumble (requires braniac id)
@@ -789,4 +791,4 @@ The following (marked) cards have no tests or implementations:
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 89
+Random card to implement: 539

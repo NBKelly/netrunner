@@ -179,6 +179,7 @@
         points (get-agenda-points c)]
     (system-msg state :runner (str "steals " (:title c) " and gains " (quantify points "agenda point")))
     (swap! state update-in [:runner :register :stole-agenda] #(+ (or % 0) (:agendapoints c 0)))
+    (swap! state update-in [:runner :register :scored-agenda] #(+ (or % 0) (:agendapoints c 0)))
     (swap! state update-in
            [:runner :register :stolen-agenda-advancements]
            #(+ (or % 0)

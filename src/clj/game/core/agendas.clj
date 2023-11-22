@@ -86,6 +86,7 @@
               ;; fix the new debt
               (swap! state assoc-in [side :agenda-point-debt] resultant-debt)
               ;; register the negative points
+              (swap! state update-in [side :register :forfiet-agenda-points] #(+ (or % 0) to-repay))
               (register-lingering-effect
                 state side nil
                 (let [tg-side side]

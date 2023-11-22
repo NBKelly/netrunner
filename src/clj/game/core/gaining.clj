@@ -96,8 +96,28 @@
                 (pos? amount))
             (pos? (:agenda-point-debt (side @state))))
      (do (lose state side :agenda-point-debt amount)
+         (swap! state update-in [side :register :forfiet-agenda-points] #(+ (or % 0) amount))
          (trigger-event-sync state side eid (if (= :corp side) :corp-agenda-point-debt-loss :runner-agenda-point-debt-loss) amount args))
      (effect-completed state side eid))))
+
+(defn lose-agenda-points
+  "Utility for forfieting agenda points. This is different to costs"
+  ([state side eid amount] (lose-agenda-points state side eid amount nil))
+  ([state side eid amount args]
+   (if (and amount
+            (pos? amount))
+     (let [saved-side side]
+       (do (register-lingering-effect
+             state side nil
+             {:type :user-agenda-points
+              ;; `target` is either `:corp` or `:runner`
+              :req (req (= saved-side target))
+              :value (- amount)})
+           (swap! state update-in [side :register :forfiet-agenda-points] #(+ (or % 0) amount))
+           (update-all-agenda-points state side)
+           (check-win-by-agenda state side)
+           (trigger-event-sync state side eid (if (= :corp side) :corp-agenda-point-forfieted :runner-agenda-point-forfieted) amount args)
+           (effect-completed state side eid))))))
 
 (defn gain-agenda-points
   "Utility function to pass fake AP through the debt system"
@@ -115,6 +135,7 @@
                 ;; `target` is either `:corp` or `:runner`
                 :req (req (= saved-side target))
                 :value amount})
+             (swap! state update-in [side :register :scored-agenda] #(+ (or % 0) amount))
              (update-all-agenda-points state side)
              (check-win-by-agenda state side)
              (trigger-event-sync state side eid (if (= :corp side) :corp-agenda-point-gain :runner-agenda-point-gain) amount args)
