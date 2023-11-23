@@ -1630,6 +1630,54 @@
    (when (= side :runner)
      [:div
       (when
+          (pos? (get-in @me [:flatline-counter]))
+        [cond-button (tr [:game.remove-flatline "Remove Flatline (click, credit)"])
+         (and (not (or @runner-phase-12 @corp-phase-12))
+              (playable? (get-in @me [:basic-action-card :abilities 7])))
+         #(send-command "remove-flatline-counter")])
+      (when
+          (pos? (get-in @me [:stun-counter]))
+        [cond-button (tr [:game.remove-stun "Remove Stun (click, 2 credits)"])
+         (and (not (or @runner-phase-12 @corp-phase-12))
+              (playable? (get-in @me [:basic-action-card :abilities 8])))
+         #(send-command "remove-stun-counter")])
+      (when
+          (pos? (get-in @me [:doppelganger-counter]))
+        [cond-button (tr [:game.remove-doppelganger "Remove Doppelganger (click, 4 credits)"])
+         (and (not (or @runner-phase-12 @corp-phase-12))
+              (playable? (get-in @me [:basic-action-card :abilities 9])))
+         #(send-command "remove-doppelganger-counter")])
+      (when
+          (pos? (get-in @me [:baskerville-counter]))
+        [cond-button (tr [:game.remove-baskerville "Remove Baskerville (click, 3 credits)"])
+         (and (not (or @runner-phase-12 @corp-phase-12))
+              (playable? (get-in @me [:basic-action-card :abilities 10])))
+         #(send-command "remove-baskerville-counter")])
+      (when
+          (pos? (get-in @me [:cerberus-counter]))
+        [cond-button (tr [:game.remove-cerberus "Remove Cerberus (click, 4 credits)"])
+         (and (not (or @runner-phase-12 @corp-phase-12))
+              (playable? (get-in @me [:basic-action-card :abilities 11])))
+         #(send-command "remove-cerberus-counter")])
+      (when
+          (pos? (get-in @me [:data-raven-counter]))
+        [cond-button (tr [:game.remove-data-raven "Remove Data Raven (click, credit)"])
+         (and (not (or @runner-phase-12 @corp-phase-12))
+              (playable? (get-in @me [:basic-action-card :abilities 12])))
+         #(send-command "remove-data-raven-counter")])
+      (when
+          (pos? (get-in @me [:mastiff-counter]))
+        [cond-button (tr [:game.remove-mastiff "Remove Mastiff (click, 4 credits)"])
+         (and (not (or @runner-phase-12 @corp-phase-12))
+              (playable? (get-in @me [:basic-action-card :abilities 13])))
+         #(send-command "remove-mastiff-counter")])
+      (when
+          (pos? (get-in @me [:crying-counter]))
+        [cond-button (tr [:game.remove-crying "Remove Crying (click, 2 credits)"])
+         (and (not (or @runner-phase-12 @corp-phase-12))
+              (playable? (get-in @me [:basic-action-card :abilities 14])))
+         #(send-command "remove-crying-counter")])
+      (when
           (playable? (get-in @me [:basic-action-card :abilities 6]))
         [cond-button (tr [:game.forgo-click "Forgo Action"])
          (and (not (or @runner-phase-12 @corp-phase-12))

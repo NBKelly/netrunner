@@ -2,7 +2,7 @@
   (:require
    [game.core.agendas :refer [update-advancement-requirement update-all-agenda-points]]
    [game.core.board :refer [all-active-installed installable-servers]]
-   [game.core.card :refer [agenda? asset? event? get-card hardware? ice?
+   [game.core.card :refer [agenda? asset? event? get-card hardware? ice? get-counters
                            in-hand? operation? program? resource? upgrade?]]
    [game.core.def-helpers :refer [defcard]]
    [game.core.drawing :refer [draw use-bonus-click-draws!]]
@@ -17,7 +17,7 @@
    [game.core.moving :refer [trash]]
    [game.core.payment :refer [can-pay?]]
    [game.core.play-instants :refer [can-play-instant? play-instant]]
-   [game.core.props :refer [add-prop]]
+   [game.core.props :refer [add-prop add-counter]]
    [game.core.purging :refer [purge]]
    [game.core.runs :refer [make-run]]
    [game.core.say :refer [play-sfx]]
@@ -26,6 +26,7 @@
    [game.core.winning :refer [check-win-by-agenda]]
    [game.macros :refer [effect msg req wait-for]]
    [game.utils :refer :all]
+   [game.core.onr-utils :refer [lose-runner-counter]]
    [jinteki.utils :refer :all]))
 
 ;; Card definitions
@@ -213,8 +214,58 @@
                 :async true
                 :effect (effect (play-sfx "click-remove-tag")
                                 (lose-tags eid 1))}
-               {:label "Forgo an Action"
+               {:label "Forgo an Action"                               ;; #6
                 :cost [:click]
                 :msg "forgo a click"
                 :req (req (pos? (:action-debt runner)))
-                :effect (req (lose-click-debt state side eid 1))}]})
+                :effect (req (lose-click-debt state side eid 1))}
+               {:label "[Click], 1 [Credit]: Remove Flatline Counter"  ;; #7
+                :cost [:click 1 :credit 1]
+                :msg "remove a flatline counter"
+                :req (req (and (zero? (:action-debt runner))
+                               (and (:flatline-counter runner) (pos? (:flatline-counter runner)))))
+                :effect (req (lose-runner-counter state side :flatline-counter (:identity runner)))}
+               {:label "[Click], 2 [Credit]: Remove Stun Counter"  ;; #8
+                :cost [:click 1 :credit 2]
+                :msg "remove a stun counter"
+                :req (req (and (zero? (:action-debt runner))
+                               (and (:stun-counter runner) (pos? (:stun-counter runner)))))
+                :effect (req (lose-runner-counter state side :stun-counter (:identity runner)))}
+               {:label "[Click], 4 [Credit]: Remove Doppelganger Counter"  ;; #9
+                :cost [:click 1 :credit 4]
+                :msg "remove a doppelganger counter"
+                :req (req (and (zero? (:action-debt runner))
+                               (and (:doppelganger-counter runner) (pos? (:doppelganger-counter runner)))))
+                :effect (req (lose-runner-counter state side :doppelganger-counter (:identity runner)))}
+               {:label "[Click], 3 [Credit]: Remove Baskerville Counter"  ;; #10
+                :cost [:click 1 :credit 3]
+                :msg "remove a baskerville counter"
+                :req (req (and (zero? (:action-debt runner))
+                               (and (:baskerville-counter runner) (pos? (:baskerville-counter runner)))))
+                :effect (req (lose-runner-counter state side :baskerville-counter (:identity runner)))}
+               {:label "[Click], 4 [Credit]: Remove Cerberus Counter"  ;; #11
+                :cost [:click 1 :credit 4]
+                :msg "remove a cerberus counter"
+                :req (req (and (zero? (:action-debt runner))
+                               (and (:cerberus-counter runner) (pos? (:cerberus-counter runner)))))
+                :effect (req (lose-runner-counter state side :cerberus-counter (:identity runner)))}
+               {:label "[Click], 1 [Credit]: Remove Data Raven Counter"  ;; #12
+                :cost [:click 1 :credit 1]
+                :msg "remove a data raven counter"
+                :req (req (and (zero? (:action-debt runner))
+                               (and (:data-raven-counter runner) (pos? (:data-raven-counter runner)))))
+                :effect (req (lose-runner-counter state side :data-raven-counter (:identity runner)))}
+               {:label "[Click], 4 [Credit]: Remove Mastiff Counter"  ;; #13
+                :cost [:click 1 :credit 4]
+                :msg "remove a mastiff counter"
+                :req (req (and (zero? (:action-debt runner))
+                               (and (:mastiff-counter runner) (pos? (:mastiff-counter runner)))))
+                :effect (req (lose-runner-counter state side :mastiff-counter (:identity runner)))}
+               {:label "[Click], 2 [Credit]: Remove Crying Counter"  ;; #14
+                :cost [:click 1 :credit 2]
+                :msg "remove a crying counter"
+                :req (req (and (zero? (:action-debt runner))
+                               (and (:crying-counter runner) (pos? (:crying-counter runner)))))
+                :effect (req (lose-runner-counter state side :crying-counter (:identity runner)))}
+
+               ]})

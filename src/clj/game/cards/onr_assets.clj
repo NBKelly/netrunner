@@ -64,7 +64,8 @@
    [jinteki.utils :refer :all]
    [game.core.link :refer [get-link]]
    [game.cards.assets :refer [campaign]]
-   [game.core.onr-utils :refer [handle-if-unique onr-trace-tag register-effect-once dice-roll]]
+   [game.core.onr-utils :refer [handle-if-unique onr-trace-tag register-effect-once dice-roll
+                                ambush-outside-archives gain-runner-counter]]
    [game.cards.ice :refer [end-the-run-unless-runner-pays end-the-run]]
    ))
 
@@ -102,10 +103,7 @@
 (defn- onr-ambush-impl [impl]
   (merge {:implementation "(classic) Installed ambushes must be rezzed to take effect, unless otherwise noted"} impl))
 
-(defn- ambush-outside-archives [card]
-  (and (not (in-discard? card))
-       (or (not (installed? card))
-           (rezzed? card))))
+
 
 ;; card impls
 
@@ -350,6 +348,34 @@
                 :effect (req (let [creds (get-counters card :credit)]
                                (add-counter state side card :credit (- creds))
                                (gain-credits state :corp eid creds)))}]})
+
+(defcard "ONR Doppelganger Antibody"
+  (letfn [(doppelganger-event []
+            {:event :runner-turn-begins
+             :unregister-once-resolved true
+             :interactive (req true)
+             :ability-name "Doppelganger Counters"
+             :async true
+             :effect (req (let [counters (:doppelganger-counter runner)
+                                damage (if counters (* 1 counters) 0)]
+                            (when-not (zero? counters)
+                              (register-events state side (:identity runner) [(doppelganger-event)]))
+                            (if-not (zero? counters)
+                              (do (system-msg state side (str "is afflicted by " counters " doppelganger counters, and loses " counters " [Credits]"))
+                                  (lose-credits state :runner eid counters))
+                              (effect-completed state side eid))))})]
+  {:flags {:rd-reveal (req true)}
+   :on-access {:optional
+               {:req (req (ambush-outside-archives card))
+                :waiting-prompt true
+                :prompt (msg "Pay 2 [Credits] to use " (:title card) " ability?")
+                :no-ability {:effect (effect (system-msg (str "declines to use " (:title card))))}
+                :yes-ability {:cost [:credit 2]
+                              :msg "give the runner a Doppelganger Counter"
+                              :effect (req
+                                        (gain-runner-counter state side :doppelganger-counter (:identity runner))
+                                        (handle-if-unique
+                                          state side (:identity runner) (doppelganger-event)))}}}}))
 
 (defcard "ONR ESA Contract"
   {:abilities [{:cost [:click 1]

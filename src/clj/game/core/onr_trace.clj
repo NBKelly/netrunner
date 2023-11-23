@@ -341,7 +341,9 @@
                                         (all-installed state :corp))
                    ldl-traffic-creds (map #(* 5 (get-counters (get-card state %) :advancement)) ldl-traffics)
                    ldl-traffic-creds (reduce + ldl-traffic-creds)
-                   runner-bonus-link (+ (or (sum-effects state side :link-for-run) 0) (:baselink (:identity (:runner @state))))
+                   force-link (first (get-effects state :corp :trace-force-link card [eid]))
+                   runner-bonus-link (+ (or (sum-effects state side :link-for-run) 0)
+                                        (or force-link (get-link state)))
                    max-str-adjust (or (sum-effects state side :max-strength card) 0)
                    trace (merge trace {:player :corp
                                        :max-strength (max (+ max-strength max-str-adjust) 0)

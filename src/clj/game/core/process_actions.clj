@@ -5,6 +5,8 @@
                               close-deck do-purge generate-install-list
                               generate-runnable-zones move-card expend-ability
                               pay-acme play play-ability play-corp-ability
+                              remove-stun-counter remove-flatline-counter remove-doppelganger-counter remove-baskerville-counter
+                              remove-cerberus-counter remove-data-raven-counter remove-mastiff-counter remove-crying-counter
                               play-dynamic-ability play-runner-ability play-subroutine play-unbroken-subroutines remove-tag
                               resolve-prompt score select trash-resource view-deck]]
    [game.core.card :refer [get-card]]
@@ -71,6 +73,14 @@
    "expend" #'expend-ability
    "purge" #'do-purge
    "remove-tag" #'remove-tag
+   "remove-flatline-counter" #'remove-flatline-counter
+   "remove-stun-counter" #'remove-stun-counter
+   "remove-doppelganger-counter" #'remove-doppelganger-counter
+   "remove-baskerville-counter" #'remove-baskerville-counter
+   "remove-cerberus-counter" #'remove-cerberus-counter
+   "remove-data-raven-counter" #'remove-data-raven-counter
+   "remove-mastiff-counter" #'remove-mastiff-counter
+   "remove-crying-counter" #'remove-crying-counter
    "rez" #(rez %1 %2 (make-eid %1) (:card %3) (dissoc %3 :card))
    "run" #'click-run
    "runner-ability" #'play-runner-ability

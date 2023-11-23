@@ -44,9 +44,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   485 / 584
-TESTS:   222 / 485
-NO TEST: 260
+TOTAL:   498 / 584
+TESTS:   222 / 498
+NO TEST: 273
 NO IMP:  3
 --------------------------
 002 + Access through Alpha
@@ -70,7 +70,7 @@ NO IMP:  3
 021 + Armored Fridge
 022 + Artemis 2020
 023 ^ Artificial Security Directors
-
+024 ^ Asp
 025 ^ Audit of Call Records
 026 ^ Aujourd'Oui
 027 + Back Door to Hilliard
@@ -82,7 +82,7 @@ NO IMP:  3
 033 + Bakdoor[TM]
 
 035 + Banpei
-
+036 ^ Baskerville
 037 ^ Bartmoss Memorial Icebreaker
 
 039 ^ BBS Whispering Campaign
@@ -116,7 +116,7 @@ NO IMP:  3
 067 + Canis Minor
 068 + Caryatid
 069 ^ Cascade (test once viruses are done!)
-
+070 ^ Cerberus
 071 ^ Chance Observation
 072 + Charity Takeover
 
@@ -164,6 +164,7 @@ NO IMP:  3
 115 ^ Credit Subversion
 116 + Cruising for Netwatch
 117 ^ Crumble (requires braniac id)
+118 ^ Crybaby
 
 120 + Crystal Wall
 121 + Custodial Position
@@ -179,7 +180,7 @@ NO IMP:  3
 131 ^ Data Masons
 132 + Data Naga
 133 + Datapool (R) by Zetatech
-
+134 ^ Data Raven
 135 + Data Sifters
 136 + Data Wall 2.0
 137 + Data Wall
@@ -198,13 +199,14 @@ NO IMP:  3
 150 ^ Desperate Competitor
 151 ^ Detroit Police Contract
 
+153 ^ Digiconda
 154 ^ Diplomatic Immunity
 155 ^ Disgruntled Ice Technician
 
 157 ^ Disintegrator
 158 ^ Dogcatcher
 159 ^ Dog Pile
-
+160 ^ Doppelganger Antibody
 161 ^ Do the 'Drine [TM]
 
 163 + "Drifter" Mobile Environment
@@ -241,6 +243,8 @@ NO IMP:  3
 195 + Fall Guy
 
 197 + Falsified-Transactions Expert
+198 ^ Fang 2.0
+199 ^ Fang
 
 201 ^ Fetal AI
 202 + Fetch 4.0.1
@@ -256,7 +260,7 @@ NO IMP:  3
 213 ^ Fortress Architects
 214 ^ Fortress Respecification
 215 ^ Forward's Legacy
-
+216 ^ Fragmentation Storm
 217 ^ Frame-Up
 
 219 ^ Fubar
@@ -281,7 +285,8 @@ NO IMP:  3
 238 ^ Highlighter
 239 ^ Hijack
 240 ^ Holovid Campaign
-
+241 ^ Homewrecker [TM]
+242 ^ Homing Missile
 243 ^ Hostile Takeover
 244 + Hot Tip for WNS
 245 ^ HQ Interface
@@ -345,7 +350,7 @@ NO IMP:  3
 305 + Marionette
 306 + Marked Accounts
 307 ^ Mastermind
-
+308 ^ Mastiff
 309 ^ Matador
 310 + Mazer
 311 + Meat Upgrade
@@ -622,8 +627,10 @@ The following (marked) cards have no tests or implementations:
   017 ^ Arasaka Owns You
   020 ^ Armageddon
   023 ^ Artificial Security Directors
+  024 ^ Asp
   025 ^ Audit of Call Records
   026 ^ Aujourd'Oui
+  036 ^ Baskerville
   037 ^ Bartmoss Memorial Icebreaker
   039 ^ BBS Whispering Campaign
   040 ^ Bel-Digmo Antibody
@@ -643,6 +650,7 @@ The following (marked) cards have no tests or implementations:
   064 ^ Bulldozer
   065 ^ Butcher Boy (test once viruses are done!)
   069 ^ Cascade (test once viruses are done!)
+  070 ^ Cerberus
   071 ^ Chance Observation
   074 ^ Chiba Bank Account
   075 ^ Chicago Branch
@@ -663,12 +671,14 @@ The following (marked) cards have no tests or implementations:
   112 ^ Crash Space
   115 ^ Credit Subversion
   117 ^ Crumble (requires braniac id)
+  118 ^ Crybaby
   122 ^ Cybertech Think Tank
   123 ^ Cyfermaster (trivial icebreaker - no test)
   124 ^ Danshi's Second ID
   126 ^ Databroker
   129 ^ Data Fort Reclamation
   131 ^ Data Masons
+  134 ^ Data Raven
   141 ^ Death from Above
   143 ^ Decoy Signal
   144 ^ Dedicated Response Team
@@ -676,11 +686,13 @@ The following (marked) cards have no tests or implementations:
   146 ^ Demolition Run
   150 ^ Desperate Competitor
   151 ^ Detroit Police Contract
+  153 ^ Digiconda
   154 ^ Diplomatic Immunity
   155 ^ Disgruntled Ice Technician
   157 ^ Disintegrator
   158 ^ Dogcatcher
   159 ^ Dog Pile
+  160 ^ Doppelganger Antibody
   161 ^ Do the 'Drine [TM]
   165 ^ Dropp
   167 ^ Dupree
@@ -694,12 +706,15 @@ The following (marked) cards have no tests or implementations:
   185 ^ Evil Twin
   187 ^ Executive Extraction
   194 ^ Faked Hit
+  198 ^ Fang 2.0
+  199 ^ Fang
   201 ^ Fetal AI
   205 ^ Finders Keepers (random, need a way to rig tests)
   210 ^ Force Shield
   213 ^ Fortress Architects
   214 ^ Fortress Respecification
   215 ^ Forward's Legacy
+  216 ^ Fragmentation Storm
   217 ^ Frame-Up
   219 ^ Fubar
   222 ^ Garbage In
@@ -715,6 +730,8 @@ The following (marked) cards have no tests or implementations:
   238 ^ Highlighter
   239 ^ Hijack
   240 ^ Holovid Campaign
+  241 ^ Homewrecker [TM]
+  242 ^ Homing Missile
   243 ^ Hostile Takeover
   245 ^ HQ Interface
   246 ^ HQ Mole
@@ -743,6 +760,7 @@ The following (marked) cards have no tests or implementations:
   299 ^ Main-Office Relocation
   302 ^ Mantis, Fixer-at-Large
   307 ^ Mastermind
+  308 ^ Mastiff
   309 ^ Matador
   313 ^ Microtech AI Interface
   314 ^ Microtech Backup Drive
@@ -876,4 +894,4 @@ The following (marked) cards have no tests or implementations:
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 272
+Random card to implement: 344

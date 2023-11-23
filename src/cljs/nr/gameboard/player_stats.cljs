@@ -68,7 +68,10 @@
   (let [ctrl (stat-controls-for-side :runner)]
     (fn [runner]
       (let [{:keys [user click credit run-credit action-debt memory link tag
-                    brain-damage active agenda-point-debt]} @runner
+                    brain-damage active agenda-point-debt
+                    flatline-counter stun-counter cerberus-counter doppelganger-counter
+                    data-raven-counter baskerville-counter mastiff-counter
+                    crying-counter]} @runner
             base-credit (- credit run-credit)
             plus-run-credit (when (pos? run-credit) (str "+" run-credit))
             icons? (get-in @app-state [:options :player-stats-icons] true)]
@@ -96,6 +99,38 @@
            (ctrl
              :action-debt
              [:div (str action-debt " " (tr [:game.action-debt "Actions to Forgo"]))]))
+         (when (pos? flatline-counter)
+           (ctrl
+             :flatline-counter
+             [:div (str flatline-counter " " (tr [:game.action-debt "Flatline Counters"]))]))
+         (when (pos? stun-counter)
+           (ctrl
+             :stun-counter
+             [:div (str stun-counter " " (tr [:game.action-debt "Stun Counters"]))]))
+         (when (pos? doppelganger-counter)
+           (ctrl
+             :doppelganger-counter
+             [:div (str doppelganger-counter " " (tr [:game.action-debt "Doppelganger Counters"]))]))
+         (when (pos? cerberus-counter)
+           (ctrl
+             :cerberus-counter
+             [:div (str cerberus-counter " " (tr [:game.action-debt "Cerberus Counters"]))]))
+         (when (pos? baskerville-counter)
+           (ctrl
+             :baskerville-counter
+             [:div (str baskerville-counter " " (tr [:game.action-debt "Baskerville Counters"]))]))
+         (when (pos? mastiff-counter)
+           (ctrl
+             :mastiff-counter
+             [:div (str mastiff-counter " " (tr [:game.action-debt "Mastiff Counters"]))]))
+         (when (pos? data-raven-counter)
+           (ctrl
+             :data-raven-counter
+             [:div (str data-raven-counter " " (tr [:game.action-debt "Data Raven Counters"]))]))
+         (when (pos? crying-counter)
+           (ctrl
+             :crying-counter
+             [:div (str crying-counter " " (tr [:game.action-debt "Crying Counters"]))]))
          (when (pos? agenda-point-debt)
            (ctrl
              :agenda-point-debt

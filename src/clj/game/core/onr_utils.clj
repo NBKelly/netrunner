@@ -1,18 +1,28 @@
 (ns game.core.onr-utils
   (:require
-   [game.core.card :refer [has-subtype?]]
+   [game.core.card :refer [has-subtype? get-card in-discard? installed? rezzed?]]
    [game.core.damage :refer [damage-prevent]]
    [game.core.effects :refer [gather-effects register-lingering-effect]]
    [game.core.eid :refer [complete-with-result make-eid]]
    [game.core.engine :refer [not-used-once? register-events gather-events]]
-   [game.core.gaining :refer [lose-click-debt gain-clicks]]
+   [game.core.gaining :refer [lose-click-debt gain-clicks safe-inc-n sub->0]]
    [game.core.onr-trace :refer [boost-link set-base-link cancel-successful-trace]]
+   [game.core.props :refer [add-counter]]
    [game.core.say :refer [system-msg]]
    [game.core.tags :refer [gain-tags]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [game.utils :refer [quantify]]
    ))
 
+(defn gain-runner-counter
+  ([state side type id]
+   (add-counter state :runner (get-card state id) type 1)
+   (swap! state update-in [:runner type] (safe-inc-n 1))))
+
+(defn lose-runner-counter
+  ([state side type id]
+   (add-counter state :runner (get-card state id) type -1)
+   (swap! state update-in [:runner type] (sub->0 1))))
 
 (defn noisy-breaker-used
   ([state]
@@ -76,6 +86,10 @@
   ([max tags]
    (onr-trace-ability max (give-tags tags) true)))
 
+(defn ambush-outside-archives [card]
+  (and (not (in-discard? card))
+       (or (not (installed? card))
+           (rezzed? card))))
 
 (defn handle-if-unique
   ([state side card handler] (handle-if-unique state side card handler nil))

@@ -249,7 +249,16 @@
   ([state side silent]
   (let [cards (->> @state :stack :current-turn :can-run (map :card))]
     (if (empty? cards)
-      true
+      ;; check any-effects here, too
+      ;;true
+      (let [eff (any-effects state side :cannot-run true?)]
+        (if eff
+          (do (when-not silent (toast state side (str "Cannot run due to "
+                                                      (if (:ability-name eff)
+                                                        (:ability-name eff)
+                                                        "a game effect"))))
+              false)
+          true))
       (do (when-not silent (toast state side (str "Cannot run due to " (enumerate-str (map :title cards))))
         false))))))
 

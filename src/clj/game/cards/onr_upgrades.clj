@@ -58,7 +58,8 @@
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [game.utils :refer :all]
    [jinteki.utils :refer :all]
-   [game.core.onr-utils :refer [dice-roll]]
+   [game.core.onr-utils :refer [dice-roll ambush-outside-archives gain-runner-counter
+                                register-effect-once]]
    ))
 
 
@@ -130,6 +131,24 @@
                        :req (req (or (in-same-server? card target)
                                      (from-same-server? card target)))
                        :value true}]})
+
+(defcard "ONR Crybaby"
+  (letfn [(give-crying-counter
+            [state side target]
+            (gain-runner-counter state side :crying-counter target)
+            (register-effect-once
+              state :runner target
+              {:type :link
+               :req (req (pos? (:crying-counter (:runner @state))))
+               :ability-name "Crying Counters"
+               :value (req (- (* 2 (:crying-counter (:runner @state)))))}))]
+    {:flags {:rd-reveal (req true)}
+     :implementation "errata - R&D reveal"
+     :on-access {:msg "give the Runner a Crying counter"
+                 :req (req (or (not (installed? card))
+                               (rezzed? card)))
+                 :effect (req (give-crying-counter state side (:identity runner)))}}))
+
 
 (defcard "ONR Dedicated Response Team"
   (onr-ambush

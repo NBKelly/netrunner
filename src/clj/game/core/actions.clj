@@ -144,6 +144,46 @@
   [state side _]
   (play-ability state side {:card (get-in @state [side :basic-action-card]) :ability 8}))
 
+(defn remove-flatline-counter
+  "Click to remove flatline counter"
+  [state _ _]
+  (play-ability state :runner {:card (get-in @state [:runner :basic-action-card]) :ability 7}))
+
+(defn remove-stun-counter
+  "Click to remove stun counter"
+  [state _ _]
+  (play-ability state :runner {:card (get-in @state [:runner :basic-action-card]) :ability 8}))
+
+(defn remove-doppelganger-counter
+  "Click to remove doppelganger counter"
+  [state _ _]
+  (play-ability state :runner {:card (get-in @state [:runner :basic-action-card]) :ability 9}))
+
+(defn remove-baskerville-counter
+  "Click to remove baskerville counter"
+  [state _ _]
+  (play-ability state :runner {:card (get-in @state [:runner :basic-action-card]) :ability 10}))
+
+(defn remove-cerberus-counter
+  "Click to remove cerberus counter"
+  [state _ _]
+  (play-ability state :runner {:card (get-in @state [:runner :basic-action-card]) :ability 11}))
+
+(defn remove-data-raven-counter
+  "Click to remove data raven counter"
+  [state _ _]
+  (play-ability state :runner {:card (get-in @state [:runner :basic-action-card]) :ability 12}))
+
+(defn remove-mastiff-counter
+  "Click to remove mastiff counter"
+  [state _ _]
+  (play-ability state :runner {:card (get-in @state [:runner :basic-action-card]) :ability 13}))
+
+(defn remove-crying-counter
+  "Click to remove crying counter"
+  [state _ _]
+  (play-ability state :runner {:card (get-in @state [:runner :basic-action-card]) :ability 14}))
+
 (defn resolve-prompt
   "Resolves a prompt by invoking its effect function with the selected target of the prompt.
   Triggered by a selection of a prompt choice button in the UI."

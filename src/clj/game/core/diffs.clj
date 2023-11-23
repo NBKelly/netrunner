@@ -308,6 +308,15 @@
    :link
    :tag
    :memory
+   ;; thanks garfield
+   :flatline-counter     ;; cannot run unless you pay 1+click to remove
+   :stun-counter         ;; cannot run unless you pay 2+click to remove
+   :doppelganger-counter ;; lose 1 at the start of your turn. Click+4c to remove.
+   :baskerville-counter  ;; 2 net at the start of each run. Click+3c to remove.
+   :cerberus-counter     ;; 2 net at the start of each run. Click+4c to remove.
+   :data-raven-counter   ;; tag at the start of each run. Click+1c to remove.
+   :mastiff-counter      ;; brain at the start of each run. Click+4c to remove.
+   :crying-counter       ;; -2 link. Click+2c to remove.
    :brain-damage])
 
 (defn rig-summary
