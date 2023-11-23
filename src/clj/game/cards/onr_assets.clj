@@ -48,7 +48,7 @@
    [game.core.props :refer [add-counter add-icon add-prop remove-icon set-prop]]
    [game.core.revealing :refer [reveal]]
    [game.core.rezzing :refer [derez rez]]
-   [game.core.runs :refer [end-run gain-corp-run-credits]]
+   [game.core.runs :refer [end-run gain-corp-run-credits redirect-run]]
    [game.core.say :refer [system-msg]]
    [game.core.servers :refer [is-central? is-remote? target-server zone->name]]
    [game.core.set-aside :refer [get-set-aside set-aside-for-me swap-set-aside-cards]]
@@ -101,6 +101,11 @@
 
 (defn- onr-ambush-impl [impl]
   (merge {:implementation "(classic) Installed ambushes must be rezzed to take effect, unless otherwise noted"} impl))
+
+(defn- ambush-outside-archives [card]
+  (and (not (in-discard? card))
+       (or (not (installed? card))
+           (rezzed? card))))
 
 ;; card impls
 
@@ -605,12 +610,67 @@
                                    {:msg (msg "roll " di)})
                                  card nil)))}]})
 
+(defcard "ONR Setup!"
+  {:flags {:rd-reveal (req true)}
+   :on-access {:msg "do 2 net damage"
+               :req (req (ambush-outside-archives card))
+               :async true
+               :effect (effect (damage eid :net 2 {:card card}))}})
+
+(defcard "ONR Siren"
+  {:implementation "Event happens after the run has started (for implementation reasons) - treat the card as if it was written that way for now. Consider this functional errata."
+   :events [{:event :run
+             :interactive (req true)
+             :req (req (not (= (first (:server target)) (second (get-zone card)))))
+             :async true
+             :effect (req
+                       ;;(system-msg state side target)
+                       (let [target-server (second (get-zone card))
+                             server-name (zone->name target-server)]
+                         (if (can-pay? state side eid card nil [:credit 1])
+                           (continue-ability
+                             state side
+                             {:optional
+                              {:prompt (msg "1 [Credit]: Force the runner to run on " server-name)
+                               :yes-ability {:cost [:credit 1]
+                                             :msg (msg "redirect the run to " server-name)
+                                             :effect (req (redirect-run state side server-name :approach-ice))}}}
+                             card nil)
+                           (effect-completed state side eid))))}]})
+
+(defcard "ONR Skälderviken SA Beta Test Site"
+  {:static-abilities [{:type :rez-cost
+                       :req (req (and (ice? target)
+                                      (has-subtype? target "Black Ice")))
+                       :value -2}]})
+
 (defcard "ONR Solo Squad"
   {:abilities [{:req (req tagged)
                 :cost [:click 1]
                 :keep-menu-open :while-clicks-left
                 :effect (effect (damage eid :meat 1 {:card card}))
                 :msg "do 1 meat damage"}]})
+
+(defcard "ONR South African Mining Corp"
+  {:abilities [{:cost [:click 3]
+                :keep-menu-open :while-3-clicks-left
+                :async true
+                :effect (effect (gain-credits eid 6))
+                :msg "gain 6 [Credits]"}]})
+
+(defcard "ONR Spinn (R) Public Relations"
+    (let [ability {:msg "take 1 [Credits]"
+                 :label "Take 1 [Credits] (start of turn)"
+                 :once :per-turn
+                 :req (req (pos? (get-counters card :credit)))
+                 :async true
+                 :effect (effect (add-counter card :credit -1)
+                                 (gain-credits eid 1))}]
+    {:abilities [ability
+                 {:cost [:click 1]
+                  :msg "store 3 [Credits]"
+                  :effect (effect (add-counter card :credit 3))}]
+     :events [(assoc ability :event :corp-turn-begins)]}))
 
 (defcard "ONR Stereogram Antibody"
   {:on-access {:req (req (in-discard? card))
@@ -647,3 +707,73 @@
                                                 (move state side c :deck)
                                                 (remove-from-currently-drawing state side c)))})
                               card nil)))}]})
+
+
+(defcard "ONR Syd Meyer Superstores"
+  {:abilities [{:cost [:click 1 :ice 1]
+                :keep-menu-open :while-clicks-left
+                :msg "gain 4 [Credits]"
+                :label "Gain 4 [Credits]"
+                :async true
+                :effect (effect (gain-credits eid 4))}]})
+
+(defcard "ONR TRAP!"
+  {:flags {:rd-reveal (req true)}
+   :on-access {:optional
+               {:req (req (ambush-outside-archives card))
+                :waiting-prompt true
+                :prompt (msg "Pay 4 [Credits] to use " (:title card) " ability?")
+                :no-ability {:effect (effect (system-msg (str "declines to use " (:title card))))}
+                :yes-ability {:async true
+                              :cost [:credit 4]
+                              :msg "do 3 net damage and give the Runner 1 tag"
+                              :effect (req (wait-for (damage state side :net 3 {:card card})
+                                                     (gain-tags state :corp eid 1)))}}}})
+
+(defcard "ONR Vacant Soulkiller"
+  (onr-advancable 0 false {:async true
+                           :waiting-prompt true
+                           :req (req (pos? (get-counters (get-card state card) :advancement)))
+                           :msg (msg "do " (get-counters (get-card state card) :advancement) " core damage")
+                           :effect (effect (damage eid :brain (get-counters (get-card state card) :advancement) {:card card}))}))
+
+(defcard "ONR Vapor Ops"
+  {:advanceable :always
+   :abilities [{:label "Gain 1 [Credits]"
+                :cost [:advancement 1]
+                :msg "gain 1 [Credits]"
+                :async true
+                :effect (req (gain-credits state side eid 1))}
+               {:label "[Click]: Move hosted advancement tokens to another card"
+                :click-icon true
+                :req (req (and (pos? (get-counters card :advancement))
+                               (pos? (:click corp))))
+                :async true
+                :prompt "How many hosted advancement tokens do you want to move?"
+                :choices {:number (req (get-counters card :advancement))
+                          :default (req (get-counters card :advancement))}
+                :effect (req (let [num-counters target]
+                               (continue-ability
+                                 state side
+                                 {:async true
+                                  :req (req (pos? num-counters))
+                                  :prompt "Choose a card that can be advanced"
+                                  :cost [:advancement num-counters :click 1]
+                                  :choices {:card can-be-advanced?}
+                                  :msg (msg "place " (quantify num-counters " hosted advancement counter") " to " (card-str state target))
+                                  :effect (effect (add-counter target :advancement num-counters {:placed true})
+                                                  (effect-completed eid))}
+                                 card nil)))}]})
+
+(defcard "ONR Virus Test Site"
+  {:flags {:rd-reveal (req true)}
+   :on-access {:req (req (not (in-discard? card)))
+               :msg (msg "do " (if-not (zero? (get-counters card :advancement))
+                                 (* 2 (get-counters card :advancement))
+                                 1)
+                         " net damage")
+               :async true
+               :effect (req (damage state side eid :net
+                                    (if-not (zero? (get-counters card :advancement))
+                                      (* 2 (get-counters card :advancement))
+                                      1)))}})

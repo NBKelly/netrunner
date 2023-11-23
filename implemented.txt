@@ -44,9 +44,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   475 / 584
-TESTS:   217 / 475
-NO TEST: 255
+TOTAL:   485 / 584
+TESTS:   222 / 485
+NO TEST: 260
 NO IMP:  3
 --------------------------
 002 + Access through Alpha
@@ -491,7 +491,7 @@ NO IMP:  3
 455 + Self-Modifying Code
 456 ^ Senatorial Field Trip
 457 + Sentinels Prime
-
+458 ^ Setup!
 459 ^ Shaka
 460 ^ Shield
 
@@ -504,6 +504,8 @@ NO IMP:  3
 
 470 ^ Simulacrum (look at abagnale for test)
 
+472 ^ Siren
+473 ^ Skälderviken SA Beta Test Site
 474 ^ Skeleton Passkeys
 
 476 ^ Skullcap
@@ -515,9 +517,10 @@ NO IMP:  3
 482 + Snowbank
 483 ^ Social Engineering
 484 + Solo Squad
-
+485 + South African Mining Corp
 486 ^ Speed Trap
 487 + Sphinx 2006
+488 + Spinn (R) Public Relations
 
 490 ^ Startup Immolator
 
@@ -536,7 +539,7 @@ NO IMP:  3
 504 + Superglue
 
 507 + Swiss Bank Account
-
+508 + Syd Meyer Superstores
 509 ^ Synchronized Attack on HQ
 510 + Systematic Layoffs
 
@@ -562,7 +565,7 @@ NO IMP:  3
 531 ^ Total Genetic Retrofit
 532 + Toughonium Wall
 533 + Trapdoor
-
+534 + TRAP!
 535 ^ Trauma Team [TM]
 536 + Triggerman
 537 + Trojan Horse
@@ -576,14 +579,15 @@ NO IMP:  3
 546 ^ Underworld Mole
 547 ^ Unlisted Research Lab
 548 ^ Urban Renewal
-
+549 + Vacant Soulkiller
 551 ^ Valu-Pak Software Bundle
-
+552 ^ Vapor Ops
 553 ^ Vewy Vewy Quiet
 
 555 + Vintage Camaro
 556 ^ Viral 15
 
+560 ^ Virus Test Site
 561 + Vortex
 562 ^ Walking Wall
 563 + Wall of Ice
@@ -812,12 +816,15 @@ The following (marked) cards have no tests or implementations:
   452 ^ Security Purge
   453 ^ SeeYa
   456 ^ Senatorial Field Trip
+  458 ^ Setup!
   459 ^ Shaka
   460 ^ Shield
   463 ^ Short-Term Contract
   466 ^ Signpost
   468 ^ Silver Lining Recovery Protocol
   470 ^ Simulacrum (look at abagnale for test)
+  472 ^ Siren
+  473 ^ Skälderviken SA Beta Test Site
   474 ^ Skeleton Passkeys
   476 ^ Skullcap
   481 ^ Snowball
@@ -851,8 +858,10 @@ The following (marked) cards have no tests or implementations:
   547 ^ Unlisted Research Lab
   548 ^ Urban Renewal
   551 ^ Valu-Pak Software Bundle
+  552 ^ Vapor Ops
   553 ^ Vewy Vewy Quiet
   556 ^ Viral 15
+  560 ^ Virus Test Site
   562 ^ Walking Wall
   565 ^ Washed-Up Solo Construct
   567 ^ ONR Weapons Depot
@@ -867,4 +876,4 @@ The following (marked) cards have no tests or implementations:
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 160
+Random card to implement: 272

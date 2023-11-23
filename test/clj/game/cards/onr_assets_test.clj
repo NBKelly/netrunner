@@ -233,3 +233,81 @@
       (is (= 3 (count (:discard (get-runner)))))
       (is (= :corp (:winner @state)) "Corp wins")
       (is (= "Flatline" (:reason @state)) "Win condition reports flatline"))))
+
+(deftest onr-south-african-mining-corp
+  ;; Melange Mining Corp.
+  (do-game
+    (new-game {:corp {:deck ["ONR South African Mining Corp"]}})
+    (play-from-hand state :corp "ONR South African Mining Corp" "New remote")
+    (take-credits state :corp)
+    (take-credits state :runner)
+    (rez state :corp (get-content state :remote1 0))
+    (let [mmc (get-content state :remote1 0)
+          credits (:credit (get-corp))]
+      (is (= 3 (:click (get-corp))) "Corp should have 3 clicks")
+      (card-ability state :corp mmc 0)
+      (is (zero? (:click (get-corp))) "Corp should have 0 clicks after using south african Mining Corp ability")
+      (is (= (+ credits 6) (:credit (get-corp))) "Corp should gain 6 credits from south african Mining Corp ability"))))
+
+(deftest marked-accounts
+  ;; Marked Accounts
+  (do-game
+      (new-game {:corp {:deck ["ONR Spinn (R) Public Relations"]}})
+      (play-from-hand state :corp "ONR Spinn (R) Public Relations" "New remote")
+      (let [ma (get-content state :remote1 0)]
+        (rez state :corp ma)
+        (is (zero? (get-counters (refresh ma) :credit)) "Marked Accounts should start with 0 credits on itself")
+        (card-ability state :corp ma 1)
+        (is (= 3 (get-counters (refresh ma) :credit)) "Marked Accounts should gain 3 credits when ability is used")
+        (take-credits state :corp)
+        (let [credits (:credit (get-corp))]
+          (take-credits state :runner)
+          (is (= (inc credits) (:credit (get-corp))) "Should gain 1 credit at beginning of turn from Marked Accounts")))))
+
+(deftest onr-syd-meyer-superstores
+  ;; Security Subcontract
+  (do-game
+    (new-game {:corp {:deck ["ONR Syd Meyer Superstores" "Ice Wall"]}})
+    (play-from-hand state :corp "ONR Syd Meyer Superstores" "New remote")
+    (play-from-hand state :corp "Ice Wall" "HQ")
+    (let [ss (get-content state :remote1 0)
+          iw (get-ice state :hq 0)]
+      (rez state :corp ss)
+      (rez state :corp iw)
+      (let [credits (:credit (get-corp))
+            clicks (:click (get-corp))]
+        (card-ability state :corp ss 0)
+        (click-card state :corp iw)
+        (is (= (+ credits 4) (:credit (get-corp))) "Corp should gain 4 from Security Subcontract ability")
+        (is (= "Ice Wall" (-> (get-corp) :discard first :title)) "Ice Wall should be in Archives from Security Subcontract ability")
+        (is (= (dec clicks) (:click (get-corp))) "Corp should lose 1 click from Security Subcontract ability")))))
+
+(deftest onr-trap
+  ;; pay 4 on access, and do 3 net damage and give 1 tag
+  (do-game
+    (new-game {:corp {:deck [(qty "ONR TRAP!" 3)]}})
+    (play-from-hand state :corp "ONR TRAP!" "New remote")
+    (take-credits state :corp)
+    (rez state :corp (get-content state :remote1 0))
+    (run-empty-server state "Server 1")
+    (is (= :waiting (prompt-type :runner))
+        "Runner has prompt to wait for Snare!")
+    (click-prompt state :corp "Yes")
+    (is (= 3 (:credit (get-corp))) "Corp had 7 and paid 4 for Snare! 1 left")
+    (is (= 1 (count-tags state)) "Runner has 1 tag")
+    (is (zero? (count (:hand (get-runner)))) "Runner took 3 net damage")))
+
+(deftest cerebral-overwriter
+  ;; Cerebral Overwriter
+  (do-game
+    (new-game {:corp {:deck ["ONR Vacant Soulkiller"]}})
+    (play-from-hand state :corp "ONR Vacant Soulkiller" "New remote")
+    (let [co (get-content state :remote1 0)]
+      (click-advance state :corp (refresh co))
+      (click-advance state :corp (refresh co))
+      (rez state :corp (get-content state :remote1 0))
+      (is (= 2 (get-counters (refresh co) :advancement)))
+      (take-credits state :corp)
+      (run-empty-server state "Server 1")
+      ;;(click-prompt state :corp "Yes") ; choose to do the optional ability
+      (is (= 2 (:brain-damage (get-runner))) "Runner takes 2 core damage"))))

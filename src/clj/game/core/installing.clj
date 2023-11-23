@@ -48,6 +48,10 @@
     (and (has-subtype? card "Region")
          (some #(has-subtype? % "Region") (get-in @state (cons :corp slot))))
     :region
+    (and (= (:title card) "ONR Siren")
+         (not (can-pay? state side (make-eid state) card nil [:credit (:cost card)])))
+    :onr-siren
+
     (and (has-subtype? card "Region")
          (= (:faction card) "ONR Corp")
          (not (can-pay? state side (make-eid state) card nil [:credit (:cost card)])))
@@ -88,6 +92,9 @@
       ;; failed region check
       :region
       (reason-toast (str "Cannot install " (:title card) ", limit of one Region per server"))
+      ;; cannot afford to rez siren
+      :onr-siren
+      (reason-toast (str "Cannot install " (:title card) ", cannot afford to rez it"))
       ;; can't afford to rez an ONR region
       :onr-region
       (reason-toast (str "Cannot install " (:title card) ", cannot afford to rez it"))
@@ -242,7 +249,10 @@
   [state side eid card server args]
   (let [slot (get-slot state card server (select-keys args [:host-card]))
         costs (corp-install-cost state side card server args)
-        costs (if (and (upgrade? card) (= "ONR Corp" (:faction card)) (has-subtype? card "Region"))
+        costs (if (or (and (upgrade? card)
+                           (= "ONR Corp" (:faction card))
+                           (has-subtype? card "Region"))
+                      (= (:title card) "ONR Siren")) ;; thank you garfield
                 (merge-costs costs (:cost card)) costs)]
     (and (corp-can-install? state side card slot (select-keys args [:no-toast]))
          (can-pay? state side eid card nil costs)
@@ -286,8 +296,10 @@
   ([state side eid card server] (corp-install state side eid card server nil))
   ([state side eid card server {:keys [host-card] :as args}]
    (let [eid (eid-set-defaults eid :source nil :source-type :corp-install)
+         ;; the special card, ONR Siren, must be too!
          ;; ONR regions must be rezzed as soon as they are installed!
-         args (if (and (has-subtype? card "Region") (= (:faction card) "ONR Corp")
+         args (if (and (or (has-subtype? card "Region") (= (:title card) "ONR Siren"))
+                       (= (:faction card) "ONR Corp")
                        (not (:install-state args)))
                 (assoc args :install-state :rezzed) args)]
      (cond
