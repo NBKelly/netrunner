@@ -10,7 +10,7 @@
    [game.core.payment :refer [can-pay?]]
    [game.core.prompt-state :refer [add-to-prompt-queue remove-from-prompt-queue]]
    [game.core.prompts :refer [clear-wait-prompt show-wait-prompt]]
-   [game.core.props :refer [add-counter]]
+   [game.core.props :refer [add-counter add-prop]]
    [game.core.say :refer [system-msg system-say]]
    [game.macros :refer [continue-ability effect wait-for msg req]]))
 
@@ -113,9 +113,35 @@
                                  card nil))}
     nil))
 
+(defn- resolve-ldl
+  [req-amt available]
+  (if-not (pos? available)
+    nil
+    {:prompt (msg "Choose an ONR LDL Traffic Analyzers to to resolve" (when (> req-amt 0) (str " (" req-amt " [Credits] left to resolve")))
+     :choices {:card #(and (rezzed? %)
+                           (= (:title %) "ONR LDL Traffic Analyzers")
+                           (pos? (get-counters % :advancement)))}
+     :async true
+     :effect (req
+               (system-msg state side (str "spends 1 advancement counter from " (:title target) " to place 5 credits on " (:title target)))
+               (add-counter state side target :credit 5)
+                  (add-prop state side (get-card state target) :advance-counter -1 {:placed true})
+                  (if (pos? (- available 5))
+                    (continue-ability
+                      state side
+                      (resolve-ldl (- req-amt 5) (- available 5))
+                      card nil)
+                    (effect-completed state side eid)))
+     :cancel-effect (req (if (pos? req-amt)
+                           (continue-ability
+                             state side
+                             (resolve-ldl req-amt available)
+                             card nil)
+                           (effect-completed state side eid)))}))
+
 (defn- onr-resolve-trace
   [state side eid card {:keys [link-card max-strength label corp-credits corp-bid hacker-tracker
-                               corp-strength] :as trace}]
+                               corp-strength ldl-creds] :as trace}]
   "The runner has already paid, now the corp pays. and then we resolve the effects"
   (let [runner-link (current-link state)
         success (>= corp-strength runner-link)]
@@ -123,66 +149,73 @@
     ;; todo - we need to specially resolve hacker tracker expenditures!
     ;; so we count the strength above the max trace strength, and then that's how much MUST
     ;; be spend on hacker tracker central
-    (let [hacker-tracker-overboost
+    (let [ldl-required (- corp-bid corp-credits)
+          hacker-tracker-overboost
           (if (pos? hacker-tracker)
             (- corp-strength max-strength)
             0)]
       (wait-for
         (resolve-ability
           state :corp
-          (lose-from-hacker-tracker hacker-tracker-overboost)
+          (resolve-ldl ldl-required ldl-creds)
           card nil)
-        (when (pos? hacker-tracker-overboost)
-          (system-msg state :corp (str "spends " hacker-tracker-overboost " [credits] from ONR Hacker Tracker Central(s) to increase the value and maximum strength of the trace")))
-        (continue-ability
-          state :corp
-          {:cost [:credit (- corp-bid hacker-tracker-overboost)]
-           :msg (msg "attempt to trace the Runner with Link Strength " corp-strength " - "
-                     (if success
-                       "beating" "losing to")
-                     " the Runner's " runner-link " Link")
-           :async true
-           :effect (req
-                     ;; now we interrupt, and potentially redefine
-                     ;;(trigger-event-simult
-                     ;; set this to false so we can see if it changes again!
-                     (swap! state assoc :onr-trace (merge (:onr-trace @state) {:link-changed false}))
-                     (queue-event state :trace-revealed {:card (get-card state card)})
-                     (wait-for (checkpoint state nil (make-eid state eid))
-                               (let [runner-link (current-link state)
-                                     cheating (any-effects state side :trace-automatic-success)
-                                     success (or (>= corp-strength runner-link) cheating)]
-                                 (when (was-link-changed state)
-                                   (system-msg state side (str "has had their trace attempt adjusted to Strength " corp-strength " - "
-                                                               (if success
-                                                                 (if cheating
-                                                                   "automatically beating"
-                                                                   "beating")
-                                                                 "losing to")
-                                                               " the Runner's " runner-link " Link")))
-                                 (let [which-ability (assoc (if success
-                                                              (:successful trace)
-                                                              (:unsuccessful trace))
-                                                            :eid (make-eid state))]
-                                   (system-say state side (str "The trace was " (when-not success "un") "successful."))
-                                   (wait-for (trigger-event-simult state :corp (if success :successful-trace :unsuccessful-trace)
-                                                                   nil ;; No special functions
-                                                                   {:corp-strength corp-strength
-                                                                    :runner-strength runner-link
-                                                                    :only-tags (:only-tags trace)
-                                                                    :successful success
-                                                                    :corp-spent corp-bid
-                                                                    :runner-spent (runner-spent-total state)
-                                                                    :ability (:ability trace)
-                                                                    :base-link-card link-card})
-                                             ;; it's possible for the effects of the trace to be cancelled by cards
-                                             (if (successful-trace-cancelled state)
-                                               (effect-completed state side eid)
-                                               (wait-for (resolve-ability state :corp (:eid which-ability) which-ability
-                                                                          card [corp-strength runner-link])
-                                                         ;; there's no kicker functionality as far as I know
-                                                         (effect-completed state side eid))))))))}
-          card nil)))))
+        (wait-for
+          (resolve-ability
+            state :corp
+            (lose-from-hacker-tracker hacker-tracker-overboost)
+            card nil)
+          (when (pos? hacker-tracker-overboost)
+            (system-msg state :corp (str "spends " hacker-tracker-overboost " [credits] from ONR Hacker Tracker Central(s) to increase the value and maximum strength of the trace")))
+          ;; we need to resolve the ldl abilities here
+          (continue-ability
+            state :corp
+            {:cost [:credit (- corp-bid hacker-tracker-overboost)]
+             :msg (msg "attempt to trace the Runner with Link Strength " corp-strength " - "
+                       (if success
+                         "beating" "losing to")
+                       " the Runner's " runner-link " Link")
+             :async true
+             :effect (req
+                       ;; now we interrupt, and potentially redefine
+                       ;;(trigger-event-simult
+                       ;; set this to false so we can see if it changes again!
+                       (swap! state assoc :onr-trace (merge (:onr-trace @state) {:link-changed false}))
+                       (queue-event state :trace-revealed {:card (get-card state card)})
+                       (wait-for (checkpoint state nil (make-eid state eid))
+                                 (let [runner-link (current-link state)
+                                       cheating (any-effects state side :trace-automatic-success)
+                                       success (or (>= corp-strength runner-link) cheating)]
+                                   (when (was-link-changed state)
+                                     (system-msg state side (str "has had their trace attempt adjusted to Strength " corp-strength " - "
+                                                                 (if success
+                                                                   (if cheating
+                                                                     "automatically beating"
+                                                                     "beating")
+                                                                   "losing to")
+                                                                 " the Runner's " runner-link " Link")))
+                                   (let [which-ability (assoc (if success
+                                                                (:successful trace)
+                                                                (:unsuccessful trace))
+                                                              :eid (make-eid state))]
+                                     (system-say state side (str "The trace was " (when-not success "un") "successful."))
+                                     (wait-for (trigger-event-simult state :corp (if success :successful-trace :unsuccessful-trace)
+                                                                     nil ;; No special functions
+                                                                     {:corp-strength corp-strength
+                                                                      :runner-strength runner-link
+                                                                      :only-tags (:only-tags trace)
+                                                                      :successful success
+                                                                      :corp-spent corp-bid
+                                                                      :runner-spent (runner-spent-total state)
+                                                                      :ability (:ability trace)
+                                                                      :base-link-card link-card})
+                                               ;; it's possible for the effects of the trace to be cancelled by cards
+                                               (if (successful-trace-cancelled state)
+                                                 (effect-completed state side eid)
+                                                 (wait-for (resolve-ability state :corp (:eid which-ability) which-ability
+                                                                            card [corp-strength runner-link])
+                                                           ;; there's no kicker functionality as far as I know
+                                                           (effect-completed state side eid))))))))}
+            card nil))))))
 
 ;; recursively handle runner link choices until the runner says "Done!"
 (defn runner-link-repeat
@@ -249,7 +282,7 @@
 
 (defn- onr-trace-start
   "Starts the onr trace process by having the corp secretly decide how many credits to spend"
-  [state side eid card {:keys [runner-bonus-link max-strength hacker-tracker label corp-credits corp-extra-bid-cost] :as trace}]
+  [state side eid card {:keys [runner-bonus-link max-strength hacker-tracker label corp-credits corp-extra-bid-cost ldl-creds] :as trace}]
   (system-msg state side (str "uses " (:title card) " to initiate a trace with max strength "
                               max-strength
                               (when label
@@ -258,14 +291,16 @@
                     (str "Corp to secretly bid on the trace"))
   (let [corp-bid-cost (+ 1 (sum-effects state side :corp-trace-bid-additional-cost)
                          (or corp-extra-bid-cost 0))
-        max-bid (min (+ max-strength hacker-tracker) (quot corp-credits corp-bid-cost))
+        max-bid (min (+ max-strength hacker-tracker) (quot (+ ldl-creds corp-credits) corp-bid-cost))
         runner-link (filter #(has-subtype? % "Base Link") (all-active-installed state :runner))]
-  ;  ;; if there is no link card, then the trace automatically succeeds?
+    ;; if there is no link card, then the trace automatically succeeds?
     ;; The corp still needs to bid though
     (continue-ability
       state :corp
       {:prompt (msg "secretly boost the trace up to "
                     max-bid
+                    (when (pos? ldl-creds)
+                      (str "(" ldl-creds " [Credits] available from ONR LDL Traffic Analyzers)"))
                     (when (pos? hacker-tracker)
                       (str "(" max-strength " base, " hacker-tracker " possible Hacker Trackers )"))
                     (when (pos? runner-bonus-link)
@@ -301,11 +336,17 @@
                                            (all-installed state :corp))
                    hacker-tracker-credits (map #(get-counters % :credit) hacker-trackers)
                    hacker-tracker-credits (reduce + hacker-tracker-credits)
+                   ldl-traffics (filter #(and (rezzed? %)
+                                              (= (:title %) "ONR LDL Traffic Analyzers"))
+                                        (all-installed state :corp))
+                   ldl-traffic-creds (map #(* 5 (get-counters (get-card state %) :advancement)) ldl-traffics)
+                   ldl-traffic-creds (reduce + ldl-traffic-creds)
                    runner-bonus-link (+ (or (sum-effects state side :link-for-run) 0) (:baselink (:identity (:runner @state))))
                    max-str-adjust (or (sum-effects state side :max-strength card) 0)
                    trace (merge trace {:player :corp
                                        :max-strength (max (+ max-strength max-str-adjust) 0)
                                        :hacker-tracker (or hacker-tracker-credits 0)
+                                       :ldl-creds (or ldl-traffic-creds 0)
                                        :runner-bonus-link runner-bonus-link
                                        :corp-credits corp-credits
                                        :runner-credits runner-credits})]

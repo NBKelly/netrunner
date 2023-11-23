@@ -44,9 +44,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   455 / 584
-TESTS:   212 / 455
-NO TEST: 240
+TOTAL:   475 / 584
+TESTS:   217 / 475
+NO TEST: 255
 NO IMP:  3
 --------------------------
 002 + Access through Alpha
@@ -144,20 +144,21 @@ NO IMP:  3
 095 ^ Corporate Downsizing
 096 + Corporate Guard(R) Temps
 097 ^ Corporate Headhunters
-
+098 ^ Corporate Negotiation Center
 099 + Corporate Retreat
 100 + Corporate Shuffle
 101 + Corporate War
-
+102 + Corprunner's Shattered Remains
 103 ^ Corrosion
 104 ^ Corruption
 105 + Cortical Cybermodem
 106 + Cortical Scanner
 107 + Cortical Scrub
 108 + Cortical Stimulators
+109 + Cowboy Sysop
 
 111 ^ Crash Everett
-
+112 ^ Crash Space
 113 + Credit Blocks
 114 + Credit Consolidation
 115 ^ Credit Subversion
@@ -166,7 +167,7 @@ NO IMP:  3
 
 120 + Crystal Wall
 121 + Custodial Position
-122 ^ Crash Space
+122 ^ Cybertech Think Tank
 123 ^ Cyfermaster (trivial icebreaker - no test)
 124 ^ Danshi's Second ID
 125 + D'Arc Knight
@@ -175,7 +176,7 @@ NO IMP:  3
 128 + Data Darts
 129 ^ Data Fort Reclamation
 130 + Data Fort Remapping
-
+131 ^ Data Masons
 132 + Data Naga
 133 + Datapool (R) by Zetatech
 
@@ -191,7 +192,7 @@ NO IMP:  3
 144 ^ Dedicated Response Team
 145 ^ Deep Thought
 146 ^ Demolition Run
-
+147 + Department of Misinformation
 148 + Department of Truth Enhancement
 149 + Dermatech Bodyplating
 150 ^ Desperate Competitor
@@ -220,19 +221,21 @@ NO IMP:  3
 174 ^ Emergency Rig
 
 176 ^ Employee Empowerment
+177 ^ Encoder, Inc.
 
 179 + Endless Corridor
 180 + ONR Enterprise, Inc., Shields
 181 + Entrapment
 182 ^ ESA Contract
 183 + Eurocorpse [TM] Spin Chip
-
+184 ^ Euromarket Consortium
 185 ^ Evil Twin
 
 187 ^ Executive Extraction
 188 + Executive File Clerk
 189 + Executive Wiretaps
 190 + Expendable Family Member
+191 + Experimental AI
 
 194 ^ Faked Hit
 195 + Fall Guy
@@ -277,6 +280,7 @@ NO IMP:  3
 
 238 ^ Highlighter
 239 ^ Hijack
+240 ^ Holovid Campaign
 
 243 ^ Hostile Takeover
 244 + Hot Tip for WNS
@@ -296,6 +300,8 @@ NO IMP:  3
 258 ^ Imp
 259 + Imperial Guard
 
+261 ^ Indescriminate Response Team
+262 + Information Laundering
 263 + Inside Job
 264 ^ Investment Firm
 265 + Invisibility
@@ -312,7 +318,7 @@ NO IMP:  3
 278 ^ Krash
 279 + Krumz
 280 + Laser Wire
-
+281 ^ LDL Traffic Analyzers
 282 ^ Leland, Corporate Bodyguard
 
 284 + Lesser Arcana
@@ -372,14 +378,14 @@ NO IMP:  3
 338 ^ New Blood
 
 340 + Newsgroup Filter
-
+341 ^ Newsgroup Taunting
 342 + Night Shift
 343 ^ Nomad Allies
 
 345 + Off-Site Backups
 346 + Olivia Salazar
 347 ^ Omni Kismet, Ph. D.
-
+348 ^ Omniscience Foundation
 349 ^ Omnitech "Spinal Tap" Cybermodem (random, needs a rng fix for tests)
 350 ^ Omnitech Wet Drive
 
@@ -387,13 +393,13 @@ NO IMP:  3
 353 + Open-Ended (R) Mileage Program
 354 ^ Organ Donor
 355 + Overtime Incentives
-
+356 ^ Pacifica Regional AI
 357 + Pandora's Deck
 
 359 ^ Panzer Run
 
 361 + Parraline 5750
-
+362 ^ Pattel Antibody
 363 ^ Pattel's Virus
 
 365 + π in the 'Face
@@ -447,7 +453,7 @@ NO IMP:  3
 414 ^ Reflector
 415 + Reinforced Wall
 416 ^ Remote Detonator
-
+417 ^ Remote Facility
 418 + Rent-I-Con
 419 ^ Rent-to-Own Contract
 420 ^ Replicator
@@ -468,12 +474,12 @@ NO IMP:  3
 437 + Rustbelt HQ Branch
 438 ^ Sandbox Dig
 439 + Sandstorm
-
+440 ^ Satellite Monitors (rng card)
 441 + Scaffolding
 
 443 + Scatter Shot
 444 ^ Schematics Search Engine
-
+445 ^ Schlaghund
 446 ^ Schlaghund Pointers
 447 ^ Scorched Earth
 448 + Score!
@@ -646,16 +652,19 @@ The following (marked) cards have no tests or implementations:
   093 ^ Corporate Coup
   095 ^ Corporate Downsizing
   097 ^ Corporate Headhunters
+  098 ^ Corporate Negotiation Center
   103 ^ Corrosion
   104 ^ Corruption
   111 ^ Crash Everett
+  112 ^ Crash Space
   115 ^ Credit Subversion
   117 ^ Crumble (requires braniac id)
-  122 ^ Crash Space
+  122 ^ Cybertech Think Tank
   123 ^ Cyfermaster (trivial icebreaker - no test)
   124 ^ Danshi's Second ID
   126 ^ Databroker
   129 ^ Data Fort Reclamation
+  131 ^ Data Masons
   141 ^ Death from Above
   143 ^ Decoy Signal
   144 ^ Dedicated Response Team
@@ -675,7 +684,9 @@ The following (marked) cards have no tests or implementations:
   170 ^ Edgerunner, Inc., Temps
   174 ^ Emergency Rig
   176 ^ Employee Empowerment
+  177 ^ Encoder, Inc.
   182 ^ ESA Contract
+  184 ^ Euromarket Consortium
   185 ^ Evil Twin
   187 ^ Executive Extraction
   194 ^ Faked Hit
@@ -699,6 +710,7 @@ The following (marked) cards have no tests or implementations:
   236 ^ Hell's Run
   238 ^ Highlighter
   239 ^ Hijack
+  240 ^ Holovid Campaign
   243 ^ Hostile Takeover
   245 ^ HQ Interface
   246 ^ HQ Mole
@@ -708,11 +720,13 @@ The following (marked) cards have no tests or implementations:
   255 ^ Identity Donor (janky impl)
   256 ^ If You Want it Done Right...
   258 ^ Imp
+  261 ^ Indescriminate Response Team
   264 ^ Investment Firm
   268 ^ Jackhammer
   273 ^ Joan of Arc
   274 ^ Junkyard BBS
   278 ^ Krash
+  281 ^ LDL Traffic Analyzers
   282 ^ Leland, Corporate Bodyguard
   285 ^ Liberated Savings Account
   286 ^ Library Search
@@ -740,13 +754,17 @@ The following (marked) cards have no tests or implementations:
   333 ^ Netwatch Operations Office
   337 ^ Nevinyrral
   338 ^ New Blood
+  341 ^ Newsgroup Taunting
   343 ^ Nomad Allies
   347 ^ Omni Kismet, Ph. D.
+  348 ^ Omniscience Foundation
   349 ^ Omnitech "Spinal Tap" Cybermodem (random, needs a rng fix for tests)
   350 ^ Omnitech Wet Drive
   352 ^ On the Fast Track
   354 ^ Organ Donor
+  356 ^ Pacifica Regional AI
   359 ^ Panzer Run
+  362 ^ Pattel Antibody
   363 ^ Pattel's Virus
   366 ^ Pile Driver
   367 ^ Pirate Broadcast
@@ -777,6 +795,7 @@ The following (marked) cards have no tests or implementations:
   412 ^ Redecorator
   414 ^ Reflector
   416 ^ Remote Detonator
+  417 ^ Remote Facility
   419 ^ Rent-to-Own Contract
   420 ^ Replicator
   423 ^ Restrictive Net Zoning
@@ -785,7 +804,9 @@ The following (marked) cards have no tests or implementations:
   432 ^ Ronin Around
   436 ^ Rush Hour
   438 ^ Sandbox Dig
+  440 ^ Satellite Monitors (rng card)
   444 ^ Schematics Search Engine
+  445 ^ Schlaghund
   446 ^ Schlaghund Pointers
   447 ^ Scorched Earth
   452 ^ Security Purge
@@ -846,4 +867,4 @@ The following (marked) cards have no tests or implementations:
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 271
+Random card to implement: 160

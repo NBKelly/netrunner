@@ -17,7 +17,7 @@
                            identity? in-deck? in-discard? in-hand? in-server? installed? is-type?
                            operation? program? resource? rezzed? runner? upgrade?]]
    [game.core.card-defs :refer [card-def]]
-   [game.core.damage :refer [damage damage-prevent]]
+   [game.core.damage :refer [damage damage-prevent damage-bonus]]
    [game.core.def-helpers :refer [corp-recur corp-rez-toast defcard
                                   reorder-choice trash-on-empty get-x-fn]]
    [game.core.drawing :refer [draw first-time-draw-bonus max-draw draw-bonus
@@ -25,7 +25,7 @@
    [game.core.effects :refer [register-lingering-effect]]
    [game.core.eid :refer [complete-with-result effect-completed is-basic-advance-action? make-eid]]
    [game.core.engine :refer [pay register-events resolve-ability]]
-   [game.core.events :refer [first-event? no-event? turn-events]]
+   [game.core.events :refer [first-event? no-event? last-turn? turn-events]]
    [game.core.expose :refer [expose-prevent]]
    [game.core.flags :refer [lock-zone prevent-current
                             prevent-draw
@@ -48,7 +48,7 @@
    [game.core.props :refer [add-counter add-icon add-prop remove-icon set-prop]]
    [game.core.revealing :refer [reveal]]
    [game.core.rezzing :refer [derez rez]]
-   [game.core.runs :refer [end-run]]
+   [game.core.runs :refer [end-run gain-corp-run-credits]]
    [game.core.say :refer [system-msg]]
    [game.core.servers :refer [is-central? is-remote? target-server zone->name]]
    [game.core.set-aside :refer [get-set-aside set-aside-for-me swap-set-aside-cards]]
@@ -64,8 +64,45 @@
    [jinteki.utils :refer :all]
    [game.core.link :refer [get-link]]
    [game.cards.assets :refer [campaign]]
-   [game.core.onr-utils :refer [handle-if-unique onr-trace-tag]]
+   [game.core.onr-utils :refer [handle-if-unique onr-trace-tag register-effect-once dice-roll]]
+   [game.cards.ice :refer [end-the-run-unless-runner-pays end-the-run]]
    ))
+
+;; (def end-the-run
+;;   "Basic ETR subroutine"
+;;   {:label "End the run"
+;;    :msg "end the run"
+;;    :async true
+;;    :effect (effect (end-run :corp eid card))})
+
+(defn- onr-advancable
+  ([ab] (onr-advancable 0 ab))
+  ([cost ab] (onr-advancable 0 true ab))
+  ([cost optional ability]
+   (let [cost (if (number? cost) [:credit cost] cost)
+         ask (if optional
+               {:optional {:req (req (and (rezzed? card)
+                                            (installed? card)
+                                            (can-pay? state :corp eid card nil cost)))
+                             :waiting-prompt (:waiting-prompt ability)
+                           :prompt (msg "Use " (:title card) " ability?")
+                           :yes-ability (dissoc ability :waiting-prompt)}}
+               {:req (req (and (rezzed? card)
+                               (installed? card)
+                               (can-pay? state :corp eid card nil cost)))
+                :async true
+                :effect (req (continue-ability
+                               state side
+                               (dissoc ability :waiting-prompt)
+                               card nil))})]
+     {:advanceable :always
+      :implementation "(classic) Installed ambushes must be rezzed to take effect, unless otherwise noted"
+      :on-access ask})))
+
+(defn- onr-ambush-impl [impl]
+  (merge {:implementation "(classic) Installed ambushes must be rezzed to take effect, unless otherwise noted"} impl))
+
+;; card impls
 
 (defcard "ONR ACME Savings and Loan"
   (letfn [(acme-event []
@@ -193,6 +230,106 @@
                                 card nil)
                               (effect-completed state side eid))))}]}))
 
+(defcard "ONR Corporate Negotiating Center"
+  (let [ability {:req (req (seq (:hand corp)))
+                 :async true
+                 :label "Reveal agendas"
+                 :once :per-turn
+                 :interactive (req true)
+                 :effect (req (let [gendies (filter agenda? (:hand corp))]
+                                 (continue-ability
+                                   state side
+                                   (if (seq gendies)
+                                     {:prompt "reveal any number of agendas from HQ"
+                                      :choices {:card #(and (agenda? %)
+                                                            (in-hand? %))
+                                                :max (count gendies)}
+                                      :msg (msg "reveal " (str/join ", " (map :title targets)) " from HQ, and gain " (count targets) " [Credits]")
+                                      :async true
+                                      :effect (req (wait-for (reveal state side targets)
+                                                             (gain-credits state side eid (count targets))))}
+                                     {:prompt "You have no agendas"
+                                      :choices ["I understand"]})
+                                   card nil)))}]
+    {:derezzed-events [corp-rez-toast]
+     :events [(assoc ability :event :corp-turn-begins)]
+     :abilities [ability]}))
+
+(defcard "ONR Corprunner's Shattered Remains"
+  (onr-advancable 0 false {:async true
+                           :waiting-prompt true
+                           :req (req (and (rezzed? card)
+                                          (pos? (get-counters (get-card state card) :advancement))))
+                           :prompt (msg "Choose " (quantify (get-counters (get-card state card) :advancement) "piece") " of hardware to trash")
+                           :msg (msg "trash " (enumerate-str (map :title targets)))
+                           :choices {:max (req (get-counters (get-card state card) :advancement))
+                                     :card #(and (installed? %)
+                                                 (hardware? %))}
+                           :effect (effect (trash-cards eid targets {:cause-card card}))}))
+
+(defcard "ONR Cowboy Sysop"
+  {:abilities [{:label "Add an installed card to HQ"
+                :cost [:click 1]
+                :keep-menu-open :while-clicks-left
+                :choices {:card installed?}
+                :msg (msg "move " (card-str state target) " to HQ")
+                :effect (effect (move target :hand))}]})
+
+(defcard "ONR Cybertech Think Tank"
+  (letfn [(boost-abi [used remain]
+            {:optional {:prompt (msg "Spend an advancement to boost meat damage?"
+                                     (when (> used 0) (str " (" used " used)"))
+                                     (when (> remain 1) (str " (" (dec remain) " remain)")))
+                        :player :corp
+                        :yes-ability {:cost [:advancement 1]
+                                      :msg "do 1 additional meat damage"
+                                      :async true
+                                      :effect (req (damage-bonus state side :meat 1)
+                                                   (if (> remain 1)
+                                                     (continue-ability
+                                                       state side
+                                                       (boost-abi (inc used) (dec remain))
+                                                       card nil)
+                                                     (effect-completed state side eid)))}}})]
+    {:implementation "implemented as a pre-damage event"
+     :advanceable :always
+     :events [{:event :pre-damage
+               :req (req (and (= target :meat)
+                              (pos? (get-counters (get-card state card) :advancement))))
+               :async true
+               :effect (req (continue-ability
+                              state side
+                              (boost-abi 0 (get-counters (get-card state card) :advancement))
+                              card nil))}]}))
+
+(defcard "ONR Data Masons"
+  {:static-abilities [{:type :rez-cost
+                       :req (req (and (ice? target)
+                                      (has-subtype? target "Wall")))
+                       :value -2}
+                      {:type :ice-strength
+                       :req (req (and (ice? target)
+                                      (has-subtype? target "Wall")))
+                       :value 1}]})
+
+(defcard "ONR Department of Misinformation"
+  {:interactions {:prevent [{:type #{:expose}
+                             :req (req true)}]}
+   :derezzed-events [{:event :pre-expose
+                      :async true
+                      :effect (req (let [etarget target]
+                                     (continue-ability
+                                       state side
+                                       {:optional
+                                        {:req (req (not (rezzed? card)))
+                                         :player :corp
+                                         :prompt (msg "The Runner is about to expose " (:title etarget) ". Rez " (:title card) "?")
+                                         :yes-ability {:async true
+                                                       :effect (effect (rez eid card))}}}
+                                       card nil)))}]
+   :abilities [{:msg "prevent 1 card from being exposed"
+                :cost [:credit 1]
+                :effect (effect (expose-prevent 1))}]})
 
 (defcard "ONR Department of Truth Enhancement"
   {:abilities [{:cost [:click 1]
@@ -215,6 +352,57 @@
                 :async true
                 :effect (effect (draw eid 2))}]})
 
+(defcard "ONR Encoder, Inc."
+  (let [new-sub (assoc end-the-run :label "[Encoder, Inc.] End the run")]
+    (letfn [(all-rezzed-bios [state]
+              (filter #(and (ice? %)
+                            (has-subtype? % "Code Gate")
+                            (rezzed? %))
+                      (all-installed state :corp)))
+            (remove-one [cid state ice]
+              (remove-extra-subs! state :corp ice cid))
+            (add-one [cid state ice]
+              (add-extra-sub! state :corp ice new-sub cid))
+            (update-all [state func]
+              (doseq [i (all-rezzed-bios state)]
+                (func state i)))]
+      {:static-abilities [{:type :rez-cost
+                           :req (req (and (ice? target)
+                                          (has-subtype? target "Code Gate")))
+                           :value -1}]
+       :on-rez {:msg "add \"[Subroutine] End the run\" after all other subroutines"
+                :effect (req (update-all state (partial add-one (:cid card))))}
+       :leave-play (req (system-msg state :corp (str "loses " (:title card) " additional subroutines")
+                                    (update-all state (partial remove-one (:cid card)))))
+       :events [{:event :rez
+                 :req (req (and (ice? (:card context))
+                                (has-subtype? (:card context) "Code Gate")))
+                 :effect (req (add-one (:cid card) state (get-card state (:card context))))}]})))
+
+(defcard "ONR Euromarket Consortium"
+  {:static-abilities [(corp-hand-size+ 2)]
+   :abilities [{:cost [:click 1 :credit 1]
+                :msg "draw 2 cards"
+                :async true
+                :effect (effect (draw eid 2))}]})
+
+(defcard "ONR Executive Boot Camp"
+  {:abilities [{:label "Gain 2 credits for this run"
+                :req (req run)
+                :cost [:randomly-trash-from-hand 1]
+                :effect (req (gain-corp-run-credits state side eid 2))}]})
+
+(defcard "ONR Experimental AI"
+  (onr-advancable 0 false {:req (req (pos? (get-counters (get-card state card) :advancement)))
+                           :waiting-prompt true
+                           :prompt (msg "Choose " (quantify (get-counters (get-card state card) :advancement) "program") " to trash")
+                           :choices {:max (req (get-counters (get-card state card) :advancement))
+                                     :card #(and (installed? %)
+                                                 (program? %))}
+                           :msg (msg "trash " (enumerate-str (map :title targets)))
+                           :async true
+                           :effect (effect (trash-cards eid targets {:cause-card card}))}))
+
 (defcard "ONR Fortress Architects"
   {:static-abilities [{:type :install-cost
                        :req (req (ice? target))
@@ -229,6 +417,9 @@
      :events [(assoc abi :event :successful-trace)
               (assoc abi :event :unsuccessful-trace)]}))
 
+(defcard "ONR Holovid Campaign"
+  (campaign 12 1))
+
 (defcard "ONR I Got a Rock"
   {:abilities [{:cost [:click 1 :agenda-point 3]
                 :label "Do 15 meat damage"
@@ -236,6 +427,29 @@
                 :req (req (<= 2 (count-tags state)))
                 :async true
                 :effect (effect (damage eid :meat 15 {:card card}))}]})
+
+(defcard "ONR Indiscriminate Response Team"
+  {:implementation "effect is when the run ends - card needs to live for it to work"
+   :events [{:event :run-ends
+             :req (req (and (:successful target)
+                            (seq (:hand runner))))
+             :optional {:prompt "Have the runner draw a new hand?"
+                        :waiting-prompt true
+                        :yes-ability {:msg (msg "force the runner to shuffle their Grip into the Stack and draw " (count (:hand runner)) " cards")
+                                      :async true
+                                      :effect (req (let [cards (:hand runner)]
+                                                     (doseq [c cards]
+                                                       (move state :runner c :deck))
+                                                     (shuffle! state :runner :deck)
+                                                     (draw state :runner eid (count cards))))}}}]})
+
+(defcard "ONR Information Laundering"
+  {:advanceable :always
+   :abilities [{:label "Gain 4 [Credits] for each advancement token"
+                :cost [:click 1 :trash-can]
+                :msg (msg "gain " (* 4 (get-counters card :advancement)) " [Credits]")
+                :async true
+                :effect (effect (gain-credits eid (* 4 (get-counters card :advancement))))}]})
 
 (defcard "ONR Investment Firm"
   (let [ability {:msg "take 1 [Credits]"
@@ -258,6 +472,18 @@
    :interactions {:pay-credits {:req (req (= :trace (:source-type eid)))
                                 :type :recurring}}})
 
+(defcard "ONR LDL Traffic Analyzers"
+  (let [remove-abi {:silent (req true)
+                    :effect (req (let [c (get-counters (get-card state card) :credit)]
+                                   (when (pos? c)
+                                     (add-counter state side card :credit (- c)))))}]
+    {:advanceable :always
+     :implementation "ability automatically resolves after both players have bid"
+     :interactions {:pay-credits {:req (req (= :trace (:source-type eid)))
+                                  :type :credit}}
+     :events [(assoc remove-abi :event :successful-trace)
+              (assoc remove-abi :event :unsuccessful-trace)]}))
+
 (defcard "ONR Nevinyrral"
   {:in-play [:click-per-turn 1]
    :on-rez {:effect (req (system-msg state side (str "uses " (:title card) " to gain 1 additional [Click] per turn"))
@@ -266,6 +492,56 @@
                          (gain state :corp :click-per-turn 1))}
    :leave-play (req (when (rezzed? card)
                       (win state :runner "\"Executive Termination\"")))})
+
+(defcard "ONR Newsgroup Taunting"
+  {:events [{:event :run
+             :interactive (req true)
+             :effect (req (continue-ability
+                            state side
+                            (end-the-run-unless-runner-pays [:credit 1] "")
+                            card nil))}]})
+
+(defcard "ONR Omniscience Foundation"
+  (let [abi {:msg "give the runner a tag"
+             :effect (req (gain-tags state side eid 1))
+             :async true
+             :req (req (seq (turn-events state side :runner-gain-tag)))}]
+    {:events [(assoc abi :event :corp-turn-ends)
+              (assoc abi :event :runner-turn-ends)]}))
+
+(defcard "ONR Pacifica Regional AI"
+  {:advanceable :always
+   :abilities [{:label "Gain [Click]"
+                :msg "gain [Click]"
+                :cost [:advancement 1]
+                :req (req (= (:active-player @state) :corp))
+                :effect (effect (gain-clicks 1))}]})
+
+(defcard "ONR Pattel Antibody"
+  (let [pattel-effect {:req (req (and (some #(has-subtype? % "Icebreaker") (all-installed state :runner))
+                                      (or (rezzed? card)
+                                          (and (not (installed? card))
+                                               (not (in-discard? card))))))
+                       :msg "Place a Pattel counter on each installed Icebreaker"
+                       :effect (req (doseq [icebreaker (filter #(has-subtype? % "Icebreaker") (all-installed state :runner))]
+                                      (add-counter state side icebreaker :corp-pattel 1))
+                                    (register-effect-once
+                                      state side card
+                                      {:type :breaker-strength
+                                       :ability-name "Pattel Antibodies"
+                                       :req (req true)
+                                       :value (req (- (get-counters (get-card state target) :corp-pattel)))}))}]
+    {:implementation "These are different than the other pattel counters, and do not get removed on a purge"
+     :flags {:rd-reveal (req true)}
+     :on-access pattel-effect}))
+
+(defcard "ONR Remote Facility"
+  {:implementation "Click on the card to gain your click"
+   :abilities [{:label "Gain [Click]"
+                :msg "gain [Click]"
+                :once :per-turn
+                :req (req (= (:active-player @state) :corp))
+                :effect (effect (gain-clicks 1))}]})
 
 (defcard "ONR Rescheduler"
   {:abilities [{:cost [:click 1]
@@ -291,6 +567,43 @@
 
 (defcard "ONR Rustbelt HQ Branch"
   {:static-abilities [(corp-hand-size+ 2)]})
+
+(defcard "ONR Satellite Monitors"
+  (let [abi {:once :per-turn
+             :async true
+             :label "Roll the dice"
+             :interactive (req true)
+             :req (req (pos? (count (last-turn? state :runner :made-run))))
+             :effect (req (let [di (dice-roll (count (last-turn? state :runner :made-run)))
+                                tags (count (filter #(= 1 %) di))]
+                            (continue-ability
+                              state side
+                              {:optional
+                               {:prompt "Roll the dice?"
+                                :autoresolve (get-autoresolve :auto-fire)
+                                :yes-ability {:msg (msg "roll " (seq di) " and give the runner " tags " tags")
+                                              :async true
+                                              :effect (req (gain-tags state side eid tags))}}}
+                              card nil)))}]
+    {:derezzed-events [corp-rez-toast]
+     :flags {:corp-phase-12 (req (pos? (count (last-turn? state :runner :made-run))))}
+     :events [(assoc abi :event :corp-turn-begins)]
+     :abilities [abi (set-autoresolve :auto-fire "Satellite Monitors")]}))
+
+(defcard "ONR Schlaghund"
+  {:abilities [{:label "Roll for 10 meat"
+                :cost [:click 1]
+                :effect (req (let [di (dice-roll)
+                                   tags (count-tags state)]
+                               (continue-ability
+                                 state side
+                                 (if (<= di tags)
+                                   {:msg (msg "roll " di ", do 10 meat damage, and trash itself")
+                                    :effect (req (wait-for (damage state side (make-eid state eid) :meat 10)
+                                                           (trash state side eid card)))
+                                    :async true}
+                                   {:msg (msg "roll " di)})
+                                 card nil)))}]})
 
 (defcard "ONR Solo Squad"
   {:abilities [{:req (req tagged)

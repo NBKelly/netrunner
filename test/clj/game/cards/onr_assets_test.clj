@@ -29,6 +29,70 @@
         (is (nil? (refresh ac)) "Braindance Campaign should be trashed")
         (is (= "ONR Braindance Campaign" (->> (get-corp) :discard second :title))))))
 
+(deftest onr-corprunners-shattered-remains
+  ;; Shattered Remains
+  (do-game
+    (new-game {:corp {:deck [(qty "ONR Corprunner's Shattered Remains" 2)]}
+               :runner {:deck ["Cyberfeeder" "Lemuria Codecracker"]}})
+    (play-from-hand state :corp "ONR Corprunner's Shattered Remains" "New remote")
+    (play-from-hand state :corp "ONR Corprunner's Shattered Remains" "New remote")
+    (take-credits state :corp)
+    (play-from-hand state :runner "Cyberfeeder")
+    (play-from-hand state :runner "Lemuria Codecracker")
+    (take-credits state :runner)
+    (let [remains1 (get-content state :remote1 0)
+          remains2 (get-content state :remote2 0)
+          cyber (get-hardware state 0)]
+      (rez state :corp remains1)
+      (rez state :corp remains2)
+      (advance state remains2 1)
+      (take-credits state :corp)
+      (run-empty-server state :remote1)
+      (is (no-prompt? state :corp) "Corp shouldn't get Shattered Remains ability prompt when no counters")
+      (click-prompt state :runner "No action")
+      (run-empty-server state :remote2)
+      (let [credits (:credit (get-corp))]
+        (click-card state :corp cyber)
+        (is (count (:discard (get-runner))) "Cyberfeeder should be in discard from Shattered Remains")))))
+
+(deftest onr-cowboy-sysop
+  ;; Isabel McGuire
+  (do-game
+    (new-game {:corp {:deck ["Ice Wall" "ONR Cowboy Sysop"]}})
+    (play-from-hand state :corp "ONR Cowboy Sysop" "New remote")
+    (play-from-hand state :corp "Ice Wall" "HQ")
+    (is (zero? (-> (get-corp) :hand count)))
+    (let [isabel (get-content state :remote1 0)
+          iw (get-ice state :hq 0)]
+      (rez state :corp isabel)
+      (card-ability state :corp isabel 0)
+      (click-card state :corp (refresh iw))
+      (is (= 1 (-> (get-corp) :hand count))))))
+
+(deftest onr-department-of-misinformation
+  ;; Zaibatsu Loyalty
+  (do-game
+    (new-game {:corp {:deck ["ONR Department of Misinformation" "Ice Wall"]}
+               :runner {:deck ["Lemuria Codecracker"]}})
+    (core/gain state :corp :click 10 :click 10)
+    (play-from-hand state :corp "ONR Department of Misinformation" "New remote")
+    (play-from-hand state :corp "Ice Wall" "New remote")
+    (take-credits state :corp)
+    (core/gain state :runner :click 10 :click 10)
+    (play-from-hand state :runner "Lemuria Codecracker")
+    (let [code (get-hardware state 0)
+          iw (get-ice state :remote2 0)
+          zai (get-content state :remote1 0)]
+      (run-empty-server state "HQ")
+      (card-ability state :runner code 0)
+      (click-card state :runner (refresh iw))
+      (is (some? (prompt-map :corp)) "Corp should get the option to rez Zaibatsu Loyalty before expose")
+      (click-prompt state :corp "Yes")
+      (is (rezzed? (refresh zai)) "Zaibatsu Loyalty should be rezzed")
+      (let [credits (:credit (get-corp))]
+        (card-ability state :corp zai 0)
+        (is (= (dec credits) (:credit (get-corp))) "Corp should lose 1 credit for stopping the expose")
+        (click-prompt state :corp "Done")))))
 
 (deftest onr-department-of-truth-enhancement
   (do-game
@@ -46,6 +110,28 @@
         (str "Corp gains 3 * " n " credits from Department of Truth Enhancement")
         (card-ability state :corp (refresh dept) 1)
         (is (zero? (get-counters (refresh dept) :credit)) "0 counters on DOTE")))))
+
+(deftest onr-experimental-ai
+  ;; Aggressive Secretary
+  (do-game
+    (new-game {:corp {:deck ["ONR Experimental AI"]}
+               :runner {:deck [(qty "Cache" 3)]}})
+    (play-from-hand state :corp "ONR Experimental AI" "New remote")
+    (let [as (get-content state :remote1 0)]
+      ;; Single advance AggSec
+      (click-advance state :corp (refresh as))
+      (rez state corp (refresh as))
+      (take-credits state :corp)
+      ;; Run on AggSec with 3 programs
+      (play-from-hand state :runner "Cache")
+      (play-from-hand state :runner "Cache")
+      (play-from-hand state :runner "Cache")
+      (run-empty-server state "Server 1")
+      ;; Corp can trash one program
+      (click-card state :corp (get-program state 1))
+      ;; There should be two Caches left
+      ;;(is (= 3 (:credit (get-corp))))
+      (is (= 2 (count (get-program state)))))))
 
 (deftest onr-i-got-a-rock
   (do-game
@@ -65,6 +151,25 @@
       (is (zero? (count (:discard (get-runner)))) "Runner should have 0 cards in discard")
       (card-ability state :corp (refresh rock) 0)
       (is (= 15 (count (:discard (get-runner)))) "Runner should take 15 damage"))))
+
+(deftest onr-information-laundering
+  ;; GRNDL Refinery
+  (do-game
+    (new-game {:corp {:deck ["ONR Information Laundering"]}})
+    (core/gain state :corp :click 100 :credit 100)
+    (dotimes [i 5]
+      (play-from-hand state :corp "ONR Information Laundering" "New remote")
+      (let [grndl (get-content state (keyword (str "remote" (inc i))) 0)
+            credits (- (:credit (get-corp)) i)]
+        (rez state :corp grndl)
+        (when (pos? i)
+          (advance state (refresh grndl) i)
+          (is (= i (get-counters (refresh grndl) :advancement)) (str "ONR Information Laundering should have " i " advancement counters on itself")))
+        (card-ability state :corp (refresh grndl) 0)
+        (is (= (+ credits (* i 4)) (:credit (get-corp))) (str "Corp should gain " (* i 4) " credits"))
+        ;;(is (= 1 (-> (get-corp) :discard count)) "Archives should have 1 card in it")
+        (is (= "ONR Information Laundering" (-> (get-corp) :discard first :title)) "Only card in Archives should be GRNDL Refinery")
+        (core/move state :corp (find-card "ONR Information Laundering" (:discard (get-corp))) :hand)))))
 
 (deftest onr-krumz-test
   (do-game
