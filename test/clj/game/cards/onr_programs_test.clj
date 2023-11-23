@@ -3,11 +3,131 @@
             [game.core.card :refer :all]
             [game.macros :refer [req]]
             [game.utils :as utils]
+            [game.core.ice :refer [add-sub! pump-ice]]
             [game.core-test :refer :all]
             [game.utils-test :refer :all]
             [game.macros-test :refer :all]
             [clojure.string :as str]
             [clojure.test :refer :all]))
+
+
+;; test utilities
+
+(defn- dismiss-install-prompt [state]
+  (when-not (no-prompt? state :runner)
+    (click-prompt state :runner "Done")))
+
+(defn- basic-program-test
+  "tests a program which has basic boost and break functionality"
+  [card base-str boost break]
+  (let [type (:type break)
+        type (condp = type
+               "Sentry"    "ONR Banpei"
+               "All"       "Rime"
+               "Wall"      "ONR Data Wall"
+               "Code Gate" "Enigma"
+               "Barrier"   "Vanilla"
+               ;; todo - whatever other types need to be tested
+               type)]
+    (do-game
+      (new-game {:corp {:credits 100
+                        :hand ["Mother Goddess" type]}
+                 :runner {:credits 100
+                          :hand [card]}})
+      (play-from-hand state :corp type "Archives")
+      (play-from-hand state :corp "Mother Goddess" "HQ")
+      (rez state :corp (get-ice state :archives 0))
+      (rez state :corp (get-ice state :hq 0))
+      (take-credits state :corp)
+      (play-from-hand state :runner card)
+      (dismiss-install-prompt state)
+      (let [card (get-program state 0)
+            ice (get-ice state :hq 0)
+            base-breaker-str (cond
+                               (integer? base-str) base-str
+                               (= :rand-zero base-str) 0
+                               :else nil)]
+        (is (= base-breaker-str (get-strength (refresh card)))
+            (str (:title card) "starts at base strength " base-str))
+        (run-on state :hq)
+        (run-continue state :encounter-ice)
+        (pump-ice state :corp (refresh ice) (+ 7 (rand-int 7)))
+        ;; how many times should we need to boost?
+        (let [base-str (get-strength (refresh card))
+              need-to-boost (- (get-strength (refresh ice)) base-str)
+              boost-strength (:amount boost)
+              times-to-boost (if-not (pos? need-to-boost)
+                               0 (int (Math/ceil(/ need-to-boost boost-strength))))]
+          (dotimes [_ times-to-boost]
+            (changes-val-macro
+              boost-strength (get-strength (refresh card))
+              (str (:title card) " was boosted by " boost-strength)
+              (changes-val-macro
+                (- (:cost boost)) (:credit (get-runner))
+                (str (:title card) " spends " (:cost boost) " to boost strength")
+                (card-ability state :runner (refresh card) (:ab boost)))))
+          (is (>= (get-strength (refresh card))
+                  (get-strength (refresh ice))) "At strength to break MOGO")
+          (let [addl-subs (+ 3 (rand-int 10))
+                total-subs (inc addl-subs)
+                ;; we're going to insert a random number of ETR subs
+                etr-sub {:label "End the run"
+                         :msg "end the run"
+                         ;; don't need to actually do anything!
+                         :async true}]
+            (dotimes [_ addl-subs]
+              (add-sub! state :corp (refresh ice) etr-sub))
+            (is (= total-subs (count (:subroutines (refresh ice))))
+                (str "gained " addl-subs " ice subroutines"))
+            (let [subs-per-break (:amount break)
+                  num-breaks (int (Math/ceil (/ total-subs subs-per-break)))
+                  last-break (mod total-subs subs-per-break)
+                  last-break (if (zero? last-break) subs-per-break last-break)]
+              (card-ability state :runner (refresh card) (:ab break))
+              (dotimes [n num-breaks]
+                (let [breaks-this-time (if (= num-breaks (inc n)) last-break subs-per-break)]
+                  (changes-val-macro
+                    (- (:cost break)) (:credit (get-runner))
+                    (str "Spent " (:cost break) " credits to break subroutines with " (:title card))
+                    (dotimes [z breaks-this-time]
+                      (click-prompt state :runner "End the run")))))
+              (is (zero? (count (remove :broken (:subroutines (refresh ice))))) "All subroutines have been broken"))))))))
+
+;; todo - game the rng sometimes for tests
+;; (def ^:dynamic *rand* clojure.core/rand)
+
+;; (defn rand-1
+;;  ([]
+;;    (*rand* 1))
+;;  ([n]
+;;    (*rand* n)))
+
+;; (defmacro with-rand-seed
+;;  "Sets seed for calls to random in body. Beware of lazy seqs!"
+;;  [seed & body]
+;;   `(let [g# (java.util.Random. ~seed)]
+;;      (binding [*rand* #(* % (.nextFloat g#))]
+;;       (with-redefs [rand rand-1]
+;;         ~@body))))
+
+
+;; test impls
+
+(deftest onr-ai-boon
+  (let [card "ONR AI Boon"]
+    ;; this is a random breaker, run the test a few times
+    (basic-program-test card :rand-zero {:ab 1 :amount 1 :cost 1}
+                        {:ab 0 :amount 1 :cost 1 :type "Sentry"})
+    (basic-program-test card :rand-zero {:ab 1 :amount 1 :cost 1}
+                        {:ab 0 :amount 1 :cost 1 :type "Sentry"})
+    (basic-program-test card :rand-zero {:ab 1 :amount 1 :cost 1}
+                        {:ab 0 :amount 1 :cost 1 :type "Sentry"})
+    (basic-program-test card :rand-zero {:ab 1 :amount 1 :cost 1}
+                        {:ab 0 :amount 1 :cost 1 :type "Sentry"})
+    (basic-program-test card :rand-zero {:ab 1 :amount 1 :cost 1}
+                        {:ab 0 :amount 1 :cost 1 :type "Sentry"})
+    (basic-program-test card :rand-zero {:ab 1 :amount 1 :cost 1}
+                        {:ab 0 :amount 1 :cost 1 :type "Sentry"})))
 
 (deftest onr-baedekers-net-map
   (do-game
@@ -59,6 +179,45 @@
     (click-prompt state :runner "Done")
     (is (= 0 (count-tags state)) "Runner should have 0 tag")))
 
+(deftest onr-bartmoss-memorial-icebreaker
+  (let [card "ONR Bartmoss Memorial Icebreaker"]
+    (basic-program-test card 0 {:ab 1 :amount 1 :cost 1} {:ab 0 :amount 1 :cost 1 :type "All"})))
+
+(deftest onr-big-frackin-gun
+  (let [card "ONR Big Frackin' Gun"]
+    (basic-program-test card
+                        7
+                        {:ab 1 :amount 1 :cost 1}
+                        {:ab 0 :amount 5 :cost 6 :type "Sentry"})))
+
+(deftest onr-black-dahlia
+  (let [card "ONR Black Dahlia"]
+    (basic-program-test card
+                        5
+                        {:ab 1 :amount 1 :cost 2}
+                        {:ab 0 :amount 1 :cost 2 :type "Sentry"})))
+
+(deftest onr-black-widow
+  (let [card "ONR Black Widow"]
+    (basic-program-test card
+                        2
+                        {:ab 1 :amount 1 :cost 2} ;; boost
+                        {:ab 0 :amount 1 :cost 1 :type "Sentry"})))
+
+(deftest onr-boring-bit
+  (let [card "ONR Boring Bit"]
+    (basic-program-test card
+                        5
+                        {:ab 1 :amount 1 :cost 1} ;; boost
+                        {:ab 0 :amount 1 :cost 2 :type "Wall"})))
+
+(deftest onr-bulldozer
+  (let [card "ONR Bulldozer"]
+    (basic-program-test card
+                        4
+                        {:ab 1 :amount 1 :cost 2} ;; boost
+                        {:ab 0 :amount 1 :cost 1 :type "Wall"})))
+
 (deftest onr-cloak-pay-credits-prompt
     ;; Pay-credits prompt
     (do-game
@@ -98,6 +257,14 @@
       (is (zero? (get-strength (refresh iwall))) "Ice Wall strength at 0 for encounter")
       (run-continue state)
       (is (= 1 (get-strength (refresh iwall))) "Ice Wall strength at 1 after encounter"))))
+
+(deftest onr-codecracker
+  (let [card "ONR Codecracker"]
+    (basic-program-test card
+                        4
+                        {:ab 1 :amount 1 :cost 1} ;; boost
+                        {:ab 0 :amount 1 :cost 0 :type "Code Gate"})))
+
 
 (deftest invisibility-pay-credits-prompt
     ;; Pay-credits prompt

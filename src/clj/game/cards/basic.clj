@@ -9,7 +9,7 @@
    [game.core.eid :refer [effect-completed]]
    [game.core.engine :refer [trigger-event]]
    [game.core.effects :refer [register-lingering-effect]]
-   [game.core.flags :refer [can-advance? untrashable-while-resources?]]
+   [game.core.flags :refer [can-advance? untrashable-while-resources? can-run?]]
    [game.core.gaining :refer [gain-credits lose-click-debt deduct]]
    [game.core.installing :refer [corp-can-pay-and-install? corp-install
                                  runner-can-pay-and-install? runner-install]]
@@ -204,7 +204,8 @@
                                            target {:base-cost [:click 1]}))}
                {:label "Run any server"
                 :async true
-                :req (req (zero? (:action-debt runner)))
+                :req (req (and (zero? (:action-debt runner))
+                               (can-run? state side true)))
                 :effect (effect (make-run eid target nil {:click-run true}))}
                {:label "Remove 1 tag"
                 :cost [:click 1 :credit 2]

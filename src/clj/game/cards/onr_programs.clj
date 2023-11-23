@@ -203,7 +203,7 @@
 
 
 (defcard "ONR AI Boon"
-  (auto-icebreaker {:abilities [(break-sub 1 1 "Barrier")
+  (auto-icebreaker {:abilities [(break-sub 1 1 "Sentry")
                                 (strength-pump 1 1)]
                     :events [{:event :run
                               :async true

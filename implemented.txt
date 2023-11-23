@@ -45,8 +45,8 @@ Keys:
 
 --------------------------
 TOTAL:   498 / 584
-TESTS:   222 / 498
-NO TEST: 273
+TESTS:   230 / 498
+NO TEST: 265
 NO IMP:  3
 --------------------------
 002 + Access through Alpha
@@ -56,7 +56,7 @@ NO IMP:  3
 006 ^ ACME Savings and Loan
 007 ^ Afreet
 008 ^ AI Board Member
-009 ^ AI Boon (rng card)
+009 + AI Boon (rng card)
 010 ^ AI Chief Financial Officer
 012 + All-Hands
 013 ^ All-Nighter
@@ -83,17 +83,17 @@ NO IMP:  3
 
 035 + Banpei
 036 ^ Baskerville
-037 ^ Bartmoss Memorial Icebreaker
+037 + Bartmoss Memorial Icebreaker
 
 039 ^ BBS Whispering Campaign
 040 ^ Bel-Digmo Antibody
-041 ^ Big Frackin' Gun
+041 + Big Frackin' Gun
 042 + Bioweapons Engineering
 043 ^ Bizarre Encryption Scheme
-044 ^ Black Dahlia
+044 + Black Dahlia
 045 ^ Black Ice Quality Assurance
 046 + Blackmail
-047 ^ Black Widow
+047 + Black Widow
 048 ^ Blink (no test, this is an rng card!)
 049 ^ Blood Cat
 050 ^ Boardwalk (random reveal...)
@@ -103,14 +103,14 @@ NO IMP:  3
 054 + Bolter Swarm
 055 ^ Bolt-Hole
 056 ^ Boostergang Connections
-057 ^ Boring Bit
+057 + Boring Bit
 058 + ONR Braindance Campaign
 059 ^ Brain Drain (random, untestable?)
 060 + ONR Brain Wash
 
 062 + Broker
 063 ^ Bug Zapper
-064 ^ Bulldozer
+064 + Bulldozer
 065 ^ Butcher Boy (test once viruses are done!)
 066 + Canis Major
 067 + Canis Minor
@@ -131,7 +131,7 @@ NO IMP:  3
 082 + Clown
 
 084 + Code Corpse
-085 ^ Codecracker
+085 + Codecracker
 086 ^ Codeslinger
 
 088 + Colonel Failure
@@ -621,7 +621,6 @@ The following (marked) cards have no tests or implementations:
   006 ^ ACME Savings and Loan
   007 ^ Afreet
   008 ^ AI Board Member
-  009 ^ AI Boon (rng card)
   010 ^ AI Chief Financial Officer
   013 ^ All-Nighter
   017 ^ Arasaka Owns You
@@ -631,23 +630,17 @@ The following (marked) cards have no tests or implementations:
   025 ^ Audit of Call Records
   026 ^ Aujourd'Oui
   036 ^ Baskerville
-  037 ^ Bartmoss Memorial Icebreaker
   039 ^ BBS Whispering Campaign
   040 ^ Bel-Digmo Antibody
-  041 ^ Big Frackin' Gun
   043 ^ Bizarre Encryption Scheme
-  044 ^ Black Dahlia
   045 ^ Black Ice Quality Assurance
-  047 ^ Black Widow
   048 ^ Blink (no test, this is an rng card!)
   049 ^ Blood Cat
   050 ^ Boardwalk (random reveal...)
   055 ^ Bolt-Hole
   056 ^ Boostergang Connections
-  057 ^ Boring Bit
   059 ^ Brain Drain (random, untestable?)
   063 ^ Bug Zapper
-  064 ^ Bulldozer
   065 ^ Butcher Boy (test once viruses are done!)
   069 ^ Cascade (test once viruses are done!)
   070 ^ Cerberus
@@ -656,7 +649,6 @@ The following (marked) cards have no tests or implementations:
   075 ^ Chicago Branch
   078 ^ Cinderella
   079 ^ City Surveillance
-  085 ^ Codecracker
   086 ^ Codeslinger
   089 ^ Core Command: Jettison Ice
   091 ^ Corporate Ally
@@ -894,4 +886,4 @@ The following (marked) cards have no tests or implementations:
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 344
+Random card to implement: 186
