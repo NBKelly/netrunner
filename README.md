@@ -2,11 +2,12 @@
 This is a fork of the netrunner client used for jinteki.net, with the goal of porting over all the features, functionality, and cards of 1996 netrunner.
 
 ## Implementation status:
-* 485 / 584 cards implemented so far
+* 498 / 584 cards implemented so far
 * 222 of those with unit tests
-* The ONR trace mechanic has been implemented, with all the quirks (cancelling, cost multiplication, base link cards, post-trace link adjustment, max strength manipulation, secret bidding, bonus link for run, hacker tracker central confusion, I even gave non-onr runners the link value on the card, etc)
+* The ONR trace mechanic has been implemented, with all the quirks (cancelling, cost multiplication, base link cards, post-trace link adjustment, max strength manipulation, secret bidding, bonus link for run, hacker tracker central confusion, ldl analyzer multiplication, I even gave non-onr runners the link value on the card, etc)
 * Systems developed to allow for the unique virus mechanics (counters have effects outside of their programs)
-* Two special ID's have been created, which some mechanics rely on (a small handful of the viruses, ONR style purging)
+* Systems developed for the unique counters corps can place on runners (baskervilles, etc)
+* Two special ID's have been created, which some mechanics rely on (a small handful of the viruses, ONR style purging, the bad-pub win condition will be on the runner side)
 * Most ONR cards that refer to trace do not interact with ANR cards that refer to trace (the ones which care about success/non-success and the credit providing ones mostly do though). Other than that, almost all cards should be (mostly) interoperable
 
 This little graph is a visual representation of the implementation status so far. Green for tests, orange for no tests, and red for "I'm not implementing that (only 2 hits so far)"
