@@ -31,7 +31,7 @@
    [game.core.hand-size :refer [corp-hand-size+]]
    [game.core.hosting :refer [host]]
    [game.core.ice :refer [all-subs-broken?  insert-extra-sub! remove-sub! reset-sub!
-                          get-run-ices pump-ice resolve-subroutine!
+                          get-run-ices pump-ice resolve-subroutine! set-current-ice
                           unbroken-subroutines-choice update-all-ice update-all-icebreakers]]
    [game.core.installing :refer [corp-install corp-install-list]]
    [game.core.moving :refer [mill move remove-from-currently-drawing
@@ -748,6 +748,30 @@
    :install-req (req (filter #{"HQ" "R&D"} targets))
    :events [(breach-access-bonus :hq -1 {:req (req this-server)})
             (breach-access-bonus :rd -1 {:req (req this-server)})]})
+
+(defcard "ONR Singapore City Grid"
+  {:abilities [{:cost [:credit 0]
+                :label "Swap a piece of ice in this server with a piece of ice in HQ"
+                :req (req (and this-server run (some ice? (:hand corp))))
+                :once :per-run
+                :prompt "Choose an ice"
+                :choices {:req (req (and (ice? target)
+                                         (not (rezzed? target))
+                                         (same-server? card target)))}
+                :async true
+                :effect (req (let [swap-out target]
+                               (continue-ability
+                                 state side
+                                 {:prompt "Choose a piece of ice in HQ"
+                                  :choices {:card #(and (ice? %)
+                                                        (in-hand? %))}
+                                  :msg (msg "swap " (card-str state swap-out)
+                                            " with a piece of ice from HQ")
+                                  :effect (req (swap-cards state :corp swap-out target)
+                                               (set-current-ice state)
+                                               (update-all-ice state side)
+                                               (update-all-icebreakers state side))}
+                                 card nil)))}]})
 
 (defcard "ONR Tokyo-Chiba Infighting"
   {:events [{:event :run-ends

@@ -44,9 +44,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   533 / 584
-TESTS:   232 / 533
-NO TEST: 298
+TOTAL:   534 / 584
+TESTS:   232 / 534
+NO TEST: 299
 NO IMP:  3
 --------------------------
 001 ^ Aardvark
@@ -514,7 +514,7 @@ NO IMP:  3
 468 ^ Silver Lining Recovery Protocol
 469 ^ Simon Francisco
 470 ^ Simulacrum (look at abagnale for test)
-
+471 ^ Singapore City Grid
 472 ^ Siren
 473 ^ Skälderviken SA Beta Test Site
 474 ^ Skeleton Passkeys
@@ -869,6 +869,7 @@ The following (marked) cards have no tests or implementations:
   468 ^ Silver Lining Recovery Protocol
   469 ^ Simon Francisco
   470 ^ Simulacrum (look at abagnale for test)
+  471 ^ Singapore City Grid
   472 ^ Siren
   473 ^ Skälderviken SA Beta Test Site
   474 ^ Skeleton Passkeys
@@ -925,4 +926,4 @@ The following (marked) cards have no tests or implementations:
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 524
+Random card to implement: 584
