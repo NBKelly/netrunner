@@ -44,10 +44,10 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   542 / 584
-TESTS:   232 / 542
-NO TEST: 306
-NO IMP:  4
+TOTAL:   549 / 584
+TESTS:   232 / 549
+NO TEST: 312
+NO IMP:  5
 --------------------------
 001 ^ Aardvark
 002 + Access through Alpha
@@ -59,6 +59,7 @@ NO IMP:  4
 008 ^ AI Board Member
 009 + AI Boon (rng card)
 010 ^ AI Chief Financial Officer
+011 ^ Airport Locker
 012 + All-Hands
 013 ^ All-Nighter
 014 + Annual Reviews
@@ -81,7 +82,7 @@ NO IMP:  4
 031 + Badtimes
 032 + Baedeker's Net Map
 033 + Bakdoor[TM]
-
+034 ^ Ball and Chain
 035 + Banpei
 036 ^ Baskerville
 037 + Bartmoss Memorial Icebreaker
@@ -247,7 +248,7 @@ NO IMP:  4
 197 + Falsified-Transactions Expert
 198 ^ Fang 2.0
 199 ^ Fang
-
+200 ^ Fatal Attractor
 201 ^ Fetal AI
 202 + Fetch 4.0.1
 203 + Field Reporter for Ice and Data
@@ -258,7 +259,7 @@ NO IMP:  4
 209 + Food Fight
 210 ^ Force Shield
 211 + Forged Activation Orders
-
+212 ^ Forgotten Backup Chip
 213 ^ Fortress Architects
 214 ^ Fortress Respecification
 215 ^ Forward's Legacy
@@ -306,7 +307,7 @@ NO IMP:  4
 257 + I Got a Rock
 258 ^ Imp
 259 + Imperial Guard
-
+260 ? Incubator
 261 ^ Indescriminate Response Team
 262 + Information Laundering
 263 + Inside Job
@@ -471,8 +472,9 @@ NO IMP:  4
 422 ^ Research Bunker
 423 ^ Restrictive Net Zoning
 
+426 ^ Rigged Investments
 427 ^ Rio de Janeiro City Grid (random, hard to test)
-
+428 ^ Roadblock
 429 + Rockerboy Promotion
 430 + Rock is Strong
 431 ^ Romp through HQ
@@ -494,6 +496,7 @@ NO IMP:  4
 447 ^ Scorched Earth
 448 + Score!
 449 + Scramble
+450 ^ Security code WORM Chip
 
 452 ^ Security Purge
 453 ^ SeeYa
@@ -630,6 +633,7 @@ The following (marked) cards have no tests or implementations:
   007 ^ Afreet
   008 ^ AI Board Member
   010 ^ AI Chief Financial Officer
+  011 ^ Airport Locker
   013 ^ All-Nighter
   016 ^ Antiquated Interface Routines
   017 ^ Arasaka Owns You
@@ -638,6 +642,7 @@ The following (marked) cards have no tests or implementations:
   024 ^ Asp
   025 ^ Audit of Call Records
   026 ^ Aujourd'Oui
+  034 ^ Ball and Chain
   036 ^ Baskerville
   039 ^ BBS Whispering Campaign
   040 ^ Bel-Digmo Antibody
@@ -718,6 +723,7 @@ The following (marked) cards have no tests or implementations:
   196 ^ False Echo
   198 ^ Fang 2.0
   199 ^ Fang
+  200 ^ Fatal Attractor
   201 ^ Fetal AI
   205 ^ Finders Keepers (random, need a way to rig tests)
   210 ^ Force Shield
@@ -847,7 +853,9 @@ The following (marked) cards have no tests or implementations:
   420 ^ Replicator
   422 ^ Research Bunker
   423 ^ Restrictive Net Zoning
+  426 ^ Rigged Investments
   427 ^ Rio de Janeiro City Grid (random, hard to test)
+  428 ^ Roadblock
   431 ^ Romp through HQ
   432 ^ Ronin Around
   436 ^ Rush Hour
@@ -858,6 +866,7 @@ The following (marked) cards have no tests or implementations:
   445 ^ Schlaghund
   446 ^ Schlaghund Pointers
   447 ^ Scorched Earth
+  450 ^ Security code WORM Chip
   452 ^ Security Purge
   453 ^ SeeYa
   454 ^ Self-Destruct
@@ -933,6 +942,7 @@ The following (marked) cards have no tests or implementations:
   576 ^ Wrecking Ball
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   193 ? Fait Accompli
+  260 ? Incubator
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 584
+Random card to implement: 212

@@ -101,6 +101,34 @@
   {:abilities [(base-link-abi 1 1)
                (boost-link-abi 1 1)]})
 
+(defcard "ONR Airport Locker"
+  {:abilities [{:req (req (not (install-locked? state side)))
+                :label "Install a program from the stack"
+                :cost [:trash-can :credit 5]
+                :async true
+                :effect (effect (continue-ability
+                                  {:prompt "Choose a program to install"
+                                   :msg (msg (if (= target "Done")
+                                               "shuffle the stack"
+                                               (str "install " (:title target) " from the stack")))
+                                   :choices (req (concat
+                                                   (->> (:deck runner)
+                                                        (filter
+                                                          #(and (program? %)
+                                                                (can-pay? state side
+                                                                          (assoc eid :source card :source-type :runner-install)
+                                                                          % nil [:credit (install-cost state side %)])))
+                                                        (sort-by :title)
+                                                        (seq))
+                                                  ["Done"]))
+                                   :async true
+                                   :effect (req (trigger-event state side :searched-stack nil)
+                                                (shuffle! state side :deck)
+                                                (if (= target "Done")
+                                                  (effect-completed state side eid)
+                                                  (runner-install state side (assoc eid :source card :source-type :runner-install) target nil)))}
+                                  card nil))}]})
+
 (defcard "ONR Aujourd'Oui"
     (letfn [(shuffle-back [state side cards targets set-aside-eid]
             (doseq [c (get-set-aside state :runner set-aside-eid)]

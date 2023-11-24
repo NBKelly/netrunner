@@ -31,7 +31,7 @@
    [game.core.hand-size :refer [hand-size]]
    [game.core.hosting :refer [host]]
    [game.core.ice :refer [add-sub add-sub! any-subs-broken? break-sub get-current-ice get-run-ices ice-strength-bonus
-                          remove-sub! remove-subs! resolve-subroutine
+                          remove-sub! remove-subs! resolve-subroutine pump-ice
                           set-current-ice unbroken-subroutines-choice update-all-ice update-all-icebreakers
                           update-ice-strength]]
    [game.core.identities :refer [disable-card enable-card]]
@@ -68,7 +68,7 @@
    ;; imported from ice
    [game.cards.ice :refer [end-the-run end-the-run-unless-runner-pays gain-credits-sub give-tags trash-program-sub do-psi reset-variable-subs gain-variable-subs]]
    [game.core.onr-utils :refer [onr-trace-ability onr-trace-tag gain-runner-counter set-runner-counter lose-runner-counter
-                                register-effect-once handle-if-unique]]
+                                register-effect-once handle-if-unique dice-roll]]
    ))
 
 (defn- trace-net
@@ -490,6 +490,19 @@
                                        :effect (req
                                                  (give-flatline-counter state side (:identity runner))
                                                  (end-run state side eid card))} false)]})
+
+(defcard "ONR Ball and Chain"
+  {:subroutines [{:label "Runner must pay 2 [Credits] or ETR each encounter"
+                  :async true
+                  :msg (msg "force the Runner to pay 2 [Credits] or end the run when encountering ice this run")
+                  :effect (req (register-events
+                                 state side card
+                                 [{:event :encounter-ice
+                                   :duration :end-of-run
+                                   :effect (req (continue-ability
+                                                  state side
+                                                  (end-the-run-unless-runner-pays [:credit 2] "")
+                                                  card nil))}]))}]})
 
 (defcard "ONR Banpei"
   {:subroutines [trash-program-sub
@@ -1060,6 +1073,19 @@
 (defcard "ONR Reinforced Wall"
   {:subroutines [end-the-run
                  end-the-run]})
+
+(defcard "ONR Roadblock"
+  {:subroutines [end-the-run]
+   :on-encounter {:async true
+                  :effect (req (let [di (dice-roll)]
+                                 (continue-ability
+                                   state side
+                                   (if (= 6 di)
+                                     {:msg (msg "roll a 6 and derez itself")
+                                      :effect (req (derez state side card))}
+                                     {:msg (msg "roll a " di " and gain that much strength this encounter")
+                                      :effect (req (pump-ice state side card di))})
+                                   card nil)))}})
 
 (defcard "ONR Rock is Strong"
   {:subroutines [end-the-run]})
