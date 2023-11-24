@@ -44,9 +44,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   515 / 584
-TESTS:   231 / 515
-NO TEST: 281
+TOTAL:   518 / 584
+TESTS:   231 / 518
+NO TEST: 284
 NO IMP:  3
 --------------------------
 001 ^ Aardvark
@@ -209,7 +209,7 @@ NO IMP:  3
 159 ^ Dog Pile
 160 ^ Doppelganger Antibody
 161 ^ Do the 'Drine [TM]
-
+162 ^ Dr. Dreff
 163 + "Drifter" Mobile Environment
 
 165 ^ Dropp
@@ -283,7 +283,7 @@ NO IMP:  3
 234 ^ Hammer
 
 236 ^ Hell's Run
-
+237 ^ Herman Revista
 238 ^ Highlighter
 239 ^ Hijack
 240 ^ Holovid Campaign
@@ -317,6 +317,7 @@ NO IMP:  3
 268 ^ Jackhammer
 269 + Jack 'n' Joe
 270 + Japanese Water Torture
+271 ^ Jenny Jett
 
 273 ^ Joan of Arc
 274 ^ Junkyard BBS
@@ -696,6 +697,7 @@ The following (marked) cards have no tests or implementations:
   159 ^ Dog Pile
   160 ^ Doppelganger Antibody
   161 ^ Do the 'Drine [TM]
+  162 ^ Dr. Dreff
   165 ^ Dropp
   167 ^ Dupree
   168 ^ Dwarf
@@ -732,6 +734,7 @@ The following (marked) cards have no tests or implementations:
   233 ^ Hacker Tracker Central
   234 ^ Hammer
   236 ^ Hell's Run
+  237 ^ Herman Revista
   238 ^ Highlighter
   239 ^ Hijack
   240 ^ Holovid Campaign
@@ -750,6 +753,7 @@ The following (marked) cards have no tests or implementations:
   261 ^ Indescriminate Response Team
   264 ^ Investment Firm
   268 ^ Jackhammer
+  271 ^ Jenny Jett
   273 ^ Joan of Arc
   274 ^ Junkyard BBS
   278 ^ Krash
@@ -905,4 +909,4 @@ The following (marked) cards have no tests or implementations:
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 237
+Random card to implement: 450

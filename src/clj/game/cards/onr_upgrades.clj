@@ -222,12 +222,95 @@
                  :async true
                  :effect (effect (damage eid :meat 3 {:card card}))}}))
 
-(defcard "ONr Dieter Esslin"
-  {:on-access {:msg "do 1 net damage"
-               :req (req (rezzed? card))
-               :async true
-               :effect (effect (damage eid :net 1 {:card card}))}})
+(defcard "ONR Dieter Esslin"
+  (onr-ambush {:on-access {:msg "do 1 net damage"
+                           :req (req (rezzed? card))
+                           :async true
+                           :effect (effect (damage eid :net 1 {:card card}))}}))
 
+(defcard "ONR Dr. Dreff"
+  {:implementation "Occurs on approach timing"
+   :events [{:event :approach-server
+             :interactive (req true)
+             :prompt "Force an ICE encounter?"
+             :once :per-turn
+             :async true
+             :choices {:req (req (and (ice? target)
+                                      (in-hand? target)
+                                      (can-pay? state :corp eid card nil [:credit (quot (:cost target) 2)])))}
+             :msg (msg "pay " (quot (:cost target) 2) " [Credits] to force the Runner to encounter " (:title target) " from HQ")
+             :effect (req (wait-for
+                            (pay state side (make-eid state eid) card :credit (quot (:cost target) 2))
+                            (wait-for (force-ice-encounter state side (make-eid state eid) target)
+                                      (if (in-hand? (get-card state target))
+                                        (do (system-msg state side (str "trashes " (:title target)))
+                                            (trash state side eid (assoc target :seen true) {:cause-card card}))
+                                        (effect-completed state side eid)))))}]})
+
+(defcard "ONR Herman Revista"
+  (letfn [(sun [serv]
+            {:prompt "Choose 2 pieces of ice to swap"
+             :choices {:card #(and (= [:servers serv :ices] (get-zone %))
+                                   (ice? %))
+                       :max 2}
+             :async true
+             :effect (req (if (= (count targets) 2)
+                            (do (swap-ice state side (first targets) (second targets))
+                                (system-msg state side
+                                            (str "uses " (:title card) " to swap "
+                                                 (card-str state (first targets))
+                                                 " with "
+                                                 (card-str state (second targets))))
+                                (continue-ability state side (sun serv) card nil))
+                            (do (system-msg state side "has finished rearranging ice")
+                                (effect-completed state side eid))))})]
+    {:implementation "Timing restriction not enforced"
+     :abilities [{:cost [:credit 0]
+                  :label "Re-organize this server"
+                  :msg (msg "rearrange ice protecting " (zone->name (get-zone card)))
+                  :async true
+                  :effect (req (continue-ability state side (sun (second (:zone card))) card nil))}]}))
+
+(defcard "ONR Jenny Jett"
+  {:implementation "Trashing ice pre-install to reduce the cost is legal"
+   :events [{:event :approach-server
+             :async true
+             :interactive (req true)
+             :waiting "Corp to make a decision"
+             :req (req (and (pos? (count (:hand corp)))
+                            this-server))
+             :effect (req (if (some ice? (:hand corp))
+                            (continue-ability
+                              state side
+                              {:optional
+                               {:prompt "Install a piece of ice?"
+                                :once :per-run
+                                :yes-ability
+                                {:prompt "Choose a piece of ice to install from HQ (paying all costs)"
+                                 :once :per-run
+                                 :choices {:card #(and (ice? %)
+                                                       (in-hand? %))}
+                                 :async true
+                                 :msg "install a piece of ice at the innermost position of this server. Runner is now approaching that piece of ice"
+                                 :effect (req (wait-for (corp-install state side target (zone->name (target-server run))
+                                                                      {:front true})
+                                                        (swap! state assoc-in [:run :position] 1)
+                                                        (set-next-phase state :approach-ice)
+                                                        (update-all-ice state side)
+                                                        (update-all-icebreakers state side)
+                                                        (continue-ability state side
+                                                                          (offer-jack-out {:req (req (:approached-ice? (:run @state)))})
+                                                                          card nil)))}}}
+                              card nil)
+                            ;; bogus prompt so Runner cannot infer the Corp has no ice in hand
+                            (continue-ability
+                              state :corp
+                              {:async true
+                               :prompt "No ice to install"
+                               :choices ["Carry on!"]
+                               :prompt-type :bogus
+                               :effect (effect (effect-completed eid))}
+                              card nil)))}]})
 
 (defcard "ONR Lisa Blight"
   {:abilities [{:async true
