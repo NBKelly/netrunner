@@ -66,7 +66,7 @@
    [game.utils :refer :all]
    [jinteki.utils :refer :all]
    ;; imported from ice
-   [game.cards.ice :refer [end-the-run end-the-run-unless-runner-pays gain-credits-sub give-tags trash-program-sub do-psi reset-variable-subs]]
+   [game.cards.ice :refer [end-the-run end-the-run-unless-runner-pays gain-credits-sub give-tags trash-program-sub do-psi reset-variable-subs gain-variable-subs]]
    [game.core.onr-utils :refer [onr-trace-ability onr-trace-tag gain-runner-counter
                                 register-effect-once handle-if-unique]]
    ))
@@ -174,6 +174,33 @@
                               card nil)))})]
     (merge cdef {:on-rez (purchase-str-abi)})))
 
+(defn- purchase-subroutines-on-encounter
+  [sub cost cdef]
+  (let [subcost (if (int? cost) [:credit cost] cost)]
+    (letfn [(purchase-sub-abi [qty]
+              {:optional
+               {:req (req (can-pay? state side
+                                    (assoc eid :source card :source-type :ability)
+                                    card nil subcost))
+                :prompt (msg "Purchase a" (when-not (zero? qty) "nother")
+                             " '" (:label sub) "' subroutine for this encounter?")
+                :yes-ability {:cost subcost
+                              :async true
+                              :msg (msg "purchase a" (when-not (zero? qty) "nother")
+                                        " '" (:label sub) "' subroutine for this encounter")
+                              :effect (req (gain-variable-subs state side card (inc qty) sub {:variable true :front false :end true})
+                                           (when (zero? qty)
+                                             (register-events
+                                               state side card
+                                               [{:event :end-of-encounter
+                                                 :unregister-once-resolved true
+                                                 :effect (req (reset-variable-subs state side card 0 sub))}]))
+                                           (continue-ability
+                                             state side
+                                             (purchase-sub-abi (inc qty))
+                                             card nil))}}})]
+      (merge cdef {:on-encounter (purchase-sub-abi 0)}))))
+
 (defn- purchase-subroutines-on-rez
   [sub cost cdef]
   (let [subcost (if (int? cost) [:credit cost] cost)]
@@ -188,7 +215,7 @@
                               :async true
                               :msg (msg "purchase a" (when-not (zero? qty) "nother")
                                         " '" (:label sub) "' subroutine")
-                              :effect (effect (reset-variable-subs card (inc qty) sub)
+                              :effect (effect (reset-variable-subs card (inc qty) sub {:variable true})
                                               (continue-ability
                                                 (purchase-sub-abi (inc qty))
                                                 card nil))}}})]
@@ -816,6 +843,10 @@
   {:subroutines [trash-program-sub
                  end-the-run]})
 
+(defcard "ONR Iceberg"
+  (purchase-subroutines-on-encounter end-the-run 2 {:implementation "repeatable on-encounter ability"
+                                                    :subroutines [(do-net-damage 1)]}))
+
 (defcard "ONR Imperial Guard"
   {:rez-cost-bonus (req (used-noisy-discount state 5))
    :subroutines [trash-program-sub
@@ -971,6 +1002,26 @@
                             (pos? (get-counters card :recurring))))}]
    :subroutines [(onr-trace-tag 6)
                  (onr-trace-tag 6)]})
+
+(defcard "ONR Puzzle"
+  (let [sub {:label "End the run"
+             :msg "end the run"
+             :async true
+             :effect (effect (register-events
+                               card [{:event :corp-turn-ends
+                                      :duration :end-of-turn
+                                      :msg "trash itself"
+                                      :async true
+                                      :effect (effect (trash eid card))}
+                                     {:event :runner-turn-ends
+                                      :duration :end-of-turn
+                                      :msg "trash itself"
+                                      :async true
+                                      :effect (effect (trash eid card))}])
+                             (end-run :corp eid card))}]
+    {:subroutines [sub
+                   sub]}))
+
 
 (defcard "ONR Razor Wire"
   {:subroutines [(do-net-damage 2)

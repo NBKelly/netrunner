@@ -29,7 +29,7 @@
                             register-run-flag!]]
    [game.core.gaining :refer [gain-credits lose-clicks lose-credits]]
    [game.core.hand-size :refer [corp-hand-size+]]
-   [game.core.ice :refer [all-subs-broken?  insert-extra-sub! remove-sub!
+   [game.core.ice :refer [all-subs-broken?  insert-extra-sub! remove-sub! reset-sub!
                           get-run-ices pump-ice resolve-subroutine!
                           unbroken-subroutines-choice update-all-ice update-all-icebreakers]]
    [game.core.installing :refer [corp-install corp-install-list]]
@@ -68,6 +68,41 @@
   (merge {:implementation "(classic) Installed ambushes must be rezzed to take effect, unless otherwise noted"} impl))
 
 ;; card implementations
+
+(defcard "ONR Aardvark" ;; TODO - this can use some work!
+  (letfn [(is-breaker-a-worm
+            [state side cid]
+            (system-msg state side cid)
+            (filter #(and (has-subtype? % "Worm")
+                          (= (:cid %) cid)) (all-installed state :runner)))]
+    {:implementation "This can interrupt exactly one subroutine-break ability. Doesn't play nice with auto-breaking."
+     :static-abilities [{:type :prevent-paid-ability
+                         :req (req
+                                (let [[break-card break-ability] targets]
+                                  (and (has-subtype? break-card "Worm")
+                                       run this-server)))
+                         :value true}]
+   :derezzed-events [{:event :subroutines-broken
+                      :req (req (and run this-server))
+                      :async true
+                      :effect (req (let [ice (first targets)
+                                         broken-subs (second targets)
+                                         breaker-cid (:breaker (first broken-subs))
+                                         breaker (first (is-breaker-a-worm state side breaker-cid))]
+                                     (if (seq breaker)
+                                       (continue-ability
+                                         state side
+                                         {:optional
+                                          {:prompt (msg "Rez " (:title card) " and trash " (:title breaker) "?")
+                                           :yes-ability {:async true
+                                                         :msg (msg "trash " (:title breaker))
+                                                         :effect (req (wait-for (trash state side breaker {:cause-card card})
+                                                                                (wait-for (rez state side (make-eid state eid) card)
+                                                                                          ;; unbreak those subroutines!
+                                                                                          (doseq [sub broken-subs]
+                                                                                            (reset-sub! state (get-card state ice) sub))
+                                                                                          (effect-completed state side eid))))}}}
+                                         card nil))))}]}))
 
 (defcard "ONR Bizarre Encryption Scheme"
   {:implementation "Applies on breach. If the agenda moves zones afterwards, the effect is (by design) broken"
