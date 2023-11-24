@@ -140,6 +140,7 @@
                {:label "Forgo an Action"  ;; ability #7
                 :cost [:click]
                 :msg "forgo a click"
+                :async true
                 :req (req (pos? (:action-debt corp)))
                 :effect (req (lose-click-debt state side eid 1))}
                {:label "Pay ACME" ;; ability #8
@@ -218,6 +219,7 @@
                {:label "Forgo an Action"                               ;; #6
                 :cost [:click]
                 :msg "forgo a click"
+                :async true
                 :req (req (pos? (:action-debt runner)))
                 :effect (req (lose-click-debt state side eid 1))}
                {:label "[Click], 1 [Credit]: Remove Flatline Counter"  ;; #7

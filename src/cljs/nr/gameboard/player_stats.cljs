@@ -71,7 +71,7 @@
                     brain-damage active agenda-point-debt
                     flatline-counter stun-counter cerberus-counter doppelganger-counter
                     data-raven-counter baskerville-counter mastiff-counter
-                    crying-counter]} @runner
+                    crying-counter haunting-inquisition-counter]} @runner
             base-credit (- credit run-credit)
             plus-run-credit (when (pos? run-credit) (str "+" run-credit))
             icons? (get-in @app-state [:options :player-stats-icons] true)]
@@ -102,39 +102,43 @@
          (when (pos? flatline-counter)
            (ctrl
              :flatline-counter
-             [:div (str flatline-counter " " (tr [:game.action-debt "Flatline Counters"]))]))
+             [:div (str flatline-counter " " (tr [:game.flatline-counter "Flatline Counters"]))]))
          (when (pos? stun-counter)
            (ctrl
              :stun-counter
-             [:div (str stun-counter " " (tr [:game.action-debt "Stun Counters"]))]))
+             [:div (str stun-counter " " (tr [:game.stun-counter "Stun Counters"]))]))
          (when (pos? doppelganger-counter)
            (ctrl
              :doppelganger-counter
-             [:div (str doppelganger-counter " " (tr [:game.action-debt "Doppelganger Counters"]))]))
+             [:div (str doppelganger-counter " " (tr [:game.doppelganger-counter "Doppelganger Counters"]))]))
          (when (pos? cerberus-counter)
            (ctrl
              :cerberus-counter
-             [:div (str cerberus-counter " " (tr [:game.action-debt "Cerberus Counters"]))]))
+             [:div (str cerberus-counter " " (tr [:game.cerberus-counter "Cerberus Counters"]))]))
          (when (pos? baskerville-counter)
            (ctrl
              :baskerville-counter
-             [:div (str baskerville-counter " " (tr [:game.action-debt "Baskerville Counters"]))]))
+             [:div (str baskerville-counter " " (tr [:game.baskerville-counter "Baskerville Counters"]))]))
          (when (pos? mastiff-counter)
            (ctrl
              :mastiff-counter
-             [:div (str mastiff-counter " " (tr [:game.action-debt "Mastiff Counters"]))]))
+             [:div (str mastiff-counter " " (tr [:game.mastiff-counter "Mastiff Counters"]))]))
          (when (pos? data-raven-counter)
            (ctrl
              :data-raven-counter
-             [:div (str data-raven-counter " " (tr [:game.action-debt "Data Raven Counters"]))]))
+             [:div (str data-raven-counter " " (tr [:game.data-raven-counter "Data Raven Counters"]))]))
          (when (pos? crying-counter)
            (ctrl
              :crying-counter
-             [:div (str crying-counter " " (tr [:game.action-debt "Crying Counters"]))]))
+             [:div (str crying-counter " " (tr [:game.crying-counter "Crying Counters"]))]))
+         (when (pos? haunting-inquisition-counter)
+           (ctrl
+             :haunting-inquisition-counter
+             [:div "Can't run during next " haunting-inquisition-counter " " [:span.anr-icon.click]]))
          (when (pos? agenda-point-debt)
            (ctrl
              :agenda-point-debt
-             [:div (str agenda-point-debt " " (tr [:game.action-debt "Agenda Points Owed"]))]))
+             [:div (str agenda-point-debt " " (tr [:game.agenda-point-debt "Agenda Points Owed"]))]))
          (ctrl
           :brain-damage
           [:div (str brain-damage " " (tr [:game.brain-damage "Core Damage"]))])]))))

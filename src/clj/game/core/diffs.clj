@@ -317,7 +317,8 @@
    :data-raven-counter   ;; tag at the start of each run. Click+1c to remove.
    :mastiff-counter      ;; brain at the start of each run. Click+4c to remove.
    :crying-counter       ;; -2 link. Click+2c to remove.
-   :brain-damage])
+   :brain-damage
+   :haunting-inquisition-counter])
 
 (defn rig-summary
   [state side]

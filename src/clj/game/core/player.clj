@@ -114,6 +114,7 @@
    data-raven-counter   ;; tag at the start of each run. Click+1c to remove.
    mastiff-counter      ;; brain at the start of each run. Click+4c to remove.
    crying-counter       ;; -2 link. Tag+2c to remove.
+   haunting-inquisition-counter
    ])
 
 (defrecord Rig
@@ -161,6 +162,5 @@
      :data-raven-counter 0   ;; tag at the start of each run. Click+1c to remove.
      :mastiff-counter 0      ;; brain at the start of each run. Click+4c to remove.
      :crying-counter 0       ;; -2 link. Click+2c to remove.
-
-
+     :haunting-inquisition-counter 0 ;; cannot make run for next 6 actions
      }))

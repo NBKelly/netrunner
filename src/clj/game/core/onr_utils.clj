@@ -14,6 +14,13 @@
    [game.utils :refer [quantify]]
    ))
 
+(defn set-runner-counter
+  ([state side type amt id]
+   (let [current (type (:runner @state))
+         to-gain (- amt current)]
+     ;;(system-msg state side (str "Runner currently has " current " counters"))
+     (swap! state update-in [:runner type] (safe-inc-n to-gain)))))
+
 (defn gain-runner-counter
   ([state side type id]
    (add-counter state :runner (get-card state id) type 1)

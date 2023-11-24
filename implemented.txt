@@ -44,10 +44,10 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   539 / 584
-TESTS:   232 / 539
-NO TEST: 304
-NO IMP:  3
+TOTAL:   542 / 584
+TESTS:   232 / 542
+NO TEST: 306
+NO IMP:  4
 --------------------------
 001 ^ Aardvark
 002 + Access through Alpha
@@ -240,7 +240,7 @@ NO IMP:  3
 190 + Expendable Family Member
 191 + Experimental AI
 192 ^ Expert Schedule Analyzer
-
+193 ? Fait Accompli
 194 ^ Faked Hit
 195 + Fall Guy
 196 ^ False Echo
@@ -281,7 +281,7 @@ NO IMP:  3
 232 ^ Gypsy [TM] Schedule Analyzer
 233 ^ Hacker Tracker Central
 234 ^ Hammer
-
+235 ^ Haunting Inquisition
 236 ^ Hell's Run
 237 ^ Herman Revista
 238 ^ Highlighter
@@ -566,7 +566,7 @@ NO IMP:  3
 521 ^ The Personal Touch
 522 ^ The Shell Traders (write a test later)
 523 ^ The Short Circuit
-
+524 ^ The Springboard
 525 ^ Time to Collect
 526 ^ Tinweasel
 527 ^ TKO 2.0
@@ -736,6 +736,7 @@ The following (marked) cards have no tests or implementations:
   232 ^ Gypsy [TM] Schedule Analyzer
   233 ^ Hacker Tracker Central
   234 ^ Hammer
+  235 ^ Haunting Inquisition
   236 ^ Hell's Run
   237 ^ Herman Revista
   238 ^ Highlighter
@@ -900,6 +901,7 @@ The following (marked) cards have no tests or implementations:
   521 ^ The Personal Touch
   522 ^ The Shell Traders (write a test later)
   523 ^ The Short Circuit
+  524 ^ The Springboard
   525 ^ Time to Collect
   526 ^ Tinweasel
   527 ^ TKO 2.0
@@ -930,6 +932,7 @@ The following (marked) cards have no tests or implementations:
   575 ^ Worm
   576 ^ Wrecking Ball
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
+  193 ? Fait Accompli
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 164
+Random card to implement: 584

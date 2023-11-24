@@ -840,7 +840,14 @@
 
 (defcard "ONR Twenty-Four-Hour Surviellance"
   ;; TODO - find a way to do this. I know it can be done.
-  {:implementation "Unimplemented/Manual Implementation"})
+  ;;   I think I can update all of
+  ;;     * pick counters
+  ;;     * costs
+  ;;     * a few other places
+  {:implementation "Unimplemented/Manual Implementation"
+   :static-abilities [{:type :cannot-use-stealth
+                       :req (req (and (this-server run)))
+                       :value true}]})
 
 (defcard "ONR Washington, D.C., City Grid"
   {:static-abilities [{:type :advancement-requirement

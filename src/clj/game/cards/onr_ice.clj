@@ -67,7 +67,7 @@
    [jinteki.utils :refer :all]
    ;; imported from ice
    [game.cards.ice :refer [end-the-run end-the-run-unless-runner-pays gain-credits-sub give-tags trash-program-sub do-psi reset-variable-subs gain-variable-subs]]
-   [game.core.onr-utils :refer [onr-trace-ability onr-trace-tag gain-runner-counter
+   [game.core.onr-utils :refer [onr-trace-ability onr-trace-tag gain-runner-counter set-runner-counter lose-runner-counter
                                 register-effect-once handle-if-unique]]
    ))
 
@@ -769,16 +769,46 @@
   (purchase-subroutines-on-rez end-the-run 2 {}))
 
 (defcard "ONR Glacier"
-  (glacier-event {
-                 :subroutines [end-the-run
-                               end-the-run]
-                 :abilities [(set-autoresolve :auto-fire "Glacier swap on run")]}))
+  (glacier-event {:subroutines [end-the-run
+                                end-the-run]
+                  :abilities [(set-autoresolve :auto-fire "Glacier swap on run")]}))
+
+(defcard "ONR Haunting Inquisition"
+  (letfn [(ha-event []
+                  {:ability-name "Haunting Inquisition Recovery"
+                   :event :runner-spent-click
+                   :unregister-once-resolved true
+                   :silent true
+                   :async true
+                   :req (req (pos? (:haunting-inquisition-counter (:runner @state))))
+                   :effect (req (let [cid (first target)
+                                      ability-idx (:ability-idx (:source-info eid))
+                                      bac-cid (get-in @state [:runner :basic-action-card :cid])
+                                      counters (:haunting-inquisition-counter (:runner @state))
+                                      remove-c (not (and (= cid bac-cid) (= 6 ability-idx)))]
+                                  (when (pos? counters)
+                                    (register-events state side card [(ha-event)])
+                                    (when remove-c
+                                      (lose-runner-counter state side :haunting-inquisition-counter (:identity runner))))
+                                  (effect-completed state side eid)))})]
+    {:subroutines [{:label "Runner cannot run during their next six actions"
+                    :msg "prevent the runner from running during their next six actions"
+                    :effect (req (set-runner-counter state side :haunting-inquisition-counter 6 (:identity runner))
+                                 (register-effect-once
+                                   state side (:identity runner)
+                                   {:ability-name "Haunting Inquisition Ability"
+                                    :type :cannot-run
+                                    :req (req (pos? (:haunting-inquisition-counter (:runner @state))))
+                                    :value true})
+                                 (handle-if-unique
+                                   state side (:identity runner)
+                                   (ha-event)))}
+                   end-the-run]}))
 
 (defcard "ONR Homing Missile"
   (purchase-strength-on-rez
     8
-    {;; to-do - pay x above cost on rez to purchase strength
-     :static-abilities [{:type :max-strength
+    {:static-abilities [{:type :max-strength
                          :req (req (same-card? card target))
                          :value (req (or (get-in card [:special :purchased-strength]) 0))}
                         (ice-strength-bonus (req (or (get-in card [:special :purchased-strength]) 0)))]
