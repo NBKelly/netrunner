@@ -44,9 +44,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   518 / 584
-TESTS:   231 / 518
-NO TEST: 284
+TOTAL:   522 / 584
+TESTS:   231 / 522
+NO TEST: 288
 NO IMP:  3
 --------------------------
 001 ^ Aardvark
@@ -318,7 +318,7 @@ NO IMP:  3
 269 + Jack 'n' Joe
 270 + Japanese Water Torture
 271 ^ Jenny Jett
-
+272 ^ Jerusalem City Grid
 273 ^ Joan of Arc
 274 ^ Junkyard BBS
 275 + Karl de Veres, Corporate Stooge
@@ -329,7 +329,7 @@ NO IMP:  3
 280 + Laser Wire
 281 ^ LDL Traffic Analyzers
 282 ^ Leland, Corporate Bodyguard
-
+283 ^ Lesley Major
 284 + Lesser Arcana
 285 ^ Liberated Savings Account
 286 ^ Library Search
@@ -341,7 +341,7 @@ NO IMP:  3
 292 + Livewire's Contacts
 293 ^ Loan from Chiba
 294 ^ Lockjaw
-
+295 ^ London City Grid
 296 ^ Loony Goon
 297 + Lucidrine [TM] Booster Drug
 
@@ -373,7 +373,7 @@ NO IMP:  3
 324 + MRAM Chip
 325 ^ MS-todon
 326 ^ Mystery Box
-
+327 ^ Namatoki Plaza
 328 + Nasuko Cycle
 329 + Nerve Labyrinth
 330 ^ N.E.T.O.
@@ -754,11 +754,13 @@ The following (marked) cards have no tests or implementations:
   264 ^ Investment Firm
   268 ^ Jackhammer
   271 ^ Jenny Jett
+  272 ^ Jerusalem City Grid
   273 ^ Joan of Arc
   274 ^ Junkyard BBS
   278 ^ Krash
   281 ^ LDL Traffic Analyzers
   282 ^ Leland, Corporate Bodyguard
+  283 ^ Lesley Major
   285 ^ Liberated Savings Account
   286 ^ Library Search
   288 ^ Lifesaver [TM] Nanosurgeons
@@ -766,6 +768,7 @@ The following (marked) cards have no tests or implementations:
   291 ^ Live News Feed
   293 ^ Loan from Chiba
   294 ^ Lockjaw
+  295 ^ London City Grid
   296 ^ Loony Goon
   299 ^ Main-Office Relocation
   302 ^ Mantis, Fixer-at-Large
@@ -781,6 +784,7 @@ The following (marked) cards have no tests or implementations:
   323 ^ Mouse
   325 ^ MS-todon
   326 ^ Mystery Box
+  327 ^ Namatoki Plaza
   330 ^ N.E.T.O.
   331 ^ Netspace Inverter
   333 ^ Netwatch Operations Office
@@ -909,4 +913,4 @@ The following (marked) cards have no tests or implementations:
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 450
+Random card to implement: 558

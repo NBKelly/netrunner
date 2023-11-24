@@ -29,6 +29,7 @@
                             register-run-flag!]]
    [game.core.gaining :refer [gain-credits lose-clicks lose-credits]]
    [game.core.hand-size :refer [corp-hand-size+]]
+   [game.core.hosting :refer [host]]
    [game.core.ice :refer [all-subs-broken?  insert-extra-sub! remove-sub! reset-sub!
                           get-run-ices pump-ice resolve-subroutine!
                           unbroken-subroutines-choice update-all-ice update-all-icebreakers]]
@@ -312,6 +313,34 @@
                                :effect (effect (effect-completed eid))}
                               card nil)))}]})
 
+(defcard "ONR Jerusalem City Grid"
+  {:static-abilities [{:type :rez-cost
+                       :req (req (and (ice? target)
+                                      (same-server? card target)
+                                      (has-subtype? target "Wall")))
+                       :value -2}
+                      {:type :ice-strength
+                       :req (req (and (ice? target)
+                                      (same-server? card target)
+                                      (has-subtype? target "Wall")))
+                       :value 1}]})
+
+(defcard "ONR Lesley Major"
+  {:implementation "this is an approach trigger"
+   :events [{:event :approach-server
+             :interactive (req true)
+             :optional
+             {:prompt "Pay 5 [Credits] to place 2 advancement counters on a card in this server??"
+              :req (req (and (can-pay? state side eid card nil [:credit 5])
+                             this-server))
+              :once :per-run
+              :yes-ability
+              {:cost [:credit 5]
+               :once :per-run
+               :choices {:req (req (in-same-server? card target))}
+               :msg (msg "place 2 advancement counters on " (card-str state target))
+               :effect (effect (add-prop target :advance-counter 2 {:placed true}))}}}]})
+
 (defcard "ONR Lisa Blight"
   {:abilities [{:async true
                 :label "duplicate a subroutine"
@@ -355,6 +384,36 @@
                                                                          (remove-sub! state side target-ice #(= from-cid (:from-cid %))))}])))}
                                               card nil)))}
                                card nil))}]})
+
+(defcard "ONR London City Grid"
+  {:static-abilities [{:type :card-ability-additional-cost
+                       :req (req (and (has-subtype? target "Noisy")
+                                      run this-server))
+                       :value [:credit 1]}]})
+
+(defcard "ONR Namatoki Plaza"
+  {:can-host (req (and (or (asset? target) (agenda? target))
+                       (> 1 (count (:hosted card)))))
+   :implementation "Requires the card to be hosted inside it, and the card is trashed when namatoki is trashed. Consider this a change of card wording/functional errata for now."
+   :abilities [{:label "Install an asset or agenda on this asset"
+                :req (req (< (count (:hosted card)) 1))
+                :cost [:click 1]
+                :prompt "Choose an asset or agenda to install"
+                :choices {:card #(and (or (asset? %)
+                                          (agenda? %))
+                                      (in-hand? %)
+                                      (corp? %))}
+                :msg "install and host an asset or agenda"
+                :async true
+                :effect (effect (corp-install eid target card nil))}
+               {:label "Install a previously-installed asset or agenda on this asset (fixes only)"
+                :req (req (< (count (:hosted card)) 1))
+                :prompt "Choose an installed asset or agenda to host"
+                :choices {:card #(and (or (asset? %) (agenda? %))
+                                      (installed? %)
+                                      (corp? %))}
+                :msg "install and host an asset or agenda"
+                :effect (req (host state side card target))}]})
 
 (defcard "ONR Marcel DeSoleil"
   {:abilities [{:async true
