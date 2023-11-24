@@ -126,6 +126,7 @@
                     (system-msg state :runner (str "trashes " trashed-msg " due to " (damage-name dmg-type) " damage")))
                   (swap! state update-in [:stats :corp :damage :all] (fnil + 0) n)
                   (swap! state update-in [:stats :corp :damage dmg-type] (fnil + 0) n)
+
                   (if (< (count hand) n)
                     (wait-for (trigger-event-simult state side :pre-flatline nil) ;; some cards PREVENT FLATLINE....
                               (if-not (get-in @state [:damage :flatline-prevent])
@@ -142,7 +143,20 @@
                                           (let [trash-event (get-trash-event side false)
                                                 args {:durations [:damage trash-event]}]
                                             (wait-for (checkpoint state nil (make-eid state eid) args)
-                                                      (complete-with-result state side eid cards-trashed))))))))))))
+                                                      (complete-with-result state side eid cards-trashed))))))
+                    ;; todo - I shouldn't repeat this twice, move to a seperate fn
+                    (wait-for (trash-cards state side cards-trashed {:unpreventable true
+                                                                                 :cause dmg-type
+                                                                                 :suppress-event true})
+                                          (queue-event state :damage {:amount n
+                                                                      :card card
+                                                                      :side side
+                                                                      :damage-type dmg-type
+                                                                      :cards-trashed cards-trashed})
+                                          (let [trash-event (get-trash-event side false)
+                                                args {:durations [:damage trash-event]}]
+                                            (wait-for (checkpoint state nil (make-eid state eid) args)
+                                                      (complete-with-result state side eid cards-trashed))))))))))
 
 (defn damage-count
   "Calculates the amount of damage to do, taking into account prevention and boosting effects."
