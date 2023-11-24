@@ -104,6 +104,11 @@
                                                                                           (effect-completed state side eid))))}}}
                                          card nil))))}]}))
 
+(defcard "ONR Antiquated Interface Routines"
+  {:static-abilities [{:type :ice-strength
+                       :req (req (same-server? target card))
+                       :value 1}]})
+
 (defcard "ONR Bizarre Encryption Scheme"
   {:implementation "Applies on breach. If the agenda moves zones afterwards, the effect is (by design) broken"
    :on-trash {:req (req (and (= :runner side)
@@ -167,6 +172,23 @@
                                      (from-same-server? card target)))
                        :value true}]})
 
+(defcard "ONR Chester Mix"
+  {:static-abilities [{:type :install-cost
+                       :req (req (and (ice? target)
+                                      (same-server? card target)))
+                       :value -2}]})
+
+(defcard "ONR Chimera"
+  (onr-ambush {:on-access {:prompt "choose a daemon to trash"
+                           :waiting-prompt true
+                           :req (req (and (installed? card)
+                                          (rezzed? card)))
+                           :msg (msg "trash " (:title target))
+                           :choices {:card #(and (installed? %)
+                                                 (has-subtype? % "Daemon"))}
+                           :async true
+                           :effect (effect (trash eid target {:cause :corp-trash}))}}))
+
 (defcard "ONR Crybaby"
   (letfn [(give-crying-counter
             [state side target]
@@ -177,13 +199,21 @@
                :req (req (pos? (:crying-counter (:runner @state))))
                :ability-name "Crying Counters"
                :value (req (- (* 2 (:crying-counter (:runner @state)))))}))]
-    {:flags {:rd-reveal (req true)}
-     :implementation "errata - R&D reveal"
-     :on-access {:msg "give the Runner a Crying counter"
-                 :req (req (or (not (installed? card))
-                               (rezzed? card)))
-                 :effect (req (give-crying-counter state side (:identity runner)))}}))
+    (onr-ambush {:on-access {:msg "give the Runner a Crying counter"
+                             :req (req (and (installed? card)
+                                            (rezzed? card)))
+                             :effect (req (give-crying-counter state side (:identity runner)))}})))
 
+(defcard "ONR Crystal Palace Sation Grid"
+  {:static-abilities [{:type :break-sub-additional-cost
+                       :req (req (and ;; The card is an icebreaker
+                                      ;;(has-subtype? target "Icebreaker")
+                                      ; and is using a break ability
+                                      (contains? (second targets) :break)
+                                      (pos? (count (:broken-subs (second targets))))
+                                      ; during a run on this server
+                                      this-server))
+                       :value [:credit 1]}]})
 
 (defcard "ONR Dedicated Response Team"
   (onr-ambush
@@ -191,6 +221,13 @@
                  :msg "do 3 meat damage"
                  :async true
                  :effect (effect (damage eid :meat 3 {:card card}))}}))
+
+(defcard "ONr Dieter Esslin"
+  {:on-access {:msg "do 1 net damage"
+               :req (req (rezzed? card))
+               :async true
+               :effect (effect (damage eid :net 1 {:card card}))}})
+
 
 (defcard "ONR Lisa Blight"
   {:abilities [{:async true

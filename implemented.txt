@@ -44,9 +44,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   510 / 584
-TESTS:   231 / 510
-NO TEST: 276
+TOTAL:   515 / 584
+TESTS:   231 / 515
+NO TEST: 281
 NO IMP:  3
 --------------------------
 001 ^ Aardvark
@@ -63,7 +63,7 @@ NO IMP:  3
 013 ^ All-Nighter
 014 + Annual Reviews
 015 + Anonymous Tip
-
+016 ^ Antiquated Interface Routines
 017 ^ Arasaka Owns You
 018 + Arasaka Portable Prototype
 019 + Armadillo Armored Road Home
@@ -120,11 +120,11 @@ NO IMP:  3
 070 ^ Cerberus
 071 ^ Chance Observation
 072 + Charity Takeover
-
+073 ^ Chester Mix
 074 ^ Chiba Bank Account
 075 ^ Chicago Branch
 076 + Chihuahua
-
+077 ^ Chimera
 078 ^ Cinderella
 079 ^ City Surveillance
 080 + Cloak
@@ -166,7 +166,7 @@ NO IMP:  3
 116 + Cruising for Netwatch
 117 ^ Crumble (requires braniac id)
 118 ^ Crybaby
-
+119 ^ Crystal Palace Station Grid
 120 + Crystal Wall
 121 + Custodial Position
 122 ^ Cybertech Think Tank
@@ -199,7 +199,7 @@ NO IMP:  3
 149 + Dermatech Bodyplating
 150 ^ Desperate Competitor
 151 ^ Detroit Police Contract
-
+152 ^ Dieter Esslin
 153 ^ Digiconda
 154 ^ Diplomatic Immunity
 155 ^ Disgruntled Ice Technician
@@ -627,6 +627,7 @@ The following (marked) cards have no tests or implementations:
   008 ^ AI Board Member
   010 ^ AI Chief Financial Officer
   013 ^ All-Nighter
+  016 ^ Antiquated Interface Routines
   017 ^ Arasaka Owns You
   020 ^ Armageddon
   023 ^ Artificial Security Directors
@@ -649,8 +650,10 @@ The following (marked) cards have no tests or implementations:
   069 ^ Cascade (test once viruses are done!)
   070 ^ Cerberus
   071 ^ Chance Observation
+  073 ^ Chester Mix
   074 ^ Chiba Bank Account
   075 ^ Chicago Branch
+  077 ^ Chimera
   078 ^ Cinderella
   079 ^ City Surveillance
   083 ^ Cockroach
@@ -669,6 +672,7 @@ The following (marked) cards have no tests or implementations:
   115 ^ Credit Subversion
   117 ^ Crumble (requires braniac id)
   118 ^ Crybaby
+  119 ^ Crystal Palace Station Grid
   122 ^ Cybertech Think Tank
   123 ^ Cyfermaster (trivial icebreaker - no test)
   124 ^ Danshi's Second ID
@@ -683,6 +687,7 @@ The following (marked) cards have no tests or implementations:
   146 ^ Demolition Run
   150 ^ Desperate Competitor
   151 ^ Detroit Police Contract
+  152 ^ Dieter Esslin
   153 ^ Digiconda
   154 ^ Diplomatic Immunity
   155 ^ Disgruntled Ice Technician
