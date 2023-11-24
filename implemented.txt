@@ -44,10 +44,10 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   549 / 584
-TESTS:   232 / 549
-NO TEST: 312
-NO IMP:  5
+TOTAL:   553 / 584
+TESTS:   232 / 553
+NO TEST: 315
+NO IMP:  6
 --------------------------
 001 ^ Aardvark
 002 + Access through Alpha
@@ -135,7 +135,7 @@ NO IMP:  5
 084 + Code Corpse
 085 + Codecracker
 086 ^ Codeslinger
-
+087 ? Code Viral Cache
 088 + Colonel Failure
 089 ^ Core Command: Jettison Ice
 090 + Corolla Speed Chip
@@ -471,6 +471,7 @@ NO IMP:  5
 421 + Rescheduler
 422 ^ Research Bunker
 423 ^ Restrictive Net Zoning
+424 ^ Rex
 
 426 ^ Rigged Investments
 427 ^ Rio de Janeiro City Grid (random, hard to test)
@@ -552,6 +553,7 @@ NO IMP:  5
 503 + Sunburst Cranial Interface
 504 + Superglue
 
+506 ^ Superserum (implemented virus counter avoiding!)
 507 + Swiss Bank Account
 508 + Syd Meyer Superstores
 509 ^ Synchronized Attack on HQ
@@ -727,6 +729,7 @@ The following (marked) cards have no tests or implementations:
   201 ^ Fetal AI
   205 ^ Finders Keepers (random, need a way to rig tests)
   210 ^ Force Shield
+  212 ^ Forgotten Backup Chip
   213 ^ Fortress Architects
   214 ^ Fortress Respecification
   215 ^ Forward's Legacy
@@ -853,6 +856,7 @@ The following (marked) cards have no tests or implementations:
   420 ^ Replicator
   422 ^ Research Bunker
   423 ^ Restrictive Net Zoning
+  424 ^ Rex
   426 ^ Rigged Investments
   427 ^ Rio de Janeiro City Grid (random, hard to test)
   428 ^ Roadblock
@@ -899,6 +903,7 @@ The following (marked) cards have no tests or implementations:
   498 ^ Subliminal Corruption
   499 ^ Submarine Uplink (do this test later - fetch + uplink should be fine)
   501 ^ Succubus
+  506 ^ Superserum (implemented virus counter avoiding!)
   509 ^ Synchronized Attack on HQ
   511 ^ Taxman
   513 ^ Technician Lover
@@ -940,9 +945,10 @@ The following (marked) cards have no tests or implementations:
   573 ^ Wizard's Book
   575 ^ Worm
   576 ^ Wrecking Ball
+  087 ? Code Viral Cache
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   193 ? Fait Accompli
   260 ? Incubator
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 212
+Random card to implement: 220

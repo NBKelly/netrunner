@@ -525,6 +525,12 @@
                           :click 1
                           :click-per-turn 1))})
 
+(defcard "ONR Super Serum"
+  {:on-score {:msg "purge virus counters"
+              :async true
+              :effect (effect (purge eid))}
+   :implementation "Avoiding virus counters not implemented yet. Corp must manually purge them and adjust clicks/actions to forgo"})
+
 (defcard "ONR Theorem Proof"
   {:steal-cost-bonus (req [:credit 999]) ;; on-access is apparently too slow to register the inability to steal it...
    :leave-play (effect (continue-ability

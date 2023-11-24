@@ -1087,6 +1087,14 @@
                                       :effect (req (pump-ice state side card di))})
                                    card nil)))}})
 
+(defcard "ONR Rex"
+  {:subroutines [(onr-trace-ability 3 {:label "End the run, give the runner a stun counter"
+                                       :async true
+                                       :msg (msg "end the run, and give the Runner a stun counter (the Runner cannot run again until they take an action to pay 2 [Credits])")
+                                       :effect (req
+                                                 (give-stun-counter state side (:identity runner))
+                                                 (end-run state side eid card))} false)]})
+
 (defcard "ONR Rock is Strong"
   {:subroutines [end-the-run]})
 
