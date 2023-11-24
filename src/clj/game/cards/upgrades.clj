@@ -21,7 +21,7 @@
    [game.core.effects :refer [register-lingering-effect]]
    [game.core.eid :refer [effect-completed get-ability-targets is-basic-advance-action? make-eid]]
    [game.core.engine :refer [dissoc-req pay register-default-events
-                             register-events resolve-ability unregister-events]]
+                             register-events resolve-ability unregister-events checkpoint]]
    [game.core.events :refer [first-event? first-run-event? turn-events]]
    [game.core.expose :refer [expose-prevent]]
    [game.core.finding :refer [find-cid find-latest]]

@@ -8,7 +8,7 @@
    [game.core.bad-publicity :refer [lose-bad-publicity]]
    [game.core.board :refer [all-active-installed all-installed card->server
                             get-remotes server->zone server-list]]
-   [game.core.card :refer [agenda? asset? can-be-advanced?
+   [game.core.card :refer [agenda? asset? can-be-advanced? hardware?
                            corp-installable-type? corp? get-card get-counters get-zone
                            has-subtype? ice? in-discard? in-hand? installed? operation? program? resource? rezzed?
                            runner? upgrade?]]
@@ -16,11 +16,11 @@
    [game.core.costs :refer [total-available-credits]]
    [game.core.damage :refer [damage]]
    [game.core.def-helpers :refer [corp-rez-toast defcard offer-jack-out
-                                  reorder-choice get-x-fn]]
+                                  reorder-choice get-x-fn breach-access-bonus]]
    [game.core.drawing :refer [draw]]
    [game.core.effects :refer [register-lingering-effect]]
    [game.core.eid :refer [effect-completed get-ability-targets is-basic-advance-action? make-eid]]
-   [game.core.engine :refer [dissoc-req pay register-default-events
+   [game.core.engine :refer [dissoc-req pay register-default-events checkpoint
                              register-events resolve-ability unregister-events]]
    [game.core.events :refer [first-event? first-run-event? turn-events run-events]]
    [game.core.expose :refer [expose-prevent]]
@@ -700,6 +700,54 @@
                                               (effect-completed state side eid)))
                                :async true}
                               card nil)))}]})
+
+(defcard "ONR Roving Submarine"
+  {:implementation "Manual implementation"}) ;;todo - this cards
+
+(defcard "ONR Self-Destruct"
+  (letfn [(serv [state card]
+            (card->server state card))
+          (cards [state card]
+            (concat (:ices (serv state card)) (:content (serv state card))))]
+  (onr-ambush
+    {:install-req (req (remove #{"HQ" "R&D" "Archives"} targets))
+     :on-access
+     {:req (req (rezzed? card))
+      :optional {:req (req (> (count (cards state card)) 1))
+                 :prompt (msg "Destroy this server to deal " (dec (count (cards state card))) " net damage?")
+                 :yes-ability
+                 {:cost [:trash-can]
+                  :async true
+                  :msg (msg "destroy all cards in or protecting this server and deal " (count (cards state card)) " net damage")
+                  :effect (req (wait-for (trash-cards state side (make-eid state eid) (cards state card))
+                                         (damage state side eid :net (dec (count (cards state card))))))}}}})))
+
+(defcard "ONR Shock Treatment"
+  (onr-ambush
+    {:on-access
+     {:req (req (and (rezzed? card)
+                     (<= 4 (count-tags state))))
+      :msg (msg "trash " (str/join ", " (map :title (filter hardware? (all-installed state :runner)))))
+      :async true
+      :effect (req (let [hardware (filter hardware? (all-installed state :runner))]
+                     (wait-for
+                       (trash-cards state :corp (make-eid state eid) hardware)
+                       (continue-ability
+                         state side
+                         {:choices {:max 2
+                                    :card #(and (program? %)
+                                                (installed? %))}
+                          :prompt "Choose up to 2 programs to trash"
+                          :msg (msg "trash " (str/join ", " (map :title targets)))
+                          :async true
+                          :effect (req (trash-cards state :corp eid targets))}
+                         card nil))))}}))
+
+(defcard "ONR Simon Francisco"
+  {:implementation "effect is applied on-breach"
+   :install-req (req (filter #{"HQ" "R&D"} targets))
+   :events [(breach-access-bonus :hq -1 {:req (req this-server)})
+            (breach-access-bonus :rd -1 {:req (req this-server)})]})
 
 (defcard "ONR Tokyo-Chiba Infighting"
   {:events [{:event :run-ends
