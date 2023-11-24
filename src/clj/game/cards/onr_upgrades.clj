@@ -22,7 +22,7 @@
    [game.core.eid :refer [effect-completed get-ability-targets is-basic-advance-action? make-eid]]
    [game.core.engine :refer [dissoc-req pay register-default-events
                              register-events resolve-ability unregister-events]]
-   [game.core.events :refer [first-event? first-run-event? turn-events]]
+   [game.core.events :refer [first-event? first-run-event? turn-events run-events]]
    [game.core.expose :refer [expose-prevent]]
    [game.core.finding :refer [find-cid find-latest]]
    [game.core.flags :refer [clear-persistent-flag! is-scored? register-persistent-flag!
@@ -61,6 +61,7 @@
    [jinteki.utils :refer :all]
    [game.core.onr-utils :refer [dice-roll ambush-outside-archives gain-runner-counter
                                 register-effect-once]]
+   [game.cards.ice :refer [end-the-run-unless-runner-pays]]
    ))
 
 
@@ -391,30 +392,6 @@
                                       run this-server))
                        :value [:credit 1]}]})
 
-(defcard "ONR Namatoki Plaza"
-  {:can-host (req (and (or (asset? target) (agenda? target))
-                       (> 1 (count (:hosted card)))))
-   :implementation "Requires the card to be hosted inside it, and the card is trashed when namatoki is trashed. Consider this a change of card wording/functional errata for now."
-   :abilities [{:label "Install an asset or agenda on this asset"
-                :req (req (< (count (:hosted card)) 1))
-                :cost [:click 1]
-                :prompt "Choose an asset or agenda to install"
-                :choices {:card #(and (or (asset? %)
-                                          (agenda? %))
-                                      (in-hand? %)
-                                      (corp? %))}
-                :msg "install and host an asset or agenda"
-                :async true
-                :effect (effect (corp-install eid target card nil))}
-               {:label "Install a previously-installed asset or agenda on this asset (fixes only)"
-                :req (req (< (count (:hosted card)) 1))
-                :prompt "Choose an installed asset or agenda to host"
-                :choices {:card #(and (or (asset? %) (agenda? %))
-                                      (installed? %)
-                                      (corp? %))}
-                :msg "install and host an asset or agenda"
-                :effect (req (host state side card target))}]})
-
 (defcard "ONR Marcel DeSoleil"
   {:abilities [{:async true
                 :label "duplicate a subroutine"
@@ -458,6 +435,82 @@
                                                                          (remove-sub! state side target-ice #(= from-cid (:from-cid %))))}])))}
                                               card nil)))}
                                card nil))}]})
+
+(defcard "ONR Namatoki Plaza"
+  {:can-host (req (and (or (asset? target) (agenda? target))
+                       (> 1 (count (:hosted card)))))
+   :implementation "Requires the card to be hosted inside it, and the card is trashed when namatoki is trashed. Consider this a change of card wording/functional errata for now."
+   :abilities [{:label "Install an asset or agenda on this asset"
+                :req (req (< (count (:hosted card)) 1))
+                :cost [:click 1]
+                :prompt "Choose an asset or agenda to install"
+                :choices {:card #(and (or (asset? %)
+                                          (agenda? %))
+                                      (in-hand? %)
+                                      (corp? %))}
+                :msg "install and host an asset or agenda"
+                :async true
+                :effect (effect (corp-install eid target card nil))}
+               {:label "Install a previously-installed asset or agenda on this asset (fixes only)"
+                :req (req (< (count (:hosted card)) 1))
+                :prompt "Choose an installed asset or agenda to host"
+                :choices {:card #(and (or (asset? %) (agenda? %))
+                                      (installed? %)
+                                      (corp? %))}
+                :msg "install and host an asset or agenda"
+                :effect (req (host state side card target))}]})
+
+(defcard "ONR Networked Center"
+  {:static-abilities [{:type :advancement-requirement
+                       :req (req (and (in-same-server? card target)
+                                      (has-subtype? target "Gray Ops")))
+                       :value -1}]})
+
+(defcard "ONR New Galveston City Grid"
+  {:static-abilities [{:type :trash-cost
+                       :req (req (and (in-same-server? card target)
+                                      (not (same-card? card target))))
+                       :value 2}]})
+
+;; todo - look at rsvp!
+
+(defcard "ONR Obfuscated Fortress"
+  (letfn [(runner-spent-reminder
+            [x max]
+            {:event :runner-spent-credits
+             :duration :end-of-run
+             :player :runner
+             :unregister-once-resolved true
+
+             :effect (req
+                       (system-msg state :runner (str "has spent " (+ x target) " of " max " credits this run"))
+                       (register-events
+                            state side card
+                            [(runner-spent-reminder (+ x target) max)]))})]
+    {:implementation "You may announce more credits than you have available. The spending cap is manual. Doesn't count until after you announce."
+     :events [{:event :run
+               :req (req this-server)
+               :player :runner
+               :choices {:number (req 200)
+                         :default (req 0)}
+               :prompt "Announce how many credits you will spend this run"
+               :msg (msg "Announces they will spend " target " credits this run")
+               :effect (req (let [old-creds (or (get-in @state [:stats :runner :spent :credit]) 0)
+                                  spend-commit target]
+                              (system-msg state side (str "old creds: " old-creds))
+                              (register-events
+                                state side (:identity corp)
+                                [(runner-spent-reminder 0 spend-commit)
+                                 {:event :run-ends
+                                  :ability-name "Obfuscated Loss"
+                                  :persistent true
+                                  :async true
+                                  :unregister-once-resolved true
+                                  :effect (req (let [spent (- (or (get-in @state [:stats :runner :spent :credit])) old-creds)
+                                                     underspend (max 0 (- spend-commit spent))]
+
+                                                 (system-msg state side (str "spent " spent " [Credits] out of the announced " spend-commit " [Credits], and loses the remaining " underspend " [Credits]"))
+                                                 (lose-credits state :runner eid underspend)))}])))}]}))
 
 (defcard "ONR Olivia Salazar"
   (letfn [(sally-price [ice state]
@@ -520,6 +573,68 @@
                                                (effect-completed state side eid))}
                                  card nil)))}]})
 
+(defcard "ONR Panic Button"
+  {:install-req (req (filter #{"HQ"} targets))
+   :abilities [{:cost [:credit 1]
+                :keep-menu-open :while-credits-left
+                :msg "draw 1 card"
+                :req (req (and run (= (target-server run) :hq)))
+                :async true
+                :effect (effect (draw eid 1))}]})
+
+(defcard "ONR Paris City Grid"
+  {:recurring 3
+   :interactions {:pay-credits {:req (req (and (= :trace (:source-type eid))
+                                               run this-server))
+                                :type :recurring}}})
+
+(defcard "ONR Pavit Bharat"
+  (letfn [(install-abi [rem server]
+            {:prompt (msg "Choose a card to install")
+             :choices {:card #(and (corp? %)
+                                   (in-hand? %))
+                       :max 1
+                       :all true}
+             :async true
+             :effect (req (wait-for (corp-install state side target server nil)
+                                    (if (pos? (dec rem))
+                                      (continue-ability
+                                        state side
+                                        (install-abi (dec rem) server)
+                                        card nil)
+                                      (effect-completed state side eid))))})]
+    {:implementation "Triggers on approach (it's an event)"
+     :derezzed-events [{:event :approach-server
+                        :interactive (req true)
+                        :optional
+                        {:prompt (msg "Rez " (:title card) "?")
+                         :req (req (and (can-pay? state side (assoc eid :source card :source-type :rez) card nil [:credit 2])
+                                        run this-server))
+                         :yes-ability {:effect (req (rez state side eid (assoc card :rez-req (req true))))
+                                       :async true}}}]
+     :rez-req (req (seq (run-events state side :approach-server)))
+     :on-rez {:async true
+              :effect (req (let [target-server (zone->name (second (:zone card)))
+                                 others (filter #(and (in-same-server? % card)
+                                                      (not (same-card? % card)))
+                                                (all-installed state :corp))]
+                             (system-msg state side (str "uses " (:title card) " to add " (quantify (count others) " card") " from " target-server " to HQ and install an equal number of cards in " target-server))
+                             (doseq [c others]
+                               (move state :corp c :hand))
+                             (continue-ability
+                               state side
+                               (install-abi (count others) target-server)
+                               card nil)))}}))
+
+(defcard "ONR Rasmin Bridger"
+  {:events [{:event :pass-ice
+             :req (req (and this-server run))
+             :interactive (req true)
+             :effect (req (continue-ability
+                            state side
+                            (end-the-run-unless-runner-pays [:credit 1] "")
+                            card nil))}]})
+
 (defcard "ONR Raymond Ellison"
   (letfn [(resolve-abi [x state orig-card eid]
             (continue-ability
@@ -564,6 +679,12 @@
                                      (from-same-server? card target)))
                        :value (req [[:credit 5]
                                     {:source card :source-type :ability}])}]})
+
+(defcard "ONR Research Bunker"
+  {:static-abilities [{:type :advancement-requirement
+                       :req (req (and (in-same-server? card target)
+                                      (has-subtype? target "Research")))
+                       :value -1}]})
 
 (defcard "ONR Rio de Janeiro City Grid"
   {:events [{:event :pass-ice

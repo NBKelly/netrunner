@@ -26,6 +26,21 @@
       (card-subroutine state :corp wall 0)
       (is (not (rezzed? (refresh wall)))))))
 
+(deftest onr-panic-button
+  (do-game
+    (new-game {:corp {:hand ["ONR Panic Button"]
+                      :deck ["Enigma"]}})
+    (play-from-hand state :corp "ONR Panic Button")
+    (is (= ["HQ"] (prompt-buttons :corp)) "Can only be installed in HQ")
+    (click-prompt state :corp "HQ")
+    (let [panic-btn (get-content state :hq 0)]
+      (rez state :corp panic-btn)
+      (take-credits state :corp)
+      (run-on state :hq)
+      (card-ability state :corp (refresh panic-btn) 0)
+      (is (find-card "Enigma" (:hand (get-corp))))
+      (is (zero? (count (:deck (get-corp))))))))
+
 (deftest onr-red-herrings
   ;; Red Herrings
   (do-game

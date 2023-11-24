@@ -44,9 +44,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   522 / 584
-TESTS:   231 / 522
-NO TEST: 288
+TOTAL:   530 / 584
+TESTS:   232 / 530
+NO TEST: 295
 NO IMP:  3
 --------------------------
 001 ^ Aardvark
@@ -380,17 +380,17 @@ NO IMP:  3
 331 ^ Netspace Inverter
 332 + Netwatch Credit Voucher
 333 ^ Netwatch Operations Office
-
+334 ^ Networked Center
 335 + Networking
 336 + Neural Blade
 337 ^ Nevinyrral
 338 ^ New Blood
-
+339 ^ New Galveston City Grid
 340 + Newsgroup Filter
 341 ^ Newsgroup Taunting
 342 + Night Shift
 343 ^ Nomad Allies
-
+344 ^ Obfuscated Fortress (impl could be much better)
 345 + Off-Site Backups
 346 + Olivia Salazar
 347 ^ Omni Kismet, Ph. D.
@@ -404,13 +404,13 @@ NO IMP:  3
 355 + Overtime Incentives
 356 ^ Pacifica Regional AI
 357 + Pandora's Deck
-
+358 + Panic Button
 359 ^ Panzer Run
-
+360 ^ Paris City Grid
 361 + Parraline 5750
 362 ^ Pattel Antibody
 363 ^ Pattel's Virus
-
+364 ^ Pavit Bharat
 365 + π in the 'Face
 366 ^ Pile Driver
 367 ^ Pirate Broadcast
@@ -446,7 +446,8 @@ NO IMP:  3
 397 ^ Rabbit
 398 ^ Raffles
 399 ^ Ramming Piston
-401 ^ Raptor
+400 ^ Raptor
+401 ^ Rasmin Bridger
 402 + Raven Microcyb Eagle
 403 + Raven Microcyb Owl
 404 ^ Raymond Ellison
@@ -467,7 +468,7 @@ NO IMP:  3
 419 ^ Rent-to-Own Contract
 420 ^ Replicator
 421 + Rescheduler
-
+422 ^ Research Bunker
 423 ^ Restrictive Net Zoning
 
 427 ^ Rio de Janeiro City Grid (random, hard to test)
@@ -788,10 +789,13 @@ The following (marked) cards have no tests or implementations:
   330 ^ N.E.T.O.
   331 ^ Netspace Inverter
   333 ^ Netwatch Operations Office
+  334 ^ Networked Center
   337 ^ Nevinyrral
   338 ^ New Blood
+  339 ^ New Galveston City Grid
   341 ^ Newsgroup Taunting
   343 ^ Nomad Allies
+  344 ^ Obfuscated Fortress (impl could be much better)
   347 ^ Omni Kismet, Ph. D.
   348 ^ Omniscience Foundation
   349 ^ Omnitech "Spinal Tap" Cybermodem (random, needs a rng fix for tests)
@@ -800,8 +804,10 @@ The following (marked) cards have no tests or implementations:
   354 ^ Organ Donor
   356 ^ Pacifica Regional AI
   359 ^ Panzer Run
+  360 ^ Paris City Grid
   362 ^ Pattel Antibody
   363 ^ Pattel's Virus
+  364 ^ Pavit Bharat
   366 ^ Pile Driver
   367 ^ Pirate Broadcast
   370 ^ Playful AI (this is untestable...)
@@ -821,7 +827,8 @@ The following (marked) cards have no tests or implementations:
   397 ^ Rabbit
   398 ^ Raffles
   399 ^ Ramming Piston
-  401 ^ Raptor
+  400 ^ Raptor
+  401 ^ Rasmin Bridger
   404 ^ Raymond Ellison
   406 ^ R&D Interface
   407 ^ R&D Mole
@@ -835,6 +842,7 @@ The following (marked) cards have no tests or implementations:
   417 ^ Remote Facility
   419 ^ Rent-to-Own Contract
   420 ^ Replicator
+  422 ^ Research Bunker
   423 ^ Restrictive Net Zoning
   427 ^ Rio de Janeiro City Grid (random, hard to test)
   431 ^ Romp through HQ
@@ -913,4 +921,4 @@ The following (marked) cards have no tests or implementations:
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 558
+Random card to implement: 433
