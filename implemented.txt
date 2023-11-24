@@ -44,9 +44,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   534 / 584
-TESTS:   232 / 534
-NO TEST: 299
+TOTAL:   539 / 584
+TESTS:   232 / 539
+NO TEST: 304
 NO IMP:  3
 --------------------------
 001 ^ Aardvark
@@ -534,10 +534,10 @@ NO IMP:  3
 488 + Spinn (R) Public Relations
 
 490 ^ Startup Immolator
-
+491 ^ Sterdroid
 492 ^ Stereogram Antibody (Do this later, was just lazy)
 493 ^ Stategic Planning Group
-
+494 ^ Street Enforcer
 495 + Streetware Distributor
 496 ^ Strike Force Kali
 497 ^ Stumble through Wilderspace
@@ -559,7 +559,7 @@ NO IMP:  3
 514 + Techtronica [TM] Utility Suit
 515 ^ Temple Microcode Outlet
 516 ^ Terrorist Reprisal
-
+517 ^ Tesseract Fort Construction
 518 ^ Test Spin
 519 + The Deck
 520 ^ Theorem Proof
@@ -581,6 +581,7 @@ NO IMP:  3
 536 + Triggerman
 537 + Trojan Horse
 538 + Tumblers
+539 ^ Turbeau Delacroix
 
 541 ? Twenty-Four-Hour Surviellance (unimplemented)
 542 + Twisty Passages
@@ -604,7 +605,7 @@ NO IMP:  3
 563 + Wall of Ice
 564 + Wall of Static
 565 ^ Washed-Up Solo Construct
-
+566 ^ Washington, D.C., City Grid
 567 ^ ONR Weapons Depot
 568 ^ Weather-to-Finance Pipe
 569 ^ Weefle Initiation
@@ -879,8 +880,10 @@ The following (marked) cards have no tests or implementations:
   483 ^ Social Engineering
   486 ^ Speed Trap
   490 ^ Startup Immolator
+  491 ^ Sterdroid
   492 ^ Stereogram Antibody (Do this later, was just lazy)
   493 ^ Stategic Planning Group
+  494 ^ Street Enforcer
   496 ^ Strike Force Kali
   497 ^ Stumble through Wilderspace
   498 ^ Subliminal Corruption
@@ -891,6 +894,7 @@ The following (marked) cards have no tests or implementations:
   513 ^ Technician Lover
   515 ^ Temple Microcode Outlet
   516 ^ Terrorist Reprisal
+  517 ^ Tesseract Fort Construction
   518 ^ Test Spin
   520 ^ Theorem Proof
   521 ^ The Personal Touch
@@ -902,6 +906,7 @@ The following (marked) cards have no tests or implementations:
   530 ^ Top Runner's Conference
   531 ^ Total Genetic Retrofit
   535 ^ Trauma Team [TM]
+  539 ^ Turbeau Delacroix
   543 ^ Tycho Extension
   546 ^ Underworld Mole
   547 ^ Unlisted Research Lab
@@ -914,6 +919,7 @@ The following (marked) cards have no tests or implementations:
   560 ^ Virus Test Site
   562 ^ Walking Wall
   565 ^ Washed-Up Solo Construct
+  566 ^ Washington, D.C., City Grid
   567 ^ ONR Weapons Depot
   568 ^ Weather-to-Finance Pipe
   569 ^ Weefle Initiation
@@ -926,4 +932,4 @@ The following (marked) cards have no tests or implementations:
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 584
+Random card to implement: 164

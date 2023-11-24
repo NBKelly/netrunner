@@ -31,7 +31,8 @@
    [game.core.hand-size :refer [corp-hand-size+]]
    [game.core.hosting :refer [host]]
    [game.core.ice :refer [all-subs-broken?  insert-extra-sub! remove-sub! reset-sub!
-                          get-run-ices pump-ice resolve-subroutine! set-current-ice
+                          remove-extra-subs! add-extra-sub!
+                          get-run-ices pump-ice resolve-subroutine! set-current-ice get-strength
                           unbroken-subroutines-choice update-all-ice update-all-icebreakers]]
    [game.core.installing :refer [corp-install corp-install-list]]
    [game.core.moving :refer [mill move remove-from-currently-drawing
@@ -60,7 +61,7 @@
    [game.utils :refer :all]
    [jinteki.utils :refer :all]
    [game.core.onr-utils :refer [dice-roll ambush-outside-archives gain-runner-counter
-                                register-effect-once]]
+                                register-effect-once onr-trace-tag]]
    [game.cards.ice :refer [end-the-run-unless-runner-pays]]
    ))
 
@@ -773,6 +774,54 @@
                                                (update-all-icebreakers state side))}
                                  card nil)))}]})
 
+(defcard "ONR Sterdroid"
+  (letfn [(amt-to-add [ice]
+            (cond
+              (<= (get-strength ice) 5)  (get-strength ice)
+              (<= (get-strength ice) 10) (- 10 (get-strength ice))
+              :else 0))]
+  {:implementation "requires the ice to be rezzed"
+   :abilities [{:async true
+                :label "Add strength to a piece of ice"
+                :cost [:trash-can :credit 3]
+                :choices {:all true
+                          :req (req (and (ice? target)
+                                         (rezzed? target)))}
+                :msg (msg "add " (amt-to-add target)
+                          " strength to " (:title target))
+                :effect (effect (pump-ice target (amt-to-add target) :end-of-turn))}]}))
+
+(defcard "ONR Street Enforcer"
+  {:events [{:event :run
+             :req (req (and this-server (count-tags state)))
+             :interactive (req true)
+             :async true
+             :msg (msg "force the runner to lose " (count-tags state) " credits")
+             :effect (req (lose-credits state :runner eid (count-tags state)))}]})
+
+(defcard "ONR Tesseract Fort Construction"
+  (let [new-sub (assoc (end-the-run-unless-runner-pays [:credit 1] "") :label "[Tesseract] End the run unless runner pays 1 [Credit]")]
+    (letfn [(all-rezzed-bios [state card]
+              (filter #(and (ice? %)
+                            (same-server? % card)
+                            (rezzed? %))
+                      (all-installed state :corp)))
+            (remove-one [cid state ice]
+              (remove-extra-subs! state :corp ice cid))
+            (add-one [cid state ice]
+              (add-extra-sub! state :corp ice new-sub cid))
+            (update-all [state func card]
+              (doseq [i (all-rezzed-bios state card)]
+                (func state i)))]
+      {:on-rez {:msg "add \"[Subroutine] End the run unless runner pays 1 [Credit]\" after all other subroutines"
+                :effect (req (update-all state (partial add-one (:cid card)) card))}
+       :leave-play (req (system-msg state :corp (str "loses " (:title card) " additional subroutines")
+                                    (update-all state (partial remove-one (:cid card)))))
+       :events [{:event :rez
+                 :req (req (and (ice? (:card context))
+                                (same-server? (:card context) card)))
+                 :effect (req (add-one (:cid card) state (get-card state (:card context))))}]})))
+
 (defcard "ONR Tokyo-Chiba Infighting"
   {:events [{:event :run-ends
              :req (req (and (= (second (get-zone card)) (target-server context))
@@ -781,9 +830,22 @@
              :async true
              :effect (effect (gain-credits eid 2))}]})
 
+(defcard "ONR Turbeau Delacroix"
+  (onr-ambush {:on-access
+               {:optional
+                {:prompt "Trace the runner?"
+                 :req (req (rezzed? card))
+                 :yes-ability (onr-trace-tag 10)}}}))
+
+
 (defcard "ONR Twenty-Four-Hour Surviellance"
   ;; TODO - find a way to do this. I know it can be done.
   {:implementation "Unimplemented/Manual Implementation"})
+
+(defcard "ONR Washington, D.C., City Grid"
+  {:static-abilities [{:type :advancement-requirement
+                       :req (req (in-same-server? card target))
+                       :value -1}]})
 
 (defcard "ONR Weapons Depot"
   {:static-abilities [{:type :advancement-requirement
