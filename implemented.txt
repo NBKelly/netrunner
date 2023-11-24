@@ -44,9 +44,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   498 / 584
-TESTS:   230 / 498
-NO TEST: 265
+TOTAL:   507 / 584
+TESTS:   231 / 507
+NO TEST: 273
 NO IMP:  3
 --------------------------
 002 + Access through Alpha
@@ -129,7 +129,7 @@ NO IMP:  3
 080 + Cloak
 081 + Closed Accounts
 082 + Clown
-
+083 ^ Cockroach
 084 + Code Corpse
 085 + Codecracker
 086 ^ Codeslinger
@@ -221,7 +221,7 @@ NO IMP:  3
 172 + Efficiency Experts
 173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
 174 ^ Emergency Rig
-
+175 ^ Emergency Self-Construct
 176 ^ Employee Empowerment
 177 ^ Encoder, Inc.
 
@@ -238,10 +238,11 @@ NO IMP:  3
 189 + Executive Wiretaps
 190 + Expendable Family Member
 191 + Experimental AI
+192 ^ Expert Schedule Analyzer
 
 194 ^ Faked Hit
 195 + Fall Guy
-
+196 ^ False Echo
 197 + Falsified-Transactions Expert
 198 ^ Fang 2.0
 199 ^ Fang
@@ -314,6 +315,7 @@ NO IMP:  3
 267 + Jack Attack
 268 ^ Jackhammer
 269 + Jack 'n' Joe
+270 + Japanese Water Torture
 
 273 ^ Joan of Arc
 274 ^ Junkyard BBS
@@ -481,7 +483,7 @@ NO IMP:  3
 439 + Sandstorm
 440 ^ Satellite Monitors (rng card)
 441 + Scaffolding
-
+442 ^ Scaldan
 443 + Scatter Shot
 444 ^ Schematics Search Engine
 445 ^ Schlaghund
@@ -512,7 +514,7 @@ NO IMP:  3
 472 ^ Siren
 473 ^ Skälderviken SA Beta Test Site
 474 ^ Skeleton Passkeys
-
+475 ^ Skivviss
 476 ^ Skullcap
 477 + Sleeper
 478 + Smarteye
@@ -547,7 +549,7 @@ NO IMP:  3
 508 + Syd Meyer Superstores
 509 ^ Synchronized Attack on HQ
 510 + Systematic Layoffs
-
+511 ^ Taxman
 512 + Team Restructuring
 513 ^ Technician Lover
 514 + Techtronica [TM] Utility Suit
@@ -588,7 +590,7 @@ NO IMP:  3
 551 ^ Valu-Pak Software Bundle
 552 ^ Vapor Ops
 553 ^ Vewy Vewy Quiet
-
+554 ^ Vienna 22
 555 + Vintage Camaro
 556 ^ Viral 15
 
@@ -649,6 +651,7 @@ The following (marked) cards have no tests or implementations:
   075 ^ Chicago Branch
   078 ^ Cinderella
   079 ^ City Surveillance
+  083 ^ Cockroach
   086 ^ Codeslinger
   089 ^ Core Command: Jettison Ice
   091 ^ Corporate Ally
@@ -691,13 +694,16 @@ The following (marked) cards have no tests or implementations:
   168 ^ Dwarf
   170 ^ Edgerunner, Inc., Temps
   174 ^ Emergency Rig
+  175 ^ Emergency Self-Construct
   176 ^ Employee Empowerment
   177 ^ Encoder, Inc.
   182 ^ ESA Contract
   184 ^ Euromarket Consortium
   185 ^ Evil Twin
   187 ^ Executive Extraction
+  192 ^ Expert Schedule Analyzer
   194 ^ Faked Hit
+  196 ^ False Echo
   198 ^ Fang 2.0
   199 ^ Fang
   201 ^ Fetal AI
@@ -819,6 +825,7 @@ The following (marked) cards have no tests or implementations:
   436 ^ Rush Hour
   438 ^ Sandbox Dig
   440 ^ Satellite Monitors (rng card)
+  442 ^ Scaldan
   444 ^ Schematics Search Engine
   445 ^ Schlaghund
   446 ^ Schlaghund Pointers
@@ -836,6 +843,7 @@ The following (marked) cards have no tests or implementations:
   472 ^ Siren
   473 ^ Skälderviken SA Beta Test Site
   474 ^ Skeleton Passkeys
+  475 ^ Skivviss
   476 ^ Skullcap
   481 ^ Snowball
   483 ^ Social Engineering
@@ -849,6 +857,7 @@ The following (marked) cards have no tests or implementations:
   499 ^ Submarine Uplink (do this test later - fetch + uplink should be fine)
   501 ^ Succubus
   509 ^ Synchronized Attack on HQ
+  511 ^ Taxman
   513 ^ Technician Lover
   515 ^ Temple Microcode Outlet
   516 ^ Terrorist Reprisal
@@ -870,6 +879,7 @@ The following (marked) cards have no tests or implementations:
   551 ^ Valu-Pak Software Bundle
   552 ^ Vapor Ops
   553 ^ Vewy Vewy Quiet
+  554 ^ Vienna 22
   556 ^ Viral 15
   560 ^ Virus Test Site
   562 ^ Walking Wall
@@ -886,4 +896,4 @@ The following (marked) cards have no tests or implementations:
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 186
+Random card to implement: 73

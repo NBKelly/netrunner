@@ -11,7 +11,7 @@
     [game.core.gaining :refer [gain lose]]
     [game.core.hand-size :refer [hand-size]]
     [game.core.ice :refer [update-all-ice update-breaker-strength]]
-    [game.core.moving :refer [move]]
+    [game.core.moving :refer [move discard-from-hand]]
     [game.core.say :refer [system-msg]]
     [game.core.toasts :refer [toast]]
     [game.core.update :refer [update!]]
@@ -105,20 +105,30 @@
           (> cur-hand-size max-hand-size)
           (continue-ability
             state side
-            {:prompt (str "Discard down to " (quantify max-hand-size "card"))
-             :choices {:card in-hand?
-                       :max (- cur-hand-size (max (hand-size state side) 0))
-                       :all true}
-             :effect (req (system-msg state side
-                                      (str "discards "
-                                           (if (= :runner side)
-                                             (enumerate-str (map :title targets))
-                                             (quantify (count targets) "card"))
-                                           " from " (if (= :runner side) "their Grip" "HQ")
-                                           " at end of turn"))
-                          (doseq [t targets]
-                            (move state side t :discard))
-                          (effect-completed state side eid))}
+            (if (any-effects state side :player-randomly-discards)
+              {:async true
+               :effect (req (system-msg state side
+                                        (str "randomly discards "
+                                             (quantify
+                                               (- cur-hand-size (max (hand-size state side) 0))
+                                               "card")
+                                             " from " (if (= :runner side) "their Grip" "HQ")
+                                             " at end of turn"))
+                            (discard-from-hand state side eid side (- cur-hand-size (max (hand-size state side) 0))))}
+              {:prompt (str "Discard down to " (quantify max-hand-size "card"))
+               :choices {:card in-hand?
+                         :max (- cur-hand-size (max (hand-size state side) 0))
+                         :all true}
+               :effect (req (system-msg state side
+                                        (str "discards "
+                                             (if (= :runner side)
+                                               (enumerate-str (map :title targets))
+                                               (quantify (count targets) "card"))
+                                             " from " (if (= :runner side) "their Grip" "HQ")
+                                             " at end of turn"))
+                            (doseq [t targets]
+                              (move state side t :discard))
+                            (effect-completed state side eid))})
             nil nil)
           :else
           (effect-completed state side eid))))

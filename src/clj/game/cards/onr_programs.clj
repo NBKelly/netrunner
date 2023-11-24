@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [game.core.access :refer [access-bonus max-access]]
+   [game.core.bad-publicity :refer [gain-bad-publicity]]
    [game.core.board :refer [all-active all-active-installed all-installed all-installed-runner-type
                             card->server server->zone]]
    [game.core.card :refer [active? agenda? asset? card-index corp? facedown? faceup? upgrade?
@@ -27,7 +28,7 @@
    [game.core.expose :refer [expose]]
    [game.core.finding :refer [find-cid]]
    [game.core.flags :refer [can-host? can-trash? card-flag? lock-zone release-zone zone-locked?]]
-   [game.core.gaining :refer [gain-clicks gain-credits lose-credits]]
+   [game.core.gaining :refer [gain-clicks gain-credits lose-credits lose]]
    [game.core.hosting :refer [host]]
    [game.core.ice :refer [all-subs-broken-by-card? all-subs-broken?
                           any-subs-broken-by-card? auto-icebreaker break-sub
@@ -470,7 +471,19 @@
                        :value -1}]})
 
 (defcard "ONR Cockroach"
-  {:implemntation "TODO"})
+  {:implementation "This only effects end-of-turn discard for now. Discards are not paying costs. Send me an @ with other places it needs to hit"
+   :events [{:event :successful-run
+             :req (req (= :hq (target-server context)))
+             :msg (msg "give the corp a Cockroach counter")
+             :effect (req
+                       (add-counter state :corp (get-card state (:identity corp)) :cockroach 1)
+                       (register-effect-once
+                         state side card
+                         {:type :player-randomly-discards
+                          :ability-name "Cockroach Counters"
+                          :req (req (and (= :corp side)
+                                         (>= (get-counters (get-card state (:identity corp)) :cockroach) 2)))
+                          :value true}))}]})
 
 (defcard "ONR Codecracker"
   (auto-icebreaker {:abilities [(break-sub 0 1 "Code Gate")
@@ -595,7 +608,29 @@
   (auto-icebreaker {:abilities [(break-sub 1 1 "Wall")
                                 (strength-pump 2 3)]}))
 
-(defcard "ONR Emergency Self-Construct" {}) ;;TODO
+(defcard "ONR Emergency Self-Construct"
+  (letfn [(prevent-event []
+            {:event :pre-damage
+             :ability-name "Self-Construct Damage Prevention"
+             :unregister-once-resolved true
+             :req (req (= target :meat))
+             :effect (req
+                       (system-msg state side "prevents all meat damage due to the effect of ONR Emergency Self-Construct")
+                       (register-events state side card [(prevent-event)])
+                       (damage-prevent state side :meat Integer/MAX_VALUE))})]
+  {:implementation "Will ask for consent when you would get flatlined"
+   :events [{:event :pre-flatline
+             :optional {:prompt "Trash Self-Construct to prevent being flatlined?"
+                        :no-ability {:msg "accept the consequences"}
+                        :yes-ability {:msg "prevent being flatlined, remove all brain damage, gain one less action each turn, and prevent all meat damage for the remainder of the game"
+                                      :cost [:trash-can]
+                                      :effect (req (swap! state assoc-in [:damage :flatline-prevent] true)
+                                                   ;; remove all brain damage
+                                                   (swap! state update-in [:runner :brain-damage] #(- % %))
+                                                   (lose state :runner :click-per-turn 1)
+                                                   (handle-if-unique
+                                                     state side (:identity runner)
+                                                     (prevent-event)))}}}]}))
 
 (defcard "ONR Enterprise, Inc., Shields"
   {:interactions {:prevent [{:type #{:net :brain}
@@ -639,11 +674,42 @@
                               (set-use state side card (inc (uses state card)))
                               (damage-prevent state side :brain 1))}]})))
 
-(defcard "ONR Expert Schedule Analyzer" {}) ;;TODO
+(defcard "ONR Expert Schedule Analyzer"
+  {:events [{:event :end-breach-server
+             :req (req (= :hq (:breach-server target)))
+             :msg (msg "reveal " (enumerate-str (sort (map :title (:hand corp)))) " from HQ")
+             :async true
+             :effect (effect (reveal eid (:hand corp)))}]})
 
 (defcard "ONR Fait Accompli" {}) ;;TODO
 
-(defcard "ONR False Echo" {}) ;;TODO
+(defcard "ONR False Echo"
+  (letfn [(continue-rezzing [ices]
+            {:async true
+             :effect (req
+                       (if (empty? ices)
+                         (effect-completed state side eid)
+                         (if (rezzed? (last ices))
+                           (continue-ability state side (continue-rezzing (butlast ices)) card nil)
+                           (wait-for (rez state :corp (last ices))
+                                     (when-not async-result
+                                       (system-msg state :corp (str " was unable to rez " (card-str state (last ices)))))
+                                     (continue-ability
+                                     state side
+                                     (continue-rezzing (butlast ices))
+                                     card nil)))))})]
+  {:implementation "corp can not decline additional costs!"
+   :abilities [{:req (req (and (pos? (count (:successful-run runner-reg)))))
+                :cost [:credit 2]
+                :label "Force the corp to rez"
+                :async true
+                :prompt "force the Corp to rez ice where?"
+                :choices (req (cancellable (distinct (map zone->name (:successful-run runner-reg))) :sorted))
+                :effect (req (let [ices (:ices (get-in @state (cons :corp (server->zone state target))))]
+                               (continue-ability
+                                 state side
+                                 (continue-rezzing ices)
+                                 card nil)))}]}))
 
 (defcard "ONR Flak"
   (auto-icebreaker {:abilities [(break-sub 1 1 "AP")
@@ -781,7 +847,10 @@
   (auto-icebreaker {:abilities [(break-sub 0 1 "Wall" (lose-from-stealth 1))
                                 (strength-pump 1 1)]}))
 
-(defcard "ONR Japanese Water Torture" {}) ;;todo
+(defcard "ONR Japanese Water Torture"
+  (auto-icebreaker {:implementation "boost is atomic instead of an x-fn"
+                    :abilities [(break-sub 0 1 "Wall")
+                                (strength-pump [:forgo-next-click 1 :credit 1] 1)]}))
 
 (defcard "ONR Joan of Arc"
   {:interactions {:prevent [{:type #{:trash-program}
@@ -1051,7 +1120,26 @@
                (strength-pump 1 1)]})
 
 
-(defcard "ONR Scaldan" {}) ;;TODO - figure out how I'm doing ONR Bad Pub. This will probably be an ability on the runner id.
+(defcard "ONR Scaldan"
+  (letfn [(scaldan-event []
+            {:event :corp-turn-begins
+             :unregister-once-resolved true
+             :ability-name "Scaldan Counters"
+             :async true
+             :effect (req (let [counters (get-counters (get-card state (:identity corp)) :scaldan)
+                                di (dice-roll counters)
+                                bp (count (filter #(> % 4) di))]
+                            (if-not (zero? counters)
+                              (do (register-events state side (:identity runner) [(scaldan-event)])
+                                  (system-msg state side (str "forces the Corp to roll " (seq di) " and gain " bp " Bad Publicity (ONR Scaldan)"))
+                                  (gain-bad-publicity state :runner eid bp))
+                              (effect-completed state side eid))))})]
+    {:events [{:event :successful-run
+               :req (req (= :hq (target-server context)))
+               :msg (msg "give the corp a Scaldan counter")
+               :effect (req
+                         (handle-if-unique state side (:identity runner) (scaldan-event))
+                         (add-counter state :corp (get-card state (:identity corp)) :scaldan 1))}]}))
 
 (defcard "ONR Scatter Shot"
   {:recurring 2
@@ -1164,7 +1252,25 @@
   (auto-icebreaker {:abilities [(break-sub 0 1 "Code Gate")
                                 (strength-pump 3 4)]}))
 
-(defcard "ONR Skivviss" {:implementation "TODO"}) ;;todo
+(defcard "ONR Skivviss"
+  (letfn [(skivviss-event []
+            {:event :corp-turn-begins
+             :unregister-once-resolved true
+             :ability-name "Skivviss Counters"
+             :async true
+             :effect (req (let [counters (get-counters (get-card state (:identity corp)) :skivviss)]
+                            (if-not (zero? counters)
+                              (do (register-events state side (:identity runner) [(skivviss-event)])
+                                  (system-msg state side (str "forces the Corp to draw " counters "cards (ONR Skivviss)"))
+                                  (draw state :corp eid counters))
+                              (effect-completed state side eid))))})]
+    {:implementation "draws are a start of turn event - if the timing is an issue, send me an @"
+     :events [{:event :successful-run
+               :req (req (= :rd (target-server context)))
+               :msg (msg "give the corp a Skivviss counter")
+               :effect (req
+                         (handle-if-unique state side (:identity runner) (skivviss-event))
+                         (add-counter state :corp (get-card state (:identity corp)) :skivviss 1))}]}))
 
 (defcard "ONR Skullcap"
   {:interactions {:prevent [{:type #{:net :brain}
@@ -1249,7 +1355,27 @@
                 :msg (msg "derez " (:title current-ice))
                 :effect (effect (derez current-ice))}]})
 
-(defcard "ONR Taxman" {:implementation "TODO"}) ;;TODO
+(defcard "ONR Taxman"
+  (letfn [(tax-event []
+            {:event :corp-turn-begins
+             :unregister-once-resolved true
+             :ability-name "Tax Counters"
+             :async true
+             :effect (req (let [counters (get-counters (get-card state (:identity corp)) :tax)
+                                loss (quot counters 2)]
+                            (if-not (zero? counters)
+                              (do (register-events state side (:identity runner) [(tax-event)])
+                                  (if (pos? loss)
+                                    (do (system-msg state side (str "forces the Corp to lose " loss " [Credits] (ONR Taxman)"))
+                                        (lose-credits state :corp eid loss))
+                                    (effect-completed state side eid)))
+                              (effect-completed state side eid))))})]
+    {:events [{:event :successful-run
+               :req (req (= :hq (target-server context)))
+               :msg (msg "give the corp a Tax counter")
+               :effect (req
+                         (handle-if-unique state side (:identity runner) (tax-event))
+                         (add-counter state :corp (get-card state (:identity corp)) :tax 1))}]}))
 
 (defcard "ONR Tinweasel"
   (auto-icebreaker {:abilities [(break-sub 0 1 "Code Gate")]}))
@@ -1262,7 +1388,32 @@
                                                (not (has-subtype? target "Noisy"))))
                                 :type :recurring}}})
 
-(defcard "ONR Vienna 22" {:implementation "todo"}) ;;TODO
+(defcard "ONR Vienna 22"
+  (letfn [(vienna-event []
+            {:event :breach-server
+             :unregister-once-resolved true
+             :side :runner
+             :async true
+             :ability-name "Vienna Counters"
+             :req (req (= target :hq))
+             :effect (req (let [counters (get-counters (get-card state (:identity corp)) :vienna)
+                                add-access counters]
+                            (when (pos? add-access)
+                              (system-msg state side (str "accesses an additional " add-access " cards from HQ due to Vienna counters (ONR Vienna 22)"))
+                              (access-bonus state side :hq add-access))
+                            (when-not (zero? counters)
+                              (register-events
+                                state side
+                                (:identity runner)
+                                [(vienna-event)]))
+                            (effect-completed state side eid)))})]
+    {:events [{:event :run-ends
+               :req (req (and (= :hq (target-server context))
+                              (:successful context)))
+               :msg (msg "give the corp a Vienna counter")
+               :effect (req
+                         (handle-if-unique state side (:identity runner) (vienna-event) [:hq])
+                         (add-counter state :corp (get-card state (:identity corp)) :vienna 1))}]}))
 
 (defcard "ONR Viral Pipeline" {:implementation "todo"}) ;;TODO
 

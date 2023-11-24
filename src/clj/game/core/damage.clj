@@ -106,6 +106,7 @@
   [state side eid dmg-type n {:keys [card]}]
   (swap! state update-in [:damage :defer-damage] dissoc dmg-type)
   (swap! state dissoc-in [:damage :chosen-damage])
+  (swap! state dissoc-in [:damage :flatline-prevent])
   (damage-choice-priority state)
   (wait-for (trigger-event-simult state side :pre-resolve-damage nil dmg-type side n)
             (if (get-in @state [:damage :damage-replace])
@@ -126,20 +127,22 @@
                   (swap! state update-in [:stats :corp :damage :all] (fnil + 0) n)
                   (swap! state update-in [:stats :corp :damage dmg-type] (fnil + 0) n)
                   (if (< (count hand) n)
-                    (do (flatline state)
-                        (trash-cards state side eid cards-trashed {:unpreventable true}))
-                    (wait-for (trash-cards state side cards-trashed {:unpreventable true
-                                                                     :cause dmg-type
-                                                                     :suppress-event true})
-                              (queue-event state :damage {:amount n
-                                                          :card card
-                                                          :side side
-                                                          :damage-type dmg-type
-                                                          :cards-trashed cards-trashed})
-                              (let [trash-event (get-trash-event side false)
-                                    args {:durations [:damage trash-event]}]
-                                (wait-for (checkpoint state nil (make-eid state eid) args)
-                                          (complete-with-result state side eid cards-trashed))))))))))
+                    (wait-for (trigger-event-simult state side :pre-flatline nil) ;; some cards PREVENT FLATLINE....
+                              (if-not (get-in @state [:damage :flatline-prevent])
+                                (do (flatline state)
+                                    (trash-cards state side eid cards-trashed {:unpreventable true}))
+                                (wait-for (trash-cards state side cards-trashed {:unpreventable true
+                                                                                 :cause dmg-type
+                                                                                 :suppress-event true})
+                                          (queue-event state :damage {:amount n
+                                                                      :card card
+                                                                      :side side
+                                                                      :damage-type dmg-type
+                                                                      :cards-trashed cards-trashed})
+                                          (let [trash-event (get-trash-event side false)
+                                                args {:durations [:damage trash-event]}]
+                                            (wait-for (checkpoint state nil (make-eid state eid) args)
+                                                      (complete-with-result state side eid cards-trashed))))))))))))
 
 (defn damage-count
   "Calculates the amount of damage to do, taking into account prevention and boosting effects."
