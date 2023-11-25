@@ -44,9 +44,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   556 / 584
-TESTS:   234 / 556
-NO TEST: 316
+TOTAL:   559 / 584
+TESTS:   235 / 559
+NO TEST: 318
 NO IMP:  6
 --------------------------
 001 ^ Aardvark
@@ -109,7 +109,7 @@ NO IMP:  6
 058 + ONR Braindance Campaign
 059 ^ Brain Drain (random, untestable?)
 060 + ONR Brain Wash
-
+061 ^ Braniac
 062 + Broker
 063 ^ Bug Zapper
 064 + Bulldozer
@@ -256,7 +256,7 @@ NO IMP:  6
 205 ^ Finders Keepers (random, need a way to rig tests)
 206 + Fire Wall
 207 + Flak
-
+208 + Floating Runner BBS
 209 + Food Fight
 210 ^ Force Shield
 211 + Forged Activation Orders
@@ -266,7 +266,7 @@ NO IMP:  6
 215 ^ Forward's Legacy
 216 ^ Fragmentation Storm
 217 ^ Frame-Up
-
+218 ^ Friend Corp
 219 ^ Fubar
 220 ^ Full Body Conversion
 221 + Galatea
@@ -657,6 +657,7 @@ The following (marked) cards have no tests or implementations:
   055 ^ Bolt-Hole
   056 ^ Boostergang Connections
   059 ^ Brain Drain (random, untestable?)
+  061 ^ Braniac
   063 ^ Bug Zapper
   065 ^ Butcher Boy (test once viruses are done!)
   069 ^ Cascade (test once viruses are done!)
@@ -736,6 +737,7 @@ The following (marked) cards have no tests or implementations:
   215 ^ Forward's Legacy
   216 ^ Fragmentation Storm
   217 ^ Frame-Up
+  218 ^ Friend Corp
   219 ^ Fubar
   220 ^ Full Body Conversion
   222 ^ Garbage In
@@ -953,4 +955,4 @@ The following (marked) cards have no tests or implementations:
   260 ? Incubator
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 208
+Random card to implement: 550

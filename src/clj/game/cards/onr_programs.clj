@@ -175,7 +175,7 @@
 
 ;; card implementations
 
-(defcard "ONR Braniac: Espionage Enjoyer"
+(defcard "ONR Brainiac: Espionage Enjoyer"
   {:interactions
    {:access-ability
     {:label "Trash card"

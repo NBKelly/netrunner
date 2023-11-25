@@ -157,7 +157,10 @@
                      (gain-run-credits state side
                                        (make-eid state eid)
                                        (+ (or (get-in @state [:runner :next-run-credit]) 0)
-                                          (count-bad-pub state)))
+                                          ;; onr-runner does not get creds from bad pub
+                                          (if (= "ONR Runner" (:faction (:identity (:runner @state))))
+                                            0
+                                            (count-bad-pub state))))
                      (swap! state assoc-in [:runner :next-run-credit] 0)
                      (swap! state update-in [:runner :register :made-run] conj (first s))
                      (swap! state update-in [:stats side :runs :started] (fnil inc 0))

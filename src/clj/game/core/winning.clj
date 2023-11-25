@@ -6,7 +6,7 @@
    [game.core.effects :refer [any-effects]]
    [game.core.say :refer [play-sfx system-msg system-say]]
    [game.utils :refer [dissoc-in]]
-   [jinteki.utils :refer [other-side]]))
+   [jinteki.utils :refer [other-side count-bad-pub]]))
 
 (defn win
   "Records a win reason for statistics."
@@ -81,7 +81,11 @@
 
 (defn side-win
   [state side]
-  (<= (get-in @state [side :agenda-point-req]) (get-in @state [side :agenda-point])))
+  (or
+    (and (= side :runner) (<= 7 (count-bad-pub state)) (= (:faction (:identity (:runner @state))) "ONR Runner")) ;; runner win by bad pub
+    (and
+      (not (and (= side :corp) (<= 7 (count-bad-pub state)) (= (:faction (:identity (:runner @state))) "ONR Runner"))) ;; corp can't win ONR with 7 bad pub, no matter what!
+      (<= (get-in @state [side :agenda-point-req]) (get-in @state [side :agenda-point])))))
 
 (defn check-win-by-agenda
   ([state] (check-win-by-agenda state nil))
