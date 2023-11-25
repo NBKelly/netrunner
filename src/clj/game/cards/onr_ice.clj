@@ -1244,6 +1244,46 @@
 (defcard "ONR Quandary"
   {:subroutines [end-the-run]})
 
+(defcard "ONR Vacuum Link"
+  (letfn [(count-x-rezzed-back [x position ices]
+            (if (>= position (count ices))
+              position
+              (if (rezzed? (nth ices (- position 1)))
+                (if (= x 1)
+                  position
+                  (count-x-rezzed-back (dec x) (inc position) ices))
+                (count-x-rezzed-back x (inc position) ices))))]
+    {:subroutines [{:label "maybe rewind the run"
+                    :async true
+                    :req (req run)
+                    :effect (req (let [di (dice-roll)
+                                       ;;do we rewind? if so, how? let's get all the rezzed ice first
+                                       ct-position (:position run)
+                                       ct-server (:server run)
+                                       server-ices (get-in @state [:corp :servers (first ct-server) :ices])
+                                       server-titles (map :title server-ices)
+                                       ]
+                                   (continue-ability
+                                     state side
+                                     (if (> di 3)
+                                       {:msg (msg "roll a " di " (1d6)")}
+                                       {;;:msg (msg "roll: " di ", server: " ct-server ", pos: " ct-position ", new-pos: " (count-x-rezzed-back di (inc ct-position) server-ices))
+                                        :msg (msg "roll " di " and push the runner back to position " (count-x-rezzed-back di (inc ct-position) server-ices));;push the runner back " di " rezzed ices")
+                                        :async true
+                                        :effect (req
+                                                  (swap! state assoc-in [:run :position] (count-x-rezzed-back di (inc ct-position) server-ices))
+                                                  (set-next-phase state :approach-ice)
+                                                  (update-all-ice state side)
+                                                  (update-all-icebreakers state side)
+                                                  (wait-for (resolve-ability state :runner (make-eid state eid) (offer-jack-out) card nil)
+                                                            (if (not (:ended (:end-run @state)))
+                                                              (start-next-phase state side eid)
+                                                              (effect-completed state side eid))))})
+                                     card nil)))}]}))
+
+
+
+
 (defcard "ONR Viral 15"
   (let [runner-trash-abi
         {:prompt "Choose a program to trash"
