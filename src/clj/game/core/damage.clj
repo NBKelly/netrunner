@@ -104,6 +104,8 @@
   "Resolves the attempt to do n damage, now that both sides have acted to boost or
   prevent damage."
   [state side eid dmg-type n {:keys [card]}]
+  (swap! state assoc-in [:damage :damage-prevent type] 0)
+  (swap! state assoc-in [:damage :damage-pending type] 0)
   (swap! state update-in [:damage :defer-damage] dissoc dmg-type)
   (swap! state dissoc-in [:damage :chosen-damage])
   (swap! state dissoc-in [:damage :flatline-prevent])
@@ -146,8 +148,8 @@
                                                       (complete-with-result state side eid cards-trashed))))))
                     ;; todo - I shouldn't repeat this twice, move to a seperate fn
                     (wait-for (trash-cards state side cards-trashed {:unpreventable true
-                                                                                 :cause dmg-type
-                                                                                 :suppress-event true})
+                                                                     :cause dmg-type
+                                                                     :suppress-event true})
                                           (queue-event state :damage {:amount n
                                                                       :card card
                                                                       :side side
@@ -169,6 +171,7 @@
 (defn check-damage-prevention
   "for a preventable damage instance, handles all damage prevention effects that a player can use for it"
   ([state side eid type n player]
+   (swap! state assoc-in [:damage :damage-pending type] n)
    (let [interrupts (get-prevent-list state player type)
          other-player (if (= player :corp) :runner :corp)
          already-prevented (or (get-in @state [:damage :damage-prevent type]) 0)]
@@ -195,12 +198,18 @@
                        (effect-completed state side eid)))))
        (effect-completed state side eid)))))
 
+(defn pending-damage
+  [state type]
+  (- (or (get-in @state [:damage :damage-pending type]) 0)
+     (or (get-in @state [:damage :damage-prevent type]) 0)))
+
 (defn damage
   "Attempts to deal n damage of the given type to the runner. Starts the
   prevention/boosting process and eventually resolves the damage."
   ([state side eid type n] (damage state side eid type n nil))
   ([state side eid type n {:keys [unpreventable card] :as args}]
    (swap! state update-in [:damage :damage-bonus] dissoc type)
+   (swap! state update-in [:damage :damage-pending] dissoc type) ;; this should be in main !reminder
    (swap! state update-in [:damage :damage-prevent] dissoc type)
    ;; alert listeners that damage is about to be calculated.
    (wait-for (trigger-event-sync state side (make-eid state eid) :pre-damage type card unpreventable n) ;; we should be able to communicate if the damage can be prevented at this point!

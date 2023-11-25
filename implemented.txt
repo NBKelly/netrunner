@@ -44,9 +44,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   553 / 584
-TESTS:   232 / 553
-NO TEST: 315
+TOTAL:   556 / 584
+TESTS:   234 / 556
+NO TEST: 316
 NO IMP:  6
 --------------------------
 001 ^ Aardvark
@@ -255,6 +255,7 @@ NO IMP:  6
 204 + Filter
 205 ^ Finders Keepers (random, need a way to rig tests)
 206 + Fire Wall
+207 + Flak
 
 209 + Food Fight
 210 ^ Force Shield
@@ -267,7 +268,7 @@ NO IMP:  6
 217 ^ Frame-Up
 
 219 ^ Fubar
-
+220 ^ Full Body Conversion
 221 + Galatea
 222 ^ Garbage In
 223 + Gatekeeper
@@ -536,7 +537,7 @@ NO IMP:  6
 486 ^ Speed Trap
 487 + Sphinx 2006
 488 + Spinn (R) Public Relations
-
+489 + Stakeout
 490 ^ Startup Immolator
 491 ^ Sterdroid
 492 ^ Stereogram Antibody (Do this later, was just lazy)
@@ -736,6 +737,7 @@ The following (marked) cards have no tests or implementations:
   216 ^ Fragmentation Storm
   217 ^ Frame-Up
   219 ^ Fubar
+  220 ^ Full Body Conversion
   222 ^ Garbage In
   224 ^ Genetics-Visionary Acquisition
   225 ^ Get Ready to Rumble
@@ -951,4 +953,4 @@ The following (marked) cards have no tests or implementations:
   260 ? Incubator
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 220
+Random card to implement: 208

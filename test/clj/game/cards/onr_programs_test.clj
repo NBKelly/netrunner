@@ -26,6 +26,7 @@
                "All"       "Rime"
                "Wall"      "ONR Data Wall"
                "Code Gate" "Enigma"
+               "AP"        "Anansi"
                "Barrier"   "Vanilla"
                ;; todo - whatever other types need to be tested
                type)]
@@ -281,6 +282,13 @@
                            "Used 1 credit from Cloak"
                            (card-ability state :runner refr 1)
                            (click-card state :runner cl)))))
+
+(deftest onr-flak
+  (let [card "ONR Flak"]
+    (basic-program-test card
+                        2
+                        {:ab 1 :amount 1 :cost 1}
+                        {:ab 0 :amount 1 :cost 1 :type "AP"})))
 
 (deftest onr-japanese-water-torture
     (let [card "ONR Japanese Water Torture"]

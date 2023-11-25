@@ -13,7 +13,8 @@
    [game.core.card-defs :refer [card-def]]
    [game.core.cost-fns :refer [all-stealth install-cost
                                rez-additional-cost-bonus rez-cost trash-cost]]
-   [game.core.damage :refer [chosen-damage damage damage-prevent
+   [game.core.costs :refer [total-available-credits]]
+   [game.core.damage :refer [chosen-damage damage damage-prevent pending-damage
                              enable-runner-damage-choice runner-can-choose-damage?]]
    [game.core.def-helpers :refer [breach-access-bonus defcard offer-jack-out
                                   reorder-choice trash-on-empty get-x-fn]]
@@ -21,7 +22,7 @@
    [game.core.effects :refer [register-lingering-effect
                               unregister-effects-for-card unregister-lingering-effects]]
    [game.core.eid :refer [effect-completed make-eid make-result]]
-   [game.core.engine :refer [can-trigger? not-used-once? register-events
+   [game.core.engine :refer [can-trigger? not-used-once? register-events pay
                              register-once register-suppress resolve-ability trigger-event
                              unregister-floating-events unregister-suppress-by-uuid]]
    [game.core.events :refer [event-count first-event? first-trash? no-event?
@@ -44,7 +45,7 @@
    [game.core.optional :refer [get-autoresolve never? set-autoresolve]]
    [game.core.payment :refer [build-cost-string can-pay? cost-value]]
    [game.core.play-instants :refer [play-instant]]
-   [game.core.prompts :refer [cancellable clear-wait-prompt]]
+   [game.core.prompts :refer [cancellable clear-wait-prompt show-wait-prompt]]
    [game.core.props :refer [add-counter add-icon remove-icon]]
    [game.core.revealing :refer [reveal]]
    [game.core.rezzing :refer [derez rez]]
@@ -203,8 +204,50 @@
                                                (same-card? card (:host target))))
                                 :type :recurring}}})
 
-(defcard "ONR Full Body Conversion" ;;TODO - come back here
-  {:implementation "unimplemented"})
+(defcard "ONR Full Body Conversion"
+  {:implementation "You need to click on the card when damage is being done"
+   :interactions {:prevent [{:type #{:meat}
+                             :req (req true)}]}
+   :events [{:event :pre-damage
+             :req (req (= :meat (first targets)))
+             :silent (req true)
+             :effect (req (update! state side (assoc-in (get-card state card) [:special :already-used] false)))}]
+   :abilities [{:label "prevent all meat damage"
+                :cost [:credit 0]
+                :async true
+                :req (req (and (pos? (pending-damage state :meat))
+                               (not (get-in card [:special :already-used]))))
+                :effect
+                (req
+                  ;;(show-wait-prompt state :runner
+                  ;;  (str "Corp to interact with " (:title card)))
+                  (let [pending (pending-damage state :meat)
+                        corp-creds (total-available-credits state :corp eid card)
+                        max-spend (min pending corp-creds)]
+                    (update! state side (assoc-in (get-card state card) [:special :already-used] true))
+                    (continue-ability
+                      state corp
+                      {:prompt (msg "Runner will prevent " pending " damage. Spend up to " max-spend " [Credits] to mitigate that prevention?")
+                       :player :corp
+                       :waiting-prompt true
+                       :choices {:number (req max-spend)
+                                 :default (req 0)}
+                       :async true
+                       :msg (msg "prevent " (- pending target) " meat damage (corp pays "
+                                 target " [Credits])")
+                       :cancel-effect (req
+                                        (clear-wait-prompt state :runner)
+                                        (continue-ability
+                                          state side
+                                          {:msg ("prevent " pending " meat damage")
+                                           :effect (req (damage-prevent state :runner :meat pending))}
+                                             card nil))
+                       :effect (req
+                                 ;;(clear-wait-prompt state :runner)
+                                 (wait-for (pay state :corp (make-eid state eid) card [:credit target])
+                                           (damage-prevent state :runner :meat (- pending target))
+                                           (effect-completed state side eid)))}
+                      card nil)))}]})
 
 (defcard "ONR HQ Interface"
   {:events [(breach-access-bonus :hq 1)]})
