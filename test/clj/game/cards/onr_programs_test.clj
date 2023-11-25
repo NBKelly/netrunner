@@ -266,6 +266,12 @@
                         {:ab 1 :amount 1 :cost 1} ;; boost
                         {:ab 0 :amount 1 :cost 0 :type "Code Gate"})))
 
+(deftest onr-flak
+  (let [card "ONR Early Worm"]
+    (basic-program-test card
+                        2
+                        {:ab 1 :amount 2 :cost 3}
+                        {:ab 0 :amount 1 :cost 1 :type "Wall"})))
 
 (deftest invisibility-pay-credits-prompt
     ;; Pay-credits prompt

@@ -44,8 +44,8 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   572 / 584
-TESTS:   237 / 572
+TOTAL:   573 / 584
+TESTS:   238 / 573
 NO TEST: 326
 NO IMP:  9
 --------------------------
@@ -217,7 +217,7 @@ NO IMP:  9
 166 + Dumpster
 167 ^ Dupree
 168 ^ Dwarf
-
+169 + Early Worm
 170 ^ Edgerunner, Inc., Temps
 171 + Edited Shipping Manifests
 172 + Efficiency Experts
@@ -968,4 +968,4 @@ The following (marked) cards have no tests or implementations:
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   379 ? Pox
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 36
+Random card to implement: 583
