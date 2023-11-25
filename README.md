@@ -12,6 +12,15 @@ This is a fork of the netrunner client used for jinteki.net, with the goal of po
 
 This little graph is a visual representation of the implementation status so far. Green for tests, orange for no tests, and red for "I'm not implementing that (yet)"
 
+## Interop
+The ONR Traces and the ANR traces have different mechanics, so most of their bespoke interaction cards don't work together.
+
+Two specific virus programs (Crumble and the other one for HQ. Cascade?) rely on the runner being the fake identity "ONR Braniac: Espionage Enjoyer".
+
+The bad publicity win condition depends on the runner being that same fake identity.
+
+Barring EXACTLY those interactions, these cards should be 100%(tm) interoperable.
+
 ## Faithfulness
 These cards are mostly as I interpreted them. There is no way to get rulings on most of these cards, and some of them are ambigious. Additionally, I have implemented them as if they existed in the same engine as android: netrunner, and thus they are using that timing structure. Arasaka.de has some ruling, but a scant few, unfortunately, and I don't know anything about how reliable they are.
 
