@@ -1163,6 +1163,15 @@
   {:events [(bounce-unless-corp-pays 1)]
    :subroutines [end-the-run]})
 
+(defcard "ONR Virizz"
+  {:subroutines [{:label "+1 [Credits] to break subroutines"
+                  :msg (msg "add an additional cost of 1 [Credits] to break subroutines this run")
+                  :effect (req (register-lingering-effect
+                                 state side card
+                                 {:type :break-sub-additional-cost
+                                  :duration :end-of-run
+                                  :value [:credit 1]}))}]})
+
 (defcard "ONR Quandary"
   {:subroutines [end-the-run]})
 

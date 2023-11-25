@@ -69,6 +69,42 @@
   (update-all-agenda-points state side)
   (check-win-by-agenda state side))
 
+(defn- reveal-and-buff-ice
+  [type]
+  (letfn [(cancel-fn [creds]
+            {:msg (msg "reveal 0 cards and gain " creds " [Credits]")
+             :prompt "You have no targets"
+             :choices ["I understand"]
+             :async true
+             :effect (req (gain-credits state side eid creds))})]
+    {:implementation "reveals are from HQ only"
+     :static-abilities [{:type :ice-strength
+                         :req (req (and (has-subtype? target "Wall")
+                                        (rezzed? target)))
+                         :value 1}]
+     :on-score {:effect (req (let [max-c (count (filter #(has-subtype? % type) (:hand corp)))
+                                   rezzed (count (filter #(and (has-subtype? % type)
+                                                               (rezzed? %))
+                                                         (all-installed state :corp)))]
+                               (continue-ability
+                                 state side
+                                 (if (pos? max-c)
+                                   {:choices {:card #(and (in-hand? %)
+                                                          (has-subtype? % type))
+                                              :max max-c}
+                                    :msg (msg "reveals " (str/join ", " (map :title targets))
+                                              " from HQ and gain " (+ (count targets) rezzed)
+                                              " [Credits]")
+                                    :async true
+                                    :effect (req (wait-for (reveal state side targets)
+                                                           (gain-credits state side eid
+                                                                       (+ (count targets) rezzed))))
+                                    :cancel-effect (effect (continue-ability
+                                                             (cancel-fn rezzed)
+                                                             card nil))}
+                                   (cancel-fn rezzed))
+                                 card nil)))}}))
+
 ;; card impl's
 
 (defcard "ONR AI Board Member"
@@ -530,6 +566,9 @@
               :async true
               :effect (effect (purge eid))}
    :implementation "Avoiding virus counters not implemented yet. Corp must manually purge them and adjust clicks/actions to forgo"})
+
+(defcard "ONR Superior Net Barriers"
+  (reveal-and-buff-ice "Wall"))
 
 (defcard "ONR Theorem Proof"
   {:steal-cost-bonus (req [:credit 999]) ;; on-access is apparently too slow to register the inability to steal it...

@@ -44,9 +44,9 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   559 / 584
-TESTS:   235 / 559
-NO TEST: 318
+TOTAL:   563 / 584
+TESTS:   235 / 563
+NO TEST: 322
 NO IMP:  6
 --------------------------
 001 ^ Aardvark
@@ -234,7 +234,7 @@ NO IMP:  6
 183 + Eurocorpse [TM] Spin Chip
 184 ^ Euromarket Consortium
 185 ^ Evil Twin
-
+186 ^ Executive Boot Camp
 187 ^ Executive Extraction
 188 + Executive File Clerk
 189 + Executive Wiretaps
@@ -434,7 +434,7 @@ NO IMP:  6
 383 + Priority Requisition
 384 + Priority Wreck
 385 ^ Private Cybernet Police
-
+386 ^ Private LDL Access
 387 ^ Project Babylon
 388 + Project Consultants
 389 ^ Project Venice
@@ -553,7 +553,7 @@ NO IMP:  6
 502 + Sumo 2008
 503 + Sunburst Cranial Interface
 504 + Superglue
-
+505 ^ Superior Net Barriers
 506 ^ Superserum (implemented virus counter avoiding!)
 507 + Swiss Bank Account
 508 + Syd Meyer Superstores
@@ -605,6 +605,7 @@ NO IMP:  6
 555 + Vintage Camaro
 556 ^ Viral 15
 
+559 ^ Virizz
 560 ^ Virus Test Site
 561 + Vortex
 562 ^ Walking Wall
@@ -721,6 +722,7 @@ The following (marked) cards have no tests or implementations:
   182 ^ ESA Contract
   184 ^ Euromarket Consortium
   185 ^ Evil Twin
+  186 ^ Executive Boot Camp
   187 ^ Executive Extraction
   192 ^ Expert Schedule Analyzer
   194 ^ Faked Hit
@@ -833,6 +835,7 @@ The following (marked) cards have no tests or implementations:
   378 ^ Power Grid Overload
   381 ^ Precision Bribery
   385 ^ Private Cybernet Police
+  386 ^ Private LDL Access
   387 ^ Project Babylon
   389 ^ Project Venice
   390 ^ Project Zurich
@@ -907,6 +910,7 @@ The following (marked) cards have no tests or implementations:
   498 ^ Subliminal Corruption
   499 ^ Submarine Uplink (do this test later - fetch + uplink should be fine)
   501 ^ Succubus
+  505 ^ Superior Net Barriers
   506 ^ Superserum (implemented virus counter avoiding!)
   509 ^ Synchronized Attack on HQ
   511 ^ Taxman
@@ -936,6 +940,7 @@ The following (marked) cards have no tests or implementations:
   553 ^ Vewy Vewy Quiet
   554 ^ Vienna 22
   556 ^ Viral 15
+  559 ^ Virizz
   560 ^ Virus Test Site
   562 ^ Walking Wall
   565 ^ Washed-Up Solo Construct
@@ -955,4 +960,4 @@ The following (marked) cards have no tests or implementations:
   260 ? Incubator
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 550
+Random card to implement: 266
