@@ -636,6 +636,37 @@
   {:subroutines [(do-brain-damage 1)
                  end-the-run]})
 
+(defcard "ONR Coyote"
+  {:on-rez (gain-credits-sub 3)
+   :subroutines [{:label (str "All further ice is encountered at +1 Strength unless runner pays 2 (triggers on pass)")
+                  :msg "Make all further ice be encountered at +1 strength this run unless runner pays 2 when passing Coyote."
+                  :effect (effect
+                            (register-events
+                              card
+                              [{:event :pass-ice
+                                :unregister-once-resolved true
+                                :duration :end-of-run
+                                :req (req (same-card? (:ice context) card))
+                                :player :runner
+                                :prompt "Choose one"
+                                :choices (req [(when (can-pay? state :runner nil card nil [:credit 2])
+                                                 "Pay 2 [Credits]")
+                                               "Encounter ice with +1 strength this run"])
+                                :msg (msg (decapitalize target))
+                                :async true
+                                :effect (req (if (= target "Pay 2 [Credits]")
+                                               (pay state :runner eid card :credit 2)
+                                               (do
+                                                 (register-lingering-effect
+                                                   state side card
+                                                   {:type :ice-strength
+                                                    :duration :end-of-run
+                                                    :req (req (and (get-current-encounter state)
+                                                                   (same-card? current-ice target)))
+                                                    :value +1})
+                                                 (effect-completed state side eid))))}]))}]})
+
+
 (defcard "ONR Credit Blocks"
   (change-subtype-on-rez "Sentry" "Wall" 1 {:subroutines [end-the-run]}))
 
