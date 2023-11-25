@@ -4,10 +4,11 @@
    [clojure.string :as str]
    [game.core.access :refer [access-bonus access-n-cards breach-server steal
                              steal-cost-bonus]]
+   [game.core.actions :refer [play-ability]]
    [game.core.agendas :refer [update-all-advancement-requirements
                               update-all-agenda-points]]
    [game.core.bad-publicity :refer [gain-bad-publicity]]
-   [game.core.board :refer [all-active all-active-installed all-installed
+   [game.core.board :refer [all-active all-active-installed all-installed get-remotes
                             all-installed-runner card->server server->zone]]
    [game.core.card :refer [agenda? asset? assoc-host-zones card-index corp?
                            event? facedown? get-agenda-points get-card get-counters
@@ -212,6 +213,67 @@
              :async true
              :msg "gain 1[Credit]"
              :effect (effect (gain-credits eid 1))}]})
+
+(defcard "ONR Bargain with Viacox"
+  (letfn [(describe [d]
+            (condp = d
+              1 "draw a card"
+              2 "gain [Credit]"
+              3 "make a run on R&D"
+              4 "make a run on HQ"
+              5 "make a run on a remote server"
+              6 "reveal a card from the grip at random, and play or install it (if able)"))
+          (reveal-fn [runner-card]
+            (if-not runner-card
+              {:msg "find no cards to play or install, and can use this action for anything"}
+              {:msg (msg "reveal " (:title runner-card) " and must play or install it, if able")
+               }))
+          (run-remote-fn [bac state rem]
+            (let [possible-targets (filter #(can-run-server? state %) rem)]
+              (if (seq possible-targets)
+                {:prompt "choose a remote server to run"
+                 :choices (req possible-targets)
+                 :effect (req (play-ability state side {:card bac :ability 4 :targets [target]}))}
+                {:msg "see no valid servers to run, and can use this action for anything"})))
+          ]
+  {:implementation "Click on the card to gain your action. The play/install is manual, rest should be automated"
+   :events [{:event :runner-turn-begins
+             :async true
+             :effect (req (let [di (dice-roll)
+                                action (describe di)]
+                            (continue-ability
+                              state side
+                              {:msg (msg "roll " di ". This turn they must take an action to " action)
+                               :effect (req (update! state side (assoc-in card [:special :bargain] di)))}
+                              card nil)))}]
+   :abilities [{:label "gain your action"
+                :async true
+                :req (req (get-in card [:special :bargain]))
+                :msg (msg "take an action")
+                :effect (req (wait-for (gain-or-forgo state :runner)
+                                       (if (= "Forgo Click" async-result)
+                                         (do (system-msg state side "forgoes the ONR Bargain with Viacox action")
+                                             (update! state side (assoc-in card [:special :bargain] nil))
+                                             (effect-completed state side eid))
+                                         (let [di (get-in card [:special :bargain])
+                                               di 6
+                                               bac (get-in @state [:runner :basic-action-card])
+                                               runner-reveal (first (shuffle (:hand runner)))
+                                               abi (condp = di
+                                                     1 (play-ability state :runner {:card bac :ability 1})
+                                                     2 (play-ability state :runner {:card bac :ability 0})
+                                                     3 (play-ability state side {:card bac :ability 4 :targets ["R&D"]})
+                                                     4 (play-ability state side {:card bac :ability 4 :targets ["HQ"]})
+                                                     5 (run-remote-fn bac state remotes)
+                                                     6 (reveal-fn runner-reveal))]
+                                           (do (update! state side (assoc-in card [:special :bargain] nil))
+                                               (continue-ability
+                                                 state side
+                                                 abi
+                                                 card nil))))))}]}))
+
+
+
 
 (defcard "ONR Bolt-Hole"
   {:interactions {:prevent [{:type #{:meat}

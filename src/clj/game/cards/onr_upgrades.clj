@@ -703,7 +703,7 @@
                               card nil)))}]})
 
 (defcard "ONR Roving Submarine"
-  {:implementation "Manual implementation"}) ;;todo - this cards
+  {:implementation "Manual implementation"}) ;;todo - this card
 
 (defcard "ONR Self-Destruct"
   (letfn [(serv [state card]

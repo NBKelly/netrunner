@@ -44,10 +44,10 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   575 / 582
-TESTS:   238 / 575
-NO TEST: 328
-NO IMP:  9
+TOTAL:   582 / 582
+TESTS:   238 / 581
+NO TEST: 332
+NO IMP:  11
 --------------------------
 001 ^ Aardvark
 002 + Access through Alpha
@@ -84,7 +84,7 @@ NO IMP:  9
 033 + Bakdoor[TM]
 034 ^ Ball and Chain
 035 + Banpei
-
+036 ^ Bargain with Viacox
 037 + Bartmoss Memorial Icebreaker
 038 ^ Baskerville
 039 ^ BBS Whispering Campaign
@@ -226,7 +226,7 @@ NO IMP:  9
 175 ^ Emergency Self-Construct
 176 ^ Employee Empowerment
 177 ^ Encoder, Inc.
-
+178 ^ Encryption Breakthrough
 179 + Endless Corridor
 180 + ONR Enterprise, Inc., Shields
 181 + Entrapment
@@ -276,7 +276,7 @@ NO IMP:  9
 225 ^ Get Ready to Rumble
 226 + Gideon's Pawnshop
 227 ^ Glacier
-
+228 ? Government Contract
 229 + "Green Knight" Surge Buffers
 230 ^ Gremlins
 231 ^ Grubb
@@ -481,7 +481,7 @@ NO IMP:  9
 430 + Rock is Strong
 431 ^ Romp through HQ
 432 ^ Ronin Around
-
+433 ^ Roving Submarine (manual implementation)
 434 + Runner Sensei
 435 + Running Interference
 436 ^ Rush Hour
@@ -499,7 +499,7 @@ NO IMP:  9
 448 + Score!
 449 + Scramble
 450 ^ Security code WORM Chip
-
+451 ^ Security Net Optimization
 452 ^ Security Purge
 453 ^ SeeYa
 454 ^ Self-Destruct
@@ -588,8 +588,8 @@ NO IMP:  9
 537 + Trojan Horse
 538 + Tumblers
 539 ^ Turbeau Delacroix
-
-541 ? Twenty-Four-Hour Surviellance (unimplemented)
+540 ? Tutor
+541 ? Twenty-Four-Hour Surviellance (Manual Implementation)
 542 + Twisty Passages
 543 ^ Tycho Extension
 544 + Tycho Mem Chip
@@ -606,7 +606,7 @@ NO IMP:  9
 555 + Vintage Camaro
 556 ^ Viral 15
 557 ^ Viral Breeding Ground
-
+558 & Viral Pipeline
 559 ^ Virizz
 560 ^ Virus Test Site
 561 + Vortex
@@ -649,6 +649,7 @@ The following (marked) cards have no tests or implementations:
   025 ^ Audit of Call Records
   026 ^ Aujourd'Oui
   034 ^ Ball and Chain
+  036 ^ Bargain with Viacox
   038 ^ Baskerville
   039 ^ BBS Whispering Campaign
   040 ^ Bel-Digmo Antibody
@@ -723,6 +724,7 @@ The following (marked) cards have no tests or implementations:
   175 ^ Emergency Self-Construct
   176 ^ Employee Empowerment
   177 ^ Encoder, Inc.
+  178 ^ Encryption Breakthrough
   182 ^ ESA Contract
   184 ^ Euromarket Consortium
   185 ^ Evil Twin
@@ -874,6 +876,7 @@ The following (marked) cards have no tests or implementations:
   428 ^ Roadblock
   431 ^ Romp through HQ
   432 ^ Ronin Around
+  433 ^ Roving Submarine (manual implementation)
   436 ^ Rush Hour
   438 ^ Sandbox Dig
   440 ^ Satellite Monitors (rng card)
@@ -883,6 +886,7 @@ The following (marked) cards have no tests or implementations:
   446 ^ Schlaghund Pointers
   447 ^ Scorched Earth
   450 ^ Security code WORM Chip
+  451 ^ Security Net Optimization
   452 ^ Security Purge
   453 ^ SeeYa
   454 ^ Self-Destruct
@@ -966,9 +970,10 @@ The following (marked) cards have no tests or implementations:
   156 ? Disinfectant, Inc.
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   193 ? Fait Accompli
+  228 ? Government Contract
   260 ? Incubator
   266 ? I Spy
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
   379 ? Pox
-  541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 178
+  540 ? Tutor
+  541 ? Twenty-Four-Hour Surviellance (Manual Implementation)

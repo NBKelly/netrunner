@@ -340,6 +340,9 @@
                   :async true
                   :effect (effect (draw eid 2))}]}))
 
+(defcard "ONR Encryption Breakthrough"
+  (reveal-and-buff-ice "Code Gate"))
+
 (defcard "ONR Executive Extraction"
   {:static-abilities [{:type :advancement-requirement
                        :req (req (and (agenda? target)
@@ -505,6 +508,17 @@
              :effect (req (gain-credits state side eid (get-counters card :agenda)))}]
    :on-score {:interactive (req true)
               :effect (effect (add-agenda-point-counters card (quot (- (get-counters (:card context) :advancement) 3) 2)))}})
+
+(defcard "ONR Security Net Optimization"
+  {:static-abilities [{:type :ice-strength
+                       :req (req (= (zone->name (second (:zone target))) (get-in card [:special :boost-target])))
+                       :value 1}]
+   :on-score {:choices (req servers)
+              :prompt "choose a server to boost"
+              :msg (msg "grant +1 strength to all ice protecting " target " for the remainder of the game")
+              :effect (req
+                        (add-icon state side card card target (faction-label card))
+                        (update! state side (assoc-in card [:special :boost-target] target)))}})
 
 (defcard "ONR Security Purge"
   (letfn [(abt [choices]
