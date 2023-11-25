@@ -44,10 +44,10 @@ Keys:
   ? not implemented (deliberately, for some reason)
 
 --------------------------
-TOTAL:   563 / 584
-TESTS:   235 / 563
-NO TEST: 322
-NO IMP:  6
+TOTAL:   572 / 584
+TESTS:   237 / 572
+NO TEST: 326
+NO IMP:  9
 --------------------------
 001 ^ Aardvark
 002 + Access through Alpha
@@ -84,9 +84,9 @@ NO IMP:  6
 033 + Bakdoor[TM]
 034 ^ Ball and Chain
 035 + Banpei
-036 ^ Baskerville
-037 + Bartmoss Memorial Icebreaker
 
+037 + Bartmoss Memorial Icebreaker
+038 ^ Baskerville
 039 ^ BBS Whispering Campaign
 040 ^ Bel-Digmo Antibody
 041 + Big Frackin' Gun
@@ -204,7 +204,7 @@ NO IMP:  6
 153 ^ Digiconda
 154 ^ Diplomatic Immunity
 155 ^ Disgruntled Ice Technician
-
+156 ? Disinfectant, Inc.
 157 ^ Disintegrator
 158 ^ Dogcatcher
 159 ^ Dog Pile
@@ -212,7 +212,7 @@ NO IMP:  6
 161 ^ Do the 'Drine [TM]
 162 ^ Dr. Dreff
 163 + "Drifter" Mobile Environment
-
+164 ^ Drone for a Day
 165 ^ Dropp
 166 + Dumpster
 167 ^ Dupree
@@ -314,7 +314,7 @@ NO IMP:  6
 263 + Inside Job
 264 ^ Investment Firm
 265 + Invisibility
-
+266 ? I Spy
 267 + Jack Attack
 268 ^ Jackhammer
 269 + Jack 'n' Joe
@@ -346,7 +346,7 @@ NO IMP:  6
 295 ^ London City Grid
 296 ^ Loony Goon
 297 + Lucidrine [TM] Booster Drug
-
+298 + Lucidrine [TM] Drip Feed
 299 ^ Main-Office Relocation
 300 + Management Shake-Up
 301 + Manhunt
@@ -399,7 +399,7 @@ NO IMP:  6
 348 ^ Omniscience Foundation
 349 ^ Omnitech "Spinal Tap" Cybermodem (random, needs a rng fix for tests)
 350 ^ Omnitech Wet Drive
-
+351 + On-Call Solo Team
 352 ^ On the Fast Track
 353 + Open-Ended (R) Mileage Program
 354 ^ Organ Donor
@@ -427,7 +427,7 @@ NO IMP:  6
 376 + Poltergiest
 377 + Polymer Breakthrough
 378 ^ Power Grid Overload
-
+379 ? Pox
 380 + Prearranged Drop
 381 ^ Precision Bribery
 382 + Preying Mantis
@@ -473,7 +473,7 @@ NO IMP:  6
 422 ^ Research Bunker
 423 ^ Restrictive Net Zoning
 424 ^ Rex
-
+425 ^ Riddler
 426 ^ Rigged Investments
 427 ^ Rio de Janeiro City Grid (random, hard to test)
 428 ^ Roadblock
@@ -509,7 +509,7 @@ NO IMP:  6
 458 ^ Setup!
 459 ^ Shaka
 460 ^ Shield
-
+461 ^ Shock.r
 462 ^ Shock Treatment
 463 ^ Short-Term Contract
 464 + Shotgun Wire
@@ -604,6 +604,7 @@ NO IMP:  6
 554 ^ Vienna 22
 555 + Vintage Camaro
 556 ^ Viral 15
+557 ^ Viral Breeding Ground
 
 559 ^ Virizz
 560 ^ Virus Test Site
@@ -647,7 +648,7 @@ The following (marked) cards have no tests or implementations:
   025 ^ Audit of Call Records
   026 ^ Aujourd'Oui
   034 ^ Ball and Chain
-  036 ^ Baskerville
+  038 ^ Baskerville
   039 ^ BBS Whispering Campaign
   040 ^ Bel-Digmo Antibody
   043 ^ Bizarre Encryption Scheme
@@ -711,6 +712,7 @@ The following (marked) cards have no tests or implementations:
   160 ^ Doppelganger Antibody
   161 ^ Do the 'Drine [TM]
   162 ^ Dr. Dreff
+  164 ^ Drone for a Day
   165 ^ Dropp
   167 ^ Dupree
   168 ^ Dwarf
@@ -864,6 +866,7 @@ The following (marked) cards have no tests or implementations:
   422 ^ Research Bunker
   423 ^ Restrictive Net Zoning
   424 ^ Rex
+  425 ^ Riddler
   426 ^ Rigged Investments
   427 ^ Rio de Janeiro City Grid (random, hard to test)
   428 ^ Roadblock
@@ -885,6 +888,7 @@ The following (marked) cards have no tests or implementations:
   458 ^ Setup!
   459 ^ Shaka
   460 ^ Shield
+  461 ^ Shock.r
   462 ^ Shock Treatment
   463 ^ Short-Term Contract
   466 ^ Signpost
@@ -940,6 +944,7 @@ The following (marked) cards have no tests or implementations:
   553 ^ Vewy Vewy Quiet
   554 ^ Vienna 22
   556 ^ Viral 15
+  557 ^ Viral Breeding Ground
   559 ^ Virizz
   560 ^ Virus Test Site
   562 ^ Walking Wall
@@ -955,9 +960,12 @@ The following (marked) cards have no tests or implementations:
   575 ^ Worm
   576 ^ Wrecking Ball
   087 ? Code Viral Cache
+  156 ? Disinfectant, Inc.
   173 ? Elena Laskova (manual implementation, click on the card to gain the cred)
   193 ? Fait Accompli
   260 ? Incubator
+  266 ? I Spy
   312 ? Mercenary Subcontract. I'm not even sure what this does. It doesn't align with the access timing of modern netrunner. I'll have to pretend that it's demolition run?
+  379 ? Pox
   541 ? Twenty-Four-Hour Surviellance (unimplemented)
-Random card to implement: 266
+Random card to implement: 36

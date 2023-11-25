@@ -8,7 +8,8 @@
                               update-all-agenda-points]]
    [game.core.bad-publicity :refer [gain-bad-publicity lose-bad-publicity]]
    [game.core.board :refer [all-active-installed all-installed all-installed-corp
-                            all-installed-runner-type get-remote-names installable-servers server->zone]]
+                            all-installed-runner-type get-remote-names installable-servers server->zone
+                            card->server]]
    [game.core.card :refer [agenda? asset? can-be-advanced?
                            corp-installable-type? corp? facedown? faceup? get-agenda-points
                            get-card get-counters get-title get-zone has-subtype? ice? in-discard? in-hand?
@@ -439,6 +440,13 @@
                 :effect (effect (gain-clicks 1))
                 :msg "gain [Click]"}]})
 
+(defcard "ONR On-Call Solo Team"
+  {:abilities [{:req (req tagged)
+                :cost [:click 1]
+                :keep-menu-open :while-clicks-left
+                :effect (effect (damage eid :meat 1 {:card card}))
+                :msg "do 1 meat damage"}]})
+
 (defcard "ONR Political Coup"
     {:data {:counter {:credit 12}}
      :abilities [{:label "Take 3 [Credits] from this card"
@@ -603,6 +611,31 @@
     {:flags {:corp-phase-12 (req true)}
      :events [(assoc ability :event :corp-turn-begins)]
      :abilities [ability]}))
+
+(defcard "ONR Viral Breeding Ground"
+  (letfn [(serv [state card]
+            (get-in @state [:corp :servers (second (:previous-zone card))]))
+          (cards [state card]
+            (concat (:ices (serv state card)) (:content (serv state card))))]
+    {:on-score {:msg (msg "destroy the server it was scored from")
+                :async true
+                :effect (req (trash-cards state side eid (cards state card)))}
+     :on-access {:req (req (and (installed? card)
+                                (pos? (get-counters card :advancement))))
+                 :async true
+                 :effect (req (let [max-c (* 2 (get-counters card :advancement))]
+                                (continue-ability
+                                  state side
+                                  {:choices {:card #(and (runner? %)
+                                                         (program? %)
+                                                         (installed? %))
+                                             :max max-c}
+                                   :prompt (msg "Return up to " max-c " programs to the Grip")
+                                   :msg (msg "return " (str/join ", " (map :title targets))
+                                             " to the Grip")
+                                   :effect (req (doseq [c targets]
+                                                  (move state :runner c :hand)))}
+                                  card nil)))}}))
 
 (defcard "ONR World Domination"
   {:on-score {:msg "gain an additional 4 agenda points 👀"}

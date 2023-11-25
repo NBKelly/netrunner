@@ -1065,6 +1065,9 @@
     {:subroutines [sub
                    sub]}))
 
+(defcard "ONR Riddler"
+  (purchase-subroutines-on-encounter end-the-run 2
+                                     {:implementation "repeatable on-encounter ability"}))
 
 (defcard "ONR Razor Wire"
   {:subroutines [(do-net-damage 2)
@@ -1111,6 +1114,41 @@
 (defcard "ONR Sentinels Prime"
   {:subroutines [trash-program-sub
                  end-the-run]})
+
+(defcard "ONR Shock.r"
+  {:subroutines
+   [{:msg "prevent the Runner from breaking subroutines or jacking out until after next encounter"
+     :label "prevent the Runner from breaking subs/jacking out until after next encounter"
+     :effect
+     (effect (register-events
+              card
+              [{:event :encounter-ice
+                :duration :end-of-run
+                :unregister-once-resolved true
+                :msg (msg "prevent the runner from breaking subroutines on " (:title (:ice context)))
+                :effect (effect (register-lingering-effect
+                                 card
+                                 (let [encountered-ice (:ice context)]
+                                   {:type :cannot-break-subs-on-ice
+                                    :duration :end-of-encounter
+                                    :req (req (same-card? encountered-ice (:ice context)))
+                                    :value true})))}])
+             (prevent-jack-out)
+             (register-events
+               card
+               [{:event :encounter-ice
+                 :duration :end-of-run
+                 :unregister-once-resolved true
+                 :effect
+                 (req (let [encountered-ice (:ice context)]
+                        (register-events
+                          state side card
+                          [{:event :end-of-encounter
+                            :duration :end-of-encounter
+                            :unregister-once-resolved true
+                            :msg (msg "can jack out again after encountering " (:title encountered-ice))
+                            :effect (req (swap! state update :run dissoc :cannot-jack-out))
+                            :req (req (same-card? encountered-ice (:ice context)))}])))}]))}]})
 
 (defcard "ONR Shotgun Wire"
   {:subroutines [(do-net-damage 2)
