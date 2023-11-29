@@ -1284,7 +1284,7 @@
                               :effect (effect (add-counter card :power 1)
                                               (effect-completed eid))}]}))
 
-(defcard "\"Arsène\""
+(defcard "Arsène"
   ;; Whenever you breach R&D, if you will access 2 or more cards in R&D this breach,
   ;; access 1 additional card."
   {:implementation "2v3. Has a menu when you breach"
