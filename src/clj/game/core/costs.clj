@@ -210,6 +210,42 @@
                                                  :value 0}))))}
     card nil))
 
+(defmethod cost-name :reveal-connection-or-virtual-from-hand [_] :reveal-connection-or-virtual-from-hand)
+(defmethod value :reveal-connection-or-virtual-from-hand [cost] 1)
+(defmethod label :reveal-connection-or-virtual-from-hand [cost] "reveal a connection from the grip")
+(defmethod payable? :reveal-connection-or-virtual-from-hand
+  [cost state side eid card]
+  (seq (filter #(or (has-subtype? % "Connection")
+                    (has-subtype? % "Virtual"))
+               (:hand (side @state)))))
+(defmethod handler :reveal-connection-or-virtual-from-hand
+  [cost state side eid card actions]
+  (let [select-fn #(and ((if (= :corp side) corp? runner?) %)
+                        (and (in-hand? %)
+                             (or (has-subtype? % "Connection")
+                                 (has-subtype? % "Virtual"))))
+        prompt-hand (if (= :corp side) "HQ" "the grip")
+        hand (if (= :corp side) "HQ" "the grip")]
+    (continue-ability
+      state side
+      {:prompt (str "Choose " (quantify (value cost) "Connection or Virtual resource") " to reveal")
+       :choices {:all true
+                 :max (value cost)
+                 :card select-fn}
+       :async true
+       :effect (req (wait-for (reveal state side targets)
+                              (complete-with-result
+                                state side eid
+                                {:msg (str "reveals " (quantify (count targets) "card")
+                                           (when (and (= :runner side)
+                                                      (pos? (count targets)))
+                                             (str " (" (enumerate-str (map #(card-str state %) targets)) ")"))
+                                           " from " hand)
+                                 :type :reveal-connection-or-virtual-from-hand
+                                 :value (count async-result)
+                                 :targets async-result})))}
+      nil nil)))
+
 ;; Expend Helper - this is a dummy cost just for cost strings
 (defmethod cost-name :expend [_] :expend)
 (defmethod value :expend [cost] 1)
