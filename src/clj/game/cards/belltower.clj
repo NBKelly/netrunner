@@ -2283,7 +2283,7 @@
      ;;                          state side card
      ;;                          [(assoc abi :req (req (and (installed? target) (= (get-zone target) (:previous-zone card)))) :duration :end-of-run)]))}
      :abilities [abi]
-     :events [mobile-sysop-event]}))
+     :events [(assoc mobile-sysop-event :event :corp-turn-begins)]}))
 
 ;; WEYLAND CARDS
 
