@@ -45,8 +45,8 @@ Keys:
 
 --------------------------
 TOTAL:   582 / 582
-TESTS:   238 / 581
-NO TEST: 332
+TESTS:   243 / 581
+NO TEST: 327
 NO IMP:  11
 --------------------------
 001 ^ Aardvark
@@ -134,7 +134,7 @@ NO IMP:  11
 083 ^ Cockroach
 084 + Code Corpse
 085 + Codecracker
-086 ^ Codeslinger
+086 + Codeslinger
 087 ? Code Viral Cache
 088 + Colonel Failure
 089 ^ Core Command: Jettison Ice
@@ -151,7 +151,7 @@ NO IMP:  11
 100 + Corporate Shuffle
 101 + Corporate War
 102 + Corprunner's Shattered Remains
-103 ^ Corrosion
+103 + Corrosion
 104 ^ Corruption
 105 + Cortical Cybermodem
 106 + Cortical Scanner
@@ -171,7 +171,7 @@ NO IMP:  11
 120 + Crystal Wall
 121 + Custodial Position
 122 ^ Cybertech Think Tank
-123 ^ Cyfermaster (trivial icebreaker - no test)
+123 + Cyfermaster
 124 ^ Danshi's Second ID
 125 + D'Arc Knight
 126 ^ Databroker
@@ -206,7 +206,7 @@ NO IMP:  11
 155 ^ Disgruntled Ice Technician
 156 ? Disinfectant, Inc.
 157 ^ Disintegrator
-158 ^ Dogcatcher
+158 + Dogcatcher
 159 ^ Dog Pile
 160 ^ Doppelganger Antibody
 161 ^ Do the 'Drine [TM]
@@ -215,7 +215,7 @@ NO IMP:  11
 164 ^ Drone for a Day
 165 ^ Dropp
 166 + Dumpster
-167 ^ Dupree
+167 + Dupree
 168 ^ Dwarf
 169 + Early Worm
 170 ^ Edgerunner, Inc., Temps

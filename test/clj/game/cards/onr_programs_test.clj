@@ -17,18 +17,78 @@
   (when-not (no-prompt? state :runner)
     (click-prompt state :runner "Done")))
 
+(defn- creds-during-run
+  ([card] (creds-during-run card 1))
+  ([card x] (creds-during-run card x "Fracter"))
+  ([card x type] (creds-during-run card x type nil))
+  ([card x type unbreaker]
+   (let [breaker (cond
+                   (= type "Fracter") "Corroder"
+                   (= type "Killer") "Bukhgalter"
+                   (= type "Noisy") "ONR Jackhammer"
+                   (= type "Decoder") "Unity"
+                   :else "Corroder")
+         unbreaker (cond
+                   (= unbreaker "Fracter") "Unity"
+                   (= unbreaker "Killer") "Corroder"
+                   (= unbreaker "Noisy") "ONR Jackhammer"
+                   (= unbreaker "Decoder") "Bukhgalter"
+                   :else nil)]
+     (do-game
+       (new-game {:runner {:credits 50
+                           :hand [card breaker unbreaker]}})
+       ;; these need to be defined locally
+       ;; I guess we only do it once haha
+       (letfn [(spends-to-boost
+                 [b ab y] (changes-val-macro
+                            (- y) (:credit (get-runner))
+                            (str "Spent " y " to boost " (:title b))
+                            ;; -
+                            (card-ability state :runner (refresh b) ab)
+                            (is (no-prompt? state :runner) "No floating prompts")))
+               (recurring-to-boost
+                 [c b ab y] (changes-val-macro
+                              0 (:credit (get-runner))
+                              (str "Spent " y " to boost " (:title b))
+                              ;; -
+                              (card-ability state :runner (refresh b) ab)
+                              (dotimes [_ y]
+                                (click-card state :runner (refresh c)))
+                              (is (no-prompt? state :runner) "No floating prompts")))]
+         (take-credits state :corp)
+         (play-from-hand state :runner card)
+         (play-from-hand state :runner breaker)
+         (when unbreaker
+           (play-from-hand state :runner unbreaker))
+         (let [card (get-program state 0)
+               breaker (get-program state 1)
+               unbreaker (when unbreaker (get-program state 2))]
+           ;; there are x recurring credits
+           (is (= x (get-counters (refresh card) :recurring)) (str "There are " x " recurring credits on install"))
+           (spends-to-boost breaker 1 1)
+           (run-on state :hq)
+           (when unbreaker
+             (spends-to-boost unbreaker 1 1))
+           (dotimes [_ x]
+             (recurring-to-boost card breaker 1 1))
+           (spends-to-boost breaker 1 1)))))))
+
 (defn- basic-program-test
   "tests a program which has basic boost and break functionality"
   [card base-str boost break]
   (let [type (:type break)
         type (condp = type
-               "Sentry"    "ONR Banpei"
-               "All"       "Rime"
-               "Wall"      "ONR Data Wall"
-               "Code Gate" "Enigma"
-               "AP"        "Anansi"
-               "Barrier"   "Vanilla"
+               "Sentry"     "ONR Banpei"
+               "All"        "Rime"
+               "Wall"       "ONR Data Wall"
+               "Code Gate"  "Enigma"
+               "AP"         "Anansi"
+               "Barrier"    "Vanilla"
                ;; todo - whatever other types need to be tested
+               "Hellhound"  "ONR Baskerville"
+               "Watchdog"   "ONR Canis Major"
+               "Pit Bull"   "ONR Fang"
+               "Bloodhound" "ONR Fetch 4.0.1"
                type)]
     (do-game
       (new-game {:corp {:credits 100
@@ -52,47 +112,54 @@
             (str (:title card) "starts at base strength " base-str))
         (run-on state :hq)
         (run-continue state :encounter-ice)
-        (pump-ice state :corp (refresh ice) (+ 7 (rand-int 7)))
-        ;; how many times should we need to boost?
-        (let [base-str (get-strength (refresh card))
-              need-to-boost (- (get-strength (refresh ice)) base-str)
-              boost-strength (:amount boost)
-              times-to-boost (if-not (pos? need-to-boost)
-                               0 (int (Math/ceil(/ need-to-boost boost-strength))))]
-          (dotimes [_ times-to-boost]
-            (changes-val-macro
-              boost-strength (get-strength (refresh card))
-              (str (:title card) " was boosted by " boost-strength)
-              (changes-val-macro
-                (- (:cost boost)) (:credit (get-runner))
-                (str (:title card) " spends " (:cost boost) " to boost strength")
-                (card-ability state :runner (refresh card) (:ab boost)))))
-          (is (>= (get-strength (refresh card))
-                  (get-strength (refresh ice))) "At strength to break MOGO")
-          (let [addl-subs (+ 3 (rand-int 10))
-                total-subs (inc addl-subs)
-                ;; we're going to insert a random number of ETR subs
-                etr-sub {:label "End the run"
-                         :msg "end the run"
-                         ;; don't need to actually do anything!
-                         :async true}]
-            (dotimes [_ addl-subs]
-              (add-sub! state :corp (refresh ice) etr-sub))
-            (is (= total-subs (count (:subroutines (refresh ice))))
-                (str "gained " addl-subs " ice subroutines"))
-            (let [subs-per-break (:amount break)
-                  num-breaks (int (Math/ceil (/ total-subs subs-per-break)))
-                  last-break (mod total-subs subs-per-break)
-                  last-break (if (zero? last-break) subs-per-break last-break)]
-              (card-ability state :runner (refresh card) (:ab break))
-              (dotimes [n num-breaks]
-                (let [breaks-this-time (if (= num-breaks (inc n)) last-break subs-per-break)]
+
+        (if boost
+          (do
+            (pump-ice state :corp (refresh ice) (+ 7 (rand-int 7)))
+            ;; how many times should we need to boost?
+            (let [base-str (get-strength (refresh card))
+                  need-to-boost (- (get-strength (refresh ice)) base-str)
+                  boost-strength (:amount boost)
+                  times-to-boost (if-not (pos? need-to-boost)
+                                   0 (int (Math/ceil(/ need-to-boost boost-strength))))]
+              (dotimes [_ times-to-boost]
+                (changes-val-macro
+                  boost-strength (get-strength (refresh card))
+                  (str (:title card) " was boosted by " boost-strength)
                   (changes-val-macro
-                    (- (:cost break)) (:credit (get-runner))
-                    (str "Spent " (:cost break) " credits to break subroutines with " (:title card))
-                    (dotimes [z breaks-this-time]
-                      (click-prompt state :runner "End the run")))))
-              (is (zero? (count (remove :broken (:subroutines (refresh ice))))) "All subroutines have been broken"))))))))
+                    (- (:cost boost)) (:credit (get-runner))
+                    (str (:title card) " spends " (:cost boost) " to boost strength")
+                    (card-ability state :runner (refresh card) (:ab boost)))))
+              (is (>= (get-strength (refresh card))
+                      (get-strength (refresh ice))) "At strength to break MOGO")))
+          ;; fixed strength breakers should instead have the ice lowered to them
+          (do (let [str-diff (- (get-strength (refresh card)) (get-strength (refresh ice)))]
+                (pump-ice state :corp (refresh ice) str-diff)
+                (is (= (get-strength (refresh card)) (get-strength (refresh ice))) "MOGO and breaker at same str"))))
+        (let [addl-subs (+ 3 (rand-int 10))
+              total-subs (inc addl-subs)
+              ;; we're going to insert a random number of ETR subs
+              etr-sub {:label "End the run"
+                       :msg "end the run"
+                       ;; don't need to actually do anything!
+                       :async true}]
+          (dotimes [_ addl-subs]
+            (add-sub! state :corp (refresh ice) etr-sub))
+          (is (= total-subs (count (:subroutines (refresh ice))))
+              (str "gained " addl-subs " ice subroutines"))
+          (let [subs-per-break (:amount break)
+                num-breaks (int (Math/ceil (/ total-subs subs-per-break)))
+                last-break (mod total-subs subs-per-break)
+                last-break (if (zero? last-break) subs-per-break last-break)]
+            (card-ability state :runner (refresh card) (:ab break))
+            (dotimes [n num-breaks]
+              (let [breaks-this-time (if (= num-breaks (inc n)) last-break subs-per-break)]
+                (changes-val-macro
+                  (- (:cost break)) (:credit (get-runner))
+                  (str "Spent " (:cost break) " credits to break subroutines with " (:title card))
+                  (dotimes [z breaks-this-time]
+                    (click-prompt state :runner "End the run")))))
+            (is (zero? (count (remove :broken (:subroutines (refresh ice))))) "All subroutines have been broken")))))))
 
 ;; todo - game the rng sometimes for tests
 ;; (def ^:dynamic *rand* clojure.core/rand)
@@ -219,22 +286,9 @@
                         {:ab 1 :amount 1 :cost 2} ;; boost
                         {:ab 0 :amount 1 :cost 1 :type "Wall"})))
 
-(deftest onr-cloak-pay-credits-prompt
-    ;; Pay-credits prompt
-    (do-game
-      (new-game {:runner {:deck ["ONR Cloak" "Refractor"]
-                          :credits 15}})
-      (take-credits state :corp)
-      (play-from-hand state :runner "ONR Cloak")
-      (play-from-hand state :runner "Refractor")
-      (let [cl (get-program state 0)
-            refr (get-program state 1)]
-        (run-on state :hq)
-        (is (= 3 (get-counters cl :recurring)) "Cloak starts with 3 credits")
-        (changes-val-macro 0 (:credit (get-runner))
-                           "Used 1 credit from Cloak"
-                           (card-ability state :runner refr 1)
-                           (click-card state :runner cl)))))
+(deftest onr-cloak
+  (let [card "ONR Cloak"]
+    (creds-during-run card 3 "Fracter" "Noisy")))
 
 (deftest onr-clown
   ;; Clown - lower ice strength on encounter
@@ -265,6 +319,42 @@
                         0
                         {:ab 1 :amount 1 :cost 1} ;; boost
                         {:ab 0 :amount 1 :cost 0 :type "Code Gate"})))
+
+(deftest onr-codeslinger
+  (let [card "ONR Codeslinger"]
+    (basic-program-test card
+                        3
+                        nil
+                        {:ab 0 :amount 1 :cost 1 :type "Sentry"})))
+
+(deftest onr-corrosion
+  (let [card "ONR Corrosion"]
+    (basic-program-test card
+                        0
+                        {:ab 1 :amount 1 :cost 1} ;; boost
+                        {:ab 0 :amount 1 :cost 0 :type "Wall"})))
+
+(deftest onr-cyfermaster
+  (let [card "ONR Cyfermaster"]
+    (basic-program-test card
+                        5
+                        {:ab 1 :amount 1 :cost 1} ;; boost
+                        {:ab 0 :amount 1 :cost 2 :type "Code Gate"})))
+
+(deftest onr-dogcatcher
+  (let [card "ONR Dogcatcher"]
+    (basic-program-test card 3 {:ab 4 :amount 1 :cost 1} {:ab 0 :amount 1 :cost 1 :type "Hellhound"})
+    (basic-program-test card 3 {:ab 4 :amount 1 :cost 1}{:ab 1 :amount 1 :cost 1 :type "Bloodhound"})
+    (basic-program-test card 3 {:ab 4 :amount 1 :cost 1}{:ab 2 :amount 1 :cost 1 :type "Watchdog"})
+    (basic-program-test card 3 {:ab 4 :amount 1 :cost 1}{:ab 3 :amount 1 :cost 1 :type "Pit Bull"})))
+
+(deftest onr-dupre
+  (let [card "ONR Dupré"]
+    (basic-program-test card
+                        0
+                        {:ab 1 :amount 1 :cost 2} ;; boost
+                        {:ab 0 :amount 1 :cost 1 :type "Code Gate"})))
+
 
 (deftest onr-flak
   (let [card "ONR Early Worm"]
