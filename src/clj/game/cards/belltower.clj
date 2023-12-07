@@ -834,7 +834,7 @@
                                                      (effect-completed state side eid)))}}}]})
 
 
-(defcard "Parrots"
+(defcard "[Parrots]"
   ;;When you install this program, load 2 power counters onto it. When it is empty, trash it.
   ;; Whenever you encounter an ice with strength 3 or less,
   ;; you may spend 1 hosted power counter to bypass it. Use this ability only once per turn.
