@@ -37,6 +37,8 @@
      :snapshot-plus "Snapshot Plus"
      :socr "SOCR"
      :neo "Neo"
+     :onr "ONR/1996 Netrunner"
+     :parallel "Parallel"
      :classic "Classic"
      :casual "Casual"
      :system-gateway "System Gateway"

@@ -121,22 +121,16 @@
 
 (def slug->format
   {"standard" "Standard"
-   "system-gateway" "System Gateway"
-   "startup" "Startup"
    "eternal" "Eternal"
-   "snapshot" "Snapshot"
-   "snapshot-plus" "Snapshot Plus"
-   "neo" "Neo"
+   "onr" "Onr"
+   "parallel" "Parallel"
    "casual" "Casual"})
 
 (def format->slug
   {"Standard" "standard"
-   "System Gateway" "system-gateway"
-   "Startup" "startup"
    "Eternal" "eternal"
-   "Snapshot" "snapshot"
-   "Snapshot Plus" "snapshot-plus"
-   "Neo" "neo"
+   "Onr" "onr"
+   "Parallel" "parallel"
    "Casual" "casual"})
 
 (defn regex-escape

@@ -48,10 +48,13 @@
   [identity]
   (:minimumdecksize identity 0))
 
+;; special case for onr identities - AP breaks are on 5/0's, instead of 4/9's
 (defn min-agenda-points
   [deck]
-  (let [size (max (card-count (:cards deck))
-                  (min-deck-size (:identity deck)))]
+  (let [is-onr (str/starts-with? (:title (:identity deck)) "ONR")
+        size (max (card-count (:cards deck))
+                  (min-deck-size (:identity deck)))
+        size (- size (when is-onr 1))]
     (+ 2 (* 2 (quot size 5)))))
 
 (defn draft-id?
@@ -325,12 +328,9 @@
     {:format (:format deck)
      :casual valid
      :standard (build-format-legality valid :standard deck)
-     :startup (build-format-legality valid :startup deck)
-     :system-gateway (build-system-gateway-legality valid deck)
+     :onr (build-format-legality valid :onr deck)
      :eternal (build-format-legality valid :eternal deck)
-     :neo (build-format-legality valid :neo deck)
-     :snapshot (build-format-legality valid :snapshot deck)
-     :snapshot-plus (build-format-legality valid :snapshot-plus deck)}))
+     :parallel (build-format-legality valid :parallel deck)}))
 
 (defn trusted-deck-status
   [{:keys [status] :as deck}]
