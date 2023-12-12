@@ -2,16 +2,48 @@
 This is a fork of the netrunner client used for jinteki.net, with the goal of porting over all the features, functionality, and cards of 1996 netrunner.
 
 ## Implementation status:
-* 498 / 584 cards implemented so far
-* 222 of those with unit tests
+* 573 / 584 cards implemented so far
+* 232 of those with unit tests
 * The ONR trace mechanic has been implemented, with all the quirks (cancelling, cost multiplication, base link cards, post-trace link adjustment, max strength manipulation, secret bidding, bonus link for run, hacker tracker central confusion, ldl analyzer multiplication, I even gave non-onr runners the link value on the card, etc)
 * Systems developed to allow for the unique virus mechanics (counters have effects outside of their programs)
 * Systems developed for the unique counters corps can place on runners (baskervilles, etc)
 * Two special ID's have been created, which some mechanics rely on (a small handful of the viruses, ONR style purging, the bad-pub win condition will be on the runner side)
 * Most ONR cards that refer to trace do not interact with ANR cards that refer to trace (the ones which care about success/non-success and the credit providing ones mostly do though). Other than that, almost all cards should be (mostly) interoperable
 
-This little graph is a visual representation of the implementation status so far. Green for tests, orange for no tests, and red for "I'm not implementing that (only 2 hits so far)"
+This little graph is a visual representation of the implementation status so far. Green for tests, orange for no tests, and red for "I'm not implementing that (yet)"
 
+## Interop
+The ONR Traces and the ANR traces have different mechanics, so most of their bespoke interaction cards don't work together.
+
+Two specific virus programs (Crumble and the other one for HQ. Cascade?) rely on the runner being the fake identity "ONR Braniac: Espionage Enjoyer".
+
+The bad publicity win condition depends on the runner being that same fake identity.
+
+Barring EXACTLY those interactions, these cards should be 100%(tm) interoperable.
+
+## Faithfulness
+These cards are mostly as I interpreted them. There is no way to get rulings on most of these cards, and some of them are ambigious. Additionally, I have implemented them as if they existed in the same engine as android: netrunner, and thus they are using that timing structure. Arasaka.de has some ruling, but a scant few, unfortunately, and I don't know anything about how reliable they are.
+
+If there's something that's obviously wrong, let me know!
+
+## Cards that aren't implemented
+The following cards are not implemented at all for some reason or another. Other than that, everything should work.
+
+These cards are playable, but manual
+* Elena Laskova (automating this is too hard, but it's easy to do manually)
+* Government Contract (There's no systems to track these credits, it's possible to do manually)
+* Twenty-Four-Hour Surviellance (automating this is cumbersome, but it's easy to do manually)
+ 
+These cards should not be played
+* Code Viral Cache (I haven't done any logic for clicking on any of the bespoke counters)
+* Disinfectant, Inc (I haven't introduced any timing for avoiding virus counters - it would require a significant engine rewrite)
+* Fait Accompli (there are no systems for placing counters on servers)
+* Incubator (see above)
+* I Spy (see above)
+* Mercenary Subcontract (the timing does not line up in any meaningful way)
+* Pox (see above)
+* Tutor (I couldn't figure it out)
+  
 ![1996 Implementation Graph](graph-implementation.jpg)
 
 ## TODO
