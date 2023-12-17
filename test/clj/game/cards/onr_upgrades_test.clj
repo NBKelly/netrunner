@@ -6,6 +6,61 @@
             [game.macros-test :refer :all]
             [clojure.test :refer :all]))
 
+(deftest crystal-palace-grid-addtional-cost-on-single-sub-break
+    ;; Addtional cost on single sub break
+    (do-game (new-game {:corp  {:deck [(qty "Hedge Fund" 5)]
+                                :hand ["ONR Crystal Palace Station Grid" (qty "Battlement" 2)]
+                                :credits 20}
+                        :runner {:hand ["Corroder"]
+                                 :credits 10}})
+    (play-from-hand state :corp "ONR Crystal Palace Station Grid" "HQ")
+    ;;(rez state :corp (get-content state :hq 0))
+    (play-from-hand state :corp "Battlement" "HQ")
+    (play-from-hand state :corp "Battlement" "New remote")
+    (take-credits state :corp)
+    (play-from-hand state :runner "Corroder")
+    (let [corroder (get-program state 0)]
+      (run-on state "HQ")
+      (rez state :corp (get-ice state :hq 0))
+      (run-continue state)
+      (changes-val-macro
+        -1 (:credit (get-runner))
+        "Runner loses 1 credit only for boosting strength"
+        (card-ability state :runner corroder 1))
+      (changes-val-macro
+        -2 (:credit (get-runner))
+        "Runner should lose 2 credits, 1 for Midway Station, 1 for base ability"
+        (card-ability state :runner corroder 0)
+        (click-prompt state :runner "End the run")
+        (click-prompt state :runner "Done"))
+      (run-continue state :movement)
+      (run-jack-out state)
+      (run-on state "Server 1")
+      (rez state :corp (get-ice state :remote1 0))
+      (run-continue state)
+      (changes-val-macro
+        -1 (:credit (get-runner))
+        "Runner loses 1 credit only for running on a different server"
+        (card-ability state :runner corroder 0)
+        (click-prompt state :runner "End the run")))))
+
+(deftest crystal-palace-station-grid-addtional-cost-when-breaking-all
+    ;; Addtional cost when breaking all
+    (do-game (new-game {:corp {:hand ["ONR Crystal Palace Station Grid" "Quandary"] :credits 20} :runner {:hand ["Cradle"] :credits 20} })
+      (play-from-hand state :corp "ONR Crystal Palace Station Grid" "HQ")
+      ;;(rez state :corp (get-content state :hq 0))
+      (play-from-hand state :corp "Quandary" "HQ")
+      (take-credits state :corp)
+      (play-from-hand state :runner "Cradle")
+      (run-on state "HQ")
+      (rez state :corp (get-ice state :hq 0))
+      (run-continue state)
+      (changes-val-macro
+        -3 (:credit (get-runner))
+        "Runner loses 3 credits, 2 for cradle 1 for midway"
+        (card-ability state :runner (get-program state 0) 0)
+        (click-prompt state :runner "End the run"))))
+
 (deftest onr-olivia-salazar
   (do-game
     (new-game {:corp {:hand ["ONR Olivia Salazar" "ONR Data Wall"]}})

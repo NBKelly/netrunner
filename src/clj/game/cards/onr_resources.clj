@@ -980,7 +980,7 @@
       :implementation "this can put your cards in limbo. This is the intended design"
       :events [(assoc remove-counter :event :runner-turn-begins)]}))
 
-(defcard "The Short Circuit"
+(defcard "ONR The Short Circuit"
   {:abilities [{:label "Search the stack for a program and add it to the grip"
                 :prompt "Choose a program"
                 :msg (msg "add " (:title target) " from the stack to the grip")
@@ -1012,6 +1012,7 @@
              :effect (effect (trash eid card))}
             {:event :runner-turn-begins
              :async true
+             :msg (msg "gain 2 [Credits]");
              :effect (effect (gain-credits eid 2))}]})
 
 (defcard "ONR Trauma Team [TM]"

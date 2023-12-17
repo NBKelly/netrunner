@@ -207,7 +207,7 @@
                                             (rezzed? card)))
                              :effect (req (give-crying-counter state side (:identity runner)))}})))
 
-(defcard "ONR Crystal Palace Sation Grid"
+(defcard "ONR Crystal Palace Station Grid"
   {:static-abilities [{:type :break-sub-additional-cost
                        :req (req (and ;; The card is an icebreaker
                                       ;;(has-subtype? target "Icebreaker")
