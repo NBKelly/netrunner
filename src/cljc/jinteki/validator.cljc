@@ -54,7 +54,7 @@
   (let [is-onr (str/starts-with? (:title (:identity deck)) "ONR")
         size (max (card-count (:cards deck))
                   (min-deck-size (:identity deck)))
-        size (- size (when is-onr 1))]
+        size (- size (if is-onr 1 0))]
     (+ 2 (* 2 (quot size 5)))))
 
 (defn draft-id?
