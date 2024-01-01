@@ -793,6 +793,7 @@
 
 (defcard "ONR Virus Test Site"
   {:flags {:rd-reveal (req true)}
+   :advanceable :always
    :on-access {:req (req (not (in-discard? card)))
                :msg (msg "do " (if-not (zero? (get-counters card :advancement))
                                  (* 2 (get-counters card :advancement))
