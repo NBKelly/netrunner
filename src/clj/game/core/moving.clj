@@ -554,6 +554,17 @@
     (check-win-by-agenda state side)
     [(get-card state new-stolen) (get-card state new-scored)]))
 
+(defn as-agenda-special
+  "Adds the given card as a special agenda which retains abilities and events"
+  [state side card n]
+  (let [abs (if (:has-abilities-when-stolen (:flags card))
+              (:abilities card)
+              nil)
+        card (convert-to-agenda card n)]
+    (move state side (assoc card :abilities abs) :scored {:force true})
+    (update-all-agenda-points state side)
+    (check-win-by-agenda state side)))
+
 (defn as-agenda
   "Adds the given card to the given side's :scored area as an agenda worth n points."
   [state side card n]
