@@ -425,7 +425,7 @@
                          "No thanks"]
                :msg (msg "reveal " rev-str " from the top of the stack"
                          (when-not (= target "No thanks")
-                           (str "and " (decapitalize target) ", ignoring all costs")))
+                           (str " and " (decapitalize target) ", ignoring all costs")))
                :effect (req (if-not (= target "No thanks")
                               (wait-for (runner-install
                                           state side
@@ -1155,6 +1155,7 @@
      :events [(successful-run-replace-breach
                 {:target-server :hq
                  :this-card-run true
+                 :mandatory true
                  :ability
                  {:msg "reveal 3 cards from HQ"
                   ;; TODO - assuming that revealing 1 or 2 cards works!
@@ -1164,7 +1165,7 @@
                                  (system-msg
                                    state side
                                    (str "reveals " (str/join  ", " (map :title chosen-cards))
-                                        "from HQ"))
+                                        " from HQ"))
                                  (continue-ability
                                    state side
                                    (move-ab chosen-cards (min 2 (count chosen-cards)))
