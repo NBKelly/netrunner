@@ -892,7 +892,7 @@
 ;;                                                            card nil)))})
 ;;                                card nil))}})
 
-(defcard "Alarm Clock"
+(defcard "[Alarm Clock]"
   ;; When your turn begins, you may run HQ. The first time you encounter a piece of ice
   ;; during that run, you may spend [click][click] to bypass it
   (let [ability {:once :per-turn
@@ -1930,7 +1930,7 @@
      :abilities [ability trash-ab]}))
 
 (defcard "Tributary"
-  ;; First time each turn a run begins on another server, you may move this ice to the
+  ;; First time each turn a run begins on a server, you may move this ice to the
   ;; outermost position of the attacked server. (The Runner is now approaching this ice.)
   ;; Use this ability only once per turn.
   ;; [sub] You may install a piece of ice from HQ protecting another server.
@@ -1959,7 +1959,6 @@
                                   (update-all-ice))}]
    :events [{:event :run
              :req (req (and (first-event? state side :run)))
-             :once :per-turn
              :effect (req (let [target-server (:server run)]
                             (continue-ability
                               state side
@@ -1967,10 +1966,12 @@
                                {:prompt (msg "move " (:title card) " to the outermost position of " (zone->name target-server) "?")
                                 :yes-ability {:once :per-turn
                                               :msg (msg "move itself to the outermost position of " (zone->name target-server))
-                                              :effect (req (let [moved-ice (move state side card [:servers (first target-server) :ices])];(conj target-server :ices))]
-                                                             (system-msg state side moved-ice)
-                                                             (redirect-run state side target-server)
-                                                             (effect-completed state side eid)))}}}
+                                              :effect (req (let [moved (move state side card (conj [:servers (first target-server)] :ices))]
+                                                                 (redirect-run state side target-server)
+                                                                 ;;ugly hack - TODO: figure out why the event gets disabled after the card moves! - maybe this should be inserted into move?
+                                                                 (unregister-events state side moved)
+                                                                 (register-default-events state side moved)
+                                                                 (effect-completed state side eid)))}}}
                               card nil)))}]})
 
 (defcard "Boto"
