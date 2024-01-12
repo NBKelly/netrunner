@@ -186,3 +186,17 @@
                        (card-ability state :runner (get-resource state 0) 0))
     (is (= 0 (count-tags state)))
     (is (= 2 (count (:discard (get-runner)))) "Both trashed")))
+
+;; identity
+
+(deftest nuvem-sa-only-trigger-on-corp-turn
+  (do-game
+    (new-game {:corp   {:id "Nuvem SA" :deck [(qty "Hedge Fund" 20)] :hand ["Hedge Fund"]}
+               :runner {:hand ["Cookbook" "Gravedigger"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Cookbook")
+    (play-from-hand state :runner "Gravedigger")
+    (click-prompt state :runner "Yes")
+    (changes-val-macro 0 (:credit (get-corp))
+                       "Nuvem should not fire on Runner's turn"
+                       (card-ability state :runner (get-program state 0) 0))))

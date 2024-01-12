@@ -2419,9 +2419,8 @@
   ;; (Do this after paying costs for the operation or action, but before resolving its effects.) "
   (let [abi2 {:once :per-turn
               :event :corp-trash
-              :req (req
-                     (= :corp (:active-player @state))
-                     (= [:deck] (:zone (:card target))))
+              :req (req (and (= :corp (:active-player @state))
+                             (= [:deck] (:zone (:card target)))))
               :msg "gain 2 [Credit]"
               :async true
               :effect (req (gain-credits state :corp eid 2))}
