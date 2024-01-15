@@ -200,6 +200,9 @@
   ;; from HQ. (I'm assuming a multi-trash requires a multi-cost)
   {:implementation "2v5. Cost to trash connections not implemented"
    ;; todo - cost to trash connection resources by the corp - look at hacktivist?
+   :static-abilities [{:type :additional-trash-cost
+                       :req (req (and (resource? target) (has-subtype? target "Connection") (= :corp side)))
+                       :value [:trash-from-hand 1]}]
    :events [{:event :runner-gain-tag
              :async true
              :req (req (and (not (install-locked? state side))

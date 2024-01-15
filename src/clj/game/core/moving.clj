@@ -5,21 +5,22 @@
     [game.core.board :refer [all-active-installed]]
     [game.core.card :refer [active? card-index condition-counter? convert-to-agenda corp? facedown? fake-identity? get-card get-title get-zone has-subtype? ice? in-hand? in-play-area? installed? program? resource? rezzed? runner?]]
     [game.core.card-defs :refer [card-def]]
-    [game.core.effects :refer [register-static-abilities unregister-static-abilities]]
+    [game.core.effects :refer [register-static-abilities unregister-static-abilities get-effects]]
     [game.core.eid :refer [complete-with-result effect-completed make-eid make-result]]
-    [game.core.engine :as engine :refer [checkpoint dissoc-req register-pending-event queue-event register-default-events register-events should-trigger? trigger-event trigger-event-sync unregister-events]]
+    [game.core.engine :as engine :refer [checkpoint dissoc-req register-pending-event queue-event register-default-events register-events resolve-ability should-trigger? trigger-event trigger-event-sync unregister-events pay]]
     [game.core.finding :refer [get-scoring-owner]]
     [game.core.flags :refer [can-trash? card-flag? cards-can-prevent? get-prevent-list untrashable-while-resources? untrashable-while-rezzed? zone-locked?]]
     [game.core.hosting :refer [remove-from-host]]
     [game.core.ice :refer [get-current-ice set-current-ice update-breaker-strength]]
     [game.core.initializing :refer [card-init deactivate reset-card]]
     [game.core.memory :refer [init-mu-cost]]
+    [game.core.payment :refer [build-cost-string can-pay? merge-costs]]
     [game.core.prompts :refer [clear-wait-prompt show-prompt show-wait-prompt]]
     [game.core.say :refer [enforce-msg system-msg]]
     [game.core.servers :refer [is-remote? target-server type->rig-zone]]
     [game.core.update :refer [update!]]
     [game.core.winning :refer [check-win-by-agenda]]
-    [game.macros :refer [wait-for when-let*]]
+    [game.macros :refer [req wait-for when-let*]]
     [game.utils :refer [dissoc-in make-cid remove-once same-card? same-side? to-keyword]]
     [medley.core :refer [insert-nth]]))
 
@@ -256,49 +257,76 @@
   (swap! state update-in [:trash :trash-prevent type] (fnil #(+ % n) 0)))
 
 (defn- prevent-trash-impl
-  [state side eid {:keys [zone type] :as card} {:keys [unpreventable cause game-trash] :as args}]
-  (if (and card (not-any? #{:discard} zone))
-    (cond
-      (and (not game-trash)
-           (untrashable-while-rezzed? card))
-      (do (enforce-msg state card "cannot be trashed while installed")
-          (effect-completed state side eid))
-      (and (= side :runner)
-           (not (can-trash? state side card)))
-      (do (enforce-msg state card "cannot be trashed")
-          (effect-completed state side eid))
-      (and (= side :corp)
-           (untrashable-while-resources? card)
-           (> (count (filter resource? (all-active-installed state :runner))) 1))
-      (do (enforce-msg state card "cannot be trashed while there are other resources installed")
-          (effect-completed state side eid))
-      ;; Card is not enforced untrashable
-      :else
-      (let [ktype (keyword (string/lower-case type))]
-        (when (and (not unpreventable)
-                   (not= cause :ability-cost))
-          (swap! state update-in [:trash :trash-prevent] dissoc ktype))
-        (let [type (->> ktype name (str "trash-") keyword)
-              prevent (get-prevent-list state :runner type)]
-          ;; Check for prevention effects
-          (if (and (not unpreventable)
-                   (not= cause :ability-cost)
-                   (cards-can-prevent? state :runner prevent type card args))
-            (do (system-msg state :runner "has the option to prevent trash effects")
-                (show-wait-prompt state :corp "Runner to prevent trash effects")
-                (show-prompt state :runner nil
-                             (str "Prevent the trashing of " (:title card) "?") ["Done"]
-                             (fn [_]
-                               (clear-wait-prompt state :corp)
-                               (if-let [_ (get-in @state [:trash :trash-prevent ktype])]
-                                 (do (system-msg state :runner (str "prevents the trashing of " (:title card)))
-                                     (swap! state update-in [:trash :trash-prevent] dissoc ktype)
-                                     (effect-completed state side eid))
-                                 (do (system-msg state :runner (str "will not prevent the trashing of " (:title card)))
-                                     (complete-with-result state side eid card))))))
-            ;; No prevention effects: add the card to the trash-list
-            (complete-with-result state side eid card)))))
-    (effect-completed state side eid)))
+  [state side eid {:keys [title zone type] :as card} {:keys [unpreventable cause game-trash] :as args}]
+  (let [finish-resolving (fn [state side eid {:keys [zone type] :as card} {:keys [unpreventable cause game-trash] :as args}]
+                           (let [ktype (keyword (string/lower-case type))]
+                             (when (and (not unpreventable)
+                                        (not= cause :ability-cost))
+                               (swap! state update-in [:trash :trash-prevent] dissoc ktype))
+                             (let [type (->> ktype name (str "trash-") keyword)
+                                   prevent (get-prevent-list state :runner type)]
+                               ;; Check for prevention effects
+                               (if (and (not unpreventable)
+                                        (not= cause :ability-cost)
+                                        (cards-can-prevent? state :runner prevent type card args))
+                                 (do (system-msg state :runner "has the option to prevent trash effects")
+                                     (show-wait-prompt state :corp "Runner to prevent trash effects")
+                                     (show-prompt state :runner nil
+                                                  (str "Prevent the trashing of " (:title card) "?") ["Done"]
+                                                  (fn [_]
+                                                    (clear-wait-prompt state :corp)
+                                                    (if-let [_ (get-in @state [:trash :trash-prevent ktype])]
+                                                      (do (system-msg state :runner (str "prevents the trashing of " (:title card)))
+                                                          (swap! state update-in [:trash :trash-prevent] dissoc ktype)
+                                                          (effect-completed state side eid))
+                                                      (do (system-msg state :runner (str "will not prevent the trashing of " (:title card)))
+                                                          (complete-with-result state side eid card))))))
+                                 ;; No prevention effects: add the card to the trash-list
+                                 (complete-with-result state side eid card)))))]
+    (if-not (and card (not-any? #{:discard} zone))
+      (effect-completed state side eid)
+      (cond
+        (and (not game-trash)
+             (untrashable-while-rezzed? card))
+        (do (enforce-msg state card "cannot be trashed while installed")
+            (effect-completed state side eid))
+        (and (= side :runner)
+             (not (can-trash? state side card)))
+        (do (enforce-msg state card "cannot be trashed")
+            (effect-completed state side eid))
+        (and (= side :corp)
+             (untrashable-while-resources? card)
+             (> (count (filter resource? (all-active-installed state :runner))) 1))
+        (do (enforce-msg state card "cannot be trashed while there are other resources installed")
+            (effect-completed state side eid))
+        ;; Card is not enforced untrashable
+        :else
+        ;; additional costs must be done before prevention - if the additional cost isn't paid, then prevention is never reached!
+        (do (let [additional-costs (merge-costs (get-effects state side :additional-trash-cost card))
+                  cost (merge-costs (mapv first additional-costs))
+                  cost-strs (build-cost-string cost)
+                  can-pay (can-pay? state side (make-eid state (assoc eid :additional-costs additional-costs)) card (:title card) cost)
+                  target-card card]
+              (if (or (nil? additional-costs) (empty? additional-costs))
+                (finish-resolving state side eid card args)
+                ;; maybe pay the cost
+                (wait-for (resolve-ability
+                            state side
+                            {:prompt (str "Pay the additional cost to trash " (:title target-card) "?")
+                             :choices [(when can-pay cost-strs) "No"]
+                             :async true
+                             :effect (req (if (= target "No")
+                                            (do (system-msg state side (str "declines to pay the additional cost to trash " (:title target-card)))
+                                                (effect-completed state side eid))
+                                            (wait-for (pay state side (make-eid state
+                                                                                (assoc eid :additional-costs additional-costs :source card :source-type :trash-card))
+                                                           nil cost 0)
+                                                      (system-msg state side (str (:msg async-result) "as an additional cost to trash " (:title target-card)))
+                                                      (complete-with-result state side eid target-card))))}
+                            card nil)
+                            (if async-result
+                              (finish-resolving state side eid card args)
+                              (effect-completed state side eid))))))))))
 
 (defn update-current-ice-to-trash
   "If the current ice is going to be trashed, update it with any changes"
