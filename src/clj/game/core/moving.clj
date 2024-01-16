@@ -321,7 +321,7 @@
                                             (wait-for (pay state side (make-eid state
                                                                                 (assoc eid :additional-costs additional-costs :source card :source-type :trash-card))
                                                            nil cost 0)
-                                                      (system-msg state side (str (:msg async-result) "as an additional cost to trash " (:title target-card)))
+                                                      (system-msg state side (str (:msg async-result) " as an additional cost to trash " (:title target-card)))
                                                       (complete-with-result state side eid target-card))))}
                             card nil)
                             (if async-result

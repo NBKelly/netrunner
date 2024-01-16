@@ -628,6 +628,9 @@
   ;; Corp must trash 1 from HQ
   {:implementation "2v5 - additional cost to trash not implemented"
    ;;                                                       sue me
+   :static-abilities [{:type :basic-ability-additional-trash-cost
+                       :req (req (and (same-card? card target) (= :corp side)))
+                       :value [:trash-from-hand 1]}]
    :events [{:event :breach-server
              :optional
              {:req (req (and (not (not-tagged-req state))
