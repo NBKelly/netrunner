@@ -588,8 +588,12 @@
   (let [abs (if (:has-abilities-when-stolen (:flags card))
               (:abilities card)
               nil)
-        card (convert-to-agenda card n)]
-    (move state side (assoc card :abilities abs) :scored {:force true})
+        evs (if (:has-abilities-when-stolen (:flags card))
+              (:events card)
+              nil)
+        card (convert-to-agenda card n)
+        card (move state side (assoc card :abilities abs :events evs) :scored {:force true})]
+    (register-default-events state side card)
     (update-all-agenda-points state side)
     (check-win-by-agenda state side)))
 
