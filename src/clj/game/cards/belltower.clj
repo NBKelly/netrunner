@@ -1027,11 +1027,10 @@
   ;;  Access -->2c: Host the accessed non-agenda card faceup on this program.
   ;; Whenever you breach HQ or R&D, you may trash 1 hosted corp card
   ;; and this program to access an additional card.
-  {:implementation "2v7"
+  {:implementation "2v7 - TODO - make the access ability work on archives accesses"
    :events [{:event :breach-server
              :async true
-             :req (req (and (or (= :rd target)
-                                (= :hq target))
+             :req (req (and (or (= :hq target))
                             (not (zero? (count (:hosted card))))))
              :effect (req
                        (let [target-server target]
@@ -1042,13 +1041,13 @@
                                        :yes-ability {:async true
                                                      :effect (effect (access-bonus target-server 2)
                                                                      (effect-completed eid))
-                                                     :cost [:trash-can]
+                                                     :cost [:credit 1 :trash-can]
                                                      :msg "access an additional card"}}}
                            card nil)))}]
    :interactions {:access-ability {:label "Host a card"
                                    :req (req (and (zero? (count (:hosted card)))
                                                   (not (agenda? target))))
-                                   :cost [:credit 2]
+                                   :cost [:credit 1]
                                    :msg (msg "host " (:title target))
                                    :async true
                                    :effect (req (host state side card target)
@@ -1212,7 +1211,7 @@
 
 (defcard "Trick Shot"
   {:makes-run true
-   :data {:counter {:credit 3}}
+   :data {:counter {:credit 2}}
    :interactions {:pay-credits {:req (req run)
                                 :type :credit}}
    :implementation "2v7. I think it just works"
@@ -1540,14 +1539,26 @@
                     ;; :once :per-turn
                     ;; :req (req (first-event? state :runner ev))
                     :effect (req (gain-credits state :runner eid 1))})]
-    {:implementation "2v4"
-     :events [{:event :runner-turn-ends
-               :req (req (and (threat-level 3 state) (pos? (count-tags state))
-                              (= :this-turn (installed? card))))
-               :optional {:prompt "remove a tag?"
-                          :yes-ability {:msg "remove a tag"
-                                        :async true
-                                        :effect (effect (lose-tags eid 1))}}}
+    {:implementation "2v7.1 - choices to gain 2/remove tag on install"
+     :on-install {:prompt "Choose One"
+                  :choices (req [(when tagged "Remove a tag")
+                                 "Gain 2 [Credits]"
+                                 "No thanks"])
+                  :req (req (threat-level 3 state))
+                  :msg (msg (if (= target "No thanks")
+                              "decline to do anything"
+                              (decapitalize target)))
+                  :effect (req (cond
+                                 (= "Remove a tag" target) (lose-tags state :runner eid 1)
+                                 (= "Gain 2 [Credits]" target) (gain-credits state :runner eid 2)
+                                 :else (effect-completed state side eid)))}
+     :events [;; {:event :runner-turn-ends
+              ;;  :req (req (and (threat-level 3 state) (pos? (count-tags state))
+              ;;                 (= :this-turn (installed? card))))
+              ;;  :optional {:prompt "remove a tag?"
+              ;;             :yes-ability {:msg "remove a tag"
+              ;;                           :async true
+              ;;                           :effect (effect (lose-tags eid 1))}}}
               (ab :runner-lose-tag)]}))
 
 (defcard "Thunderbolt Armaments"
