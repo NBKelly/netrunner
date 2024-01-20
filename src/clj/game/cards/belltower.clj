@@ -1942,22 +1942,27 @@
   ;; When you score this agenda, trash 1 installed resource and make a psi test.
   ;; (Players secretly bid up to 2{credit}. Then each player reveals and spends their bid.)
   ;; If the bids differ, give the Runner 1 tag."
-  {:implementation "2v6 - TODO: pending new version from dev"
-   :events [{:event :agenda-scored
-             :interactive (req true)
-             :msg "gain 2[Credits] and start a psi game (match-do 1 net damage/differ-give the runner a tag)"
+  {:implementation "2v7"
+   :on-score {;;:events [{:event :agenda-scored
+              :interactive (req true)
+
+             :msg "gain 2[Credits], give the runner a tag, and start a psi game (differ-do 1 core damage/match do 1 net damage)"
              :async true
              :effect (req (wait-for
                             (gain-credits state side 2)
-                            (continue-ability
-                              state side
-                              {:psi {:equal {:msg "do 1 net damage"
-                                            :async true
-                                            :effect (effect (damage eid :net 1 {:card card}))}
-                                    :not-equal {:async true
-                                                :msg "give the runner a tag"
-                                                :effect (req (gain-tags state :runner eid 1))}}}
-                              card nil)))}]})
+                            (wait-for (gain-tags state :runner 1)
+                                      (continue-ability
+                                        state side
+                                        {:psi {:not-equal {:msg "do 1 core damage"
+                                                       :async true
+                                                       :effect (effect (damage eid :brain 1 {:card card}))}
+                                               :equal {:async true
+                                                           :msg "do 1 net damage"
+                                                           ;;:msg "give the runner a tag"
+                                                           :effect (effect (damage eid :net 1 {:card card}))}}}
+                                        card nil))))}})
+                              ;;                   :effect (req (gain-tags state :runner eid 1))}}}
+                              ;; card nil)))}})
 
 (defcard "[Puppet State]"
   ;; The first time each turn the Runner passes a rezzed non-barrierice, you may pay 2{credit}
