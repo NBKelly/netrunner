@@ -409,13 +409,14 @@
   {:static-abilities [(mu+ 1)]
    :implementation "2v7"
    :events [{:event :runner-lose-tag
+             :req (req (= :runner side))
              :optional {:prompt "Draw 2 cards?"
                         :yes-ability {:cost [:power 1]
                                       :msg "draw 2 cards"
                                       :async true
                                       :effect (req (draw state :runner eid 2))}}}
             {:event :runner-turn-ends
-             :req (req (not (not-tagged-req state)))
+             :req (req tagged)
              :effect (req (add-counter state side (get-card state card) :power 1))}]})
 
 (defcard "The Wizard's Chest"
