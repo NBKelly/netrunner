@@ -2631,13 +2631,14 @@
         abi1 {:prompt (msg "The top card of R&D is " (:title (first (:deck corp))))
               :choices ["Trash it" "Done"]
               :async true
+              :msg "look at the top card of R&D"
               :effect (req (if (= target "Done")
                              (effect-completed state side eid)
                              (do (system-msg state side "trashes the top card of R&D")
                                  (mill state :corp eid :corp 1))))}]
     {:implementation "2v6 - nuvem resolves on play instead of after resolution, I'll fix this later"
-     :events [(assoc abi1 :event :expended)
-              (assoc abi1 :event :play-operation)
+     :events [(assoc abi1 :event :expend-resolved) ;;formerly :expended
+              (assoc abi1 :event :play-operation-resolved)
               abi2]}))
 
 (defcard "Eminent Domain"
