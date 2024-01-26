@@ -1027,32 +1027,49 @@
   ;;  Access -->2c: Host the accessed non-agenda card faceup on this program.
   ;; Whenever you breach HQ or R&D, you may trash 1 hosted corp card
   ;; and this program to access an additional card.
+  (let [traps-we-care-about #{"Mavirus" "Cyberdeck Virus Suite" "Breached Dome"
+                              "Honeyfarm" "Increased Drop Rates" "News Team"
+                              "Shi.Kyū" "Shock!" ;;"Nightmare Archive"
+                              "Space Camp"}]
   {:implementation "2v7 - TODO - make the access ability work on archives accesses"
-   :events [{:event :breach-server
+   :events [{:event :end-breach-server
              :async true
-             :req (req (and (or (= :hq target))
-                            (not (zero? (count (:hosted card))))))
-             :effect (req
-                       (let [target-server target]
-                         (continue-ability
-                           state side
-                           {:optional {:req (req true)
-                                       :prompt "Trash bindle and hosted card to access two additional cards?"
-                                       :yes-ability {:async true
-                                                     :effect (effect (access-bonus target-server 2)
-                                                                     (effect-completed eid))
-                                                     :cost [:credit 1 :trash-can]
-                                                     :msg "access an additional card"}}}
-                           card nil)))}]
+             :interactive (req true)
+             :req (req (and (= (:from-server target) :archives)
+                            (not-empty (:discard corp)) ;;redundant
+                            ;; can-pay-credit           ;;todo - assert that we can pay the credit
+                            (seq (filter #(and (:seen %) (not (agenda? %))) (:discard corp)))
+                            (empty? (filter corp? (:hosted card)))))
+             :prompt "1 [Credits]: Host a card from archives?"
+             :choices (req (cancellable (filter #(and (:seen %) (not (agenda? %)))
+                                                (:discard corp))
+                                        :sorted))
+             :cost [:credit 1]
+             :msg (msg "host " (:title target))
+             :effect (req (host state side (assoc card :seen true) target)
+                          (effect-completed state side eid))}
+            ;; TODO: special event when accessing a facedown in archives!
+            {:event :breach-server
+             :async true
+             ;; :req (req (and (= :hq target)
+             ;;                (seq (filter corp? (:hosted card)))))
+             :optional {:req (req (= :hq target)
+                                  (seq (filter corp? (:hosted card))))
+                        :prompt "Trash bindle and hosted card to access two additional cards?"
+                        :yes-ability {:async true
+                                      :effect (effect (access-bonus :hq 2)
+                                                      (effect-completed eid))
+                                      :cost [:credit 1 :trash-can]
+                                      :msg "access an additional card"}}}]
    :interactions {:access-ability {:label "Host a card"
-                                   :req (req (and (zero? (count (:hosted card)))
+                                   :req (req (and (empty? (filter corp? (:hosted card)))
                                                   (not (agenda? target))))
                                    :cost [:credit 1]
                                    :msg (msg "host " (:title target))
                                    :async true
-                                   :effect (req (host state side card target)
+                                   :effect (req (host state side (assoc card :seen true) target)
                                                 (swap! state dissoc :access)
-                                                (effect-completed state side eid))}}})
+                                                (effect-completed state side eid))}}}))
 
 (defcard "Amelia Earhart"
   ;; The first time each turn you access 3 or more cards from HQ or R&D during a run,
