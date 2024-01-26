@@ -694,7 +694,7 @@
 ;;                                  (strength-pump 1 2 :end-of-encounter (cond-breaker :runner-install boinga-fn))
 ;;                                  (strength-pump 2 2)]})))
 
-(defcard "[Friend of a Friend]"
+(defcard "Friend of a Friend"
   ;;{click}, {trash}: Gain 5{credit} and remove 1 tag.
   ;;{click}, {trash}: Gain 10{credit} and   take 1 tag.
   {:implementation "2v7"
@@ -933,7 +933,7 @@
 ;;                                                            card nil)))})
 ;;                                card nil))}})
 
-(defcard "[Alarm Clock]"
+(defcard "Alarm Clock"
   ;; When your turn begins, you may run HQ. The first time you encounter a piece of ice
   ;; during that run, you may spend [click][click] to bypass it
   (let [ability {:once :per-turn
@@ -1485,7 +1485,7 @@
                               :effect (effect (add-counter card :power 1)
                                               (effect-completed eid))}]}))
 
-(defcard "\"Pretty\" Mary"
+(defcard "Pretty Mary"
   ;; Whenever you breach R&D, if you will access 2 or more cards in R&D this breach,
   ;; access 1 additional card."
   {:implementation "2v3. Has a menu when you breach"
