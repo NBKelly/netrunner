@@ -2278,7 +2278,7 @@
                             (effect-completed state side eid)
                             (continue-ability
                               state side
-                              (if (= target "Trash from HQ (gain 1 draw 1)")
+                              (if (= target "Trash from HQ (gain 2 draw 1)")
                                 {:prompt "Turn a card in Archives facedown"
                                  :cost [:trash-from-hand 1]
                                  :msg "gain 2 [Credits] and draw 1"
