@@ -1,7 +1,8 @@
 (ns game.core.expend
   (:require
    [game.core.payment :refer [can-pay? merge-costs]]
-   [game.macros :refer [continue-ability req]]))
+   [game.core.engine :refer [checkpoint queue-event resolve-ability]]
+   [game.macros :refer [continue-ability wait-for req]]))
 
 (defn expend
   [ex]
@@ -17,4 +18,9 @@
                 ((:req ex) state side eid card targets)
                 true)))
      :async true
-     :effect (req (continue-ability state :corp (assoc ex :cost merged-cost) card nil))}))
+     :effect (req
+               (wait-for
+                 (resolve-ability state :corp (assoc ex :cost merged-cost) card nil)
+                 (queue-event state :expend-resolved card)
+                 (checkpoint state nil eid nil))
+               )}))

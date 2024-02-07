@@ -2088,8 +2088,8 @@
                        [starting-timestamp @start-date @timer])
                      [rfg-view op-rfg (tr [:game.rfg "Removed from the game"]) true]
                      [rfg-view me-rfg (tr [:game.rfg "Removed from the game"]) true]
-                     [rfg-view op-set-aside (tr [:game.set-aside "Set aside"]) true]
-                     [rfg-view me-set-aside (tr [:game.set-aside "Set aside"]) true]
+                     [rfg-view op-set-aside (tr [:game.set-aside "Set aside"]) false]
+                     [rfg-view me-set-aside (tr [:game.set-aside "Set aside"]) false]
                      [play-area-view op-user (tr [:game.play-area "Play Area"]) op-play-area]
                      [play-area-view me-user (tr [:game.play-area "Play Area"]) me-play-area]
                      [rfg-view op-current (tr [:game.current "Current"]) false]
