@@ -6,7 +6,6 @@
    [game.cards.agendas]
    [game.cards.assets]
    [game.cards.basic]
-   [game.cards.belltower]
    [game.cards.events]
    [game.cards.hardware]
    [game.cards.ice]

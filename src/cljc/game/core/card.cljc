@@ -486,7 +486,7 @@
 ;;    forfeit, the card is immediately trashed. See rule 8.2.5.
 
 (defn convert-to-agenda
-  [{:keys [cid code host hosted side title zone implementation flags abilities]} n]
+  [{:keys [cid code host hosted side title zone implementation]} n]
   (map->Card
     {:agendapoints n
      :cid cid
@@ -496,9 +496,6 @@
      :implementation implementation
      :printed-title title
      :side side
-     ;; :abilities (if (:has-abilities-when-stolen flags)
-     ;;              abilities
-     ;;              nil)
      :type "Agenda"
      :zone zone}))
 
