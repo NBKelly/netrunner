@@ -44,8 +44,6 @@
                          (no-trash-or-steal state))
                        (let [accessed-card (:access @state)]
                          (swap! state dissoc :access)
-                         ;; todo - insert access number into this somehow
-                         ;; means inserting an access number into access-end
                          (trigger-event-sync state side eid :post-access-card c accessed-card))))))
 
 ;;; Accessing rules
@@ -67,25 +65,23 @@
 
 (defn access-non-agenda
   "Access a non-agenda. Show a prompt to trash for trashable cards."
-  [state side eid c & {:keys [skip-trigger-event archives-facedown]}]
+  [state side eid c & {:keys [skip-trigger-event]}]
   (wait-for
     (trigger-event-sync state side (when-not skip-trigger-event :pre-trash) c)
     (swap! state update-in [:stats :runner :access :cards] (fnil inc 0))
-    ;; Don't show the access prompt if:
-    (if (or ;; 1) accessing SEEN cards in Archives
-          (and (in-discard? c) (:seen c))
-          ;;   2) Edward Kim's auto-trash flag is true
-          (and (operation? c)
-               (card-flag? c :can-trash-operation true))
-          ;;   3) card has been moved to the trash but not updated
-          (and (not (in-discard? c))
-               (find-cid (:cid c) (get-in @state [:corp :discard]))))
-      ;;(not= (get-in @state [:breach :breach-server]) :archives)))
+    ; Don't show the access prompt if:
+    (if (or ; 1) accessing cards in Archives
+            (in-discard? c)
+            ; 2) Edward Kim's auto-trash flag is true
+            (and (operation? c)
+                 (card-flag? c :can-trash-operation true))
+            ; 3) card has already been trashed but hasn't been updated
+            (find-cid (:cid c) (get-in @state [:corp :discard])))
       (access-end state side eid c)
       ; Otherwise, show the access prompt
       (let [card (assoc c :seen true)
             ; Trash costs
-            trash-cost (when-not (in-discard? c) (trash-cost state side card))
+            trash-cost (trash-cost state side card)
             trash-eid (assoc eid :source card :source-type :runner-trash-corp-cards)
             ; Runner cannot trash (eg Trebuchet)
             can-trash (can-trash? state side c)
@@ -345,7 +341,7 @@
   "Trigger access effects, then move into trash/steal choice."
   [state side eid c title args]
   (let [cdef (card-def c)
-        c (assoc c :seen (or (:seen c) (not (in-discard? c))))
+        c (assoc c :seen true)
         access-effect (access-ability c cdef)]
     (swap! state assoc-in [:runner :register :accessed-cards] true)
     (wait-for (msg-handle-access state side c title args)
@@ -432,15 +428,17 @@
    (swap! state assoc :access card)
    ;; Reset counters for increasing costs of trash, steal, and access.
    (swap! state update :bonus dissoc :trash :steal-cost :access-cost)
-   (let [zone (or (#{:discard :deck :hand} (first (get-zone card)))
-                  (second (get-zone card)))]
-     (when (:breach @state)
-       (swap! state update-in [:breach :cards-accessed zone] (fnil inc 0)))
-     (when (:run @state)
-       (swap! state update-in [:run :cards-accessed zone] (fnil inc 0)))
-     ;; First trigger pre-access-card, then move to determining if we can trash or steal.
-     (wait-for (trigger-event-sync state side :pre-access-card card (get-in @state [:breach :cards-accessed zone]) (get-in @state [:run :cards-accessed zone]))
-               (access-pay state side eid card title args)))))
+   (when (:breach @state)
+     (let [zone (or (#{:discard :deck :hand} (first (get-zone card)))
+                    (second (get-zone card)))]
+       (swap! state update-in [:breach :cards-accessed zone] (fnil inc 0))))
+   (when (:run @state)
+     (let [zone (or (#{:discard :deck :hand} (first (get-zone card)))
+                    (second (get-zone card)))]
+       (swap! state update-in [:run :cards-accessed zone] (fnil inc 0))))
+   ;; First trigger pre-access-card, then move to determining if we can trash or steal.
+   (wait-for (trigger-event-sync state side :pre-access-card card)
+             (access-pay state side eid card title args))))
 
 (defn set-only-card-to-access
   [state _ card]
@@ -1021,6 +1019,7 @@
         current-available (set (concat (map :cid (get-in @state [:corp :discard]))
                                        (map :cid (root-content state :archives))))
         already-accessed (clj-set/intersection already-accessed current-available)
+
         already-accessed-fn (fn [card] (contains? already-accessed (:cid card)))
 
         faceup-cards-buttons (map :title (faceup-accessible state already-accessed-fn))
@@ -1076,7 +1075,7 @@
                    nil nil))))
 
         facedown-cards-fn
-        (req (let [accessed (first (shuffle (facedown-cards state already-accessed-fn)))
+        (req (let [accessed (first (shuffle (facedown-cards state already-accessed)))
                    already-accessed (conj already-accessed (:cid accessed))
                    access-amount {:total-mod (access-bonus-count state side :total)
                                   :chosen (inc chosen)}]

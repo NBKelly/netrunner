@@ -6,7 +6,7 @@
    [game.core.card-defs :refer [card-def]]
    [game.core.damage :refer [damage]]
    [game.core.eid :refer [complete-with-result make-eid]]
-   [game.core.engine :refer [checkpoint resolve-ability trigger-event-sync queue-event]]
+   [game.core.engine :refer [checkpoint resolve-ability trigger-event-sync]]
    [game.core.flags :refer [is-scored?]]
    [game.core.gaining :refer [deduct lose]]
    [game.core.moving :refer [discard-from-hand forfeit mill move trash trash-cards]]
@@ -15,7 +15,7 @@
    [game.core.revealing :refer [reveal]]
    [game.core.rezzing :refer [derez]]
    [game.core.shuffling :refer [shuffle!]]
-   [game.core.tags :refer [lose-tags gain-tags]]
+   [game.core.tags :refer [lose-tags]]
    [game.core.to-string :refer [card-str]]
    [game.core.update :refer [update!]]
    [game.core.virus :refer [number-of-virus-counters]]
@@ -210,42 +210,6 @@
                                                  :value 0}))))}
     card nil))
 
-(defmethod cost-name :reveal-connection-or-virtual-from-hand [_] :reveal-connection-or-virtual-from-hand)
-(defmethod value :reveal-connection-or-virtual-from-hand [cost] 1)
-(defmethod label :reveal-connection-or-virtual-from-hand [cost] "reveal a connection from the grip")
-(defmethod payable? :reveal-connection-or-virtual-from-hand
-  [cost state side eid card]
-  (seq (filter #(or (has-subtype? % "Connection")
-                    (has-subtype? % "Virtual"))
-               (:hand (side @state)))))
-(defmethod handler :reveal-connection-or-virtual-from-hand
-  [cost state side eid card actions]
-  (let [select-fn #(and ((if (= :corp side) corp? runner?) %)
-                        (and (in-hand? %)
-                             (or (has-subtype? % "Connection")
-                                 (has-subtype? % "Virtual"))))
-        prompt-hand (if (= :corp side) "HQ" "the grip")
-        hand (if (= :corp side) "HQ" "the grip")]
-    (continue-ability
-      state side
-      {:prompt (str "Choose " (quantify (value cost) "Connection or Virtual resource") " to reveal")
-       :choices {:all true
-                 :max (value cost)
-                 :card select-fn}
-       :async true
-       :effect (req (wait-for (reveal state side targets)
-                              (complete-with-result
-                                state side eid
-                                {:msg (str "reveals " (quantify (count targets) "card")
-                                           (when (and (= :runner side)
-                                                      (pos? (count targets)))
-                                             (str " (" (enumerate-str (map #(card-str state %) targets)) ")"))
-                                           " from " hand)
-                                 :type :reveal-connection-or-virtual-from-hand
-                                 :value (count async-result)
-                                 :targets async-result})))}
-      nil nil)))
-
 ;; Expend Helper - this is a dummy cost just for cost strings
 (defmethod cost-name :expend [_] :expend)
 (defmethod value :expend [cost] 1)
@@ -258,14 +222,11 @@
   (wait-for (reveal state :corp (make-eid state eid) [card])
             (wait-for (trash state :corp (make-eid state eid)
                              (assoc (get-card state card) :seen true))
-                      ;; this automatically works in the checkpoint after costs are paid :)
-                      (queue-event state :expended card)
-                      ;;(wait-for (trigger-event-sync state side :expended card)
-                                (complete-with-result state side eid
-                                                      {:msg (str "trashes " (:title card) " from HQ")
-                                                       :type :expend
-                                                       :value 1
-                                                       :targets [card]}))));)
+                      (complete-with-result state side eid
+                                            {:msg (str "trashes " (:title card) " from HQ")
+                                             :type :expend
+                                             :value 1
+                                             :targets [card]}))))
 
 ;; Trash
 (defmethod cost-name :trash-can [_] :trash-can)
@@ -332,19 +293,6 @@
                :type :forfeit-self
                :value 1
                :targets [card]})))
-
-(defmethod cost-name :gain-tag [_] :gain-tag)
-(defmethod value :gain-tag [[_ cost-value]] cost-value)
-(defmethod label :gain-tag [cost] (str "take " (quantify (value cost) "tag")))
-(defmethod payable? :gain-tag ;; todo - shouldn't actually be true if we're forced to avoid tags!
-  [_ _ _ _ _]
-  true)
-(defmethod handler :gain-tag
-  [cost state side eid card actions]
-  (wait-for (gain-tags state side (value cost))
-            (complete-with-result state side eid {:msg (str "takes " (quantify (value cost) "tag"))
-                                                  :type :gain-tag
-                                                  :value (value cost)})))
 
 ;; Tag
 (defmethod cost-name :tag [_] :tag)

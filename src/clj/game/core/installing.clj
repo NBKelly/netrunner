@@ -180,9 +180,7 @@
                       (if-not (zero? cost-bonus)
                         (rez state side eid moved-card {:no-msg no-msg :cost-bonus cost-bonus})
                         (rez state side eid moved-card {:no-msg no-msg}))
-                      (do (when-let [dre (:derezzed-events cdef)]
-                                (register-events state side moved-card (map #(assoc % :condition :derezzed) dre)))
-                          (checkpoint state nil eid)))
+                      (checkpoint state nil eid))
                     ;; "Face-up" cards
                     :face-up
                     (let [moved-card (-> (get-card state moved-card)
@@ -195,11 +193,10 @@
                       (wait-for (checkpoint state nil (make-eid state eid))
                                 (complete-with-result state side eid (get-card state moved-card))))
                     ;; All other cards
-                    ;; note to self - run tests and see this doesn't cause any errors!
-                    (do (when-let [dre (:derezzed-events cdef)]
+                    (wait-for (checkpoint state nil (make-eid state eid))
+                              (when-let [dre (:derezzed-events cdef)]
                                 (register-events state side moved-card (map #(assoc % :condition :derezzed) dre)))
-                        (wait-for (checkpoint state nil (make-eid state eid))
-                                  (complete-with-result state side eid (get-card state moved-card))))))))))
+                              (complete-with-result state side eid (get-card state moved-card)))))))))
 
 (defn get-slot
   [state card server {:keys [host-card]}]

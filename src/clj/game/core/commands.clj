@@ -34,7 +34,6 @@
    [game.core.trace :refer [init-trace]]
    [game.core.update :refer [update!]]
    [game.core.winning :refer [clear-win]]
-   [game.core.def-helpers :refer [reorder-choice]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [game.utils :refer [dissoc-in enumerate-str quantify safe-split
                        same-card? same-side? server-card string->num]]
@@ -273,14 +272,6 @@
     ["Done"]
     identity))
 
-(defn command-reorder
-  [state side n]
-  (let [cards (take n (get-in @state [side :deck]))]
-    (resolve-ability
-      state side
-      (reorder-choice side cards)
-      (map->Card {:title "/reorder command"}) nil)))
-
 (defn command-summon
   [state side args]
   (let [card-name (string/join " " args)]
@@ -460,7 +451,6 @@
                                                     {:equal  {:msg "resolve equal bets effect"}
                                                       :not-equal {:msg "resolve unequal bets effect"}}))
         "/reload-id"  command-reload-id
-        "/reorder"    #(command-reorder %1 %2 value)
         "/replace-id" #(command-replace-id %1 %2 args)
     :async true
         "/rez"        #(when (= %2 :corp)
