@@ -2028,6 +2028,20 @@
              :async true
              :effect (effect (trash-cards eid (filter program? (:hosted card)) {:cause-card card}))}]})
 
+(defcard "Mary da Silva"
+  {:implementation "Has a menu when you breach"
+   :events [{:event :breach-server
+             :req (req (and (= :rd target)))
+             :prompt (msg "Access an additional card with " (:title card) "?")
+             :choices {:number (req 1)
+                       :default (req 0)}
+             :msg (msg "access 1"
+                       (quantify target "additional card")
+                       " from R&D")
+             :async true
+             :effect (effect (access-bonus :rd target)
+                             (effect-completed eid))}]})
+
 (defcard "Maxwell James"
   {:static-abilities [(link+ 1)]
    :abilities [{:req (req (some #{:hq} (:successful-run runner-reg)))
@@ -3581,6 +3595,28 @@
 (defcard "Utopia Shard"
   (shard-constructor "Utopia Shard" :hq "force the Corp to discard 2 cards from HQ at random"
                      (effect (trash-cards :corp eid (take 2 (shuffle (:hand corp))) {:cause-card card}))))
+
+(defcard "Valentina Ferreira Carvalho"
+  (letfn [(ab [ev] {:event ev
+                    :player :runner
+                    :msg (msg "gain 1 [Credits]")
+                    :async true
+                    :interactive (req true)
+                    :effect (req (gain-credits state :runner eid 1))})]
+    {:on-install {:prompt "Choose One"
+                  :choices (req [(when tagged "Remove a tag")
+                                 "Gain 2 [Credits]"
+                                 "Done"])
+                  :req (req (and (threat-level 3 state)
+                                 (= (:active-player @state) :runner)))
+                  :msg (msg (if (= target "Done")
+                              "decline to do anything"
+                              (decapitalize target)))
+                  :effect (req (cond
+                                 (= "Remove a tag" target) (lose-tags state :runner eid 1)
+                                 (= "Gain 2 [Credits]" target) (gain-credits state :runner eid 2)
+                                 :else (effect-completed state side eid)))}
+     :events [(ab :runner-lose-tag)]}))
 
 (defcard "Verbal Plasticity"
   {:events [{:event :runner-click-draw
