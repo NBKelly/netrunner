@@ -33,7 +33,7 @@
    [game.core.hosting :refer [host]]
    [game.core.ice :refer [break-sub update-all-ice update-all-icebreakers]]
    [game.core.initializing :refer [make-card]]
-   [game.core.installing :refer [corp-install runner-can-pay-and-install? runner-install]]
+   [game.core.installing :refer [corp-install install-locked? runner-can-pay-and-install? runner-install]]
    [game.core.link :refer [link+ update-link]]
    [game.core.mark :refer [identify-mark-ability]]
    [game.core.memory :refer [mu+]]
@@ -1796,6 +1796,24 @@
                   :effect (effect (continue-ability (install-card target) card nil))}]
      :events [{:event :corp-turn-begins
                :effect (req (clear-persistent-flag! state side card :can-rez))}]}))
+
+(defcard "Sebastião Pessoa: Activist Organiser"
+  {:static-abilities [{:type :basic-ability-additional-trash-cost
+                       :req (req (and (resource? target) (has-subtype? target "Connection") (= :corp side)))
+                       :value [:trash-from-hand 1]}]
+   :events [{:event :runner-gain-tag
+             :async true
+             :req (req (and (not (install-locked? state side))
+                            (= target (count-tags state)))) ;; every tag is one that was just gained
+             :effect (req (continue-ability
+                            state :runner
+                            {:prompt "Choose a connection to install (for 2[Credits] less)"
+                             :player :runner
+                             :choices {:card #(and (has-subtype? % "Connection")
+                                                   (resource? %)
+                                                   (in-hand? %))}
+                             :effect (effect (runner-install (assoc eid :source card :source-type :runner-install) target {:cost-bonus -2}))}
+                            card nil))}]})
 
 (defcard "Seidr Laboratories: Destiny Defined"
   {:implementation "Manually triggered"

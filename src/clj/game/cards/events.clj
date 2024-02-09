@@ -1355,6 +1355,30 @@
     :effect (effect (move target :hand)
                     (shuffle! :deck))}})
 
+(defcard "Eye for an Eye"
+  {:makes-run true
+   :on-play {:req (req (and hq-runnable (not tagged)))
+             :async true
+             :effect (effect (make-run eid :hq card))}
+   :interactions {:access-ability
+                  {:label "Trash card"
+                   :cost [:trash-from-hand 1]
+                   :msg (msg "trash " (:title target))
+                   :async true
+                   :effect (effect (trash eid (assoc target :seen true) {:cause-card card}))}}
+   :events [{:event :successful-run
+             :silent (req true)
+             :req (req (and (= :hq (target-server context))
+                            this-card-run))
+             :async true
+             :msg "take 1 tag and access 1 additional card"
+             :effect (req
+                       (wait-for (gain-tags state :runner 1 {:unpreventable true})
+                                 (register-events
+                                   state side
+                                   card [(breach-access-bonus :hq 1 {:duration :end-of-run})])
+                                 (effect-completed state side eid)))}]})
+
 (defcard "Falsified Credentials"
   {:on-play
    {:prompt "Choose one"
@@ -2713,6 +2737,66 @@
                         :msg (msg "trash " (card-str state ice))
                         :effect (effect (trash eid ice {:cause-card card}))}}}))
                  card nil))}]})
+
+(defcard "Privileged Access"
+  (letfn [(resolve-threat [state side card eid]
+            (if-not (threat-level 3 state)
+              (effect-completed state side eid)
+              (continue-ability
+                state side
+                {:prompt (msg "Install a program")
+                 :choices (req (concat
+                                 (->> (:discard runner)
+                                      (filter
+                                        #(and (program? %)
+                                              (can-pay? state side
+                                                       (assoc eid :source card :source-type :runner-install)
+                                                       % nil [:credit (install-cost state side %)])))
+                                      (sort-by :title)
+                                      (seq))
+                                 ["Done"]))
+                 :msg (msg (if (= target "Done")
+                             "decline to install a program"
+                             (str "install " (:title card) " from the heap")))
+                 :effect (req (if (= target "Done")
+                                (effect-completed state side eid)
+                                (runner-install state side (assoc eid :source card :source-type :runner-install) target)))}
+                card nil)))]
+    {:makes-run true
+     :on-play {:req (req (and hq-runnable
+                              (not tagged)))
+               :async true
+               :effect (effect (make-run eid :archives card))}
+     :events [(successful-run-replace-breach
+                {:target-server :archives
+                 :this-card-run true
+                 :ability {:async true
+                           :effect (req (wait-for
+                                          (gain-tags state :runner 1)
+                                          (continue-ability
+                                            state side
+                                            {:prompt (msg "Install a resource from your heap, "
+                                                          "paying 2[Credits] less")
+                                             :choices (req (concat
+                                                             (->> (:discard runner)
+                                                                  (filter
+                                                                    #(and (resource? %)
+                                                                          (can-pay? state side
+                                                                                   (assoc eid :source card :source-type :runner-install)
+                                                                                   % nil [:credit (max 0 (- (install-cost state side %) 2))])))
+                                                                  (sort-by :title)
+                                                                  (seq))
+                                                             ["Done"]))
+                                                :async true
+                                             :msg (msg (if (= target "Done")
+                                                         "decline to install a resource"
+                                                         (str "install " (:title target) " from the heap, paying 2[Credits] less")))
+                                             :effect (req (if (= target "Done")
+                                                            (resolve-threat state side card eid)
+                                                            (wait-for (runner-install state side (make-eid state (assoc eid :source card :source-type :runner-install)) target {:cost-bonus -2})
+                                                                      ;; threat
+                                                                      (resolve-threat state side card eid))))}
+                                            card nil)))}})]}))
 
 (defcard "Process Automation"
   {:on-play
