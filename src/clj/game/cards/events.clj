@@ -2357,6 +2357,40 @@
                       (:hand runner)))
       :effect (effect (continue-ability (mhelper 0) card nil))}}))
 
+(defcard "Meeting of Minds"
+  (letfn [(tutor-abi [type]
+            {:prompt (str "Choose a " (decapitalize type))
+             :implementation "2v7"
+             :choices (req (cancellable (filter #(has-subtype? % type)
+                                                (:deck runner)) :sorted))
+             :msg (msg "add " (:title target) " from the stack to the grip and shuffle the stack")
+             :async true
+             :effect (effect (trigger-event :searched-stack nil)
+                             (move target :hand)
+                             (shuffle! :deck)
+                             (continue-ability
+                               {:choices {:max (req (count (:hand runner)))
+                                          :card #(and (runner? %)
+                                                      (in-hand? %)
+                                                      (has-subtype? % type))}
+                                :prompt (msg "choose any number of " type "s to reveal")
+                                :msg (msg "reveal " (enumerate-str (map :title (sort-by :title targets))) " from the Grip and gain " (count targets) " [Credits]")
+                                :async true
+                                :effect (req (wait-for
+                                               (reveal state side targets)
+                                               (gain-credits state side eid (* 1 (count targets)))))}
+                               card nil))})]
+  ;; Search your stack for a connection or virtual resource and add it to your grip
+    {:makes-run true
+     :on-play {:prompt "Choose one"
+               :async true
+               :choices ["Connection" "Virtual"]
+               :effect (req
+                         (continue-ability
+                           state side
+                           (tutor-abi target)
+                           card nil))}}))
+
 (defcard "Mining Accident"
   {:on-play
    {:req (req (some #{:hq :rd :archives} (:successful-run runner-reg)))
@@ -3851,3 +3885,45 @@
                                                         (when-not (event? topcard)
                                                           (str " to gain " cost " [Credits]"))))
                                        (effect-completed state side eid)))))}})
+
+(defcard "Window of Opportunity"
+  (let [install-abi
+        {:prompt "Choose a card to install"
+         :waiting-prompt true
+         :choices {:req (req (and (or (hardware? target)
+                                      (program? target))
+                                  (in-hand? target)
+                                  (can-pay? state side (assoc eid :source card :source-type :runner-install) target nil
+                                            [:credit (install-cost state side target nil{:cost-bonus 0})])))}
+         :async true
+         :effect (effect (runner-install (assoc eid :source card :source-type :runner-install) target {:cost-bonus 0}))}]
+    {:makes-run true
+     :on-play {:async true
+               :effect (req (wait-for
+                              (resolve-ability state side install-abi card nil)
+                              (continue-ability
+                                state side
+                                {:async true
+                                 :req (req (seq (filter #(and (ice? %) (rezzed? %)) (all-installed state :corp))))
+                                 :prompt "choose an ice to derez"
+                                 :choices {:card #(and (rezzed? %) (ice? %))}
+                                 :msg (msg "derez " (card-str state target) " and make a run on " (zone->name (second (get-zone target))))
+                                 :effect (req (let [chosen-ice target
+                                                    target-server (second (get-zone target))]
+                                                (register-events
+                                                  state side card
+                                                  [{:event :run-ends
+                                                    :duration :end-of-run
+                                                    :unregister-once-resolved :true
+                                                    :optional
+                                                    {:player :corp
+                                                     :waiting-prompt true
+                                                     :req (req (and (installed? (get-card state chosen-ice))
+                                                                    (not (rezzed? (get-card state chosen-ice)))))
+                                                     :prompt (msg "rez " (:title chosen-ice) ", ignoring all costs?")
+                                                     :yes-ability {:async true
+                                                                   :effect (req (rez state :corp eid (get-card state chosen-ice) {:ignore-cost :all-costs}))}
+                                                     :no-ability {:msg (msg "decline to rez " (card-str state (get-card state chosen-ice)))}}}])
+                                                (derez state side target)
+                                                (make-run state side eid target-server card)))}
+                                card nil)))}}))
