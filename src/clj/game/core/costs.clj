@@ -294,6 +294,23 @@
                :value 1
                :targets [card]})))
 
+
+;; Gain tag
+(defmethod cost-name :gain-tag [_] :gain-tag)
+(defmethod value :gain-tag [[_ cost-value]] cost-value)
+(defmethod label :gain-tag [cost] (str "take " (quantify (value cost) "tag")))
+(defmethod payable? :gain-tag
+  ;; TODO - shouldn't actually be true if we're forced to avoid tags
+  ;;  QuianjuPT, Jesminder, dorm-computer can do this -nbkelly, Jan '24
+  [_ _ _ _ _]
+  true)
+(defmethod handler :gain-tag
+  [cost state side eid card actions]
+  (wait-for (gain-tags state side (value cost))
+            (complete-with-result state side eid {:msg (str "takes " (quantify (value cost) "tag"))
+                                                  :type :gain-tag
+                                                  :value (value cost)})))
+
 ;; Tag
 (defmethod cost-name :tag [_] :tag)
 (defmethod value :tag [[_ cost-value]] cost-value)
