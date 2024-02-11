@@ -15,7 +15,7 @@
    [game.core.revealing :refer [reveal]]
    [game.core.rezzing :refer [derez]]
    [game.core.shuffling :refer [shuffle!]]
-   [game.core.tags :refer [lose-tags]]
+   [game.core.tags :refer [lose-tags gain-tags]]
    [game.core.to-string :refer [card-str]]
    [game.core.update :refer [update!]]
    [game.core.virus :refer [number-of-virus-counters]]
