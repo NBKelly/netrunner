@@ -426,6 +426,38 @@
     :async true
     :effect (effect (damage eid :meat 7 {:card card}))}})
 
+(defcard "Bring Them Home"
+  (letfn [(hide-away [cards]
+            {:msg (msg "place " (str/join ", " (map :title cards))
+                       " from the grip to the top of the stack")
+             :async true
+             :effect (req (doseq [c (shuffle cards)]
+                            (move state :runner c :deck {:front true}))
+                          (if-not (threat-level 3 state)
+                            (effect-completed state side eid)
+                            (continue-ability
+                              state :corp
+                              {:optional
+                               {:prompt "Shuffle a card into the stack?"
+                                :yes-ability {:cost [:credit 2]
+                                              :req (req (seq (:hand runner)))
+                                              :effect (req (let [target-card (first (shuffle (:hand runner)))]
+                                                             (system-msg state side (str "shuffles " (:title target-card) " into the stack"))
+                                                             (move state :runner target-card :deck)
+                                                             (shuffle! state :runner :deck)))}}}
+                              card nil)))})]
+    {:on-play
+     {:async true
+      :req (req (and (pos? (count (:hand runner)))
+                     (or (last-turn? state :runner :trashed-card)
+                         (last-turn? state :runner :stole-agenda))))
+      :effect (req
+                (let [chosen-cards (take 2 (shuffle (:hand runner)))]
+                  (continue-ability
+                    state side
+                    (hide-away chosen-cards)
+                    card nil)))}}))
+
 (defcard "Building Blocks"
   {:on-play
    {:req (req (pos? (count (filter #(has-subtype? % "Barrier") (:hand corp)))))

@@ -491,6 +491,27 @@
   {:static-abilities [(runner-hand-size+ -2)]
    :on-trash executive-trash-effect})
 
+(defcard "Charlotte Caçador"
+  (let [ability {:label "gain 4/draw"
+                 :optional {:once :per-turn
+                            :prompt "take 4 [Credits] and draw a card?"
+                            :req (req (pos? (get-counters card :advancement)))
+                            :async true
+                            :yes-ability {:msg "remove 1 advancement counter to gain 4 credits and draw a card"
+                                          :async true
+                                          :effect (req
+                                                    (set-prop state side card :advance-counter (dec (get-counters card :advancement)))
+                                                    (wait-for
+                                                      (gain-credits state :corp (make-eid state eid) 4)
+                                                      (draw state :corp eid 1)))}}}
+        trash-ab {:cost [:advancement 1 :trash-can]
+                  :label "Gain 3[Credits]"
+                  :msg (msg "gain 3[Credits]")
+                  :effect (req (gain-credits state :corp eid 3))}]
+    {:advanceable :always
+     :events [(assoc ability :event :corp-turn-begins)]
+     :abilities [ability trash-ab]}))
+
 (defcard "Chekist Scion"
   (advance-ambush 0 {:msg (msg "give the Runner " (quantify (inc (get-counters (get-card state card) :advancement)) "tag"))
                      :async true
@@ -587,6 +608,51 @@
      :flags {:corp-phase-12 (req true)}
      :events [(assoc ability :event :corp-turn-begins)]
      :abilities [ability]}))
+
+(defcard "Cohor Guidance Program"
+  ;; When your turn begins, choose 1 to resolve:
+  ;; - Turn 1 faceup card in Archives facedown to gain 1{credit}.
+  ;; - Turn 1 facedown card in Archives faceup to place 1 advancement counter on a installed card."
+  {:events [{:event :corp-turn-begins
+             :prompt "Choose one"
+             :interactive (req true)
+             :choices (req [(when (seq (:hand corp)) "Trash from HQ (gain 2 draw 1)")
+                            (when (some #(not (:seen %)) (:discard corp))
+                              "Turn a card faceup (place 1 advancement)")
+                            "Done"])
+             :async true
+             :effect (req (if (= target "Done")
+                            (effect-completed state side eid)
+                            (continue-ability
+                              state side
+                              (if (= target "Trash from HQ (gain 2 draw 1)")
+                                {:prompt "Turn a card in Archives facedown"
+                                 :cost [:trash-from-hand 1]
+                                 :msg "gain 2 [Credits] and draw 1"
+                                 :effect (req (wait-for (gain-credits state side
+                                                                      (make-eid state eid) 2)
+                                                        (draw state side eid 1)))}
+                                {:prompt "Turn a card in Archives faceup"
+                                 :choices {:card #(and (in-discard? %)
+                                                       (corp? %)
+                                                       (not (:seen %)))}
+                                 :msg (msg "turn " (:title target) " in archives faceup")
+                                 :show-discard true
+                                 :async true
+                                 :effect (req (update! state side (assoc-in target [:seen] true))
+                                              (continue-ability
+                                                state side
+                                                {:prompt "Place 1 advancement token on an installed card"
+                                                 :choices {:card #(and (corp? %)
+                                                                       (installed? %))}
+                                                 :msg (msg "place 1 advancement token on "
+                                                           (card-str state target))
+                                                 :effect (effect
+                                                           (add-prop target
+                                                                     :advance-counter 1
+                                                                     {:placed true}))}
+                                                card nil))})
+                              card nil)))}]})
 
 (defcard "Commercial Bankers Group"
   (let [ability {:req (req unprotected)
