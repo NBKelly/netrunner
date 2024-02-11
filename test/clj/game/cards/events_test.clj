@@ -2810,6 +2810,25 @@
                 "Runner should shuffle the stack")
       (is (= ["Magnum Opus"] (map :title (:hand (get-runner)))) "Magnum Opus is in the hand"))))
 
+(deftest eye-for-an-eye
+  (do-game
+    (new-game {:corp {:hand ["Ice Wall" "Enigma"]}
+               :runner {:hand ["Eye for an Eye" (qty "Sure Gamble" 2)]}})
+    (take-credits state :corp)
+    (gain-tags state :runner 1)
+    (play-from-hand state :runner "Eye for an Eye")
+    (is (not (:run @state)) "Cannot play Eye for an Eye when tagged")
+    (remove-tag state :runner)
+    (play-run-event state "Eye for an Eye" :hq)
+    (click-prompt state :runner "[Eye for an Eye] Trash 1 card from your hand: Trash card")
+    (click-card state :runner (find-card "Sure Gamble" (:hand (get-runner))))
+    (click-prompt state :runner "[Eye for an Eye] Trash 1 card from your hand: Trash card")
+    (click-card state :runner (find-card "Sure Gamble" (:hand (get-runner))))
+    (is (not (:run @state)) "Run ended")
+    (is (= 1 (count-tags state)))
+    (is (= 2 (count (:discard (get-corp)))))
+    (is (= 3 (count (:discard (get-runner)))) "Whole world is blind")))
+
 (deftest falsified-credentials
   ;; Falsified Credentials - Expose card in remote
   ;; server and correctly guess its type to gain 5 creds
@@ -5312,6 +5331,39 @@
       (run-continue state)
       (is (not (= "Trash Burke Bugs?" (:msg (prompt-map :runner))))
           "Runner has no prompt trash ice")))
+
+(deftest privileged-access
+  (do-game
+    (new-game {:runner {:hand ["Privileged Access"]
+                        :discard ["Verbal Plasticity" "Rachel Beckman"]}})
+    (take-credits state :corp)
+    (gain-tags state :runner 1)
+    (play-from-hand state :runner "Privileged Access")
+    (is (not (:run @state)) "Cannot play Privileged Access when tagged")
+    (remove-tag state :runner)
+    (is (changed? [(count-tags state) 1]
+                  (play-run-event state "Privileged Access" :archives))
+        "Gain a tag from successful run on Archives")
+    (is (= ["Verbal Plasticity" nil] (prompt-titles :runner)))
+    (is (changed? [(:credit (get-runner)) -1]
+                  (click-prompt state :runner "Verbal Plasticity"))
+        "Install Verbal Plasticity from heap for 2 credits less")
+    (is (= "Verbal Plasticity" (get-title (get-resource state 0))))
+    (is (not (:run @state)) "Run ended")))
+
+(deftest privileged-access-threat
+  (do-game
+    (new-game {:corp {:hand ["Obokata Protocol"]}
+               :runner {:hand ["Privileged Access"]
+                        :discard ["Cleaver" "Orca"]}})
+    (play-and-score state "Obokata Protocol")
+    (take-credits state :corp)
+    (play-run-event state "Privileged Access" :archives)
+    (click-prompt state :runner "Done")
+    (is (= ["Cleaver" nil] (prompt-titles :runner)))
+    (click-prompt state :runner "Cleaver")
+    (is (= "Cleaver" (get-title (get-program state 0))))
+    (is (not (:run @state)) "Run ended")))
 
 (deftest process-automation
   ;; Process Automation

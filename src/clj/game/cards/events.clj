@@ -2770,6 +2770,7 @@
      :events [(successful-run-replace-breach
                 {:target-server :archives
                  :this-card-run true
+                 :mandatory true
                  :ability {:async true
                            :effect (req (wait-for
                                           (gain-tags state :runner 1)
