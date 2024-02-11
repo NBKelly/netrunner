@@ -22,7 +22,7 @@
    [game.core.drawing :refer [draw]]
    [game.core.effects :refer [register-lingering-effect]]
    [game.core.eid :refer [effect-completed make-eid make-result]]
-   [game.core.engine :refer [pay register-events resolve-ability]]
+   [game.core.engine :refer [pay register-events resolve-ability should-trigger?]]
    [game.core.events :refer [first-event? last-turn? no-event? not-last-turn?
                              turn-events]]
    [game.core.flags :refer [can-score? clear-persistent-flag! in-corp-scored?
@@ -2668,6 +2668,45 @@
    {:msg (msg "gain " (* 3 (count (:scored runner))) " [Credits]")
     :async true
     :effect (effect (gain-credits eid (* 3 (count (:scored runner)))))}})
+
+(defcard "Sudden Commandment"
+  (let [play-instant-second {:optional
+                             {:prompt (msg "Pay 3 to gain a click?")
+                              :yes-ability {:cost [:credit 5]
+                                            :msg (msg "gain [Click]")
+                                            :effect (effect (gain-clicks 1))}}}
+
+        play-instant-first {:prompt (msg "Choose a non-terminal operation")
+                            :choices (req (conj (filter #(and (operation? %)
+                                                              (not (has-subtype? % "Terminal"))
+                                                              (should-trigger? state :corp (assoc eid :source % :source-type :play) % nil (or (:on-play (card-def %)) {}))
+                                                              (can-pay? state side (assoc eid :source % :source-type :play) % nil [:credit (play-cost state side % nil)]))
+                                                        (:hand corp))
+                                                "Done"))
+                            :async true
+                            :effect (req
+                                      (let [is-first-mandate? (first-event? state side :play-operation #(has-subtype? (:card (first %)) "Mandate"))]
+                                        (if (= target "Done")
+                                          (if-not (and (threat-level 4 state) is-first-mandate?)
+                                            (effect-completed state side eid)
+                                            (continue-ability
+                                              state side
+                                              play-instant-second
+                                              card nil))
+                                          (wait-for (play-instant state side (assoc (make-eid state eid) :source target :source-type :play) target nil)
+                                                    (if-not (and (threat-level 4 state) is-first-mandate?)
+                                                      (effect-completed state side eid)
+                                                      (continue-ability
+                                                        state side
+                                                        play-instant-second
+                                                        card nil))))))}]
+    {:on-play {:msg "Draw 2 cards"
+               :async true
+               :effect (req (wait-for (draw state side (make-eid state eid) 2)
+                                      (continue-ability
+                                        state side
+                                        play-instant-first
+                                        card nil)))}}))
 
 (defcard "Sub Boost"
   (let [new-sub {:label "[Sub Boost]: End the run"}]

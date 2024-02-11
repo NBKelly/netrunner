@@ -18,7 +18,7 @@
    [game.core.def-helpers :refer [combine-abilities corp-recur defcard
                                   do-brain-damage do-net-damage offer-jack-out
                                   reorder-choice get-x-fn]]
-   [game.core.drawing :refer [draw]]
+   [game.core.drawing :refer [draw maybe-draw]]
    [game.core.effects :refer [get-effects register-lingering-effect unregister-static-abilities]]
    [game.core.eid :refer [complete-with-result effect-completed make-eid]]
    [game.core.engine :refer [gather-events pay register-events resolve-ability
@@ -1030,6 +1030,17 @@
 (defcard "Caduceus"
   {:subroutines [(trace-ability 3 (gain-credits-sub 3))
                  (trace-ability 2 end-the-run)]})
+
+(defcard "Capacitor"
+  {:static-abilities [(ice-strength-bonus (req (if (pos? (count-tags state)) 2 0)))]
+   :subroutines [{:label "Gain 1 [Credits] for each tag the runner has"
+                  :async true
+                  :msg (msg "Gain " (count-tags state) " [Credits]")
+                  :effect (req
+                            (if-not (zero? (count-tags state))
+                              (gain-credits :corp eid (count-tags state))
+                              (effect-completed state side eid)))}
+                 end-the-run]})
 
 (defcard "Cell Portal"
   {:subroutines [{:async true
@@ -3164,6 +3175,26 @@
             :effect (effect (gain-tags :corp eid 1))}
    :subroutines [end-the-run]})
 
+(defcard "Piranhas"
+  (let [draw-sub {:async true
+                  :label "You may draw a card"
+                  :effect (effect (maybe-draw eid card 1))}]
+    {:additional-cost [:tag-or-bad-pub]
+     :subroutines [draw-sub
+                   (do-net-damage 1)
+                   {:label "End run HQ > Grip"
+                    :async true
+                    :effect (req (let [hq (count (:hand corp))
+                                       grip (count (:hand runner))]
+                                   (continue-ability
+                                     state side
+                                     (if (> hq grip)
+                                       {:msg "end the run"
+                                        :async true
+                                        :effect (req (end-run state :corp eid card))}
+                                       {:msg "do nothing"})
+                                     card nil)))}]}))
+
 (defcard "Pop-up Window"
   {:on-encounter (gain-credits-sub 1)
    :subroutines [(end-the-run-unless-runner-pays [:credit 1])]})
@@ -3379,6 +3410,36 @@
                        :req (req (same-card? card (:ice context)))
                        :value true}]
    :subroutines [end-the-run]})
+
+(defcard "Seraph"
+  (let [encounter-ab
+        {:prompt "choose one"
+         :player :runner
+         :choices (req ["lose 3 credits"
+                        (when (>= (count (:hand runner)) 2)
+                          "take 2 net damage")
+                        "gain 1 tag"])
+         :msg (msg "force the runner to " target)
+         :effect (req (cond
+                        (= "lose 3 credits" target) (lose-credits state :runner eid 3)
+                        (= "take 2 net damage" target)
+                        (continue-ability
+                          state :runner
+                          {:player :runner
+                           :cost [:net 2]
+                           :msg (msg "prevent losing 3 credits")}
+                          card nil)
+                        (= "gain 1 tag" target)
+                        (continue-ability
+                          state :runner
+                          {:player :runner
+                           :cost [:gain-tag 1]
+                           :msg (msg "prevent losing 3 credits")}
+                          card nil)))}]
+    {:on-encounter encounter-ab
+     :subroutines [(runner-loses-credits 3)
+                   (do-net-damage 2)
+                   (give-tags 1)]}))
 
 (defcard "Sensei"
   {:subroutines [{:label "Give encountered ice \"End the run\""

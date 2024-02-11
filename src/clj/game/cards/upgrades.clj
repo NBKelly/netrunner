@@ -22,7 +22,7 @@
    [game.core.eid :refer [effect-completed get-ability-targets is-basic-advance-action? make-eid]]
    [game.core.engine :refer [dissoc-req pay register-default-events
                              register-events resolve-ability unregister-events]]
-   [game.core.events :refer [first-event? first-run-event? turn-events]]
+   [game.core.events :refer [first-event? first-run-event? no-event? turn-events]]
    [game.core.expose :refer [expose-prevent]]
    [game.core.finding :refer [find-cid find-latest]]
    [game.core.flags :refer [clear-persistent-flag! is-scored? register-persistent-flag!
@@ -1617,6 +1617,21 @@
                                        (do (lose-clicks state :runner 2)
                                            (effect-completed state side eid))
                                        (damage state side eid :brain 1 {:card card})))}}}})
+
+(defcard "The Holo Man"
+  (let [abi
+        {:cost [:click :credit 4]
+         :label "place advancement tokens on a card in or protecting this server"
+         :once :per-turn
+         :req (req (= :corp (:active-player @state)))
+         :choices {:req (req (same-server? card target))}
+         :msg (msg "place advancement tokens on " (card-str state target))
+         :effect (req
+                   (if (no-event? state side :corp-install #(= [:hand] (:previous-zone (:card (first %)))))
+                     (add-prop state side eid target :advance-counter 3 {:placed true})
+                     (add-prop state side eid target :advance-counter 2 {:placed true})))}]
+    {:abilities [abi]
+     :events [(assoc mobile-sysop-event :event :corp-turn-begins)]}))
 
 (defcard "The Twins"
   {:events [{:event :pass-ice
