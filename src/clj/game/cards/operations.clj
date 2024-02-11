@@ -115,6 +115,35 @@
       :async true
       :effect (effect (continue-ability (ad state side eid card (take 3 (:deck corp))) card nil))}}))
 
+(defcard "Active Policing"
+  ;; TODO - does the runner lose clicks, or not have them allotted? it matters for click
+  ;; costs and the like! -nbkelly
+  (let [lose-click-abi
+        {:msg "make the runner lose [Click] next turn"
+         :async true
+         :effect (req (swap! state update-in [:runner :extra-click-temp] (fnil #(- % 1) 0))
+                      (if-not (threat-level 3 state)
+                        (effect-completed state side eid)
+                        (continue-ability
+                          state side
+                          {:optional {:prompt "Pay 2 [credits] to make the runner lose an additional [Click]?"
+                                      :yes-ability {:cost [:credit 2]
+                                                    :msg "make the runner have one less alloted [Click] next turn"
+                                                    :effect (req (swap! state update-in [:runner :extra-click-temp] (fnil #(- % 1) 0)))}}}
+                          card nil)))}]
+  {:on-play {:req (req (or (last-turn? state :runner :trashed-card)
+                           (last-turn? state :runner :stole-agenda)))
+             :prompt "Choose a card to install"
+             :choices {:card #(and (corp? %)
+                                   (corp-installable-type? %)
+                                   (in-hand? %))}
+             :async true
+             :msg (msg (corp-install-msg target))
+             :cancel-effect (effect (system-msg (str "declines to use " (:title card) " to install a card"))
+                                    (continue-ability lose-click-abi card nil))
+             :effect (req (wait-for (corp-install state side target nil nil)
+                                    (continue-ability state side lose-click-abi card nil)))}}))
+
 (defcard "Ad Blitz"
   (letfn [(ab [n total]
             (when (< n total)
@@ -542,6 +571,16 @@
     :effect (effect (shuffle! :deck)
                     (system-msg "shuffles their deck")
                     (play-instant eid target nil))}})
+
+(defcard "Corporate Hospitality"
+  {:on-play {:msg "gain 6 [Credits] and draw 2 cards"
+             :async true
+             :effect (req (wait-for (gain-credits state side 6)
+                                    (wait-for (draw state side (make-eid state eid) 2)
+                                              (continue-ability
+                                                state side
+                                                (corp-recur)
+                                                card nil))))}})
 
 (defcard "Corporate Shuffle"
   {:on-play
