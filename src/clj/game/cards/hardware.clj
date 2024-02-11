@@ -397,6 +397,7 @@
    {:access-ability
     {:label "Trash card"
      :req (req (and (not (get-in @state [:per-turn (:cid card)]))
+                    (not (in-discard? target)) ;;for if the run gets diverted
                     (<= 2 (count (:hand runner)))))
      :cost [:trash-from-hand 2]
      :msg (msg "trash " (:title target) " at no cost")
