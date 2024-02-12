@@ -302,7 +302,7 @@
 
 (defcard "Arruaceiras Crew"
   {:abilities [{:req (req (active-encounter? state))
-                :cost[:gain-tag 1]
+                :cost [:gain-tag 1]
                 :once :per-turn
                 :label "give encountered ice -2 strength"
                 :msg (msg "give " (card-str state current-ice) " -2 strength this run")
@@ -1452,7 +1452,7 @@
                 :cost [:click 1 :trash-can]
                 :req (req (not tagged))
                 :async true
-                :effect (req (wait-for (gain-credits state side (make-eid state eid) 10)
+                :effect (req (wait-for (gain-credits state side (make-eid state eid) 9)
                                        (gain-tags state :runner eid 1)))}]})
 
 (defcard "Gang Sign"
@@ -2060,16 +2060,14 @@
 
 (defcard "Manuel Lattes de Moura"
   {:static-abilities [{:type :basic-ability-additional-trash-cost
-                       :req (req (and (same-card? card target) (= :corp side)))
+                       :req (req (and (same-card? card target)
+                                      (= :corp side)
+                                      (threat-level 3 state)))
                        :value [:trash-from-hand 1]}]
    :events [{:event :breach-server
-             :optional
-             {:req (req (and tagged run
-                             (or (= target :rd) (= target :hq))))
-              :waiting-prompt true
-              :prompt (msg "Access an additional card from " (if (= target :rd) "R&D" "HQ") "?")
-              :yes-ability {:msg (msg "access 1 additional card from " (if (= target :rd)"R&D" "HQ"))
-                            :effect (effect (access-bonus target 1))}}}]})
+             :req (req (and tagged run
+                            (or (= target :rd) (= target :hq))))
+             :effect (effect (access-bonus target 1))}]})
 
 (defcard "Maxwell James"
   {:static-abilities [(link+ 1)]
