@@ -3487,8 +3487,9 @@
                 :effect (req (let [trojan target]
                                (continue-ability
                                  state side
-                                 {:prompt "Choose an ice"
-                                  :choices {:card #(ice? %)}
+                                 {:prompt "Choose an ice protecting this server"
+                                  :choices {:card #(and (ice? %)
+                                                        (= (first (:server run)) (second (get-zone %))))}
                                   :msg (msg "host " (:title trojan) " on " (card-str state target))
                                   :effect (req (host state side target trojan)
                                                (update-all-ice state side))}

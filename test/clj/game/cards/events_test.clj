@@ -405,6 +405,18 @@
         (is (= (+ 2 hand) (count (:hand (get-corp)))) "Calvin Baley draws 2 cards")
         (is (no-prompt? state :corp) "No Jinja City Grid"))))
 
+(deftest ashen-epilogue
+  (do-game
+    (new-game {:runner {:hand ["Ashen Epilogue" (qty "Sure Gamble" 5)]
+                        :deck [(qty "Sure Gamble" 20)]
+                        :discard [(qty "Sure Gamble" 20)]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Ashen Epilogue")
+    (is (= 0 (count (:discard (get-runner)))) "Heap is empty")
+    (is (= 5 (count (:hand (get-runner)))) "Grip is full")
+    (is (= 35 (count (:deck (get-runner)))) "Stack is back")
+    (is (= 6 (count (:rfg (get-runner)))))))
+
 (deftest bahia-bands
   (do-game
       (new-game {:corp {:hand ["PAD Campaign"]}
@@ -824,6 +836,21 @@
       (play-from-hand state :runner "Build Script")
       (is (= (inc credits) (:credit (get-runner))) "Gained 1 credit")
       (is (= (+ 2 hand) (count (:hand (get-runner)))) "Drew 2 cards"))))
+
+(deftest burner
+  (do-game
+    (new-game {:corp {:hand [(qty "Hedge Fund" 4)]}
+               :runner {:hand ["Burner"]}})
+    (take-credits state :corp)
+    (play-run-event state "Burner" :hq)
+    (is (last-log-contains? state "reveals Hedge Fund, Hedge Fund, Hedge Fund from HQ"))
+    (is (changed? [(count (:deck (get-corp))) 2
+                   (count (:hand (get-corp))) -2]
+                  (click-prompt state :runner "Hedge Fund")
+                  (click-prompt state :runner "Top of R&D")
+                  (click-prompt state :runner "Hedge Fund")
+                  (click-prompt state :runner "Bottom of R&D"))
+        "2 cards added to R&D")))
 
 (deftest by-any-means-full-test
     ;; Full test
@@ -6445,6 +6472,41 @@
     (click-prompt state :runner "HQ")
     (is (:run @state) "Run should be initiated")))
 
+(deftest spree
+  (do-game
+    (new-game {:corp {:hand [(qty "Ice Wall" 3)]}
+               :runner {:hand ["Botulus" "Tranquilizer" "Spree"]}})
+    (play-from-hand state :corp "Ice Wall" "Archives")
+    (play-from-hand state :corp "Ice Wall" "R&D")
+    (play-from-hand state :corp "Ice Wall" "HQ")
+    (take-credits state :corp)
+    (play-from-hand state :runner "Botulus")
+    (click-card state :runner (get-ice state :hq 0))
+    (play-from-hand state :runner "Tranquilizer")
+    (click-card state :runner (get-ice state :rd 0))
+    (play-from-hand state :runner "Spree")
+    (click-prompt state :runner "Archives")
+    (is (:run @state) "Run should be initiated")
+    (let [spree (-> (get-runner) :play-area first)
+          hq (get-ice state :hq 0)
+          ar (get-ice state :archives 0)
+          rd (get-ice state :rd 0)]
+      (is (= 3 (get-counters (refresh spree) :power)) "Spree has 3 power counters")
+      (is (changed? [(get-counters (refresh spree) :power) -1
+                     (-> (refresh hq) :hosted count) -1
+                     (-> (refresh ar) :hosted count) 1]
+                    (card-ability state :runner (refresh spree) 0)
+                    (click-card state :runner (-> (refresh hq) :hosted first))
+                    (click-card state :runner (refresh ar)))
+          "Spend a counter to move a trojan to ice in attacked server")
+      (is (changed? [(-> (refresh rd) :hosted count) 0
+                     (-> (refresh hq) :hosted count) 0
+                     (-> (refresh ar) :hosted count) 0]
+                    (card-ability state :runner (refresh spree) 0)
+                    (click-card state :runner (-> (refresh rd) :hosted first))
+                    (click-card state :runner (refresh hq)))
+          "Cannot move a trojan to ice in a server that is not under attack"))))
+
 (deftest steelskin-scarring
   (do-game
     (new-game {:runner {:hand ["Steelskin Scarring"] :deck [(qty "Sure Gamble" 45)]}})
@@ -6998,6 +7060,26 @@
         -4 (:credit (get-corp))
         "Paid 4 credits to rez Ice Wall"
         (rez state :corp icewall)))))
+
+(deftest trick-shot
+  (do-game
+    (new-game {:corp {:deck [(qty "Hedge Fund" 10)]
+                      :hand ["Spin Doctor"]}
+               :runner {:hand ["Trick Shot"]}})
+    (play-from-hand state :corp "Spin Doctor" "New remote")
+    (take-credits state :corp)
+    (play-from-hand state :runner "Trick Shot")
+    (is (= :rd (first (get-in @state [:run :server]))))
+    (let [ts (-> (get-runner) :play-area first)]
+      (is (= 4 (get-counters (refresh ts) :credit)) "Trick Shot has 4 credits on it")
+      (is (changed? [(get-counters (refresh ts) :credit) 2]
+                    (run-continue state))
+          "Trick Shot gains 2 credits on successful run")
+      (click-prompt state :runner "No action")
+      (click-prompt state :runner "No action")
+      (click-prompt state :runner "Server 1")
+      (is (= :remote1 (first (get-in @state [:run :server]))))
+      (is (= 6 (get-counters (refresh ts) :credit)) "Trick Shot still has 6 credits on it"))))
 
 (deftest uninstall
   ;; Uninstall
