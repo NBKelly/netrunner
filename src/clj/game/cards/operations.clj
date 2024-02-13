@@ -2687,19 +2687,9 @@
                             :effect (req
                                       (let [is-first-mandate? (first-event? state side :play-operation #(has-subtype? (:card (first %)) "Mandate"))]
                                         (if (= target "Done")
-                                          (if-not (and (threat-level 4 state) is-first-mandate?)
-                                            (effect-completed state side eid)
-                                            (continue-ability
-                                              state side
-                                              play-instant-second
-                                              card nil))
+                                          (continue-ability state side (when (and (threat-level 4 state) is-first-mandate?) play-instant-second) card nil)
                                           (wait-for (play-instant state side (assoc (make-eid state eid) :source target :source-type :play) target nil)
-                                                    (if-not (and (threat-level 4 state) is-first-mandate?)
-                                                      (effect-completed state side eid)
-                                                      (continue-ability
-                                                        state side
-                                                        play-instant-second
-                                                        card nil))))))}]
+                                                    (continue-ability state side (when (and (threat-level 4 state) is-first-mandate?) play-instant-second) card nil)))))}]
     {:on-play {:msg "Draw 2 cards"
                :async true
                :effect (req (wait-for (draw state side (make-eid state eid) 2)
