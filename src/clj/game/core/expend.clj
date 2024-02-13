@@ -21,6 +21,6 @@
      :effect (req
                (wait-for
                  (resolve-ability state :corp (assoc ex :cost merged-cost) card nil)
-                 (queue-event state :expend-resolved card)
+                 (queue-event state :expend-resolved {:card card})
                  (checkpoint state nil eid nil))
                )}))
