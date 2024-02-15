@@ -103,15 +103,13 @@
                                            (and (resource? target) (not (untrashable-while-resources? target)))
                                            (resource? target))
                                          (let [additional-costs (merge-costs (into [] (concat (get-effects state side :additional-trash-cost target) (get-effects state side :basic-ability-additional-trash-cost target))))
-                                               cost additional-costs
-                                               can-pay (can-pay? state side (make-eid state (assoc eid :additional-costs additional-costs)) target (:title target) cost)]
-                                           (or (nil? additional-costs) (empty? additional-costs) can-pay))))}
+                                               can-pay (can-pay? state side (make-eid state (assoc eid :additional-costs additional-costs)) target (:title target) additional-costs)]
+                                           (or (empty? additional-costs) can-pay))))}
                 :effect (req
                           (let [additional-costs (merge-costs (into [] (get-effects state side :basic-ability-additional-trash-cost target)))
-                                cost additional-costs
-                                cost-strs (build-cost-string cost)
-                                can-pay (can-pay? state side (make-eid state (assoc eid :additional-costs additional-costs)) target (:title target) cost)]
-                            (if (or (nil? additional-costs) (empty? additional-costs))
+                                cost-strs (build-cost-string additional-costs)
+                                can-pay (can-pay? state side (make-eid state (assoc eid :additional-costs additional-costs)) target (:title target) additional-costs)]
+                            (if (empty? additional-costs)
                               (trash state side eid target nil)
                               (let [target-card target]
                                 (wait-for (resolve-ability
@@ -124,7 +122,7 @@
                                                                 (effect-completed state side eid))
                                                             (wait-for (pay state side (make-eid state
                                                                                                 (assoc eid :additional-costs additional-costs :source card :source-type :trash-card))
-                                                                           nil cost 0)
+                                                                           nil additional-costs 0)
                                                                       (system-msg state side (str (:msg async-result) " as an additional cost to trash " (:title target-card)))
                                                                       (complete-with-result state side eid target-card))))}
                                             card nil)
