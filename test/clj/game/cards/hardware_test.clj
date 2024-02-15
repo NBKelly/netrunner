@@ -1192,6 +1192,42 @@
       (is (= 1 (count (:discard (get-corp)))))
       (is (zero? (count (:hand (get-runner)))))))
 
+(deftest cataloguer
+  (do-game
+    (new-game {:corp {:deck ["Whitespace" "Hedge Fund" "Spin Doctor" "Offworld Office"]}
+               :runner {:hand ["Cataloguer"]}})
+    (dotimes [_ 4] (core/move state :corp (first (:hand (get-corp))) :deck))
+    (take-credits state :corp)
+    (is (zero? (count (:hand (get-corp)))))
+    (is (= 4 (count (:deck (get-corp)))))
+    (play-from-hand state :runner "Cataloguer")
+
+    (is (changed? [(get-counters (get-hardware state 0) :power) 0]
+                  (card-ability state :runner (get-hardware state 0) 0))
+        "No successful run on R&D this turn, can not use Cataloguer ability yet")
+
+    (run-empty-server state "R&D")
+
+    (is (changed? [(get-counters (get-hardware state 0) :power) -1]
+                  (click-prompt state :runner "Cataloguer")))
+
+    (click-prompt state :runner (find-card "Spin Doctor" (:deck (get-corp))))
+    (click-prompt state :runner (find-card "Hedge Fund" (:deck (get-corp))))
+    (click-prompt state :runner (find-card "Offworld Office" (:deck (get-corp))))
+    (click-prompt state :runner (find-card "Whitespace" (:deck (get-corp))))
+    ;; try starting over
+    (click-prompt state :runner "Start over")
+    (click-prompt state :runner (find-card "Whitespace" (:deck (get-corp))))
+    (click-prompt state :runner (find-card "Hedge Fund" (:deck (get-corp))))
+    (click-prompt state :runner (find-card "Spin Doctor" (:deck (get-corp))))
+    (click-prompt state :runner (find-card "Offworld Office" (:deck (get-corp))))
+    (click-prompt state :runner "Done")
+
+    (card-ability state :runner (get-hardware state 0) 0)
+    (click-prompt state :runner "Steal")
+
+    (is (nil? (get-hardware state 0)) "Cataloguer trashed after running out of power counters")))
+
 (deftest chop-bot-3000
   ;; Chop Bot 3000 - when your turn begins trash 1 card, then draw or remove tag
   (do-game

@@ -4867,6 +4867,24 @@
       (click-prompt state :runner "0")
       (is (= (inc tags) (count-tags state)) "Runner should gain 1 tag from losing trace"))))
 
+;; pending implementation
+(deftest ^:kaocha/pending pretty-mary
+  (do-game
+    (new-game {:corp {:hand ["Hedge Fund"] :deck [(qty "Hedge Fund" 10)]}
+               :runner {:hand ["Mary da Silva" "Jailbreak"] :deck ["Sure Gamble"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Mary da Silva")
+    (run-empty-server state "R&D")
+    (click-prompt state :runner "No action")
+    (is (not (:run @state)) "Run ended")
+    (play-from-hand state :runner "Jailbreak")
+    (click-prompt state :runner "R&D")
+    (run-continue state)
+    (click-prompt state :runner "No action")
+    (click-prompt state :runner "No action")
+    (click-prompt state :runner "No action")
+    (is (not (:run @state)) "Run ended")))
+
 (deftest professional-contacts
   ;; Professional Contacts - Click to gain 1 credit and draw 1 card
   (do-game
@@ -6954,6 +6972,34 @@
         (play-from-hand state :runner "Monkeywrench")
         (dotimes [_ 2]
           (click-card state :runner uav)))))
+
+(deftest valentina-ferreira-carvalho
+  (do-game
+    (new-game {:runner {:hand ["Valentina Ferreira Carvalho" "No Free Lunch"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Valentina Ferreira Carvalho")
+    (play-from-hand state :runner "No Free Lunch")
+    (gain-tags state :runner 1)
+    (is (changed? [(:credit (get-runner)) 1]
+                  (card-ability state :runner (get-resource state 1) 1))
+        "Runner gains a credit for removing a tag")))
+
+(deftest valentina-ferreira-carvalho-threat
+  (do-game
+    (new-game {:corp {:hand ["Obokata Protocol"]}
+               :runner {:hand [(qty "Valentina Ferreira Carvalho" 2)]}})
+    (play-and-score state "Obokata Protocol")
+    (take-credits state :corp)
+    (gain-tags state :runner 1)
+    (play-from-hand state :runner "Valentina Ferreira Carvalho")
+    (is (changed? [(count-tags state) -1]
+                  (click-prompt state :runner "Remove a tag"))
+        "Threat 3: Runner can remove a tag when installing Valentina")
+    (trash state :runner (get-resource state 0))
+    (play-from-hand state :runner "Valentina Ferreira Carvalho")
+    (is (changed? [(:credit (get-runner)) 2]
+                  (click-prompt state :runner "Gain 2 [Credits]"))
+        "Threat 3: Runner can gain 2 credits when installing Valentina")))
 
 (deftest verbal-plasticity
   ;; Verbal Plasticity

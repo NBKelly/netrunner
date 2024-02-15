@@ -1602,6 +1602,22 @@
     (is (= 1 (count (:hand (get-runner)))) "Reaver triggered when Clot was trashed")
     ))
 
+(deftest coalescence
+  (do-game
+    (new-game {:runner {:hand ["Coalescence"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Coalescence")
+    (is (changed? [(:credit (get-runner)) 2
+                   (get-counters (get-program state 0) :power) -1]
+                  (card-ability state :runner (get-program state 0) 0))
+        "1 power counter for 2 credits")
+    (is (= 1 (get-counters (get-program state 0) :power)))
+    (take-credits state :runner)
+    (is (changed? [(:credit (get-runner)) 0
+                   (get-counters (get-program state 0) :power) 0]
+                  (card-ability state :runner (get-program state 0) 0))
+        "Cannot use Coalescence to gain credits on Corp turn")))
+
 (deftest conduit
   ;; Conduit
   (do-game
