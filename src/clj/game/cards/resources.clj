@@ -267,19 +267,18 @@
   {:flags {:runner-phase-12 (req true)}
    :events [{:event :run-ends
              :req (req (and (#{:hq :rd} (target-server context))
-                          (>= (total-cards-accessed context) 3)))
+                            (>= (total-cards-accessed context) 3)))
              :effect (effect (add-counter (get-card state card) :power 1))}
             {:event :runner-turn-begins
              :optional
-             {:prompt (msg "Force the corp to lose 10 [Credits]?")
+             {:prompt (str "Trash this resource to force the Corp to lose 10 [Credits]?")
               :yes-ability
               {:req (req (>= (get-counters (get-card state card) :power) 3))
-               :msg (msg "trash itself and force the corp to lose 10 [Credits]")
+               :msg "trash itself and force the Corp to lose 10 [Credits]"
                :async true
-               :effect (req (let [tolose 10]
-                              (wait-for
-                                (trash state side card {:cause-card card})
-                                (lose-credits state :corp eid(min tolose (:credit corp))))))}}}]})
+               :effect (req (wait-for
+                              (trash state side card {:cause-card card})
+                              (lose-credits state :corp eid (min 10 (:credit corp)))))}}}]})
 
 (defcard "Angel Arena"
   {:on-install {:prompt "How many credits do you want to spend?"
