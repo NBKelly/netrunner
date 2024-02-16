@@ -2358,8 +2358,19 @@
       :effect (effect (continue-ability (mhelper 0) card nil))}}))
 
 (defcard "Meeting of Minds"
-  (letfn [(tutor-abi [type]
-            {:prompt (str "Choose a " (decapitalize type))
+  (letfn [(credit-gain-abi [type]
+            {:choices {:max (req (count (:hand runner)))
+                       :card #(and (runner? %)
+                                   (in-hand? %)
+                                   (has-subtype? % type))}
+             :prompt (msg "Choose any number of " type " resources to reveal")
+             :msg (msg "reveal " (enumerate-str (map :title (sort-by :title targets))) " from the Grip and gain " (count targets) " [Credits]")
+             :async true
+             :effect (req (wait-for
+                             (reveal state side targets)
+                             (gain-credits state side eid (* 1 (count targets)))))})
+          (tutor-abi [type]
+            {:prompt (str "Choose a " (decapitalize type) " resource")
              :implementation "2v7"
              :choices (req (cancellable (filter #(has-subtype? % type)
                                                 (:deck runner)) :sorted))
@@ -2368,27 +2379,19 @@
              :effect (effect (trigger-event :searched-stack nil)
                              (move target :hand)
                              (shuffle! :deck)
-                             (continue-ability
-                               {:choices {:max (req (count (:hand runner)))
-                                          :card #(and (runner? %)
-                                                      (in-hand? %)
-                                                      (has-subtype? % type))}
-                                :prompt (msg "choose any number of " type "s to reveal")
-                                :msg (msg "reveal " (enumerate-str (map :title (sort-by :title targets))) " from the Grip and gain " (count targets) " [Credits]")
-                                :async true
-                                :effect (req (wait-for
-                                               (reveal state side targets)
-                                               (gain-credits state side eid (* 1 (count targets)))))}
-                               card nil))})]
-  ;; Search your stack for a connection or virtual resource and add it to your grip
-    {:makes-run true
-     :on-play {:prompt "Choose one"
+                             (continue-ability (credit-gain-abi type) card nil))})]
+    {:on-play {:prompt "Choose one"
                :async true
                :choices ["Connection" "Virtual"]
                :effect (req
                          (continue-ability
                            state side
-                           (tutor-abi target)
+                           {:optional 
+                            {:prompt (str "Search the stack for a " target " resource?")
+                             :yes-ability
+                             {:effect (effect (continue-ability (tutor-abi target) card nil))}
+                             :no-ability
+                             {:effect (effect (continue-ability (credit-gain-abi target) card nil))}}}
                            card nil))}}))
 
 (defcard "Mining Accident"
