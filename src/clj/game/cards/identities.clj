@@ -1807,11 +1807,12 @@
                             (= target (count-tags state)))) ;; every tag is one that was just gained
              :effect (req (continue-ability
                             state :runner
-                            {:prompt "Choose a connection to install (for 2[Credits] less)"
+                            {:prompt "Choose a connection to install, paying 2 [Credits] less"
                              :player :runner
                              :choices {:card #(and (has-subtype? % "Connection")
                                                    (resource? %)
                                                    (in-hand? %))}
+                             :msg (msg "install " (:title target) " from the grip, paying 2 [Credit] less")
                              :effect (effect (runner-install (assoc eid :source card :source-type :runner-install) target {:cost-bonus -2}))}
                             card nil))}]})
 

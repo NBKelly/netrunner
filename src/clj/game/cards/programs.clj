@@ -686,13 +686,13 @@
                                 (strength-pump 3 4 :end-of-run {:label "add 4 strength (using at least 1 stealth [Credits])" :cost-req (min-stealth 1)})]}))
 
 (defcard "Boi-tatá"
-  (letfn [(raccoon-fn
+  (letfn [(was-a-runner-card?
             [target]
             (runner? (:card (first target))))]
     (auto-icebreaker {:implementation "Effect only applies for printed abilities"
-                      :abilities [(break-sub 1 2 "Sentry" (cond-breaker :runner-trash raccoon-fn))
+                      :abilities [(break-sub 1 2 "Sentry" (cond-breaker :runner-trash was-a-runner-card?))
                                   (break-sub 2 2 "Sentry")
-                                  (strength-pump 2 3 :end-of-encounter (cond-breaker :runner-trash raccoon-fn))
+                                  (strength-pump 2 3 :end-of-encounter (cond-breaker :runner-trash was-a-runner-card?))
                                   (strength-pump 3 3)]})))
 
 (defcard "Botulus"
@@ -1627,10 +1627,10 @@
                           (continue-ability
                             state side
                             {:optional
-                             {:prompt "Host a card on Heliamphora instead of accessing it?"
+                             {:prompt "Host a card on this program instead of accessing it?"
                               :yes-ability {:prompt "Choose a card in Archives"
                                             :choices (req (:discard corp))
-                                            :msg (msg "host " (:title target) " from the game")
+                                            :msg (msg "host " (:title target) " on itself instead of accessing it")
                                             :effect (effect
                                                       (update! (assoc-in card [:special :host-available] false))
                                                       (host card target))}}}
@@ -1656,14 +1656,14 @@
                               (cond
                                 is-facedown?
                                 {:optional
-                                 {:prompt (msg "Host face-down card on Heliamphora instead of accessing it?")
-                                  :yes-ability {:msg (msg "host a facedown card on Heliamphora instead of accessing it")
+                                 {:prompt (msg "Host face-down card on this program instead of accessing it?")
+                                  :yes-ability {:msg (msg "host a facedown card on itself instead of accessing it")
                                                 :effect (effect (update! (assoc-in card [:special :host-available] false))
                                                                 (host card target-card))}}}
                                 (or is-agenda? is-trap?)
                                 {:optional
-                                 {:prompt (msg "Host " (:title target-card) " on Heliamphora instead of accessing it?")
-                                  :yes-ability {:msg (msg "host a " (:title target-card) " on Heliamphora instead of accessing it")
+                                 {:prompt (msg "Host " (:title target-card) " on this program instead of accessing it?")
+                                  :yes-ability {:msg (msg "host a " (:title target-card) " on itself instead of accessing it")
                                                 :effect (effect (update! (assoc-in card [:special :host-available] false))
                                                                 (host card target-card))}}}
                                 _ nil)

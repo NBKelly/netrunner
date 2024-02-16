@@ -1363,7 +1363,7 @@
    :interactions {:access-ability
                   {:label "Trash card"
                    :cost [:trash-from-hand 1]
-                   :msg (msg "trash " (:title target))
+                   :msg (msg "trash " (:title target) " from HQ")
                    :async true
                    :effect (effect (trash eid (assoc target :seen true) {:cause-card card}))}}
    :events [{:event :successful-run
@@ -1371,7 +1371,7 @@
              :req (req (and (= :hq (target-server context))
                             this-card-run))
              :async true
-             :msg "take 1 tag and access 1 additional card"
+             :msg "take 1 tag and access 1 additional card from HQ"
              :effect (req
                        (wait-for (gain-tags state :runner 1 {:unpreventable true})
                                  (register-events

@@ -304,10 +304,10 @@
   {:abilities [{:req (req (active-encounter? state))
                 :cost [:gain-tag 1]
                 :once :per-turn
-                :label "give encountered ice -2 strength"
-                :msg (msg "give " (card-str state current-ice) " -2 strength this run")
-                :effect (effect (pump-ice current-ice -2 :end-of-run))}
-               {:label "trash 0-strength encountered ice"
+                :label "Get encountered ice -2 strength"
+                :msg (msg "give " (card-str state current-ice) " -2 strength for the remainder of the encounter")
+                :effect (effect (pump-ice current-ice -2 :end-of-encounter))}
+               {:label "Trash 0 or less strength encountered ice"
                 :async true
                 :req (req (and (active-encounter? state)
                                (not (pos? (ice-strength state side current-ice)))))
@@ -1441,14 +1441,14 @@
                 :effect (effect (draw eid 1))}]})
 
 (defcard "Friend of a Friend"
-  {:abilities [{:label "Gain 5 [Credits] and remove tag"
-                :msg "gain 5 [Credits]"
+  {:abilities [{:label "Gain 5 [Credits] and remove 1 tag"
+                :msg "gain 5 [Credits] and remove 1 tag"
                 :cost [:click 1 :trash-can]
                 :async true
                 :effect (req (wait-for (gain-credits state side (make-eid state eid) 5)
                                        (lose-tags state :runner eid 1)))}
-               {:label "Gain 9 [Credits] and take a tag"
-                :msg "gain 9 [Credits] and take a tag"
+               {:label "Gain 9 [Credits] and take 1 tag"
+                :msg "gain 9 [Credits] and take 1 tag"
                 :cost [:click 1 :trash-can]
                 :req (req (not tagged))
                 :async true
@@ -2067,6 +2067,7 @@
    :events [{:event :breach-server
              :req (req (and tagged run
                             (or (= target :rd) (= target :hq))))
+             :msg "access 1 additional card"
              :effect (effect (access-bonus target 1))}]})
 
 (defcard "Maxwell James"
