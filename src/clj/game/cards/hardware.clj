@@ -1153,8 +1153,8 @@
              :effect (req (continue-ability
                             state side
                             {:optional
-                              :yes-ability {:cost [:lose-click 1]
                              {:prompt "Install this card from the heap?"
+                              :yes-ability {:cost [:click 1]
                                             :msg (msg "install " (get-title card) " from the heap")
                                             :async true
                                             :effect (req (let [target-card (first (filter #(= (:printed-title %) (:printed-title card)) (:discard runner)))]
