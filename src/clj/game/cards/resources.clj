@@ -2029,18 +2029,18 @@
              :effect (effect (trash-cards eid (filter program? (:hosted card)) {:cause-card card}))}]})
 
 (defcard "Mary da Silva"
-  {:implementation "Has a menu when you breach"
+  {:implementation "Access bonus requirement not enforced"
    :events [{:event :breach-server
-             :req (req (and (= :rd target)))
-             :prompt (msg "Access an additional card with " (:title card) "?")
-             :choices {:number (req 1)
-                       :default (req 0)}
-             :msg (msg "access 1"
-                       (quantify target "additional card")
-                       " from R&D")
-             :async true
-             :effect (effect (access-bonus :rd target)
-                             (effect-completed eid))}]})
+             :optional
+             {:prompt "Access 1 additional card?"
+              ;; TODO add the access bonus requirement
+              ;; Important note: breach-access-bonus effects are silent!
+              :req (req (= :rd target))
+              :yes-ability
+              {:msg "access 1 additional card"
+               :async true
+               :effect (effect (access-bonus :rd 1)
+                               (effect-completed eid))}}}]})
 
 (defcard "Maxwell James"
   {:static-abilities [(link+ 1)]

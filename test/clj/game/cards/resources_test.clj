@@ -3893,6 +3893,16 @@
     (dotimes [_ 2]
       (click-prompt state :runner "No action"))))
 
+(deftest ^:kaocha/pending mary-da-silva-no-trigger-on-single-access
+  (do-game
+    (new-game {:corp {:deck [(qty "Hedge Fund" 10)]
+                      :hand ["Hedge Fund"]}
+               :runner {:hand ["Mary da Silva"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Mary da Silva")
+    (run-empty-server state :rd)
+    (click-prompt state :runner "No action")))
+
 (deftest miss-bones-can-be-used-mid-run-in-a-trash-prompt
     ;; Can be used mid-run in a trash-prompt
     (do-game
