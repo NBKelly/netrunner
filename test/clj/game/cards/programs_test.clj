@@ -1955,6 +1955,37 @@
         (core/continue state :corp nil)
         (is (= 0 (get-counters (refresh crypsis) :virus)) "Used up virus token on Crypsis"))))
 
+(deftest cupellation
+  (do-game
+    (new-game {:runner {:hand ["Cupellation"]}
+               :corp {:hand [(qty "Hedge Fund" 5)]
+                      :discard ["Project Beale"]}})
+    (take-credits state :corp)
+    (core/gain state :runner :click 1)
+    (play-from-hand state :runner "Cupellation")
+    (let [cup (get-program state 0)]
+      (run-empty-server state "Archives")
+      ;; No Cupellation host prompt
+      (click-prompt state :runner "Steal")
+      (run-empty-server state "HQ")
+      (is (changed? [(:credit (get-runner)) -1
+                     (count (:hand (get-corp))) -1
+                     (count (:hosted (refresh cup))) 1]
+                    (click-prompt state :runner "[Cupellation] 1 [Credits]: Host a card"))
+          "Card is hosted on Cupellation")
+      (run-empty-server state "HQ")
+      ;; Cupellation breach prompt
+      (click-prompt state :runner "No")
+      ;; No Cupellation host prompt
+      (click-prompt state :runner "No action")
+      (run-empty-server state "HQ")
+      (is (changed? [(:credit (get-runner)) -1
+                     (count (:discard (get-runner))) 1
+                     (count (:discard (get-corp))) 1]
+                    (click-prompt state :runner "Yes")
+                    (dotimes [_ 3] (click-prompt state :runner "No action")))
+          "Cupellation and its hosted card are trashed"))))
+
 (deftest curupira
   (do-game
     (new-game {:runner {:hand ["Curupira"]
@@ -4243,6 +4274,73 @@
       (card-ability state :runner mopus 0)
       (is (= 2 (:credit (get-runner))) "Gain 2cr"))))
 
+(deftest malandragem
+  (do-game
+    (new-game {:runner {:hand ["Malandragem"]}
+               :corp {:hand ["Magnet" "Lotus Field"]
+                      :credits 10}})
+    (play-from-hand state :corp "Magnet" "HQ")
+    (play-from-hand state :corp "Lotus Field" "Archives")
+    (take-credits state :corp)
+    (play-from-hand state :runner "Malandragem")
+    (is (= 2 (get-counters (refresh (get-program state 0)) :power)) "Malandragem has 2 power counters")
+    (run-on state "Archives")
+    (rez state :corp (get-ice state :archives 0))
+    (run-continue state)
+    ;; No Malandragem prompt because ice strength is > 3
+    (is (no-prompt? state :runner))
+    (fire-subs state (refresh (get-ice state :archives 0)))
+    (run-on state "HQ")
+    (rez state :corp (get-ice state :hq 0))
+    (run-continue state)
+    (is (changed? [(get-counters (refresh (get-program state 0)) :power) -1]
+                  (click-prompt state :runner "Yes"))
+        "Spent 1 power counter on Malandragem")
+    (is (= :movement (:phase (get-run))) "Run has bypassed Magnet")
+    (run-jack-out state)
+    (run-on state "HQ")
+    (run-continue state)
+    ;; No Malandragem prompt because it's once per turn
+    (is (no-prompt? state :runner))))
+
+(deftest malandragem-rfg-when-empty
+  (do-game
+    (new-game {:runner {:hand ["Malandragem"]}
+               :corp {:hand ["Magnet"]}})
+    (play-from-hand state :corp "Magnet" "HQ")
+    (take-credits state :corp)
+    (play-from-hand state :runner "Malandragem")
+    (run-on state "HQ")
+    (rez state :corp (get-ice state :hq 0))
+    (run-continue state)
+    (click-prompt state :runner "Yes")
+    (is (= :movement (:phase (get-run))) "Run has bypassed Magnet")
+    (run-jack-out state)
+    (take-credits state :runner)
+    (take-credits state :corp)
+    (run-on state "HQ")
+    (run-continue state)
+    (is (changed? [(count (:rfg (get-runner))) 1]
+                  (click-prompt state :runner "Yes"))
+        "Malandragem was rfg-ed")
+    (is (= :movement (:phase (get-run))) "Run has bypassed Magnet")))
+
+(deftest malandragem-threat
+  (do-game
+    (new-game {:runner {:hand ["Malandragem"]}
+               :corp {:hand ["Lotus Field" "Vanity Project"]}})
+    (play-and-score state "Vanity Project")
+    (play-from-hand state :corp "Lotus Field" "Archives")
+    (take-credits state :corp)
+    (play-from-hand state :runner "Malandragem")
+    (run-on state "Archives")
+    (rez state :corp (get-ice state :archives 0))
+    (run-continue state)
+    (is (changed? [(count (:rfg (get-runner))) 1]
+                  (click-prompt state :runner "Yes"))
+        "RFG Malandragem")
+    (is (= :movement (:phase (get-run))) "Run has bypassed Lotus Field")))
+
 (deftest makler-break-ability-costs-2-for-2-subroutines
     ;; Break ability costs 2 for 2 subroutines
     (do-game
@@ -5758,6 +5856,37 @@
           (card-ability state :runner inti 1)
           (click-card state :runner phero)
           (click-card state :runner phero)))))
+
+(deftest physarum-entangler
+  (do-game
+    (new-game {:runner {:hand [(qty "Physarum Entangler" 2)]}
+               :corp {:hand ["Vanilla" "Whitespace"]}})
+    (play-from-hand state :corp "Vanilla" "HQ")
+    (play-from-hand state :corp "Whitespace" "Archives")
+    (take-credits state :corp)
+    (let [van (get-ice state :hq 0)
+          ws (get-ice state :archives 0)]
+      (play-from-hand state :runner "Physarum Entangler")
+      (click-card state :runner van)
+      (play-from-hand state :runner "Physarum Entangler")
+      (click-card state :runner ws)
+      (run-on state :hq)
+      (rez state :corp van)
+      (run-continue state)
+      (is (no-prompt? state :runner) "No Physarum Entangler prompt")
+      (fire-subs state (refresh van))
+      (run-on state :archives)
+      (rez state :corp ws)
+      (run-continue state)
+      (is (changed? [(:credit (get-runner)) -2]
+                    (click-prompt state :runner "Yes"))
+          "Physarum Entangler cost was paid")
+      (is (= :movement (:phase (get-run))) "Runner has bypassed Whitespace")
+      (run-jack-out state)
+      (take-credits state :runner)
+      (is (changed? [(count (:discard (get-runner))) 2]
+                    (purge state :corp))
+          "Both Physarum Entanglers trashed on purge"))))
 
 (deftest pichacao
   ;; Pichação

@@ -1025,24 +1025,24 @@
                                                 (:discard corp))
                                         :sorted))
              :cost [:credit 1]
-             :msg (msg "host " (:title target))
+             :msg (msg "host " (:title target) " on itself")
              :effect (req (host state side (assoc card :seen true) target)
                           (effect-completed state side eid))}
             {:event :breach-server
              :async true
              :optional {:req (req (= :hq target)
                                   (seq (filter corp? (:hosted card))))
-                        :prompt "Trash Cupellation to access two additional cards?"
+                        :prompt "Trash this program to access 2 additional cards from HQ?"
                         :yes-ability {:async true
                                       :effect (effect (access-bonus :hq 2)
                                                       (effect-completed eid))
                                       :cost [:credit 1 :trash-can]
-                                      :msg "access an additional card"}}}]
+                                      :msg "access 2 additional cards from HQ"}}}]
    :interactions {:access-ability {:label "Host a card"
                                    :req (req (and (empty? (filter corp? (:hosted card)))
                                                   (not (agenda? target))))
                                    :cost [:credit 1]
-                                   :msg (msg "host " (:title target))
+                                   :msg (msg "host " (:title target) " on itself")
                                    :async true
                                    :effect (req (host state side (assoc card :seen true) target)
                                                 (swap! state dissoc :access)
@@ -1964,20 +1964,20 @@
             {:event :encounter-ice
              :interactive (req true)
              :ability-name "Malandragem (rfg)"
-             :optional {:prompt (msg "remove parrots from the game to bypass?")
+             :optional {:prompt "Remove this program from the game to bypass encountered ice?"
                         :req (req (threat-level 4 state))
                         :yes-ability {:cost [:remove-from-game]
-                                      :msg (msg "bypass " (:title current-ice))
+                                      :msg (msg "bypass " (card-str state current-ice))
                                       :effect (req (bypass-ice state))}}}
             {:event :encounter-ice
              :interactive (req true)
-             :ability-name "Malandragem (Power Counter)"
-             :optional {:prompt (msg "spend 1 power counter to bypass " (:title current-ice))
+             :ability-name "Malandragem (Power counter)"
+             :optional {:prompt "Spend 1 power counter to bypass encountered ice?"
                         :once :per-turn
                         :req (req (and (>= 3 (ice-strength state side current-ice))
                                        (<= 1 (get-counters (get-card state card) :power))))
                         :yes-ability {:cost [:power 1]
-                                      :msg (msg "bypass " (:title current-ice))
+                                      :msg (msg "bypass " (card-str state current-ice))
                                       :effect (req (bypass-ice state))}}}]})
 
 (defcard "Mammon"
@@ -2519,17 +2519,15 @@
                                                          :cause-card card}))}
             {:event :encounter-ice
              :optional {:prompt (msg "Pay " (count (:subroutines (get-card state current-ice)))
-                                     " [Credits] to bypass " (:title current-ice) "?")
+                                     " [Credits] to bypass encountered ice?")
                         :req (req (and (not (has-subtype? current-ice "Barrier"))
                                        (same-card? current-ice (:host card))
                                        (can-pay? state :runner eid (:ice context) nil [:credit (count (:subroutines (get-card state current-ice)))])))
                         :yes-ability {:async true
-                                      :msg (msg "pays 1 [Credits] to bypass " (:title current-ice))
+                                      :msg (msg "bypass " (card-str state current-ice))
                                       :effect (req (wait-for
                                                      (pay state side (make-eid state eid) card [:credit (count (:subroutines (get-card state current-ice)))])
-                                                     (let [payment-str (:msg async-result)
-                                                           msg-ab {:msg (str "bypass " (:title (:ice context)))}]
-                                                       (print-msg state side msg-ab card nil payment-str))
+                                                     (system-msg state :runner (:msg async-result))
                                                      (bypass-ice state)
                                                      (effect-completed state side eid)))}}}]})
 

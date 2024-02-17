@@ -149,7 +149,7 @@
 (defcard "Alarm Clock"
   (let [ability {:once :per-turn
                  :req (req (:runner-phase-12 @state))
-                 :msg (msg "make a run on HQ")
+                 :msg "make a run on HQ"
                  :makes-run true
                  :async true
                  :effect (req (register-events
@@ -159,10 +159,10 @@
                                     :unregister-once-resolved true
                                     :duration :end-of-run
                                     :optional
-                                    {:prompt "spend [Click][Click] to bypass this ice?"
+                                    {:prompt "Spend [Click][Click] to bypass encountered ice?"
                                      :yes-ability {:cost [:click 2]
                                                    :req (req (>= (:click runner) 2))
-                                                   :msg (msg "bypass " (:title (:ice context)))
+                                                   :msg (msg "bypass " (card-str state (:ice context)))
                                                    :effect (req (bypass-ice state))}}}])
                               (wait-for
                                 (make-run state :runner (make-eid state eid) :hq card)
@@ -1153,9 +1153,9 @@
              :effect (req (continue-ability
                             state side
                             {:optional
-                             {:prompt (msg "Install " (:printed-title card) " from the heap?")
+                             {:prompt "Install this card from the heap?"
                               :yes-ability {:cost [:lose-click 1]
-                                            :msg (msg "install " (:printed-title card) " from the heap")
+                                            :msg (msg "install " (get-title card) " from the heap")
                                             :async true
                                             :effect (req (let [target-card (first (filter #(= (:printed-title %) (:printed-title card)) (:discard runner)))]
                                                            (runner-install state side (assoc eid :source card :source-type :runner-install) target-card nil)))}}}
@@ -1166,13 +1166,13 @@
                          (some #{:hq} (:successful-run runner-reg))
                          (some #{:rd} (:successful-run runner-reg))
                          (some #{:archives} (:successful-run runner-reg))))
-             :msg (msg "and add itself to the score area as an agenda worth 0 agenda points")
+             :msg "add itself to the score area as an assassination agenda worth 0 agenda points"
              :async true
              :effect (req (as-agenda state :runner card 0)
                           (if (= 3 (count (filter #(= (:printed-title %) (:printed-title card))
                                                   (get-in @state [:runner :scored]))))
-                            (do (system-msg state side "wins the game by assembling exodia")
-                                (win state :runner "assembling exodia")
+                            (do (system-msg state side "wins the game")
+                                (win state :runner "Jeitinho assassination event")
                                 (effect-completed state side eid))
                             (effect-completed state side eid)))}]})
 
