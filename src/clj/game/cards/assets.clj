@@ -2920,38 +2920,35 @@
                  :effect (req (add-one (:cid card) state (get-card state (:card context))))}]})))
 
 (defcard "Warm Reception"
-  ;; When your turn begins, you may derez a card.
-  ;; Then, if there are no ice protecting this server, you may install a card from HQ.
-  ;; You may not score that card this turn."
-    (let [install {:prompt "install a card from HQ"
-                   :async true
-                   :choices {:card #(and (not (operation? %))
-                                         (in-hand? %)
-                                         (corp? %))}
-                   :msg (msg (corp-install-msg target))
-                   :effect (req (wait-for (corp-install state side (make-eid state eid) target nil nil)
-                                          (let [installed-card async-result]
-                                            (register-turn-flag!
-                                              state side
-                                              card :can-score
-                                              (fn [state _ card]
-                                                (if (same-card? card installed-card)
-                                                  ((constantly false) (toast state :corp "Cannot score due to Will to Win." "Warning"))
-                                                  true)))
-                                            (effect-completed state side eid))))}
-          derez {:label "derez a card (start of turn)"
-                 :req (req unprotected)
-                 :prompt "Derez a card"
-                 :choices {:card #(rezzed? %)}
-                 :msg (msg "derez " (:title card) " to derez " (:title target))
-                 :effect (effect
-                           (derez card)
-                           (derez target))}]
-      {:derezzed-events [corp-rez-toast]
-       :events [{:event :corp-turn-begins
+  (let [install {:prompt "Choose a card to install"
                  :async true
-                 :effect (req (wait-for (resolve-ability state side install card nil)
-                                        (continue-ability state side derez card nil)))}]}))
+                 :choices {:card #(and (corp-installable-type? %)
+                                       (in-hand? %))}
+                 :msg (msg (corp-install-msg target))
+                 :effect
+                 (req (wait-for (corp-install state side (make-eid state eid) target nil nil)
+                                (let [installed-card async-result]
+                                  (register-turn-flag!
+                                    state side
+                                    card :can-score
+                                    (fn [state _ card]
+                                      (if (same-card? card installed-card)
+                                        ((constantly false) (toast state :corp "Cannot score due to Warm Reception." "Warning"))
+                                        true)))
+                                  (effect-completed state side eid))))}
+        derez {:label "Derez another card (start of turn)"
+               :req (req unprotected)
+               :prompt "Choose another card to derez"
+               :choices {:not-self true
+                         :card #(rezzed? %)}
+               :msg (msg "derez itself to derez " (card-str state target))
+               :effect (effect (derez card)
+                               (derez target))}]
+    {:derezzed-events [corp-rez-toast]
+     :events [{:event :corp-turn-begins
+               :async true
+               :effect (req (wait-for (resolve-ability state side install card nil)
+                                      (continue-ability state side derez card nil)))}]}))
 
 (defcard "Watchdog"
   (letfn [(not-triggered? [state]
