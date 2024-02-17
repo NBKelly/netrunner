@@ -143,13 +143,13 @@
    :effect (effect (damage eid :brain dmg {:card card}))})
 
 (defn rfg-on-empty
-  "Used in :event maps for effects like Daily Casts"
+  "Used in :event maps for effects like Malandragem"
   [counter-type]
   {:event :counter-added
    :req (req (and (same-card? card target)
                   (not (pos? (get-counters card counter-type)))))
    :effect (effect (system-msg (str "removes " (:title card) " from the game"))
-                   (move state side card :rfg))})
+                   (move card :rfg))})
 
 (defn trash-on-empty
   "Used in :event maps for effects like Daily Casts"
