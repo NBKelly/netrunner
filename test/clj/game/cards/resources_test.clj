@@ -253,6 +253,36 @@
       (is (= 2 (count (:hand (get-runner)))) "Card was added to grip")
       (is (= 1 (count (:discard (get-runner)))) "Asmund Pudlat was trashed"))))
 
+(deftest amelia-earhart
+  (do-game
+    (new-game {:runner {:hand ["Amelia Earhart" "The Maker's Eye" (qty "Legwork" 2)]
+                        :credits 10}
+               :corp {:hand [(qty "Hedge Fund" 3)]
+                      :deck [(qty "Hedge Fund" 10)]
+                      :credits 10}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Amelia Earhart")
+    (let [amelia (get-resource state 0)]
+      (dotimes [_ 2]
+        (is (changed? [(get-counters (refresh amelia) :power) 1]
+                      (play-run-event state "Legwork" :hq)
+                      (dotimes [_ 3]
+                        (click-prompt state :runner "No action")))
+          "Amelia Earhart gained 1 power counter"))
+      (is (changed? [(get-counters (refresh amelia) :power) 1]
+                      (play-run-event state "The Maker's Eye" :rd)
+                      (dotimes [_ 3]
+                        (click-prompt state :runner "No action")))
+          "Amelia Earhart gained 1 power counter")
+      (take-credits state :runner)
+      (take-credits state :corp)
+      (is (:runner-phase-12 @state) "Runner in Step 1.2")
+      (end-phase-12 state :runner)
+      (is (changed? [(:credit (get-corp)) -10
+                     (count (:discard (get-runner))) 1]
+                    (click-prompt state :runner "Yes"))
+          "Corp lost 10 credits and Amelia Earhart trashed"))))
+
 (deftest asmund-pudlat-nothing-to-install-trashes-asmund-next-turn
   (do-game
     (new-game {:runner {:hand ["Asmund Pudlat"]}})
@@ -3410,6 +3440,28 @@
     (is (zero? (count-tags state)) "Runner has no tags during turn")
     (take-credits state :runner)
     (is (= 1 (count-tags state)) "Took 1 tag")))
+
+(deftest juli-moreira-lee
+  (do-game
+    (new-game {:runner {:hand ["Juli Moreira Lee" "The Artist"]
+                        :credits 10}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "The Artist")
+    (play-from-hand state :runner "Juli Moreira Lee")
+    (let [artist (get-resource state 0)
+          juli (get-resource state 1)]
+      (is (changed? [(get-counters (refresh juli) :power) -1
+                     (:click (get-runner)) 0]
+                    (card-ability state :runner artist 0))
+          "Runner gained 1 click from Juli Moreira Lee")
+      (is (changed? [(get-counters (refresh juli) :power) 0]
+                    (card-ability state :runner artist 1))
+          "No further Juli Moreira Lee trigger")
+      (take-credits state :runner)
+      (take-credits state :corp)
+      (core/add-counter state :runner (refresh juli) :power -2)
+      (card-ability state :runner artist 0)
+      (is (= 1 (count (:discard (get-runner)))) "Juli Moreira Lee trashed"))))
 
 (deftest kasi-string
   ;; Kasi String

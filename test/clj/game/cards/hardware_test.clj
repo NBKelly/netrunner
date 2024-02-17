@@ -134,6 +134,25 @@
     (play-from-hand state :runner "Akamatsu Mem Chip")
     (is (= 5 (core/available-mu state)) "Gain 1 memory")))
 
+(deftest alarm-clock
+  (do-game
+    (new-game {:corp {:hand ["Ice Wall"]}
+               :runner {:hand ["Alarm Clock"]}})
+    (play-from-hand state :corp "Ice Wall" "HQ")
+    (rez state :corp (get-ice state :hq 0))
+    (take-credits state :corp)
+    (play-from-hand state :runner "Alarm Clock")
+    (take-credits state :runner)
+    (take-credits state :corp)
+    (end-phase-12 state :runner)
+    (click-prompt state :runner "Yes")
+    (is (:run @state) "Run has started")
+    (run-continue state)
+    (changes-val-macro -2 (:click (get-runner))
+                       "Costs 2 clicks"
+                       (click-prompt state :runner "Yes"))
+    (is (= :movement (:phase (get-run))) "Run has bypassed Ice Wall")))
+
 (deftest aniccam-trash-trash-before-and-after-install-does-not-trigger
   ;; Aniccam
   (doseq [first-side [:corp :runner]
