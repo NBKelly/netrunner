@@ -2105,25 +2105,25 @@
                                   (effect-completed state side eid))))}]
     {:events [{:event :run-ends
                :effect (req (let [cid (:cid card)
-                                  ices (get-in card [:special :thunderbolt])]
+                                  ices (get-in card [:special :thunderbolt-armaments])]
                               (doseq [i ices]
                                 (when-let [ice (get-card state i)]
                                   (remove-sub! state side ice #(= cid (:from-cid %))))))
-                            (update! state side (dissoc-in card [:special :thunderbolt])))}
+                            (update! state side (dissoc-in card [:special :thunderbolt-armaments])))}
               {:event :rez
                :req (req (and run
                               (ice? (:card context))
                               (or (has-subtype? (:card context) "AP")
                                   (has-subtype? (:card context) "Destroyer"))))
-               :msg (msg "give " (:title (:card context))
+               :msg (msg "give " (card-str state (:card context))
                          " +1 strength and \""
                          (:label thunderbolt-sub)
-                         "\" after it's printed subroutines")
+                         "\" after its other subroutines")
                :async true
                :effect (effect (add-extra-sub! (get-card state (:card context))
                                                thunderbolt-sub
                                                (:cid card) {:front false})
-                               (update! (update-in card [:special :thunderbolt]
+                               (update! (update-in card [:special :thunderbolt-armaments]
                                                    #(conj % (:card context))))
                                (pump-ice (:card context) 1 :end-of-run)
                                (effect-completed eid))}]}))

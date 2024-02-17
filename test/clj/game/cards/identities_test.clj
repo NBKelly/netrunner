@@ -4914,6 +4914,42 @@
         (click-prompt state :runner "Suffer 1 core damage")))
     (is (= 1 (:brain-damage (get-runner))) "Runner took 1 core damage")))
 
+(deftest thunderbolt-armaments
+  (do-game
+    (new-game {:corp {:id "Thunderbolt Armaments"
+                      :deck ["Tithe" "Swordsman" "Vanilla"]}
+               :runner {:hand ["Smartware Distributor"]}})
+    (play-from-hand state :corp "Tithe" "HQ")
+    (play-from-hand state :corp "Swordsman" "R&D")
+    (play-from-hand state :corp "Vanilla" "Archives")
+    (let [tithe (get-ice state :hq 0)
+          sw (get-ice state :rd 0)
+          van (get-ice state :archives 0)]
+      (take-credits state :corp)
+      (core/gain state :runner :click 1)
+      (play-from-hand state :runner "Smartware Distributor")
+      (run-on state :archives)
+      (rez state :corp van)
+      (run-continue state)
+      (is (= 0 (get-strength (refresh van))) "No strength buff to Vanilla")
+      (fire-subs state van)
+      (run-on state :hq)
+      (rez state :corp tithe)
+      (run-continue state)
+      (is (= 2 (get-strength (refresh tithe))) "Tithe strength is buffed")
+      (is (= 3 (count (:subroutines (refresh tithe)))) "Tithe has 3 subroutines")
+      (card-subroutine state :corp tithe 2)
+      (click-prompt state :runner "End the run")
+      (run-on state :rd)
+      (rez state :corp sw)
+      (run-continue state)
+      (is (= 3 (get-strength (refresh sw))) "Swordsman strength is buffed")
+      (is (= 3 (count (:subroutines (refresh sw)))) "Swordsman has 3 subroutines")
+      (card-subroutine state :corp sw 2)
+      (click-prompt state :runner "Trash 1 installed card")
+      (click-card state :runner "Smartware Distributor")
+      (is (:run @state) "Run continues"))))
+
 (deftest weyland-consortium-because-we-built-it-pay-credits-prompt
     ;; Pay-credits prompt
     (do-game

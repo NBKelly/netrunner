@@ -317,31 +317,28 @@
                                   (trash state :corp eid card {:cause-card card}))))))}]})
 
 (defcard "Brasília Government Grid"
-  ;; When you rez an ice during a run against this server, you may derez another card.
-  ;; If you do, the rezzed ice gains +X strength for the remainder of the run.
-  ;; X is the printed rez cost of the derezzed card. Use this ability only once per run.
-  ;; Limit 1 region per server."
   {:events [{:event :rez
              :req (req (and (ice? (:card context))
                             this-server run
                             (some #(and (ice? %)
-                                        (rezzed? %)
                                         (not (same-card? % (:card context))))
-                                  (all-installed state :corp))))
+                                  (all-active-installed state :corp))))
              :effect (req
                        (let [rezzed-card (:card context)]
                          (continue-ability
                            state side
                            {:optional
-                            {:prompt "derez another ice?"
-                             :waiting-prompt (msg "corp to use " (:title card))
+                            {:prompt (str "Derez another ice to give "
+                                          (:title rezzed-card)
+                                          " +3 strength for the remainder of the run?")
+                             :waiting-prompt true
                              :once :per-turn
                              :async true
                              :yes-ability {:choices {:card #(and (ice? %)
                                                                  (rezzed? %)
                                                                  (not (same-card? % rezzed-card)))}
                                            :async true
-                                           :msg (msg "derez " (:title target) " to increase the strength of " (:title rezzed-card) " by " 3 " for the remainder of the run")
+                                           :msg (msg "derez " (card-str state target) " to give " (card-str state rezzed-card) " +3 strength for the remainder of the run")
                                            :effect (req (derez state side (get-card state target))
                                                         (pump-ice state side rezzed-card 3 :end-of-run)
                                                         (effect-completed state side eid))}}}

@@ -2110,6 +2110,39 @@
       (click-prompt state :corp "New remote")
       (is (some? (get-content state :remote8 0))))))
 
+(deftest lightning-laboratory
+  (do-game
+    (new-game {:corp {:hand ["Lightning Laboratory" "Archer" "Bloop" "Rime"]}})
+    (core/gain state :corp :click 1)
+    (play-and-score state "Lightning Laboratory")
+    (play-from-hand state :corp "Archer" "HQ")
+    (play-from-hand state :corp "Bloop" "HQ")
+    (play-from-hand state :corp "Rime" "HQ")
+    (let [ll (get-scored state :corp 0)
+          archer (get-ice state :hq 0)
+          bloop (get-ice state :hq 1)
+          rime (get-ice state :hq 2)]
+      (is (= 1 (get-counters (refresh ll) :agenda)) "Lightning Laboratory should have 1 agenda counter")
+      (take-credits state :corp)
+      (run-on state :hq)
+      (click-prompt state :corp "Yes")
+      (click-card state :corp archer)
+      (click-card state :corp bloop)
+      (is (rezzed? (refresh archer)))
+      (is (rezzed? (refresh bloop)))
+      (rez state :corp rime)
+      (run-continue state)
+      (run-continue state)
+      (run-jack-out state)
+      (is (no-prompt? state :corp) "No Lightning Laboratory prompt at the end of the run")
+      (take-credits state :runner)
+      (is (not (no-prompt? state :corp)) "Corp has Lightning Laboratory prompt")
+      (click-card state :corp archer)
+      (click-card state :corp rime)
+      (is (not (rezzed? (refresh archer))))
+      (is (not (rezzed? (refresh rime))))
+      (is (rezzed? (refresh bloop))))))
+
 (deftest longevity-serum-basic-behavior
     ;; Basic behavior
     (do-game

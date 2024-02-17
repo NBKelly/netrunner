@@ -101,3 +101,41 @@
   (assert (every? #(= 'testing (first %)) testing-blocks))
   (let [bundles (for [block testing-blocks] `(let [~@let-bindings] ~block))]
     `(do ~@bundles)))
+
+;; TODO these are from upstream and should be replaced when upstream changes are brought in
+
+(defn bad-usage [n]
+  `(throw (new IllegalArgumentException (str ~n " should only be used inside 'is'"))))
+
+#_{:clj-kondo/ignore [:unused-binding]}
+(defmacro changed?
+  "bindings & body
+  Each binding pair must be an expression and a number.
+  The expression will be evaluated before the body and then after, and the two results
+  will be compared. If the difference is equal to the binding's number, then the test is
+  a pass. Otherwise, it will be a failure. Each binding pair generates a new assertion."
+  [bindings & body]
+  (bad-usage "changed?"))
+
+(defmethod clojure.test/assert-expr 'changed?
+  [msg [_changed bindings & body]]
+  (let [exprs (take-nth 2 bindings)
+        amts (take-nth 2 (drop 1 bindings))
+        init-binds (repeatedly gensym)
+        end-binds (repeatedly gensym)
+        pairs (mapv vector
+                    amts
+                    (map #(list `quote %) exprs)
+                    init-binds
+                    end-binds)]
+    `(let [~@(interleave init-binds exprs)
+           _# (do ~@body)
+           ~@(interleave end-binds exprs)]
+       (doseq [[amt# expr# init# end#] ~pairs
+               :let [expected# (+ init# amt#)
+                     actual-change# (- end# init#)]]
+         (clojure.test/do-report
+           {:type (if (= actual-change# amt#) :pass :fail)
+            :expected amt#
+            :actual actual-change#
+            :message (format "%s\n%s => (%s to %s)" ~msg expr# init# end#)})))))

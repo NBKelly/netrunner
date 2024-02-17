@@ -2920,38 +2920,35 @@
                  :effect (req (add-one (:cid card) state (get-card state (:card context))))}]})))
 
 (defcard "Warm Reception"
-  ;; When your turn begins, you may derez a card.
-  ;; Then, if there are no ice protecting this server, you may install a card from HQ.
-  ;; You may not score that card this turn."
-    (let [install {:prompt "install a card from HQ"
-                   :async true
-                   :choices {:card #(and (not (operation? %))
-                                         (in-hand? %)
-                                         (corp? %))}
-                   :msg (msg (corp-install-msg target))
-                   :effect (req (wait-for (corp-install state side (make-eid state eid) target nil nil)
-                                          (let [installed-card async-result]
-                                            (register-turn-flag!
-                                              state side
-                                              card :can-score
-                                              (fn [state _ card]
-                                                (if (same-card? card installed-card)
-                                                  ((constantly false) (toast state :corp "Cannot score due to Will to Win." "Warning"))
-                                                  true)))
-                                            (effect-completed state side eid))))}
-          derez {:label "derez a card (start of turn)"
-                 :req (req unprotected)
-                 :prompt "Derez a card"
-                 :choices {:card #(rezzed? %)}
-                 :msg (msg "derez " (:title card) " to derez " (:title target))
-                 :effect (effect
-                           (derez card)
-                           (derez target))}]
-      {:derezzed-events [corp-rez-toast]
-       :events [{:event :corp-turn-begins
+  (let [install {:prompt "Choose a card to install"
                  :async true
-                 :effect (req (wait-for (resolve-ability state side install card nil)
-                                        (continue-ability state side derez card nil)))}]}))
+                 :choices {:card #(and (corp-installable-type? %)
+                                       (in-hand? %))}
+                 :msg (msg (corp-install-msg target))
+                 :effect
+                 (req (wait-for (corp-install state side (make-eid state eid) target nil nil)
+                                (let [installed-card async-result]
+                                  (register-turn-flag!
+                                    state side
+                                    card :can-score
+                                    (fn [state _ card]
+                                      (if (same-card? card installed-card)
+                                        ((constantly false) (toast state :corp "Cannot score due to Warm Reception." "Warning"))
+                                        true)))
+                                  (effect-completed state side eid))))}
+        derez {:label "Derez another card (start of turn)"
+               :req (req unprotected)
+               :prompt "Choose another card to derez"
+               :choices {:not-self true
+                         :card #(rezzed? %)}
+               :msg (msg "derez itself to derez " (card-str state target))
+               :effect (effect (derez card)
+                               (derez target))}]
+    {:derezzed-events [corp-rez-toast]
+     :events [{:event :corp-turn-begins
+               :async true
+               :effect (req (wait-for (resolve-ability state side install card nil)
+                                      (continue-ability state side derez card nil)))}]}))
 
 (defcard "Watchdog"
   (letfn [(not-triggered? [state]
@@ -2994,12 +2991,11 @@
                 :msg "gain 3 [Credits]"
                 :effect (req (gain-credits state side eid 3))}
                {:cost [:click 1 :power 5]
-                :label "move an installed resource to the stack"
-                :prompt "Choose a resource to add to the top of the stack"
-                :choices {:card #(and (resource? %)
-                                      (installed? %))}
+                :label "Gain 6 [Credits] and add a resource to the top of the stack"
+                :prompt "Choose a resource"
+                :choices {:card #(resource? %)}
                 :async true
-                :msg (msg "gain 7 [Credits] and add " (:title target) " to the top of the stack")
+                :msg (msg "gain 6 [Credits] and add " (:title target) " to the top of the stack")
                 :effect (req
                           (wait-for (gain-credits state side 6)
                                     (move state :runner target :deck {:front true})

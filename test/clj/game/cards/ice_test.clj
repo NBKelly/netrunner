@@ -4196,6 +4196,36 @@
       (take-credits state :corp 2)
       (is (= 5 (get-strength (refresh lotus))) "Lotus Field strength increased"))))
 
+(deftest ^:kaocha/pending lycian-multi-munition
+  (do-game
+    (new-game {:corp {:hand ["Lycian Multi-Munition"]}
+               :runner {:hand ["Marjanah"]}})
+    (play-from-hand state :corp "Lycian Multi-Munition" "HQ")
+    (take-credits state :corp)
+    (let [lmm (get-ice state :hq 0)]
+      (play-from-hand state :runner "Marjanah")
+      (run-on state "HQ")
+      (rez state :corp lmm)
+      (click-prompt state :corp "Code Gate")
+      (click-prompt state :corp "Sentry")
+      (click-prompt state :corp "Barrier")
+      (run-continue state)
+      (is (changed? [(:credit (get-runner)) -1
+                     (:click (get-runner)) -1]
+                    (card-subroutine state :corp lmm 0))
+          "Runner lost 1 credit and 1 click")
+      (is (changed? [(count (get-program state)) -1
+                     (count (:discard (get-runner))) 1]
+                    (card-subroutine state :corp lmm 1)
+                    (click-card state :corp (get-program state 0)))
+          "Runner program trashed")
+      (is (changed? [(:credit (get-corp)) 1]
+                    (card-subroutine state :corp lmm 2)
+                    (is (not (:run @state)) "Run has ended"))
+          "Corp gained 1 credit")
+      (take-credits state :runner)
+      (is (not (rezzed? (refresh lmm))) "Lycian Multi-Munition was derezzed at the end of turn"))))
+
 (deftest macrophage-happy-path
   ;; Happy Path
   (do-game
@@ -6444,6 +6474,29 @@
       (click-prompt state :corp "0 [Credits]")
       (click-prompt state :runner "1 [Credits]")
       (is (not (:run @state)) "Run ended"))))
+
+(deftest sorocaban-blade
+  (do-game
+    (new-game {:corp {:hand ["Sorocaban Blade"]}
+               :runner {:hand ["Smartware Distributor" "Marjanah" "Simulchip"]}})
+    (play-from-hand state :corp "Sorocaban Blade" "HQ")
+    (take-credits state :corp)
+    (play-from-hand state :runner "Smartware Distributor")
+    (play-from-hand state :runner "Marjanah")
+    (play-from-hand state :runner "Simulchip")
+    (run-on state "HQ")
+    (let [sb (get-ice state :hq 0)]
+      (rez state :corp sb)
+      (run-continue state)
+      (fire-subs state sb)
+      (is (changed? [(count (:discard (get-runner))) 0]
+                    (click-prompt state :corp "Done"))
+          "Trashed no resource")
+      (is (changed? [(count (:discard (get-runner))) 1]
+                    (click-card state :corp (get-hardware state 0)))
+          "Trashed 1 hardware")
+      (is (no-prompt? state :corp) "No more Sorocaban Blade prompts")
+      )))
 
 (deftest special-offer
   ;; Special Offer trashes itself and updates the run position
