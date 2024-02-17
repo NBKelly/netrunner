@@ -5377,6 +5377,17 @@
     (is (no-prompt? state :runner))
     (is (zero? (count-tags state)) "No tag gained during the run")))
 
+(deftest privileged-access-jarogniew-mercs
+  (do-game
+    (new-game {:runner {:hand ["Privileged Access"]
+                        :discard ["Jarogniew Mercs" "Verbal Plasticity"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Privileged Access")
+    (run-continue state)
+    (click-prompt state :runner "Jarogniew Mercs")
+    (is (no-prompt? state :runner))
+  ))
+
 (deftest process-automation
   ;; Process Automation
   (do-game
