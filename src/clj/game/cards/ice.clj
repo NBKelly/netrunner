@@ -2507,13 +2507,16 @@
   (morph-ice "Sentry" "Code Gate" trash-program-sub))
 
 (defcard "Lycian Multi-Munition"
-  (letfn [(curare-choice [options]
-            {:prompt "Choose a subtype for Curare or press 'Done'"
-             :waiting-prompt "corp to add subtypes"
-             :choices options
+  (letfn [(ice-subtype-choice [choices]
+            {:prompt "Choose an ice subtype"
+             :waiting-prompt true
+             :choices choices
              :effect (req (if (= target "Done")
                             (effect-completed state side eid)
-                            (do
+                            (let [new-choices (->> choices
+                                                   (remove #{target})
+                                                   (#(conj % "Done"))
+                                                   distinct)]
                               ;; note this is a lingering ability and persists so
                               ;; long as the card is rezzed
                               ;; if the card is hushed, it will not derez, so the subtypes will stay!
@@ -2527,9 +2530,9 @@
                                    :value target}))
                               (continue-ability
                                 state side
-                                (curare-choice (remove #{target} options))
+                                (ice-subtype-choice new-choices)
                                 card nil))))})]
-    {:on-rez {:effect (effect (continue-ability (curare-choice ["Barrier" "Code Gate" "Sentry" "Done"]) card nil))}
+    {:on-rez {:effect (effect (continue-ability (ice-subtype-choice ["Barrier" "Code Gate" "Sentry"]) card nil))}
      :derez-effect {:effect (req (unregister-effects-for-card state side card #(= :gain-subtype (:type %))))}
      :static-abilities [{:type :gain-subtype
                          :req (req (and (same-card? card target) (:subtype-target card)))
