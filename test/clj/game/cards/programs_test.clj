@@ -4230,6 +4230,40 @@
           lm (first (:hosted (refresh an)))]
       (is (= 4 (get-strength lm))))))
 
+(deftest lobisomem
+  (do-game
+    (new-game {:corp {:hand ["Enigma" "Vanilla"]}
+               :runner {:hand ["Lobisomem"]
+                        :credits 20}})
+    (play-from-hand state :corp "Enigma" "HQ")
+    (play-from-hand state :corp "Vanilla" "Archives")
+    (take-credits state :corp)
+    (play-from-hand state :runner "Lobisomem")
+    (let [lob (get-program state 0)]
+      (is (= 1 (get-counters (refresh lob) :power)))
+      (run-on state "HQ")
+      (rez state :corp (get-ice state :hq 0))
+      (run-continue state)
+      (is (changed? [(get-counters (refresh lob) :power) 0]
+                    (card-ability state :runner lob 0)
+                    (click-prompt state :runner "End the run")
+                    (click-prompt state :runner "Done"))
+          "No power counter gained for non-fully breaking a code gate")
+      (is (changed? [(get-counters (refresh lob) :power) 1]
+                    (core/play-dynamic-ability state :runner {:dynamic "auto-pump-and-break" :card (refresh lob)}))
+          "1 power counter gained for fully breaking a code gate")
+      (core/continue state :corp nil)
+      (run-jack-out state)
+      (run-on state "Archives")
+      (rez state :corp (get-ice state :archives 0))
+      (run-continue state)
+      (is (changed? [(:credit (get-runner)) -1
+                     (get-counters (refresh lob) :power) -1]
+                    (card-ability state :runner lob 1)
+                    (click-prompt state :runner "1")
+                    (click-prompt state :runner "End the run"))
+          "Runner spent 1 credit and 1 hosted power counter to fully break Vanilla"))))
+
 (deftest lustig
   ;; Lustig
   (do-game
@@ -4817,6 +4851,53 @@
       (click-card state :runner imp)
       (is (zero? (get-counters (refresh imp) :virus)) "Imp lost its final virus counter")
       (is (zero? (get-counters (refresh imp) :virus)) "Musaazi lost its virus counter"))))
+
+(deftest muse-install-from-the-stack
+  (do-game
+    (new-game {:runner {:deck ["Ika" "Fermenter" "Leprechaun"]
+                        :hand ["Muse"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Muse")
+    (let [muse (get-program state 0)]
+      (click-prompt state :runner "Stack")
+      (is (= 3 (count (:choices (prompt-map :runner)))) "Ika, Fermenter and 'Done' are listed")
+      (is (changed? [(count (:deck (get-runner))) -1
+                    (:credit (get-runner)) -1]
+          (click-prompt state :runner "Fermenter"))
+          "Fermenter installed from the stack")
+      (is (= 1 (count (:hosted (refresh muse)))) "Fermenter is hosted on Muse"))))
+
+(deftest muse-install-from-the-grip
+  (do-game
+    (new-game {:runner {:hand [(qty "Muse" 2) "Marjanah"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Muse")
+    (let [muse (get-program state 0)]
+      (click-prompt state :runner "Grip")
+      (is (= 2 (count (:choices (prompt-map :runner)))) "Marjanah and 'Done' are listed")
+      (is (changed? [(count (:hand (get-runner))) -1
+                    (:credit (get-runner)) 0]
+          (click-prompt state :runner "Marjanah"))
+          "Marjanah installed from the grip")
+      (is (= 1 (count (:hosted (refresh muse)))) "Marjanah is hosted on Muse"))))
+
+(deftest muse-install-trojan-from-the-heap
+  (do-game
+    (new-game {:runner {:hand ["Muse"]
+                        :discard ["Slap Vandal" "Muse"]}
+               :corp {:hand ["Vanilla"]}})
+    (play-from-hand state :corp "Vanilla" "HQ")
+    (let [vanilla (get-ice state :hq 0)]
+      (take-credits state :corp)
+      (play-from-hand state :runner "Muse")
+      (click-prompt state :runner "Heap")
+      (is (= 2 (count (:choices (prompt-map :runner)))) "Slap Vandal and 'Done' are listed")
+      (is (changed? [(count (:discard (get-runner))) -1
+                    (:credit (get-runner)) -1]
+          (click-prompt state :runner "Slap Vandal")
+          (click-card state :runner vanilla))
+        "Slap Vandal installed from the heap")
+    (is (= "Slap Vandal" (:title (first (:hosted (refresh vanilla))))) "Slap Vandal is hosted on Vanilla"))))
 
 (deftest na-not-k
   ;; Na'Not'K - Strength adjusts accordingly when ice installed during run
@@ -5826,6 +5907,60 @@
       (is (= 4 (get-counters (refresh plague) :virus)) "Plague gained 2 counters")
       (run-empty-server state "Archives")
       (is (= 4 (get-counters (refresh plague) :virus)) "Plague did not gain counters"))))
+
+(deftest pressure-spike
+  (do-game
+    (new-game {:corp {:hand ["Eli 1.0" "Chiyashi" "Vanity Project"]
+                      :credits 20}
+               :runner {:hand ["Pressure Spike"]
+                        :credits 10}})
+    (play-from-hand state :corp "Eli 1.0" "Archives")
+    (play-from-hand state :corp "Chiyashi" "HQ")
+    (take-credits state :corp)
+    (play-from-hand state :runner "Pressure Spike")
+    (let [ps (get-program state 0)]
+      (run-on state "Archives")
+      (rez state :corp (get-ice state :archives 0))
+      (run-continue state)
+      (is (changed? [(:credit (get-runner)) -4]
+                    (core/play-dynamic-ability state :runner {:dynamic "auto-pump-and-break" :card (refresh ps)}))
+          "Runner spent 4 credits to fully break Eli 1.0")
+      (core/continue state :corp nil)
+      (run-jack-out state)
+      (take-credits state :runner)
+      (play-and-score state "Vanity Project")
+      (take-credits state :corp)
+      (run-on state "HQ")
+      (rez state :corp (get-ice state :hq 0))
+      (run-continue state)
+      (is (changed? [(:credit (get-runner)) -2
+                     (get-strength (refresh ps)) 9]
+                    (card-ability state :runner (refresh ps) 2))
+          "Runner spent 2 credits to match ice strength")
+      (card-ability state :runner (refresh ps) 0)
+      (click-prompt state :runner "End the run")
+      (click-prompt state :runner "Done"))))
+
+(deftest ^:kaocha/pending pressure-spike-once-per-run-ability
+  (do-game
+    (new-game {:corp {:hand ["Chiyashi" "Vanity Project"]
+                      :credits 20}
+               :runner {:hand ["Pressure Spike"]
+                        :credits 10}})
+    (play-and-score state "Vanity Project")
+    (play-from-hand state :corp "Chiyashi" "HQ")
+    (take-credits state :corp)
+    (play-from-hand state :runner "Pressure Spike")
+    (let [ps (get-program state 0)]
+      (run-on state "HQ")
+      (rez state :corp (get-ice state :hq 0))
+      (run-continue state)
+      (is (changed? [(:credit (get-runner)) -2
+                     (get-strength (refresh ps)) 9]
+                    (card-ability state :runner (refresh ps) 2)
+                    ;; second pump shouldn't be allowed
+                    (card-ability state :runner (refresh ps) 2))
+          "Runner spent 2 credits to match ice strength"))))
 
 (deftest progenitor-hosting-hivemind-using-virus-breeding-ground-issue-738
     ;; Hosting Hivemind, using Virus Breeding Ground. Issue #738

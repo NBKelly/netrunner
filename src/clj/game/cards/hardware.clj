@@ -422,11 +422,10 @@
                                          card nil))}})
         access-ability {:cost [:click 1 :power 1]
                         :req (req (some #{:rd} (:successful-run runner-reg)))
-                        :label "Access the top card of R&D"
-                        :msg "access the top card of R&D"
+                        :label "Breach R&D"
+                        :msg "breach R&D"
                         :async true
-                        :effect (req
-                                  (breach-server state side eid [:rd] #_{:no-root true}))}]
+                        :effect (effect (breach-server eid [:rd] #_{:no-root true}))}]
     {:data {:counter {:power 2}}
      :abilities [access-ability]
      :events [(trash-on-empty :power)
