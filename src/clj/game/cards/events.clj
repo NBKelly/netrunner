@@ -57,8 +57,9 @@
                            total-cards-accessed]]
    [game.core.sabotage :refer [sabotage-ability]]
    [game.core.say :refer [system-msg]]
-   [game.core.servers :refer [central->name is-central? is-remote? target-server unknown->kw zone->name
-                              remote->name zones->sorted-names]]
+   [game.core.servers :refer [central->name is-central? is-remote? remote->name
+                              target-server unknown->kw zone->name
+                              zones->sorted-names]]
    [game.core.set-aside :refer [get-set-aside set-aside]]
    [game.core.shuffling :refer [shuffle! shuffle-into-deck]]
    [game.core.tags :refer [gain-tags lose-tags tag-prevent]]
