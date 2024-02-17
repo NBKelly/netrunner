@@ -2145,22 +2145,27 @@
             [card]
             (not (or (has-subtype? card "Caïssa")
                      (= (:title card) "Ika"))))
-          (brownie-fn [where]
-            {:prompt "Choose a program to install"
-             :msg (req (if (not= target "No install")
-                         (str "install " (:title target))
-                         (str "shuffle their Stack")))
-             :choices (req (conj (filter #(and (can-pay? state side
-                                                         (assoc eid :source card :source-type :runner-install)
-                                                         % nil [:credit (install-cost state side %)])
-                                               (not (has-subtype? % "Daemon")))
-                                         (vec (sort-by :title (filter program? (where runner)))))
-                                 "No install"))
+          (muse-abi [where]
+            {:prompt "Choose a non-daemon program"
+             :msg (msg (if (= target "Done")
+                         (str "shuffle the stack")
+                         (str "install " (:title target))))
+             :choices (req (concat
+                             (->> (where runner)
+                                  (filter
+                                    #(and (program? %)
+                                          (not (has-subtype? % "Daemon"))
+                                          (can-pay? state side
+                                                    (assoc eid :source card :source-type :runner-install)
+                                                    % nil [:credit (install-cost state side %)])))
+                                  (sort-by :title)
+                                  (seq))
+                             ["Done"]))
              :async true
              :effect (req (when (= :deck where)
                             (trigger-event state side :searched-stack nil)
                             (shuffle! state side :deck))
-                          (if (not= target "No install")
+                          (if (not= target "Done")
                             ;; does the card need to be installed on muse?
                             (if-not (has-subtype? target "Trojan")
                               (runner-install state side (assoc eid :source card :source-type :runner-install) target {:host-card (get-card state card)})
@@ -2172,24 +2177,22 @@
                                 (let [target-card target]
                                   (continue-ability
                                     state side
-                                    {:prompt (msg "choose an ice to host " (:title target-card))
+                                    {:prompt (msg "Choose an ice to host " (:title target-card))
                                      :choices {:card #(and (installed? %)
                                                            (ice? %))}
                                      :async true
                                      :effect (req (runner-install state side (assoc eid :source card :source-type :runner-install) target-card {:host-card (get-card state target)}))}
                                     card nil))))
-                            ;;declined to install
-                            (when (= where :deck)
-                              (system-msg state side "shuffles the Stack"))))})]
+                            ;; declined to install
+                            (effect-completed state side eid)))})]
     {:on-install {:async true
-                  :prompt "Install from where?"
-                  :choices (req [(when-not (zone-locked? state :runner :discard) "Heap")
-                                 "Grip" "Stack"])
-                  :msg (msg "install a program from their " target)
+                  :prompt "Choose where to install from"
+                  :choices (req ["Grip" "Stack"
+                                 (when-not (zone-locked? state :runner :discard) "Heap")])
+                  :msg (msg "search the " target " for a non-daemon program to install")
                   :effect (effect (continue-ability
-                                    (brownie-fn (if (= "Stack" target) :deck
-                                                    (if (= "Grip" target) :hand
-                                                        :discard)))
+                                    (muse-abi (if (= "Stack" target) :deck
+                                                  (if (= "Grip" target) :hand :discard)))
                                     card nil))}}))
 
 (defcard "Na'Not'K"
@@ -2580,7 +2583,8 @@
              :effect (effect (add-counter :runner card :virus 2))}]})
 
 (defcard "Pressure Spike"
-  (auto-icebreaker {:abilities [(break-sub 1 1 "Barrier")
+  (auto-icebreaker {:implementation "Once per run restriction not enforced"
+                    :abilities [(break-sub 1 1 "Barrier")
                                 (strength-pump 2 3)
                                 (strength-pump 2 9 :end-of-encounter {:req (req (threat-level 3 state))})]}))
 
