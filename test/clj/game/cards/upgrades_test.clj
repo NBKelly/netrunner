@@ -554,7 +554,36 @@
       (is (nil? (get-run)) "Run has ended")
       (is (empty? (get-content state :remote1)) "Black Level Clearance has been trashed")))
 
-(deftest breaker-bay-grid
+(deftest brasilia-government-grid
+  (do-game
+    (new-game {:corp {:hand ["Brasília Government Grid" "Rime" (qty "Vanilla" 2)]}})
+    (core/gain state :corp :click 1)
+    (play-from-hand state :corp "Brasília Government Grid" "New remote")
+    (play-from-hand state :corp "Rime" "Server 1")
+    (play-from-hand state :corp "Vanilla" "Server 1")
+    (play-from-hand state :corp "Vanilla" "HQ")
+    (take-credits state :corp)
+    (let [rime (get-ice state :remote1 0)
+          van1 (get-ice state :remote1 1)
+          van2 (get-ice state :hq 0)]
+      (rez state :corp van2)
+      (run-on state "Server 1")
+      (rez state :corp (get-content state :remote1 0))
+      (rez state :corp van1)
+      (click-prompt state :corp "Yes")
+      (is (changed? [(get-strength (refresh van1)) 3]
+                    (click-card state :corp van2))
+          "Vanilla protecting Server 1 got +3 strength")
+      (is (not (rezzed? (refresh van2))) "Vanilla on HQ was derezzed")
+      (run-continue state)
+      (rez state :corp van2)
+      (is (no-prompt? state :corp) "No prompt when rezzing ice protecting other servers")
+      (run-continue state)
+      (rez state :corp rime)
+      (is (no-prompt? state :corp) "Brasília Government Grid ability is once per turn")
+  )))
+
+(deftest buneaker-bay-grid
   ;; Breaker Bay Grid - Reduce rez cost of other cards in this server by 5 credits
   (do-game
     (new-game {:corp {:deck [(qty "Breaker Bay Grid" 2) "Off the Grid" "Strongbox"]}})

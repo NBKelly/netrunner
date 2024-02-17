@@ -140,6 +140,29 @@
       (click-card state :corp "Breaking News")
       (click-prompt state :corp "BOOM!")))
 
+(deftest active-policing
+  (do-game
+    (new-game {:corp {:hand [(qty "Active Policing" 2) "NGO Front"]
+                      :discard ["Hostile Takeover"]}})
+    (play-from-hand state :corp "Active Policing")
+    (is (no-prompt? state :corp) "Active Policing cannot be played")
+    (take-credits state :corp)
+    (run-empty-server state :archives)
+    (click-prompt state :runner "Steal")
+    (take-credits state :runner)
+    (play-from-hand state :corp "Active Policing")
+    (click-card state :corp "NGO Front")
+    (click-prompt state :corp "New remote")
+    (take-credits state :corp)
+    (is (= 3 (:click (get-runner))) "Runner should have 1 fewer allotted click")
+    (run-empty-server state :remote1)
+    (click-prompt state :runner "Pay 1 [Credits] to trash")
+    (take-credits state :runner)
+    (play-from-hand state :corp "Active Policing")
+    (click-prompt state :corp "Done")
+    (take-credits state :corp)
+    (is (= 3 (:click (get-runner))))))
+
 (deftest ad-blitz
   ;; Launch Campaign
   (do-game
@@ -844,6 +867,18 @@
         (is (= ["Beanstalk Royalties" "Green Level Clearance" nil] (prompt-titles :corp)))
         (click-prompt state :corp (find-card "Green Level Clearance" (:deck (get-corp))))
         (is (= 4 (:credit (get-corp)))))))
+
+(deftest corporate-hospitality
+  (do-game
+    (new-game {:corp {:hand ["Corporate Hospitality"]
+                      :deck [(qty "Hedge Fund" 3)]
+                      :discard ["PAD Campaign"]}})
+    (is (changed? [(:credit (get-corp)) 2
+                   (count (:hand (get-corp))) 2]
+                  (play-from-hand state :corp "Corporate Hospitality")
+                  (click-card state :corp (find-card "PAD Campaign" (:discard (get-corp)))))
+        "Corp gained 2 credits net and drew 2 cards")
+    (is (find-card "PAD Campaign" (:hand (get-corp))) "PAD Campaign is now in HQ")))
 
 (deftest corporate-shuffle
   ;; Ice Wall

@@ -6445,6 +6445,29 @@
       (click-prompt state :runner "1 [Credits]")
       (is (not (:run @state)) "Run ended"))))
 
+(deftest sorocaban-blade
+  (do-game
+    (new-game {:corp {:hand ["Sorocaban Blade"]}
+               :runner {:hand ["Smartware Distributor" "Marjanah" "Simulchip"]}})
+    (play-from-hand state :corp "Sorocaban Blade" "HQ")
+    (take-credits state :corp)
+    (play-from-hand state :runner "Smartware Distributor")
+    (play-from-hand state :runner "Marjanah")
+    (play-from-hand state :runner "Simulchip")
+    (run-on state "HQ")
+    (let [sb (get-ice state :hq 0)]
+      (rez state :corp sb)
+      (run-continue state)
+      (fire-subs state sb)
+      (is (changed? [(count (:discard (get-runner))) 0]
+                    (click-prompt state :corp "Done"))
+          "Trashed no resource")
+      (is (changed? [(count (:discard (get-runner))) 1]
+                    (click-card state :corp (get-hardware state 0)))
+          "Trashed 1 hardware")
+      (is (no-prompt? state :corp) "No more Sorocaban Blade prompts")
+      )))
+
 (deftest special-offer
   ;; Special Offer trashes itself and updates the run position
   (do-game
