@@ -159,7 +159,7 @@
                                     :unregister-once-resolved true
                                     :duration :end-of-run
                                     :optional
-                                    {:prompt (str "Spend [Click][Click] to bypass " (:title (:ice context)) "?")
+                                    {:prompt "Spend [Click][Click] to bypass encountered ice?"
                                      :yes-ability {:cost [:click 2]
                                                    :req (req (>= (:click runner) 2))
                                                    :msg (msg "bypass " (card-str state (:ice context)))

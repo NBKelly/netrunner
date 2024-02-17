@@ -1964,7 +1964,7 @@
             {:event :encounter-ice
              :interactive (req true)
              :ability-name "Malandragem (rfg)"
-             :optional {:prompt (str "Remove this program from the game to bypass " (:title current-ice) "?")
+             :optional {:prompt "Remove this program from the game to bypass encountered ice?"
                         :req (req (threat-level 4 state))
                         :yes-ability {:cost [:remove-from-game]
                                       :msg (msg "bypass " (card-str state current-ice))
@@ -1972,7 +1972,7 @@
             {:event :encounter-ice
              :interactive (req true)
              :ability-name "Malandragem (Power counter)"
-             :optional {:prompt (str "Spend 1 power counter to bypass " (:title current-ice) "?")
+             :optional {:prompt "Spend 1 power counter to bypass encountered ice?"
                         :once :per-turn
                         :req (req (and (>= 3 (ice-strength state side current-ice))
                                        (<= 1 (get-counters (get-card state card) :power))))
@@ -2519,7 +2519,7 @@
                                                          :cause-card card}))}
             {:event :encounter-ice
              :optional {:prompt (msg "Pay " (count (:subroutines (get-card state current-ice)))
-                                     " [Credits] to bypass " (:title current-ice) "?")
+                                     " [Credits] to bypass encountered ice?")
                         :req (req (and (not (has-subtype? current-ice "Barrier"))
                                        (same-card? current-ice (:host card))
                                        (can-pay? state :runner eid (:ice context) nil [:credit (count (:subroutines (get-card state current-ice)))])))
