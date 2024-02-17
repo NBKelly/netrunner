@@ -3869,6 +3869,30 @@
       (is (= 2 (count (:hand (get-runner)))) "Darwin never got played, Chameleon returned to hand")
       (is (= 2 (count (:discard (get-runner)))) "Femme Fatale and Study Guide trashed"))))
 
+(deftest mary-da-silva
+  (do-game
+    (new-game {:corp {:deck [(qty "Hedge Fund" 10)]
+                      :hand ["Hedge Fund"]}
+               :runner {:hand ["Mary da Silva" (qty "Jailbreak" 3)]
+                        :credits 10}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Mary da Silva")
+    ;; Mary triggers multiple times during the same turn
+    (dotimes [_ 2]
+      (play-from-hand state :runner "Jailbreak")
+      (click-prompt state :runner "R&D")
+      (run-continue state)
+      (click-prompt state :runner "Yes")
+      (dotimes [_ 3]
+        (click-prompt state :runner "No action")))
+    ;; Decline Mary's ability
+    (play-from-hand state :runner "Jailbreak")
+    (click-prompt state :runner "R&D")
+    (run-continue state)
+    (click-prompt state :runner "No")
+    (dotimes [_ 2]
+      (click-prompt state :runner "No action"))))
+
 (deftest miss-bones-can-be-used-mid-run-in-a-trash-prompt
     ;; Can be used mid-run in a trash-prompt
     (do-game
@@ -6993,7 +7017,7 @@
     (gain-tags state :runner 1)
     (play-from-hand state :runner "Valentina Ferreira Carvalho")
     (is (changed? [(count-tags state) -1]
-                  (click-prompt state :runner "Remove a tag"))
+                  (click-prompt state :runner "Remove 1 tag"))
         "Threat 3: Runner can remove a tag when installing Valentina")
     (trash state :runner (get-resource state 0))
     (play-from-hand state :runner "Valentina Ferreira Carvalho")
