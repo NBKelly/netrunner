@@ -2544,16 +2544,16 @@
                     :msg "force the Runner to lose [Click][Click]"
                     :req (req (has-subtype? card "Code Gate"))
                     :effect (effect (lose-clicks :runner 2))}
-                   {:prompt "Choose a program to trash"
-                    :label "(Sentry) Trash a program"
+                   {:label "(Sentry) Trash a program"
+                    :prompt "Choose a program to trash"
                     :req (req (has-subtype? card "Sentry"))
                     :msg (msg "trash " (:title target))
                     :choices {:card #(and (installed? %)
                                           (program? %))}
                     :async true
                     :effect (effect (trash eid target {:cause :subroutine}))}
-                   {:label "(Barrier) Gain 1 [Credit] and End the run"
-                    :msg "end the run"
+                   {:label "(Barrier) Gain 1 [Credit] and end the run"
+                    :msg "gain 1 [Credit] and end the run"
                     :req (req (has-subtype? card "Barrier"))
                     :async true
                     :effect (req (wait-for
@@ -3591,17 +3591,17 @@
              :req (req (and
                          (get-current-encounter state)
                          (some #(and (runner? %) (installed? %)) (map :card targets))))
-             :effect (req (update! state side (assoc-in card [:special :sorocaban-trash] true)))}
+             :effect (req (update! state side (assoc-in card [:special :sorocaban-blade] true)))}
             {:event :end-of-encounter
              :silent (req true)
              :req (req true)
-             :effect (req
-                       (update! state side (dissoc-in card [:special :sorocaban-trash])))}]
+             :effect
+             (req (update! state side (dissoc-in card [:special :sorocaban-blade])))}]
    :subroutines [trash-resource-sub
                  (assoc trash-hardware-sub
-                        :req (req (not (get-in card [:special :sorocaban-trash]))))
+                        :req (req (not (get-in card [:special :sorocaban-blade]))))
                  (assoc trash-program-sub
-                        :req (req (not (get-in card [:special :sorocaban-trash]))))]})
+                        :req (req (not (get-in card [:special :sorocaban-blade]))))]})
 
 (defcard "Special Offer"
   {:subroutines [{:label "Gain 5 [Credits] and trash this ice"

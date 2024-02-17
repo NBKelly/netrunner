@@ -2994,12 +2994,11 @@
                 :msg "gain 3 [Credits]"
                 :effect (req (gain-credits state side eid 3))}
                {:cost [:click 1 :power 5]
-                :label "move an installed resource to the stack"
-                :prompt "Choose a resource to add to the top of the stack"
-                :choices {:card #(and (resource? %)
-                                      (installed? %))}
+                :label "Gain 6 [Credits] and add a resource to the top of the stack"
+                :prompt "Choose a resource"
+                :choices {:card #(resource? %)}
                 :async true
-                :msg (msg "gain 7 [Credits] and add " (:title target) " to the top of the stack")
+                :msg (msg "gain 6 [Credits] and add " (:title target) " to the top of the stack")
                 :effect (req
                           (wait-for (gain-credits state side 6)
                                     (move state :runner target :deck {:front true})
