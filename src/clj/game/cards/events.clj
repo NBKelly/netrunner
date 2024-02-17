@@ -2758,7 +2758,8 @@
            :effect (req (if (= target "Done")
                               (effect-completed state side eid)
                               (wait-for (runner-install state side (make-eid state (assoc eid :source card :source-type :runner-install)) target)
-                                        (system-msg state side (str "uses " (:title card) " to install " (:title target) " from the heap")))))}
+                                        (system-msg state side (str "uses " (:title card) " to install " (:title target) " from the heap"))
+                                        (effect-completed state side eid))))}
         install-resource-from-heap
           {:prompt "Choose a resource to install, paying 2 [Credits] less"
            :waiting-prompt true
@@ -2786,6 +2787,7 @@
                :effect (effect (make-run eid :archives card))}
      :events [(assoc install-resource-from-heap
                      :event :runner-gain-tag
+                     :unregister-once-resolved :true
                      :interactive (req true))
               (successful-run-replace-breach
                 {:target-server :archives

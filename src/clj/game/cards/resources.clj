@@ -304,10 +304,10 @@
   {:abilities [{:req (req (active-encounter? state))
                 :cost [:gain-tag 1]
                 :once :per-turn
-                :label "Get encountered ice -2 strength"
+                :label "Give encountered ice -2 strength"
                 :msg (msg "give " (card-str state current-ice) " -2 strength for the remainder of the encounter")
                 :effect (effect (pump-ice current-ice -2 :end-of-encounter))}
-               {:label "Trash 0 or less strength encountered ice"
+               {:label "Trash encountered ice"
                 :async true
                 :req (req (and (active-encounter? state)
                                (not (pos? (ice-strength state side current-ice)))))
