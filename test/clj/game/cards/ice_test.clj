@@ -4196,6 +4196,36 @@
       (take-credits state :corp 2)
       (is (= 5 (get-strength (refresh lotus))) "Lotus Field strength increased"))))
 
+(deftest ^:kaocha/pending lycian-multi-munition
+  (do-game
+    (new-game {:corp {:hand ["Lycian Multi-Munition"]}
+               :runner {:hand ["Marjanah"]}})
+    (play-from-hand state :corp "Lycian Multi-Munition" "HQ")
+    (take-credits state :corp)
+    (let [lmm (get-ice state :hq 0)]
+      (play-from-hand state :runner "Marjanah")
+      (run-on state "HQ")
+      (rez state :corp lmm)
+      (click-prompt state :corp "Code Gate")
+      (click-prompt state :corp "Sentry")
+      (click-prompt state :corp "Barrier")
+      (run-continue state)
+      (is (changed? [(:credit (get-runner)) -1
+                     (:click (get-runner)) -1]
+                    (card-subroutine state :corp lmm 0))
+          "Runner lost 1 credit and 1 click")
+      (is (changed? [(count (get-program state)) -1
+                     (count (:discard (get-runner))) 1]
+                    (card-subroutine state :corp lmm 1)
+                    (click-card state :corp (get-program state 0)))
+          "Runner program trashed")
+      (is (changed? [(:credit (get-corp)) 1]
+                    (card-subroutine state :corp lmm 2)
+                    (is (not (:run @state)) "Run has ended"))
+          "Corp gained 1 credit")
+      (take-credits state :runner)
+      (is (not (rezzed? (refresh lmm))) "Lycian Multi-Munition was derezzed at the end of turn"))))
+
 (deftest macrophage-happy-path
   ;; Happy Path
   (do-game
