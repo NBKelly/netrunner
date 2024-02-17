@@ -52,7 +52,7 @@
    [game.core.shuffling :refer [shuffle! shuffle-into-deck
                                 shuffle-into-rd-effect]]
    [game.core.tags :refer [gain-tags]]
-   [game.core.threat :refer [threat-level]]
+   [game.core.threat :refer [threat threat-level]]
    [game.core.to-string :refer [card-str]]
    [game.core.toasts :refer [toast]]
    [game.core.update :refer [update!]]
@@ -116,30 +116,25 @@
       :effect (effect (continue-ability (ad state side eid card (take 3 (:deck corp))) card nil))}}))
 
 (defcard "Active Policing"
-  ;; TODO - does the runner lose clicks, or not have them allotted? it matters for click
-  ;; costs and the like! -nbkelly
   (let [lose-click-abi
-        {:msg "make the runner lose [Click] next turn"
+        {:msg "give the Runner -1 allotted [Click] for their next turn"
          :async true
-         :effect (req (swap! state update-in [:runner :extra-click-temp] (fnil #(- % 1) 0))
-                      (if-not (threat-level 3 state)
-                        (effect-completed state side eid)
-                        (continue-ability
-                          state side
-                          {:optional {:prompt "Pay 2 [credits] to make the runner lose an additional [Click]?"
-                                      :yes-ability {:cost [:credit 2]
-                                                    :msg "make the runner have one less alloted [Click] next turn"
-                                                    :effect (req (swap! state update-in [:runner :extra-click-temp] (fnil #(- % 1) 0)))}}}
-                          card nil)))}]
+         :effect (req (swap! state update-in [:runner :extra-click-temp] (fnil dec 0))
+                      (threat 3
+                        {:optional
+                         {:prompt "Pay 2 [credits] to give the Runner -1 allotted [Click] for their next turn?"
+                          :yes-ability
+                          {:cost [:credit 2]
+                           :msg "give the Runner -1 allotted [Click] for their next turn"
+                           :effect (req (swap! state update-in [:runner :extra-click-temp] (fnil dec 0)))}}}))}]
   {:on-play {:req (req (or (last-turn? state :runner :trashed-card)
                            (last-turn? state :runner :stole-agenda)))
              :prompt "Choose a card to install"
-             :choices {:card #(and (corp? %)
-                                   (corp-installable-type? %)
+             :choices {:card #(and (corp-installable-type? %)
                                    (in-hand? %))}
              :async true
              :msg (msg (corp-install-msg target))
-             :cancel-effect (effect (system-msg (str "declines to use " (:title card) " to install a card"))
+             :cancel-effect (effect (system-msg (str "declines to use " (:title card) " to install a card from HQ"))
                                     (continue-ability lose-click-abi card nil))
              :effect (req (wait-for (corp-install state side target nil nil)
                                     (continue-ability state side lose-click-abi card nil)))}}))
