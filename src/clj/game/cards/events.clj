@@ -2371,7 +2371,6 @@
                              (gain-credits state side eid (* 1 (count targets)))))})
           (tutor-abi [type]
             {:prompt (str "Choose a " (decapitalize type) " resource")
-             :implementation "2v7"
              :choices (req (cancellable (filter #(has-subtype? % type)
                                                 (:deck runner)) :sorted))
              :msg (msg "add " (:title target) " from the stack to the grip and shuffle the stack")
@@ -2383,16 +2382,16 @@
     {:on-play {:prompt "Choose one"
                :async true
                :choices ["Connection" "Virtual"]
-               :effect (req
-                         (continue-ability
-                           state side
-                           {:optional 
-                            {:prompt (str "Search the stack for a " target " resource?")
-                             :yes-ability
-                             {:effect (effect (continue-ability (tutor-abi target) card nil))}
-                             :no-ability
-                             {:effect (effect (continue-ability (credit-gain-abi target) card nil))}}}
-                           card nil))}}))
+               :effect (req (let [choice target]
+                              (continue-ability
+                                state side
+                                {:optional 
+                                 {:prompt (str "Search the stack for a " choice " resource?")
+                                  :yes-ability
+                                  {:effect (effect (continue-ability (tutor-abi choice) card nil))}
+                                  :no-ability
+                                  {:effect (effect (continue-ability (credit-gain-abi choice) card nil))}}}
+                                card nil)))}}))
 
 (defcard "Mining Accident"
   {:on-play
