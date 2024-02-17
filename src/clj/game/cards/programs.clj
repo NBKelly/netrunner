@@ -2586,7 +2586,7 @@
   (auto-icebreaker {:implementation "Once per run restriction not enforced"
                     :abilities [(break-sub 1 1 "Barrier")
                                 (strength-pump 2 3)
-                                (strength-pump 2 9 :end-of-encounter {:req (req (threat-level 3 state))})]}))
+                                (strength-pump 2 9 :end-of-encounter {:req (req (threat-level 4 state))})]}))
 
 (defcard "Progenitor"
   {:abilities [{:label "Install and host a virus program"
