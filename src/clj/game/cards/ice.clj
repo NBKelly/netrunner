@@ -2540,10 +2540,12 @@
               {:event :corp-turn-ends
                :req (req (rezzed? card))
                :effect (effect (derez :corp card))}]
-     :subroutines [{:label "(Code Gate) Force the Runner to lose [Click][Click]"
-                    :msg "force the Runner to lose [Click][Click]"
+     :subroutines [{:label "(Code Gate) Force the Runner to lose [Click] and 1 [Credit]"
+                    :msg "force the Runner to lose [Click] and 1 [Credit]"
                     :req (req (has-subtype? card "Code Gate"))
-                    :effect (effect (lose-clicks :runner 2))}
+                    :effect (req (wait-for
+                                   (lose-clicks state :runner 1)
+                                   (lose-credits state :runner (make-eid state eid) 1)))}
                    {:label "(Sentry) Trash a program"
                     :prompt "Choose a program to trash"
                     :req (req (has-subtype? card "Sentry"))
