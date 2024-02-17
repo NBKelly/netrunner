@@ -2478,6 +2478,47 @@
       (core/update-hand-size state :runner)
       (is (= 5 (hand-size :runner))))))
 
+(deftest jeitinho
+  (do-game
+    (new-game {:runner {:hand [(qty "Jeitinho" 3)]}
+               :corp {:deck [(qty "Hedge Fund" 5)]
+                      :hand ["Hedge Fund"]}})
+    (dotimes [n 3]
+      (take-credits state :corp)
+      (play-from-hand state :runner "Jeitinho")
+      (run-empty-server state "Archives")
+      (run-empty-server state "R&D")
+      (click-prompt state :runner "No action")
+      (run-empty-server state "HQ")
+      (click-prompt state :runner "No action")
+      (take-credits state :runner)
+      (is (= (+ 1 n) (count (:scored (get-runner)))) "Jeitinho moved to score area")
+      (is (zero? (:agenda-point (get-runner))) "Jeitinho scored for 0 agenda point"))
+    (is (= "Jeitinho assassination event" (:reason @state)) "Win condition reports jeitinho")))
+
+(deftest jeitinho-threat
+  (do-game
+    (new-game {:runner {:discard ["Jeitinho"]}
+               :corp {:hand ["Authenticator" "Bellona"]}})
+    (play-from-hand state :corp "Authenticator" "Archives")
+    (take-credits state :corp)
+    (run-on state "Archives")
+    (rez state :corp (get-ice state :archives 0))
+    (run-continue state)
+    (click-prompt state :runner "Yes")
+    (is (no-prompt? state :runner) "No prompt when under threat level")
+    (run-jack-out state)
+    (take-credits state :runner)
+    (play-and-score state "Bellona")
+    (take-credits state :corp)
+    (run-on state "Archives")
+    (run-continue state)
+    (click-prompt state :runner "Yes")
+    (is (changed? [(count (:discard (get-runner))) -1
+                   (count (get-hardware state)) 1]
+                  (click-prompt state :runner "Yes"))
+        "Jeitinho was installed from the heap")))
+
 (deftest keiko
   ;; Keiko
   (do-game

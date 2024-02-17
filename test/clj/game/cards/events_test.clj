@@ -4562,7 +4562,35 @@
     (is (= "Self-modifying Code" (:title (get-program state 1))) "SMC should be installed")
     (click-card state :runner "Cloak")
     (is (= "Cloak" (:title (get-program state 2))) "Cloak should be installed")
-    (is (no-prompt? state :runner)) "Runner should have no more prompts"))
+    (is (no-prompt? state :runner) "Runner should have no more prompts")))
+
+(deftest meeting-of-minds
+  (do-game
+    (new-game {:runner {:hand [(qty "Meeting of Minds" 2) "Liberated Account" "Kati Jones" "Always Be Running" "Crypt"]
+                        :deck ["The Class Act" "Cookbook" "Smartware Distributor"]
+                        :credits 10}})
+    (take-credits state :corp)
+    ;; Choosing virtual
+    (play-from-hand state :runner "Meeting of Minds")
+    (click-prompt state :runner "Virtual")
+    (click-prompt state :runner "Yes")
+    (click-prompt state :runner "Cookbook")
+    (is (changed? [(:credit (get-runner)) 2]
+                  (click-card state :runner "Cookbook")
+                  (click-card state :runner "Always Be Running")
+                  (click-prompt state :runner "Done"))
+        "Runner gained 2 credits")
+    (is (no-prompt? state :runner))
+    ;; Choosing connection
+    (play-from-hand state :runner "Meeting of Minds")
+    (click-prompt state :runner "Connection")
+    (click-prompt state :runner "Yes")
+    (click-prompt state :runner "The Class Act")
+    (is (changed? [(:credit (get-runner)) 2]
+                  (click-card state :runner "The Class Act")
+                  (click-card state :runner "Kati Jones")
+                  (click-prompt state :runner "Done"))
+        "Runner gained 2 credits")))
 
 (deftest mining-accident
   ;; Mining Accident
@@ -7236,3 +7264,57 @@
       (is (= (+ credits 18) (:credit (get-runner))) "Runner should gain credits from trash")
       (is (= "Monolith" (-> (get-runner) :discard first :title))
           "Monolith should be trashed"))))
+
+(deftest window-of-opportunity
+  (do-game
+    (new-game {:corp {:hand ["Echo" "Bloop"]
+                      :credits 20}
+               :runner {:hand ["Window of Opportunity" "Simulchip" "Fermenter" "The Class Act"]}})
+    (play-from-hand state :corp "Bloop" "HQ")
+    (play-from-hand state :corp "Echo" "Archives")
+    (let [bloop (get-ice state :hq 0)
+          echo (get-ice state :archives 0)]
+      (rez state :corp echo)
+      (rez state :corp bloop)
+      (click-card state :corp (refresh echo))
+      (take-credits state :corp)
+      (play-from-hand state :runner "Window of Opportunity")
+      (click-prompt state :runner "HQ")
+      (is (= 2 (-> (prompt-map :runner) :choices count)) "Runner has 2 choices")
+      (is (changed? [(:credit (get-runner)) -1]
+                    (click-prompt state :runner "Fermenter"))
+          "Runner paid Fermenter install cost")
+      (is (= "Fermenter" (:title (get-program state 0))) "Fermenter is installed")
+      (is (= [:hq] (:server (:run @state))) "Running on HQ")
+      (is (not (no-prompt? state :runner)) "Window of Opportunity prompt to select ice to derez")
+      (click-card state :runner bloop)
+      (is (not (rezzed? (refresh bloop))) "Bloop derezzed")
+      (run-continue state)
+      (run-jack-out state)
+      (is (changed? [(:credit (get-corp)) 0]
+                    (click-prompt state :corp "Yes"))
+          "Corp re-rezzed Bloop ignoring all costs")
+      (is (no-prompt? state :runner) "No Bloop prompt to derez an Harmonic ice")
+      (is (rezzed? (refresh bloop))))))
+
+(deftest window-of-opportunity-bogus-prompt
+  (do-game
+    (new-game {:runner {:hand ["Window of Opportunity" "Smartware Distributor"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Window of Opportunity")
+    (click-prompt state :runner "HQ")
+    (click-prompt state :runner "OK")
+    (is (= [:hq] (:server (:run @state))) "Running on HQ")))
+
+(deftest window-of-opportunity-no-derez
+  (do-game
+    (new-game {:corp {:hand ["Vanilla"]}
+               :runner {:hand ["Window of Opportunity" "Simulchip"]}})
+    (play-from-hand state :corp "Vanilla" "Archives")
+    (take-credits state :corp)
+    (play-from-hand state :runner "Window of Opportunity")
+    (click-prompt state :runner "Archives")
+    (click-prompt state :runner "Simulchip")
+    (is (= "Simulchip" (:title (get-hardware state 0))) "Simulchip is installed")
+    (is (= [:archives] (:server (:run @state))) "Running on Archives")
+    (is (no-prompt? state :runner) "No Window of Opportunity prompt")))
