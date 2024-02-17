@@ -3890,42 +3890,64 @@
 
 (defcard "Window of Opportunity"
   (let [install-abi
-        {:prompt "Choose 1 program or piece of hardware"
-         :waiting-prompt true
-         :choices {:req (req (and (or (hardware? target)
-                                      (program? target))
-                                  (in-hand? target)
-                                  (can-pay? state side (assoc eid :source card :source-type :runner-install) target nil
-                                            [:credit (install-cost state side target)])))}
-         :async true
-         :effect (effect (runner-install (assoc eid :source card :source-type :runner-install) target))}]
+        {:async true
+         :effect
+         (req (let [targets-in-the-grip
+                    (filter #(or (hardware? %)
+                                 (program? %))
+                            (:hand runner))]
+                (continue-ability
+                  state side
+                  (if (seq targets-in-the-grip)
+                    {:prompt "Choose 1 program or piece of hardware"
+                     :waiting-prompt true
+                     :choices (req targets-in-the-grip)
+                     :async true
+                     :effect (effect (runner-install (assoc eid :source card :source-type :runner-install) target))
+                     :msg (msg "install " (:title target) " from the grip")}
+                    ;; else show a fake prompt so the corp can't infer that no legal targets exist
+                    {:prompt "You have no programs or pieces of hardware in the grip"
+                     :choices ["OK"]
+                     :prompt-type :bogus})
+                card nil)))}]
     {:makes-run true
+     :events [{:event :run
+               :async true
+               :unregister-once-resolved true
+               :effect
+               (req (let [rezzed-targets
+                          (filter #(and (ice? %)
+                                        (= (first (:server target)) (second (get-zone %))))
+                                  (all-active-installed state :corp))]
+                      (if (seq rezzed-targets)
+                        (continue-ability
+                          state side
+                          {:prompt "Choose a piece of ice protecting this server to derez"
+                           :waiting-prompt true
+                           :choices {:req (req (some #{target} rezzed-targets))}
+                           :msg (msg "derez " (card-str state target))
+                           :async true
+                           :effect
+                           (req (let [chosen-ice target]
+                                  (register-events
+                                    state side card
+                                    [{:event :run-ends
+                                      :duration :end-of-run
+                                      :optional
+                                      {:player :corp
+                                        :waiting-prompt true
+                                        :req (req (and (installed? (get-card state chosen-ice))
+                                                       (not (rezzed? (get-card state chosen-ice)))))
+                                        :prompt (str "Rez " (card-str state chosen-ice) ", ignoring all costs?")
+                                        :yes-ability {:async true
+                                                      :msg (msg "rez " (card-str state chosen-ice) ", ignoring all costs")
+                                                      :effect (req (rez state :corp eid chosen-ice {:ignore-cost :all-costs}))}}}])
+                                  (derez state side target)
+                                  (effect-completed state side eid)))}
+                          card nil)
+                        (effect-completed state side eid))))}]
      :on-play {:async true
-               :effect (req (wait-for
-                              (resolve-ability state side install-abi card nil)
-                              (continue-ability
-                                state side
-                                {:async true
-                                 :req (req (seq (filter #(and (ice? %) (rezzed? %)) (all-installed state :corp))))
-                                 :choices {:card #(and (rezzed? %) (ice? %))}
-                                 :prompt "Choose a piece of ice to derez"
-                                 :msg (msg "derez " (card-str state target) " and make a run on " (zone->name (second (get-zone target))))
-                                 :effect (req (let [chosen-ice target
-                                                    target-server (second (get-zone target))]
-                                                (register-events
-                                                  state side card
-                                                  [{:event :run-ends
-                                                    :duration :end-of-run
-                                                    :unregister-once-resolved :true
-                                                    :optional
-                                                    {:player :corp
-                                                     :waiting-prompt true
-                                                     :req (req (and (installed? (get-card state chosen-ice))
-                                                                    (not (rezzed? (get-card state chosen-ice)))))
-                                                     :prompt (msg "Rez " (card-str state (get-card state chosen-ice)) ", ignoring all costs?")
-                                                     :yes-ability {:async true
-                                                                   :msg (msg "rez " (card-str state (get-card state chosen-ice)) ", ignoring all costs")
-                                                                   :effect (req (rez state :corp eid (get-card state chosen-ice) {:ignore-cost :all-costs}))}}}])
-                                                (derez state side target)
-                                                (make-run state side eid target-server card)))}
-                                card nil)))}}))
+               :prompt "Choose a server"
+               :choices (req runnable-servers)
+               :effect (req (wait-for (resolve-ability state side install-abi card nil)
+                                      (make-run state side eid target card)))}}))
