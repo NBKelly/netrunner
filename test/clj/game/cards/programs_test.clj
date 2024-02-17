@@ -5933,12 +5933,34 @@
       (run-on state "HQ")
       (rez state :corp (get-ice state :hq 0))
       (run-continue state)
-      (is (changed? [(:credit (get-runner)) -3]
+      (is (changed? [(:credit (get-runner)) -2
+                     (get-strength (refresh ps)) 9]
+                    (card-ability state :runner (refresh ps) 2))
+          "Runner spent 2 credits to match ice strength")
+      (card-ability state :runner (refresh ps) 0)
+      (click-prompt state :runner "End the run")
+      (click-prompt state :runner "Done"))))
+
+(deftest ^:kaocha/pending pressure-spike-once-per-run-ability
+  (do-game
+    (new-game {:corp {:hand ["Chiyashi" "Vanity Project"]
+                      :credits 20}
+               :runner {:hand ["Pressure Spike"]
+                        :credits 10}})
+    (play-and-score state "Vanity Project")
+    (play-from-hand state :corp "Chiyashi" "HQ")
+    (take-credits state :corp)
+    (play-from-hand state :runner "Pressure Spike")
+    (let [ps (get-program state 0)]
+      (run-on state "HQ")
+      (rez state :corp (get-ice state :hq 0))
+      (run-continue state)
+      (is (changed? [(:credit (get-runner)) -2
+                     (get-strength (refresh ps)) 9]
                     (card-ability state :runner (refresh ps) 2)
-                    (card-ability state :runner (refresh ps) 0)
-                    (click-prompt state :runner "End the run")
-                    (click-prompt state :runner "Done"))
-          "Runner spent 3 credits to match strength and break 1 sub"))))
+                    ;; second pump shouldn't be allowed
+                    (card-ability state :runner (refresh ps) 2))
+          "Runner spent 2 credits to match ice strength"))))
 
 (deftest progenitor-hosting-hivemind-using-virus-breeding-ground-issue-738
     ;; Hosting Hivemind, using Virus Breeding Ground. Issue #738
