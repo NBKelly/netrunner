@@ -3597,26 +3597,26 @@
                      (effect (trash-cards :corp eid (take 2 (shuffle (:hand corp))) {:cause-card card}))))
 
 (defcard "Valentina Ferreira Carvalho"
-  (letfn [(ab [ev] {:event ev
-                    :player :runner
-                    :msg (msg "gain 1 [Credits]")
-                    :async true
-                    :interactive (req true)
-                    :effect (req (gain-credits state :runner eid 1))})]
-    {:on-install {:prompt "Choose One"
-                  :choices (req [(when tagged "Remove a tag")
-                                 "Gain 2 [Credits]"
-                                 "Done"])
-                  :req (req (and (threat-level 3 state)
-                                 (= (:active-player @state) :runner)))
-                  :msg (msg (if (= target "Done")
-                              "decline to do anything"
-                              (decapitalize target)))
-                  :effect (req (cond
-                                 (= "Remove a tag" target) (lose-tags state :runner eid 1)
-                                 (= "Gain 2 [Credits]" target) (gain-credits state :runner eid 2)
-                                 :else (effect-completed state side eid)))}
-     :events [(ab :runner-lose-tag)]}))
+  {:on-install {:prompt "Choose one"
+                :choices (req [(when tagged "Remove 1 tag")
+                               "Gain 2 [Credits]"
+                               "Done"])
+                :req (req (and (threat-level 3 state)
+                               (= (:active-player @state) :runner)))
+                :effect (req (cond
+                               (= "Remove 1 tag" target) (do (lose-tags state :runner eid 1)
+                                                             (system-msg state :runner (str "uses " (:title card)
+                                                                                            " to " (decapitalize target))))
+                               (= "Gain 2 [Credits]" target) (do (gain-credits state :runner eid 2)
+                                                                 (system-msg state :runner (str "uses " (:title card)
+                                                                                                " to " (decapitalize target))))
+                               :else (effect-completed state side eid)))}
+   :events [{:event :runner-lose-tag
+             :player :runner
+             :msg "gain 1 [Credits]"
+             :async true
+             :interactive (req true)
+             :effect (req (gain-credits state :runner eid 1))}]})
 
 (defcard "Verbal Plasticity"
   {:events [{:event :runner-click-draw
