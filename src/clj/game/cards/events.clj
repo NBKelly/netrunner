@@ -2744,7 +2744,12 @@
            :waiting-prompt true
            :async true
            :req (req (and (not (zone-locked? state :runner :discard))
+                          (not (install-locked? state side))
                           (threat-level 3 state)))
+           :interactive (req true)
+           :ability-name "Privileged Access (program)"
+           :once :per-run
+           :once-key :install-program-from-heap
            :choices (req (concat
                            (->> (:discard runner)
                                 (filter
@@ -2764,7 +2769,12 @@
           {:prompt "Choose a resource to install, paying 2 [Credits] less"
            :waiting-prompt true
            :req (req (and (not (zone-locked? state :runner :discard))
-                          (:privileged-access-active card)))
+                          (not (install-locked? state side))))
+           :async true
+           :interactive (req true)
+           :ability-name "Privileged Access (resource)"
+           :once :per-run
+           :once-key :install-resource-from-heap
            :choices (req (concat
                            (->> (:discard runner)
                                 (filter
@@ -2775,29 +2785,26 @@
                                 (sort-by :title)
                                 (seq))
                            ["Done"]))
-           :effect (req (update! state side (dissoc card :privileged-access-active))
-                        (if (= target "Done")
-                              (continue-ability state side install-program-from-heap card nil)
-                              (wait-for (runner-install state side (make-eid state (assoc eid :source card :source-type :runner-install)) target {:cost-bonus -2})
-                                        (system-msg state side (str "uses " (:title card) " to install " (:title target) " from the heap, paying 2 [Credits] less"))
-                                        (continue-ability state side install-program-from-heap card nil))))}]
+           :effect (req (if (= target "Done")
+                          (effect-completed state side eid)
+                          (wait-for (runner-install state side (make-eid state (assoc eid :source card :source-type :runner-install)) target {:cost-bonus -2})
+                                    (system-msg state side (str "uses " (:title card) " to install " (:title target) " from the heap, paying 2 [Credits] less"))
+                                    (effect-completed state side eid))))}]
     {:makes-run true
      :on-play {:req (req (and archives-runnable (not tagged)))
                :async true
                :effect (effect (make-run eid :archives card))}
      :events [(assoc install-resource-from-heap
-                     :event :runner-gain-tag
-                     :unregister-once-resolved :true
-                     :interactive (req true))
+                     :event :runner-gain-tag)
+              (assoc install-program-from-heap
+                     :event :runner-gain-tag)
               (successful-run-replace-breach
                 {:target-server :archives
                  :this-card-run true
                  :mandatory true
                  :ability {:async true
                            :msg "take 1 tag"
-                           :effect
-                           (req (update! state side (assoc card :privileged-access-active true))
-                                (gain-tags state :runner eid 1))}})]}))
+                           :effect (effect (gain-tags :runner eid 1))}})]}))
 
 (defcard "Process Automation"
   {:on-play

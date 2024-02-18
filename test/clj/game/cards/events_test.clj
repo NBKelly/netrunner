@@ -5360,6 +5360,7 @@
     (play-and-score state "Obokata Protocol")
     (take-credits state :corp)
     (play-run-event state "Privileged Access" :archives)
+    (click-prompt state :runner "Privileged Access (resource)")
     (click-prompt state :runner "Done")
     (is (= ["Cleaver" nil] (prompt-titles :runner)))
     (click-prompt state :runner "Cleaver")
@@ -5379,14 +5380,18 @@
 
 (deftest privileged-access-jarogniew-mercs
   (do-game
-    (new-game {:runner {:hand ["Privileged Access"]
-                        :discard ["Jarogniew Mercs" "Verbal Plasticity"]}})
+    (new-game {:corp {:hand ["Obokata Protocol"]}
+               :runner {:hand ["Privileged Access"]
+                        :discard ["Jarogniew Mercs" "Marjanah"]}})
+    (play-and-score state "Obokata Protocol")
     (take-credits state :corp)
     (play-from-hand state :runner "Privileged Access")
     (run-continue state)
+    ;; resolving program installation first
+    (click-prompt state :runner "Privileged Access (program)")
+    (click-prompt state :runner "Marjanah")
     (click-prompt state :runner "Jarogniew Mercs")
-    (is (no-prompt? state :runner))
-  ))
+    (is (no-prompt? state :runner))))
 
 (deftest process-automation
   ;; Process Automation
