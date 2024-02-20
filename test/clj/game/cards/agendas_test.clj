@@ -1247,6 +1247,31 @@
       (is (= 4 (:click (get-corp))) "Should gain 2 clicks, not 3")
       (is (= 1 (get-counters (refresh eu-scored) :agenda)) "Should still have 1 agenda counter"))))
 
+(deftest eminent-domain
+  (do-game
+    (new-game {:corp {:deck [(qty "Archer" 10)]
+                      :hand ["Eminent Domain"]}})
+    (play-and-score state "Eminent Domain")
+    (is (changed? [(:credit (get-corp)) 0]
+          (click-prompt state :corp "Yes")
+          (click-prompt state :corp "Archer")
+          (click-prompt state :corp "HQ")
+          (is (= "Archer" (get-title (get-ice state :hq 0))))
+          (is (rezzed? (get-ice state :hq 0))))
+        "Eminent Domain allows install and rez from R&D at no cost")))
+
+(deftest eminent-domain
+  (do-game
+    (new-game {:corp {:hand ["Eminent Domain" "Pharos" "Tithe" "Ice Wall"]}})
+    (play-from-hand state :corp "Tithe" "HQ")
+    (is (changed? [(:credit (get-corp)) -4]
+          (expend state :corp (find-card "Eminent Domain" (:hand (get-corp))))
+          (click-card state :corp "Pharos")
+          (click-prompt state :corp "HQ")
+          (is (= "Pharos" (get-title (get-ice state :hq 1))))
+          (is (rezzed? (get-ice state :hq 1))))
+        "Eminent Domain expend allows install and rez reducing total cost by 5")))
+
 (deftest encrypted-portals
   ;; Encrypted Portals
   (do-game
@@ -4200,6 +4225,32 @@
     ;; Accesses TGTBT and can steal
     (click-prompt state :runner "Steal")
     (is (= 2 (count-tags state)) "Runner took 1 tag from accessing and stealing")))
+
+(deftest the-basalt-spire
+  (do-game
+    (new-game {:corp {:deck ["Hedge Fund"]
+                      :hand [(qty "The Basalt Spire" 2)]
+                      :discard ["Ice Wall"]}})
+    (play-and-score state "The Basalt Spire")
+    (let [tbs (get-scored state :corp 0)]
+      (is (= 2 (get-counters (refresh tbs) :agenda)))
+      (is (changed? [(get-counters (refresh tbs) :agenda) -1
+                     (count (:discard (get-corp))) 1
+                     (count (:deck (get-corp))) -1]
+            (card-ability state :corp (refresh tbs) 0))
+          "The Basalt Spire costs agenda counter and top of R&D to play")
+      (is (changed? [(count (:hand (get-corp))) 1
+                     (count (:discard (get-corp))) -1]
+            (click-card state :corp "Hedge Fund"))
+          "The Basalt Spire ability recurs a card"))
+    (play-from-hand state :corp "The Basalt Spire" "New remote")
+    (take-credits state :corp)
+    (run-empty-server state "Server 2")
+    (click-prompt state :runner "Steal")
+    (is (changed? [(count (:hand (get-corp))) 1
+                   (count (:discard (get-corp))) -1]
+          (click-card state :corp "Ice Wall"))
+        "The Basalt Spire can recur a card on steal")))
 
 (deftest the-cleaners
   ;; The Cleaners

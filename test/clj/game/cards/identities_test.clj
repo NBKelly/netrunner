@@ -3864,6 +3864,54 @@
       (play-from-hand state :runner "Datasucker")
       (is (zero? (count-tags state)) "Runner took no tag for milling")))
 
+(deftest nuvem-sa
+  (do-game
+    (new-game {:corp {:id "Nuvem SA"
+                      :deck [(qty "Hedge Fund" 20)]
+                      :hand [(qty "Hedge Fund" 2) "Ice Wall" "Tree Line" "Hasty Relocation"]}})
+    (play-from-hand state :corp "Hedge Fund")
+    (is (= "The top card of R&D is Hedge Fund" (:msg (get-prompt state :corp))))
+    (is (changed? [(:credit (get-corp)) 2
+                   (count (:deck (get-corp))) -1
+                   (count (:discard (get-corp))) 1]
+          (click-prompt state :corp "Trash it"))
+        "Corp gains 2 credits to trash top of R&D")
+    (play-from-hand state :corp "Ice Wall" "HQ")
+    (expend state :corp (find-card "Tree Line" (:hand (get-corp))))
+    (click-card state :corp (get-ice state :hq 0))
+    (is (= "The top card of R&D is Hedge Fund" (:msg (get-prompt state :corp))))
+    (is (changed? [(:credit (get-corp)) 0
+                   (count (:deck (get-corp))) -1
+                   (count (:discard (get-corp))) 1]
+          (click-prompt state :corp "Trash it"))
+        "Corp doesn't gain credits after trashing second card from R&D")
+    (take-credits state :corp)
+    (take-credits state :runner)
+    (play-from-hand state :corp "Hedge Fund")
+    (is (= "The top card of R&D is Hedge Fund" (:msg (get-prompt state :corp))))
+    (is (changed? [(:credit (get-corp)) 0
+                   (count (:deck (get-corp))) 0
+                   (count (:discard (get-corp))) 0]
+          (click-prompt state :corp "Done"))
+        "Corp can choose to not trash top of R&D")
+    (is (changed? [(:credit (get-corp)) 1]
+          (play-from-hand state :corp "Hasty Relocation"))
+        "Corp gains 2 credits from R&D trash even when not from ID trash ability")))
+
+(deftest nuvem-sa-only-trigger-on-corp-turn
+  (do-game
+    (new-game {:corp   {:id "Nuvem SA"
+                        :deck [(qty "Hedge Fund" 20)]
+                        :hand ["Hedge Fund"]}
+               :runner {:hand ["Cookbook" "Gravedigger"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Cookbook")
+    (play-from-hand state :runner "Gravedigger")
+    (click-prompt state :runner "Yes")
+    (is (changed? [(:credit (get-corp)) 0]
+          (card-ability state :runner (get-program state 0) 0))
+        "Nuvem should not fire on Runner's turn")))
+
 (deftest null-whistleblower
   ;; Null
   (do-game
