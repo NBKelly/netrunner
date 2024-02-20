@@ -1804,16 +1804,17 @@
    :events [{:event :runner-gain-tag
              :async true
              :req (req (and (not (install-locked? state side))
-                            (= target (count-tags state)))) ;; every tag is one that was just gained
-             :effect (req (continue-ability
-                            state :runner
-                            {:prompt "Choose a connection to install (for 2[Credits] less)"
-                             :player :runner
-                             :choices {:card #(and (has-subtype? % "Connection")
-                                                   (resource? %)
-                                                   (in-hand? %))}
-                             :effect (effect (runner-install (assoc eid :source card :source-type :runner-install) target {:cost-bonus -2}))}
-                            card nil))}]})
+                            (= (second targets) (count-tags state)))) ;; every tag is one that was just gained
+             :prompt "Choose a connection to install, paying 2 [Credits] less"
+             :player :runner
+             :choices
+             {:req (req (and (has-subtype? target "Connection")
+                             (resource? target)
+                             (in-hand? target)
+                             (can-pay? state side (assoc eid :source card :source-type :runner-install) target nil
+                                       [:credit (install-cost state side target {:cost-bonus -2})])))}
+             :msg (msg "install " (:title target) " from the grip, paying 2 [Credit] less")
+             :effect (effect (runner-install (assoc eid :source card :source-type :runner-install) target {:cost-bonus -2}))}]})
 
 (defcard "Seidr Laboratories: Destiny Defined"
   {:implementation "Manually triggered"

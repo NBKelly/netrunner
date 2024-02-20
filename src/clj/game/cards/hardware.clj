@@ -148,7 +148,7 @@
   {:static-abilities [(mu+ 1)]
    :events [{:event :runner-lose-tag
              :req (req (= :runner side))
-             :optional {:prompt "Draw 2 cards?"
+             :optional {:prompt "Remove 1 power counter to draw 2 cards?"
                         :yes-ability {:cost [:power 1]
                                       :msg "draw 2 cards"
                                       :async true
@@ -2214,7 +2214,7 @@
                :msg (msg "reveal " rev-str " from the top of the stack"
                          (when-not (= target "No install")
                            (str " and " (decapitalize target) ", ignoring all costs")))
-               :effect (req (if-not (= target "No thanks")
+               :effect (req (if-not (= target "No install")
                               (wait-for (runner-install
                                           state side
                                           (make-eid state {:source card :source-type :runner-install})
@@ -2247,13 +2247,12 @@
                                  (system-msg "shuffles the Stack"))}
                 card nil)))]
     {:abilities [{:cost [:trash-can]
-                  :label "Set aside cards"
-                  :prompt "Choose a type"
+                  :label "Set aside cards from the top of the stack"
+                  :prompt "Choose a card type"
                   :choices (req (cancellable ["Hardware" "Program" "Resource"]))
                   :req (req (and (some #{:hq} (:successful-run runner-reg))
                                  (some #{:rd} (:successful-run runner-reg))
                                  (some #{:archives} (:successful-run runner-reg))))
-
                   :async true
                   :effect (effect (wiz-search-fn eid card (:deck runner) target "" nil))}]}))
 

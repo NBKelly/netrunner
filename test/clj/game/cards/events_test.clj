@@ -5341,14 +5341,15 @@
     (play-from-hand state :runner "Privileged Access")
     (is (not (:run @state)) "Cannot play Privileged Access when tagged")
     (remove-tag state :runner)
+    (play-from-hand state :runner "Privileged Access")
     (is (changed? [(count-tags state) 1]
-                  (play-run-event state "Privileged Access" :archives))
+                  (run-continue state)
+                  (is (= ["Verbal Plasticity" nil] (prompt-titles :runner)))
+                  (is (changed? [(:credit (get-runner)) -1]
+                                (click-prompt state :runner "Verbal Plasticity"))
+                      "Install Verbal Plasticity from heap for 2 credits less")
+                  (is (= "Verbal Plasticity" (get-title (get-resource state 0)))))
         "Gain a tag from successful run on Archives")
-    (is (= ["Verbal Plasticity" nil] (prompt-titles :runner)))
-    (is (changed? [(:credit (get-runner)) -1]
-                  (click-prompt state :runner "Verbal Plasticity"))
-        "Install Verbal Plasticity from heap for 2 credits less")
-    (is (= "Verbal Plasticity" (get-title (get-resource state 0))))
     (is (not (:run @state)) "Run ended")))
 
 (deftest privileged-access-threat
@@ -5359,11 +5360,38 @@
     (play-and-score state "Obokata Protocol")
     (take-credits state :corp)
     (play-run-event state "Privileged Access" :archives)
+    (click-prompt state :runner "Privileged Access (resource)")
     (click-prompt state :runner "Done")
     (is (= ["Cleaver" nil] (prompt-titles :runner)))
     (click-prompt state :runner "Cleaver")
     (is (= "Cleaver" (get-title (get-program state 0))))
     (is (not (:run @state)) "Run ended")))
+
+(deftest privileged-access-jesminder
+  (do-game
+    (new-game {:runner {:id "Jesminder Sareen: Girl Behind the Curtain"
+                        :hand ["Privileged Access"]
+                        :discard ["Verbal Plasticity"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Privileged Access")
+    (run-continue state)
+    (is (no-prompt? state :runner))
+    (is (zero? (count-tags state)) "No tag gained during the run")))
+
+(deftest privileged-access-jarogniew-mercs
+  (do-game
+    (new-game {:corp {:hand ["Obokata Protocol"]}
+               :runner {:hand ["Privileged Access"]
+                        :discard ["Jarogniew Mercs" "Marjanah"]}})
+    (play-and-score state "Obokata Protocol")
+    (take-credits state :corp)
+    (play-from-hand state :runner "Privileged Access")
+    (run-continue state)
+    ;; resolving program installation first
+    (click-prompt state :runner "Privileged Access (program)")
+    (click-prompt state :runner "Marjanah")
+    (click-prompt state :runner "Jarogniew Mercs")
+    (is (no-prompt? state :runner))))
 
 (deftest process-automation
   ;; Process Automation
