@@ -1798,7 +1798,9 @@
                             (first-event? state side :pass-ice
                                           (fn [targets]
                                             (let [context (first targets)]
-                                              (rezzed? (:ice context)))))))
+                                              (and (rezzed? (:ice context))
+                                                   (or (has-subtype? (:ice context) "Code Gate")
+                                                       (has-subtype? (:ice context) "Sentry"))))))))
              :prompt (msg "Make the runner encounter " (:title (:ice context)) " again?")
              :choices (req [(when (can-pay? state :corp (assoc eid :source card :source-type :ability) card nil [:credit 1]) "Pay 1 [Credit]")
                             (when (can-pay? state :corp (assoc eid :source card :source-type :ability) card nil [:trash-from-hand 1]) "Trash 1 card from HQ")
