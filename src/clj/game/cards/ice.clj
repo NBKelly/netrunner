@@ -955,20 +955,17 @@
                  end-the-run]})
 
 (defcard "Boto"
-  {:static-abilities [(ice-strength-bonus (req (if (threat-level 4 state) 2 0)))]
-   :subroutines [(do-net-damage 2)
-                 {:label "trash a card from HQ to end the run"
-                  :optional {:prompt "trash a card from HQ to end the run?"
-                             :yes-ability {:cost [:trash-from-hand 1]
-                                           :msg "end the run"
-                                           :async true
-                                           :effect (effect (end-run eid card))}}}
-                 {:label "trash a card from HQ to end the run"
-                  :optional {:prompt "trash a card from HQ to end the run?"
-                             :yes-ability {:cost [:trash-from-hand 1]
-                                           :msg "end the run"
-                                           :async true
-                                           :effect (effect (end-run eid card))}}}]})
+  (let [discard-card-to-end-the-run-sub
+        {:label "Trash 1 card from HQ to end the run"
+         :optional {:prompt "Trash 1 card from HQ to end the run?"
+                    :yes-ability {:cost [:trash-from-hand 1]
+                                  :msg "end the run"
+                                  :async true
+                                  :effect (effect (end-run eid card))}}}]
+    {:static-abilities [(ice-strength-bonus (req (if (threat-level 4 state) 2 0)))]
+    :subroutines [(do-net-damage 2)
+                  discard-card-to-end-the-run-sub
+                  discard-card-to-end-the-run-sub]}))
 
 (defcard "Brainstorm"
   {:on-encounter {:effect (effect (gain-variable-subs card (count (:hand runner)) (do-brain-damage 1)))}
