@@ -492,23 +492,24 @@
    :on-trash executive-trash-effect})
 
 (defcard "Charlotte Caçador"
-  (let [ability {:label "gain 4/draw"
+  (let [ability {:label "Gain 4 [Credits] and draw 1 card"
                  :optional {:once :per-turn
-                            :prompt "take 4 [Credits] and draw a card?"
+                            :prompt "Remove 1 hosted advancement counter to gain 4 [Credits] and draw 1 card?"
                             :req (req (pos? (get-counters card :advancement)))
                             :async true
-                            :yes-ability {:msg "remove 1 advancement counter to gain 4 credits and draw a card"
-                                          :async true
+                            :yes-ability {:msg "remove 1 hosted advancement counter from itself to gain 4 [Credits] and draw 1 card"
                                           :effect (req
-                                                    (set-prop state side card :advance-counter (dec (get-counters card :advancement)))
+                                                    (add-prop state :corp card :advance-counter -1)
                                                     (wait-for
-                                                      (gain-credits state :corp (make-eid state eid) 4)
-                                                      (draw state :corp eid 1)))}}}
+                                                      (gain-credits state side 4)
+                                                      (draw state side eid 1)))}}}
         trash-ab {:cost [:advancement 1 :trash-can]
-                  :label "Gain 3[Credits]"
-                  :msg (msg "gain 3[Credits]")
+                  :label "Gain 3 [Credits]"
+                  :msg (msg "gain 3 [Credits]")
                   :effect (req (gain-credits state :corp eid 3))}]
     {:advanceable :always
+     :flags {:corp-phase-12 (req true)}
+     :derezzed-events [corp-rez-toast]
      :events [(assoc ability :event :corp-turn-begins)]
      :abilities [ability trash-ab]}))
 
@@ -610,49 +611,51 @@
      :abilities [ability]}))
 
 (defcard "Cohor Guidance Program"
-  ;; When your turn begins, choose 1 to resolve:
-  ;; - Turn 1 faceup card in Archives facedown to gain 1{credit}.
-  ;; - Turn 1 facedown card in Archives faceup to place 1 advancement counter on a installed card."
-  {:events [{:event :corp-turn-begins
-             :prompt "Choose one"
+  (let [abi {:prompt "Choose one"
              :interactive (req true)
-             :choices (req [(when (seq (:hand corp)) "Trash from HQ (gain 2 draw 1)")
+             :choices (req [(when (seq (:hand corp)) "Trash 1 card from HQ to gain 2 [Credits] and draw 1 card")
                             (when (some #(not (:seen %)) (:discard corp))
-                              "Turn a card faceup (place 1 advancement)")
+                              "Turn 1 facedown card in Archives faceup to place 1 advancement counter")
                             "Done"])
              :async true
              :effect (req (if (= target "Done")
                             (effect-completed state side eid)
                             (continue-ability
                               state side
-                              (if (= target "Trash from HQ (gain 2 draw 1)")
-                                {:prompt "Turn a card in Archives facedown"
-                                 :cost [:trash-from-hand 1]
-                                 :msg "gain 2 [Credits] and draw 1"
-                                 :effect (req (wait-for (gain-credits state side
-                                                                      (make-eid state eid) 2)
-                                                        (draw state side eid 1)))}
-                                {:prompt "Turn a card in Archives faceup"
+                              (if (= target "Trash 1 card from HQ to gain 2 [Credits] and draw 1 card")
+                                {:prompt "Choose a card to trash"
+                                 :msg "trash a card from HQ to gain 2 [Credits] and draw 1 card"
+                                 :choices {:max 1
+                                           :all true
+                                           :card #(and (corp? %)
+                                                       (in-hand? %))}
+                                 :effect (req (wait-for (trash-cards state side targets {:cause-card card})
+                                                        (wait-for (gain-credits state side 2)
+                                                                  (draw state side eid 1))))}
+                                {:prompt "Choose a card to turn faceup"
                                  :choices {:card #(and (in-discard? %)
                                                        (corp? %)
                                                        (not (:seen %)))}
-                                 :msg (msg "turn " (:title target) " in archives faceup")
+                                 :msg (msg "turn " (:title target) " in Archives faceup")
                                  :show-discard true
                                  :async true
-                                 :effect (req (update! state side (assoc-in target [:seen] true))
+                                 :effect (req (update! state side (assoc target :seen true))
                                               (continue-ability
                                                 state side
-                                                {:prompt "Place 1 advancement token on an installed card"
+                                                {:prompt "Choose an installed card"
                                                  :choices {:card #(and (corp? %)
                                                                        (installed? %))}
-                                                 :msg (msg "place 1 advancement token on "
+                                                 :msg (msg "place 1 advancement counter on "
                                                            (card-str state target))
                                                  :effect (effect
                                                            (add-prop target
                                                                      :advance-counter 1
                                                                      {:placed true}))}
                                                 card nil))})
-                              card nil)))}]})
+                              card nil)))}]
+    {:flags {:corp-phase-12 (req true)}
+     :derezzed-events [corp-rez-toast]
+     :events [(assoc abi :event :corp-turn-begins)]}))
 
 (defcard "Commercial Bankers Group"
   (let [ability {:req (req unprotected)

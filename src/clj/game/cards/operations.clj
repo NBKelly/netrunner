@@ -428,7 +428,7 @@
 
 (defcard "Bring Them Home"
   (letfn [(hide-away [cards]
-            {:msg (msg "place " (str/join ", " (map :title cards))
+            {:msg (msg "place " (enumerate-str (map :title cards))
                        " from the grip to the top of the stack")
              :async true
              :effect (req (doseq [c (shuffle cards)]
