@@ -52,7 +52,7 @@
    [game.core.shuffling :refer [shuffle! shuffle-into-deck
                                 shuffle-into-rd-effect]]
    [game.core.tags :refer [gain-tags]]
-   [game.core.threat :refer [threat-level]]
+   [game.core.threat :refer [threat threat-level]]
    [game.core.to-string :refer [card-str]]
    [game.core.toasts :refer [toast]]
    [game.core.update :refer [update!]]
@@ -433,19 +433,22 @@
              :async true
              :effect (req (doseq [c (shuffle cards)]
                             (move state :runner c :deck {:front true}))
-                          (if-not (threat-level 3 state)
-                            (effect-completed state side eid)
-                            (continue-ability
-                              state :corp
-                              {:optional
-                               {:prompt "Shuffle a card into the stack?"
-                                :yes-ability {:cost [:credit 2]
-                                              :req (req (seq (:hand runner)))
-                                              :effect (req (let [target-card (first (shuffle (:hand runner)))]
-                                                             (system-msg state side (str "shuffles " (:title target-card) " into the stack"))
-                                                             (move state :runner target-card :deck)
-                                                             (shuffle! state :runner :deck)))}}}
-                              card nil)))})]
+                          (continue-ability
+                            state side
+                            {:optional
+                             {:prompt "Shuffle 1 random card from the grip into the stack?"
+                              :req (req (threat-level 3 state))
+                              :waiting-prompt true
+                              :yes-ability
+                              {:cost [:credit 2]
+                               :req (req (seq (:hand runner)))
+                                :effect(req (let [target-card (first (shuffle (:hand runner)))]
+                                              (wait-for
+                                                (reveal state side target-card)
+                                                (system-msg state side (str "shuffles " (:title target-card) " into the stack"))
+                                                (move state :runner target-card :deck)
+                                                (shuffle! state :runner :deck))))}}}
+                            card nil))})]
     {:on-play
      {:async true
       :req (req (and (pos? (count (:hand runner)))
