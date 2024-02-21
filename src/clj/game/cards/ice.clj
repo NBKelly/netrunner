@@ -1162,9 +1162,9 @@
                                           (end-run eid card))})]})
 
 (defcard "Cloud Eater"
-  {:subroutines [(do-net-damage 3)
+  {:subroutines [trash-installed-sub
                  (give-tags 2)
-                 trash-installed-sub]
+                 (do-net-damage 3)]
    :events [{:event :end-of-encounter
              :req (req (and (= :this-turn (:rezzed card))
                             (same-card? (:ice context) card)))
