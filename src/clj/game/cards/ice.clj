@@ -1181,8 +1181,7 @@
                                               (= target "Corp trashes 1 Runner card")
                                               trash-installed-sub
                                               (= target "Take 2 tags")
-                                              {:player :runner
-                                               :cost [:gain-tag 2]
+                                              {:effect (effect (gain-tags :corp eid 2))
                                                :msg (msg (decapitalize target))}
                                               (= target "Suffer 3 net damage")
                                               {:player :runner
