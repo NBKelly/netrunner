@@ -4,7 +4,8 @@
    [cond-plus.core :refer [cond+]]
    [game.core.access :refer [access-bonus access-card breach-server max-access]]
    [game.core.bad-publicity :refer [gain-bad-publicity]]
-   [game.core.board :refer [all-active-installed all-installed all-installed-runner-type card->server
+   [game.core.board :refer [all-active-installed all-installed all-installed-runner 
+                            all-installed-runner-type card->server
                             get-all-cards get-all-installed server->zone]]
    [game.core.card :refer [active? agenda? asset? can-be-advanced? card-index
                            corp? corp-installable-type? faceup?
@@ -1169,9 +1170,9 @@
              :effect (effect (continue-ability
                                {:prompt "Choose one"
                                 :player :runner
-                                :choices (req ["Corp trashes 1 Runner card"
-                                               "Take 2 tags"
-                                               (when (>= (count (:hand runner)) 3)
+                                :choices (req [(when (seq (all-installed-runner state)) "Corp trashes 1 Runner card")
+                                               (when-not (forced-to-avoid-tags? state side) "Take 2 tags")
+                                               (when (can-pay? state :runner eid card nil :net 3)
                                                  "Suffer 3 net damage")])
                                 :async true
                                 :effect (req
@@ -1181,12 +1182,12 @@
                                               (= target "Corp trashes 1 Runner card")
                                               trash-installed-sub
                                               (= target "Take 2 tags")
-                                              {:effect (effect (gain-tags :corp eid 2))
-                                               :msg (msg (decapitalize target))}
+                                              {:effect (effect (gain-tags :runner eid 2 {:unpreventable true}))
+                                               :msg "give the Runner 2 tags"}
                                               (= target "Suffer 3 net damage")
-                                              {:player :runner
-                                               :cost [:net 3]
-                                               :msg (msg (decapitalize target))})
+                                              {:effect (req (wait-for (pay state :runner (make-eid state eid) card [:net 3])
+                                                                      (system-msg state :runner (:msg async-result))
+                                                                      (effect-completed state side eid)))})
                                             card nil))}
                                card nil))}]})
 
