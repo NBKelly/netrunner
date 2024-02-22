@@ -4,7 +4,8 @@
    [cond-plus.core :refer [cond+]]
    [game.core.access :refer [access-bonus access-card breach-server max-access]]
    [game.core.bad-publicity :refer [gain-bad-publicity]]
-   [game.core.board :refer [all-active-installed all-installed all-installed-runner-type card->server
+   [game.core.board :refer [all-active-installed all-installed all-installed-runner 
+                            all-installed-runner-type card->server
                             get-all-cards get-all-installed server->zone]]
    [game.core.card :refer [active? agenda? asset? can-be-advanced? card-index
                            corp? corp-installable-type? faceup?
@@ -955,20 +956,17 @@
                  end-the-run]})
 
 (defcard "Boto"
-  {:static-abilities [(ice-strength-bonus (req (if (threat-level 4 state) 2 0)))]
-   :subroutines [(do-net-damage 2)
-                 {:label "trash a card from HQ to end the run"
-                  :optional {:prompt "trash a card from HQ to end the run?"
-                             :yes-ability {:cost [:trash-from-hand 1]
-                                           :msg "end the run"
-                                           :async true
-                                           :effect (effect (end-run eid card))}}}
-                 {:label "trash a card from HQ to end the run"
-                  :optional {:prompt "trash a card from HQ to end the run?"
-                             :yes-ability {:cost [:trash-from-hand 1]
-                                           :msg "end the run"
-                                           :async true
-                                           :effect (effect (end-run eid card))}}}]})
+  (let [discard-card-to-end-the-run-sub
+        {:label "Trash 1 card from HQ to end the run"
+         :optional {:prompt "Trash 1 card from HQ to end the run?"
+                    :yes-ability {:cost [:trash-from-hand 1]
+                                  :msg "end the run"
+                                  :async true
+                                  :effect (effect (end-run eid card))}}}]
+    {:static-abilities [(ice-strength-bonus (req (if (threat-level 4 state) 2 0)))]
+    :subroutines [(do-net-damage 2)
+                  discard-card-to-end-the-run-sub
+                  discard-card-to-end-the-run-sub]}))
 
 (defcard "Brainstorm"
   {:on-encounter {:effect (effect (gain-variable-subs card (count (:hand runner)) (do-brain-damage 1)))}
@@ -1162,35 +1160,34 @@
                                           (end-run eid card))})]})
 
 (defcard "Cloud Eater"
-  {:subroutines [(do-net-damage 3)
+  {:subroutines [trash-installed-sub
                  (give-tags 2)
-                 trash-installed-sub]
+                 (do-net-damage 3)]
    :events [{:event :end-of-encounter
              :req (req (and (= :this-turn (:rezzed card))
                             (same-card? (:ice context) card)))
-             :msg "force the runner to choose a subroutine to resolve"
+             :msg "force the Runner to choose a subroutine to resolve"
              :effect (effect (continue-ability
-                               {:prompt "choose an effect"
+                               {:prompt "Choose one"
                                 :player :runner
-                                :choices (req ["Corp trashes a runner card"
-                                               "Take 2 tags"
-                                               (when (>= (count (:hand runner)) 3)
+                                :choices (req [(when (seq (all-installed-runner state)) "Corp trashes 1 Runner card")
+                                               (when-not (forced-to-avoid-tags? state side) "Take 2 tags")
+                                               (when (can-pay? state :runner eid card nil :net 3)
                                                  "Suffer 3 net damage")])
                                 :async true
                                 :effect (req
                                           (continue-ability
                                             state :runner
                                             (cond
-                                              (= target "Corp trashes a runner card")
+                                              (= target "Corp trashes 1 Runner card")
                                               trash-installed-sub
                                               (= target "Take 2 tags")
-                                              {:player :runner
-                                               :cost [:gain-tag 2]
-                                               :msg (msg "prevent the Corporation from trashing a card")}
+                                              {:effect (effect (gain-tags :runner eid 2 {:unpreventable true}))
+                                               :msg "give the Runner 2 tags"}
                                               (= target "Suffer 3 net damage")
-                                              {:player :runner
-                                               :cost [:net 3]
-                                               :msg (msg "prevent the Corporation from trashing a card")})
+                                              {:effect (req (wait-for (pay state :runner (make-eid state eid) card [:net 3])
+                                                                      (system-msg state :runner (:msg async-result))
+                                                                      (effect-completed state side eid)))})
                                             card nil))}
                                card nil))}]})
 
@@ -3903,8 +3900,7 @@
                  runner-trash-installed-sub]})
 
 (defcard "Tributary"
-  {:subroutines [{:label "You may draw. Install a piece of ice from HQ protecting another server"
-                  :prompt "You may draw. Choose a piece of ice to install from HQ in another server"
+  {:subroutines [{:label "Draw 1 card and install a piece of ice from HQ protecting another server"
                   :async true
                   :effect (req (wait-for
                                  (maybe-draw state side card 1)
@@ -3912,6 +3908,7 @@
                                    state side
                                    {:choices {:card #(and (ice? %)
                                                           (in-hand? %))}
+                                    :prompt "Choose a piece of ice to install"
                                     :effect (req (let [this (zone->name (second (get-zone card)))
                                                        nice target]
                                                    (continue-ability state side
@@ -3921,8 +3918,8 @@
                                                                       :effect (effect (corp-install eid nice target {:ignore-install-cost true}))}
                                                                      card nil)))}
                                    card nil)))}
-                 {:label "Give +2 strength to all ice for the remainder of the run"
-                  :msg "give +2 strength to all ice for the remainder of the run"
+                 {:label "Give +2 strength to each piece of ice for the remainder of the run"
+                  :msg "give +2 strength to each piece of ice for the remainder of the run"
                   :effect (effect (register-lingering-effect
                                     card
                                     {:type :ice-strength
@@ -3935,7 +3932,7 @@
                             (continue-ability
                               state side
                               {:optional
-                               {:prompt (msg "move " (:title card) " to the outermost position of " (zone->name target-server) "?")
+                               {:prompt (msg "Move " (:title card) " to the outermost position of " (zone->name target-server) "?")
                                 :yes-ability {:once :per-turn
                                               :msg (msg "move itself to the outermost position of " (zone->name target-server))
                                               :effect (req (let [moved (move state side card (conj [:servers (first target-server)] :ices))]

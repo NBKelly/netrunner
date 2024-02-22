@@ -1722,13 +1722,14 @@
 
 (defcard "See How They Run"
   {:on-score {:interactive (req true)
-              :msg "give the runner a tag, and start a psi game (differ-do 1 core damage/match do 1 net damage)"
+              :msg "give the runner 1 tag"
               :async true
               :effect (req (wait-for
                              (gain-tags state :runner 1)
                              (continue-ability
                                state side
-                               {:psi {:not-equal {:msg "do 1 core damage"
+                               {:msg "start a psi game (do 1 core damage / do 1 net damage)"
+                                :psi {:not-equal {:msg "do 1 core damage"
                                                   :async true
                                                   :effect (effect (damage eid :brain 1 {:card card}))}
                                       :equal {:async true
@@ -1797,10 +1798,12 @@
                             (first-event? state side :pass-ice
                                           (fn [targets]
                                             (let [context (first targets)]
-                                              (rezzed? (:ice context)))))))
+                                              (and (rezzed? (:ice context))
+                                                   (or (has-subtype? (:ice context) "Code Gate")
+                                                       (has-subtype? (:ice context) "Sentry"))))))))
              :prompt (msg "Make the runner encounter " (:title (:ice context)) " again?")
              :choices (req [(when (can-pay? state :corp (assoc eid :source card :source-type :ability) card nil [:credit 1]) "Pay 1 [Credit]")
-                            (when (can-pay? state :corp (assoc eid :source card :source-type :ability) card nil [:trash-from-hand 1]) "Trash a card from HQ")
+                            (when (can-pay? state :corp (assoc eid :source card :source-type :ability) card nil [:trash-from-hand 1]) "Trash 1 card from HQ")
                             "Done"])
              :async true
              :effect (req (if (= target "Done")
@@ -1808,12 +1811,12 @@
                             (let [enc-ice current-ice]
                               (continue-ability
                                 state side
-                                (assoc {:msg (msg "make the runner encounter " (:title enc-ice) " again")
+                                (assoc {:msg (msg "make the runner encounter " (card-str state enc-ice) " again")
                                         :async true
                                         :effect (req (force-ice-encounter state side eid enc-ice))}
-                                       :cost (if (= target "Pay 1 [Credit]")
-                                               [:credit 1]
-                                               [:trash-from-hand 1]))
+                                        :cost (if (= target "Pay 1 [Credit]")
+                                                [:credit 1]
+                                                [:trash-from-hand 1]))
                                 card nil))))}]})
 
 (defcard "Slash and Burn Agriculture"
