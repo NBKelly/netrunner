@@ -4566,6 +4566,22 @@
                   (click-prompt state :corp "Hedge Fund"))
         "Hedge Fund was played")))
 
+(deftest ^:kaocha/pending sudden-commandment-threat
+  (do-game
+    (new-game {:corp {:hand [(qty "Sudden Commandment" 2) "Bellona"]
+                      :deck ["IPO" "Hedge Fund"]
+                      :credits 10}})
+    (play-and-score state "Bellona")
+    (play-from-hand state :corp "Sudden Commandment")
+    (click-prompt state :corp "Hedge Fund")
+    (is (changed? [(:credit (get-corp)) -3
+                   (:click (get-corp)) 1]
+                  (click-prompt state :corp "Yes"))
+        "Corp spent 3 credits and gained 1 click")
+    (play-from-hand state :corp "Sudden Commandment")
+    (click-prompt state :corp "Done")
+    (is (no-prompt? state :corp) "No additional prompt when playing the second Suddend Commandment of the turn")))
+
 (deftest sunset
   ;; Sunset
   (do-game
