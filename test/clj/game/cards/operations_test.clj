@@ -4553,6 +4553,19 @@
     (play-from-hand state :corp "Successful Demonstration")
     (is (= 13 (:credit (get-corp))) "Paid 2 to play event; gained 7 credits")))
 
+(deftest sudden-commandment
+  (do-game
+    (new-game {:corp {:hand ["Sudden Commandment"]
+                      :deck ["IPO" "Hedge Fund"]
+                      :credits 10}})
+    (is (changed? [(count (:hand (get-corp))) 1]
+                  (play-from-hand state :corp "Sudden Commandment"))
+        "Corp drew 2 cards (-1 being Sudden Commandment)")
+    (is (= 2 (count (:choices (prompt-map :corp)))) "Choices should be Hedge Fund and Done")
+    (is (changed? [(:credit (get-corp)) 4]
+                  (click-prompt state :corp "Hedge Fund"))
+        "Hedge Fund was played")))
+
 (deftest sunset
   ;; Sunset
   (do-game

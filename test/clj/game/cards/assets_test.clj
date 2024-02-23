@@ -2790,6 +2790,26 @@
           (is (nil? (refresh jhow)))
           (is (nil? (:run @state)))))))
 
+(deftest janaina-jk-dumont-kindelan
+  (do-game
+    (new-game {:corp {:hand ["Janaína \"JK\" Dumont Kindelán" "NGO Front"]}})
+    (play-from-hand state :corp "Janaína \"JK\" Dumont Kindelán" "New remote")
+    (let [jk (get-content state :remote1 0)]
+      (rez state :corp jk)
+      (dotimes [n 2]
+        (take-credits state :corp)
+        (take-credits state :runner)
+        (is (:corp-phase-12 @state) "Corp is in Step 1.2")
+        (end-phase-12 state :corp)
+        (is (= (* 3 (inc n)) (get-counters (refresh jk) :credit))))
+      (is (changed? [(:credit (get-corp)) 6]
+                    (card-ability state :corp jk 1)
+                    (click-card state :corp "NGO Front")
+                    (click-prompt state :corp "New remote"))
+          "Corp gained 6 credits and installed 1 card from HQ")
+      (is (nil? (get-content state :remote1 0)) "JK returned to hand")
+      (is (= "NGO Front" (:title (get-content state :remote2 0)))))))
+
 (deftest jeeves-model-bioroids-cases-where-jeeves-should-trigger
     ;; Cases where Jeeves should trigger
     (testing "Install three different cards"
