@@ -1627,11 +1627,10 @@
          :label "Place advancement counters on a card in or protecting this server"
          :once :per-turn
          :choices {:req (req (same-server? card target))}
-         :msg (msg "place advancement tokens on " (card-str state target))
-         :effect (req
-                   (if (no-event? state side :corp-install #(= [:hand] (:previous-zone (:card (first %)))))
-                     (add-prop state side eid target :advance-counter 3 {:placed true})
-                     (add-prop state side eid target :advance-counter 2 {:placed true})))}]
+         :effect
+         (req (let [n (if (no-event? state side :corp-install #(= [:hand] (:previous-zone (:card (first %))))) 3 2)]
+                (system-msg state side (str "uses " (card-str state card) " to place " (quantify n "advancement counter") " on " (card-str state target)))
+                (add-prop state side eid target :advance-counter n {:placed true})))}]
     {:abilities [abi]
      :events [(mobile-sysop-event :corp-turn-begins)]}))
 
