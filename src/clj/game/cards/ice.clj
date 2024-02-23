@@ -3186,18 +3186,9 @@
     {:additional-cost [:tag-or-bad-pub]
      :subroutines [maybe-draw-sub
                    (do-net-damage 1)
-                   {:label "End run if there are more cards in HQ than in the grip"
-                    :async true
-                    :effect (req (let [hq (count (:hand corp))
-                                       grip (count (:hand runner))]
-                                   (continue-ability
-                                     state side
-                                     (if (> hq grip)
-                                       {:msg "end the run"
-                                        :async true
-                                        :effect (req (end-run state :corp eid card))}
-                                       {:msg "do nothing"})
-                                     card nil)))}]}))
+                   (assoc end-the-run
+                          :label "End the run if there are more cards in HQ than in the grip"
+                          :req (req (> (count (:hand corp)) (count (:hand runner)))))]}))
 
 (defcard "Pop-up Window"
   {:on-encounter (gain-credits-sub 1)
