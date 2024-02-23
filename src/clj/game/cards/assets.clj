@@ -1295,28 +1295,27 @@
                 :effect (effect (shuffle-into-rd-effect eid card 3))}]})
 
 (defcard "Janaína \"JK\" Dumont Kindelán"
-  (let [ability {:label "Place 3 credits (start of turn)"
+  (let [ability {:label "Place 3 [Credits] on this asset (start of turn)"
                  :once :per-turn
-                 :msg "place 3 credits on itself"
+                 :msg "place 3 [Credits] on itself"
                  :effect (effect (add-counter card :credit 3 {:placed true}))}]
     {:derezzed-events [corp-rez-toast]
      :flags {:corp-phase-12 (req true)}
      :events [(assoc ability :event :corp-turn-begins)]
      :abilities [ability
                  {:cost [:click 1]
-                  :label "take all credits and add to HQ"
+                  :label "Take all hosted credits and add this asset to HQ. Install 1 card from HQ"
                   :async true
-                  :msg (msg "take " (get-counters (get-card state card) :credit) " credits and add itself to HQ")
+                  :msg (msg "take " (get-counters (get-card state card) :credit) " [Credits] and add itself to HQ")
                   :effect (req (wait-for (gain-credits state side (make-eid state eid)
                                                        (get-counters (get-card state card) :credit))
                                          (move state :corp card :hand)
                                          (continue-ability
                                            state side
                                            {:async true
-                                            :prompt "Choose a card to install from HQ"
-                                            :choices {:card #(and (not (operation? %))
-                                                                  (in-hand? %)
-                                                                  (corp? %))}
+                                            :prompt "Choose 1 card to install"
+                                            :choices {:card #(and (corp-installable-type? %)
+                                                                  (in-hand? %))}
                                             :msg (msg (corp-install-msg target))
                                             :effect (effect (corp-install eid target nil nil))}
                                            card nil)))}]}))

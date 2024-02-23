@@ -18,7 +18,7 @@
    [game.core.def-helpers :refer [combine-abilities corp-recur defcard
                                   do-brain-damage do-net-damage offer-jack-out
                                   reorder-choice get-x-fn]]
-   [game.core.drawing :refer [draw maybe-draw]]
+   [game.core.drawing :refer [draw]]
    [game.core.effects :refer [get-effects register-lingering-effect unregister-static-abilities]]
    [game.core.eid :refer [complete-with-result effect-completed make-eid]]
    [game.core.engine :refer [gather-events pay register-events resolve-ability
@@ -1032,14 +1032,12 @@
                  (trace-ability 2 end-the-run)]})
 
 (defcard "Capacitor"
-  {:static-abilities [(ice-strength-bonus (req (if (pos? (count-tags state)) 2 0)))]
-   :subroutines [{:label "Gain 1 [Credits] for each tag the runner has"
+  {:static-abilities [(ice-strength-bonus (req (if (is-tagged? state) 2 0)))]
+   :subroutines [{:label "Gain 1 [Credits] for each tag the Runner has"
                   :async true
                   :msg (msg "Gain " (count-tags state) " [Credits]")
-                  :effect (req
-                            (if-not (zero? (count-tags state))
-                              (gain-credits :corp eid (count-tags state))
-                              (effect-completed state side eid)))}
+                  :req (req (pos? (count-tags state)))
+                  :effect (effect (gain-credits :corp eid (count-tags state)))}
                  end-the-run]})
 
 (defcard "Cell Portal"
@@ -3176,13 +3174,19 @@
    :subroutines [end-the-run]})
 
 (defcard "Piranhas"
-  (let [draw-sub {:async true
-                  :label "You may draw a card"
-                  :effect (effect (maybe-draw eid card 1))}]
+  (let [maybe-draw-sub
+        {:label "You may draw a card"
+         :optional
+         {:waiting-prompt true
+          :prompt "Draw 1 card?"
+          :yes-ability
+          {:async true
+           :effect (effect (draw :corp eid 1))
+           :msg "draw 1 card"}}}]
     {:additional-cost [:tag-or-bad-pub]
-     :subroutines [draw-sub
+     :subroutines [maybe-draw-sub
                    (do-net-damage 1)
-                   {:label "End run HQ > Grip"
+                   {:label "End run if there are more cards in HQ than in the grip"
                     :async true
                     :effect (req (let [hq (count (:hand corp))
                                        grip (count (:hand runner))]
@@ -3413,13 +3417,13 @@
 
 (defcard "Seraph"
   (let [encounter-ab
-        {:prompt "choose one"
+        {:prompt "Choose one"
          :player :runner
          :choices (req ["lose 3 credits"
                         (when (>= (count (:hand runner)) 2)
                           "take 2 net damage")
                         "gain 1 tag"])
-         :msg (msg "force the runner to " target)
+         :msg (msg "force the Runner to " (decapitalize target) " on encountering it")
          :effect (req (cond
                         (= "lose 3 credits" target) (lose-credits state :runner eid 3)
                         (= "take 2 net damage" target)

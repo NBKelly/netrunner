@@ -1621,9 +1621,8 @@
 (defcard "The Holo Man"
   (let [abi
         {:cost [:click :credit 4]
-         :label "place advancement tokens on a card in or protecting this server"
+         :label "Place advancement counters on a card in or protecting this server"
          :once :per-turn
-         :req (req (= :corp (:active-player @state)))
          :choices {:req (req (same-server? card target))}
          :msg (msg "place advancement tokens on " (card-str state target))
          :effect (req
