@@ -3410,27 +3410,20 @@
   (let [encounter-ab
         {:prompt "Choose one"
          :player :runner
-         :choices (req ["lose 3 credits"
+         :waiting-prompt true
+         :choices (req ["Lose 3 [Credits]"
                         (when (>= (count (:hand runner)) 2)
-                          "take 2 net damage")
-                        "gain 1 tag"])
+                          "Suffer 2 net damage")
+                        (when-not (forced-to-avoid-tags? state side)
+                          "Take 1 tag")])
          :msg (msg "force the Runner to " (decapitalize target) " on encountering it")
          :effect (req (cond
-                        (= "lose 3 credits" target) (lose-credits state :runner eid 3)
-                        (= "take 2 net damage" target)
-                        (continue-ability
-                          state :runner
-                          {:player :runner
-                           :cost [:net 2]
-                           :msg (msg "prevent losing 3 credits")}
-                          card nil)
-                        (= "gain 1 tag" target)
-                        (continue-ability
-                          state :runner
-                          {:player :runner
-                           :cost [:gain-tag 1]
-                           :msg (msg "prevent losing 3 credits")}
-                          card nil)))}]
+                        (= "Lose 3 [Credits]" target)
+                          (lose-credits state :runner eid 3)
+                        (= "Suffer 2 net damage" target)
+                          (pay state :runner eid card [:net 2])
+                        (= "Take 1 tag" target)
+                          (gain-tags state :runner eid 1 {:unpreventable true})))}]
     {:on-encounter encounter-ab
      :subroutines [(runner-loses-credits 3)
                    (do-net-damage 2)
