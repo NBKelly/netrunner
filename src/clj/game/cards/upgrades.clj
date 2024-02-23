@@ -59,26 +59,29 @@
    [jinteki.utils :refer :all]))
 
 ;; Helpers
-(def mobile-sysop-event
-  {:event :corp-turn-ends
-   :optional {:prompt (msg "Move " (:title card) " to another server?")
-              :waiting-prompt true
-              :yes-ability {:async true
-                            :effect (effect (continue-ability
-                                              {:prompt "Choose a server"
-                                               :waiting-prompt true
-                                               :choices (server-list state)
-                                               :msg (msg "move itself to " target)
-                                               :effect (req (let [c (move state side card
-                                                                          (conj (server->zone state target) :content))]
-                                                              (unregister-events state side card)
-                                                              (register-default-events state side c)))}
-                                              card nil))}}})
+(defn mobile-sysop-event
+  ([] (mobile-sysop-event :corp-turn-ends))
+  ([ev] {:event ev
+         :optional
+         {:prompt (msg "Move " (:title card) " to another server?")
+          :waiting-prompt true
+          :yes-ability
+          {:async true
+           :effect (effect (continue-ability
+                             {:prompt "Choose a server"
+                              :waiting-prompt true
+                              :choices (server-list state)
+                              :msg (msg "move itself to " target)
+                              :effect (req (let [c (move state side card
+                                                         (conj (server->zone state target) :content))]
+                                             (unregister-events state side card)
+                                             (register-default-events state side c)))}
+                             card nil))}}}))
 
 ;; Card definitions
 
 (defcard "Adrian Seis"
-  {:events [mobile-sysop-event
+  {:events [(mobile-sysop-event)
             {:event :successful-run
              :interactive (req true)
              :psi {:req (req this-server)
@@ -1630,7 +1633,7 @@
                      (add-prop state side eid target :advance-counter 3 {:placed true})
                      (add-prop state side eid target :advance-counter 2 {:placed true})))}]
     {:abilities [abi]
-     :events [(assoc mobile-sysop-event :event :corp-turn-begins)]}))
+     :events [(mobile-sysop-event :corp-turn-begins)]}))
 
 (defcard "The Twins"
   {:events [{:event :pass-ice
@@ -1782,7 +1785,7 @@
                                           (threat-level 4 state))
                                       (= (card->server state card) (card->server state target))))
                         :value -2}]
-    :events [mobile-sysop-event]})
+    :events [(mobile-sysop-event)]})
 
 (defcard "Warroid Tracker"
   (letfn [(wt [n]
