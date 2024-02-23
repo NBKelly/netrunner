@@ -1927,20 +1927,16 @@
                               card nil)))})]
     {:on-score (score-abi 4)
      :derezzed-events [{:event :corp-install
-                        :req (req (and
-                                    (not= [:hand] (:previous-zone card))
-                                    (same-card? (:card target) card)))
-                        :async true
-                        :waiting-prompt false
-                        :effect (effect
-                                  (continue-ability
-                                    {:waiting-prompt false
-                                     :optional
-                                     {:prompt "Resolve the when-scored ability?"
-                                      :waiting-prompt false
-                                      :async true
-                                      :yes-ability (score-abi 2)}}
-                                    card nil))}]}))
+                        :optional
+                        {:prompt "Reveal this agenda to gain 2 [Credits] and place 1 advancement counter on an installed card?"
+                         :req (req (and
+                                     (not= [:hand] (:previous-zone card))
+                                     (same-card? (:card target) card)))
+                         :waiting-prompt true
+                         :yes-ability
+                         {:msg (msg "reveal itself from " (zone->name (:previous-zone card)))
+                          :effect (req (wait-for (reveal state side target)
+                                        (continue-ability state side (score-abi 2) card nil)))}}}]}))
 
 (defcard "Successful Field Test"
   (letfn [(sft [n max-ops]
