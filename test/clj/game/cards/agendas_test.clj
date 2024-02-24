@@ -1260,7 +1260,7 @@
           (is (rezzed? (get-ice state :hq 0))))
         "Eminent Domain allows install and rez from R&D at no cost")))
 
-(deftest eminent-domain
+(deftest eminent-domain-expend-ability
   (do-game
     (new-game {:corp {:hand ["Eminent Domain" "Pharos" "Tithe" "Ice Wall"]}})
     (play-from-hand state :corp "Tithe" "HQ")
