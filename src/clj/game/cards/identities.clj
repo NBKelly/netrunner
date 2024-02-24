@@ -1547,11 +1547,10 @@
               :event :corp-trash
               :req (req (and (= :corp (:active-player @state))
                              (= [:deck] (:zone (:card target)))))
-              :msg "gain 2 [Credit]"
+              :msg "gain 2 [Credits]"
               :async true
-              :effect (req (gain-credits state :corp eid 2))}
-        abi1 {:prompt (msg "The top card of R&D is " (:title (first (:deck corp))))
-              :choices ["Trash it" "Done"]
+              :effect (effect (gain-credits :corp eid 2))}
+        abi1 {:prompt (msg "The top card of R&D is: " (:title (first (:deck corp))))
               :async true
               :msg "look at the top card of R&D"
               :effect (req (if (= target "Done")

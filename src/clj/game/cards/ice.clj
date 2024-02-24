@@ -1914,15 +1914,15 @@
 (defcard "Hammer"
   {:implementation "Breaking restriction not implemented"
    :subroutines [(give-tags 1)
-                 {:label "trash 1 hardware or resource"
+                 {:label "Trash 1 resource or piece of hardware"
                   :msg (msg "trash " (:title target))
-                  :prompt (req (str "trash a hardware or resource"))
+                  :prompt "Choose a resource of piece of hardware"
                   :choices {:req (req (and (installed? target)
                                            (or (hardware? target)
                                                (resource? target))))}
                   :async true
                   :effect (effect (trash eid target {:cause :subroutine}))}
-                 {:label "Trash 1 program"
+                 {:label "Trash 1 program that is not a decoder, fracter or killer"
                   :prompt "Choose a program that is not a decoder, fracter or killer"
                   :msg (msg "trash " (:title target))
                   :choices {:card #(and (installed? %)
@@ -1931,8 +1931,7 @@
                                         (not (has-subtype? % "Fracter"))
                                         (not (has-subtype? % "Killer")))}
                   :async true
-                  :effect (effect (clear-wait-prompt :runner)
-                                  (trash eid target {:cause :subroutine}))}]})
+                  :effect (effect (trash eid target {:cause :subroutine}))}]})
 
 (defcard "Hangman"
   (let [shuffle-ab {:prompt "Reveal up to 2 agendas in HQ or archives"
@@ -1969,9 +1968,9 @@
     {:events [{:event :corp-turn-begins
                :interactive (req true)
                :req (req (rezzed? card))
-               :optional {:prompt (msg "add " (:title card) " to HQ?")
+               :optional {:prompt (msg "Add " (card-str state card) " to HQ?")
                           :yes-ability {:effect (req (move state side card :hand))
-                                        :msg (msg "adds " (:title card) " to HQ")}}}]
+                                        :msg (msg "add " (card-str state card) " to HQ")}}}]
      :expend shuffle-ab
      :subroutines [end-the-run]}))
 
@@ -2500,14 +2499,14 @@
 (defcard "Logjam"
   {:advanceable :always
    :static-abilities [(ice-strength-bonus (req (get-counters card :advancement)))]
-   :on-rez {:msg (msg "gain " (inc (faceup-archives-types corp)) " advancement counters")
+   :on-rez {:msg (msg "place " (quantify (inc (faceup-archives-types corp)) "advancement counter") " on itself")
             :effect (effect (add-prop card
                                       :advance-counter
                                       (inc (faceup-archives-types corp))
                                       {:placed true}))}
    :subroutines [{:msg "gain 2 [Credits] and end the run"
                   :async true
-                  :effect (req (wait-for (gain-credits state side 2)
+                  :effect (req (wait-for (gain-credits state :corp 2)
                                          (end-run state side eid card)))}
                  end-the-run
                  end-the-run]})
