@@ -1934,37 +1934,43 @@
                   :effect (effect (trash eid target {:cause :subroutine}))}]})
 
 (defcard "Hangman"
-  (let [shuffle-ab {:prompt "Reveal up to 2 agendas in HQ or archives"
-                    :label "reveal and shuffle agendas"
-                    :cost [:credit 1]
-                    :choices {:max 2
-                              :card #(and (agenda? %)
-                                          (or (in-hand? %)
-                                              (in-discard? %)))}
-                    :async true
-                    :show-discard true
-                    :cancel-effect (req (effect-completed eid))
-                    :effect (req (wait-for
-                                   (reveal state side targets)
-                                   (doseq [c targets]
-                                     (move state :corp c :deck))
-                                   (shuffle! state :corp :deck)
-                                   (let [from-hq (map :title (filter in-hand? targets))
-                                         from-archives (map :title (filter in-discard? targets))]
-                                     (system-msg
-                                       state side
-                                       (str "uses Preacher to shuffle "
-                                            (str/join
-                                              " and "
-                                              (filter identity
-                                                      [(when (not-empty from-hq)
-                                                         (str (str/join " and " from-hq)
-                                                              " from HQ"))
-                                                       (when (not-empty from-archives)
-                                                         (str (str/join " and " from-archives)
-                                                              " from Archives"))]))
-                                            " into R&D")))
-                                   (effect-completed state side eid)))}]
+  (let [shuffle-ab
+        {:label "Draw 1 card and shuffle 2 agendas in HQ and/or Archives into R&D"
+         :msg "draw 1 card"
+         :effect
+         (req (wait-for
+                (draw state side 1)
+                (continue-ability
+                  state side
+                  {:prompt "Choose up to 2 agendas in HQ and/or Archives"
+                   :choices {:max 2
+                   :card #(and (agenda? %)
+                               (or (in-hand? %)
+                                   (in-discard? %)))}
+                   :async true
+                   :show-discard true
+                   :effect
+                   (req (wait-for
+                          (reveal state side targets)
+                          (doseq [c targets]
+                            (move state :corp c :deck))
+                          (shuffle! state :corp :deck)
+                          (let [from-hq (map :title (filter in-hand? targets))
+                                from-archives (map :title (filter in-discard? targets))]
+                            (system-msg
+                              state side
+                              (str "uses " (:title card) " to reveal "
+                                   (enumerate-str
+                                     (filter identity
+                                             [(when (not-empty from-hq)
+                                                (str (enumerate-str from-hq)
+                                                     " from HQ"))
+                                              (when (not-empty from-archives)
+                                                (str (enumerate-str from-archives)
+                                                     " from Archives"))]))
+                                   ", shuffle them into R&D")))
+                          (effect-completed state side eid)))}
+                card nil)))}]
     {:events [{:event :corp-turn-begins
                :interactive (req true)
                :req (req (rezzed? card))
