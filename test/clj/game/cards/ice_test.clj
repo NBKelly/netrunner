@@ -3130,6 +3130,69 @@
       (is (nil? (:run @state)))
       (is (= ["Sure Gamble"] (->> (get-runner) :discard (map :title))) "Sure Gamble should be in heap"))))
 
+(deftest hammer
+  (do-game
+    (new-game {:corp {:hand ["Hammer"]}
+               :runner {:hand ["Smartware Distributor" "Simulchip" "Aumakua"]}})
+    (play-from-hand state :corp "Hammer" "HQ")
+    (take-credits state :corp)
+    (core/gain state :runner :click 1)
+    (play-from-hand state :runner "Smartware Distributor")
+    (play-from-hand state :runner "Simulchip")
+    (play-from-hand state :runner "Aumakua")
+    (let [ham (get-ice state :hq 0)]
+      (run-on state "HQ")
+      (rez state :corp ham)
+      (run-continue state)
+      (is (changed? [(count-tags state) 1]
+                    (card-subroutine state :corp ham 0))
+          "Runner got 1 tag")
+      (is (changed? [(count (get-hardware state)) -1
+                     (count (:discard (get-runner))) 1]
+                    (card-subroutine state :corp ham 1)
+                    (click-card state :corp (get-hardware state 0)))
+          "Simulchip got trashed")
+      (is (changed? [(count (get-program state)) -1
+                     (count (:discard (get-runner))) 1]
+                    (card-subroutine state :corp ham 2)
+                    (click-card state :corp (get-program state 0)))
+          "Aumakua got trashed")
+      (run-continue state :movement)
+      (run-jack-out state)
+      (run-on state "HQ")
+      (run-continue state)
+      (is (changed? [(count (get-resource state)) -1
+                     (count (:discard (get-runner))) 1]
+                    (card-subroutine state :corp ham 1)
+                    (click-card state :corp (get-resource state 0)))
+          "Smartware Distributor got trashed"))))
+
+(deftest hangman
+  (do-game
+    (new-game {:corp {:hand ["Hangman"]
+                      :deck ["Hedge Fund" "Project Atlas"]
+                      :discard ["Ikawah Project"]}})
+    (play-from-hand state :corp "Hangman" "HQ")
+    (take-credits state :corp)
+    (let [hm (get-ice state :hq 0)]
+      (run-on state "HQ")
+      (rez state :corp hm)
+      (run-continue state)
+      (fire-subs state hm)
+      (is (not (:run @state)) "Run has ended")
+      (take-credits state :runner)
+      (is (changed? [(count (:hand (get-corp))) 2]
+                    (click-prompt state :corp "Yes")
+                    (is (nil? (refresh (get-ice state :hq 0)))))
+          "Hangman returned to HQ + corp mandatory drew")
+      (expend state :corp (find-card "Hangman" (:hand (get-corp))))
+      (is (changed? [(count (:hand (get-corp))) -1
+                     (count (:discard (get-corp))) -1
+                     (count (:deck (get-corp))) 2]
+                    (click-card state :corp "Ikawah Project")
+                    (click-card state :corp "Project Atlas"))
+          "The 2 agendas are shuffled into R&D and Hangman is expended"))))
+
 (deftest harvester
   ;; Harvester - draw 3, then discard
   (do-game
@@ -4044,6 +4107,28 @@
       (play-from-hand state :runner "Diesel")
       (is (= 3 (count (:hand (get-runner))))
           "New turn ends prevention; remaining 3 cards drawn from Stack"))))
+
+(deftest logjam
+  (do-game
+    (new-game {:corp {:hand ["Logjam" "Slash and Burn Agriculture"]
+                      :discard ["NGO Front" "Hedge Fund"]
+                      :credits 10}})
+    (play-from-hand state :corp "Logjam" "HQ")
+    (take-credits state :corp)
+    (run-empty-server state :archives)
+    (take-credits state :runner)
+    (let [lj (get-ice state :hq 0)]
+      (expend state :corp (first (:hand (get-corp))))
+      (click-card state :corp lj)
+      (take-credits state :corp)
+      (run-on state "HQ")
+      (rez state :corp lj)
+      (is (= 6 (get-strength (refresh lj))) "Logjam got +1 strength for each hosted advancement counter")
+      (run-continue state)
+      (is (changed? [(:credit (get-corp)) 2]
+                    (fire-subs state (refresh lj)))
+          "Corp gained 2 credits")
+      (is (not (:run @state)) "Run has ended"))))
 
 (deftest loki-runner-does-not-shuffle-cards
   ;; Runner does not shuffle cards

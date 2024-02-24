@@ -2512,6 +2512,46 @@
       (is (= 1 (get-counters (refresh haa) :advancement)) "Can't use twice in a turn")
       (is (= 2 (:click (get-corp))) "Didn't spend a click"))))
 
+(deftest hearts-and-minds-behind-ice
+  (do-game
+    (new-game {:corp {:hand ["Hearts and Minds" "Vanilla" "NGO Front" "Project Atlas"]}})
+    (core/gain state :corp :click 2)
+    (play-from-hand state :corp "Hearts and Minds" "New remote")
+    (play-from-hand state :corp "Vanilla" "Server 1")
+    (play-from-hand state :corp "NGO Front" "New remote")
+    (play-from-hand state :corp "Project Atlas" "New remote")
+    (let [ham (get-content state :remote1 0)
+          ngo (get-content state :remote2 0)
+          atlas (get-content state :remote3 0)]
+    (rez state :corp ham)
+    (click-advance state :corp ngo)
+    (take-credits state :corp)
+    (take-credits state :runner)
+    (is (:corp-phase-12 @state) "Corp is in Step 1.2")
+    (card-ability state :corp ham 0)
+    (is (changed? [(get-counters (refresh ngo) :advancement) -1
+                   (get-counters (refresh atlas) :advancement) 1]
+                  (click-card state :corp ngo)
+                  (click-card state :corp atlas))
+        "Advancement counter moved from NGO Front to Project Atlas")
+    (is (no-prompt? state :corp) "No additional prompt because Hearts and Minds is behind ice"))))
+
+(deftest hearts-and-minds
+  (do-game
+    (new-game {:corp {:hand ["Hearts and Minds" "NGO Front"]}})
+    (play-from-hand state :corp "Hearts and Minds" "New remote")
+    (play-from-hand state :corp "NGO Front" "New remote")
+    (let [ham (get-content state :remote1 0)
+          ngo (get-content state :remote2 0)]
+    (rez state :corp ham)
+    (take-credits state :corp)
+    (take-credits state :runner)
+    (card-ability state :corp ham 0)
+    (click-prompt state :corp "Done")
+    (is (changed? [(get-counters (refresh ngo) :advancement) 1]
+                  (click-card state :corp ngo))
+        "NGO Front got 1 advancement counter"))))
+
 (deftest honeyfarm
   ;; Honeyfarm - lose one credit on access
   (do-game
@@ -5711,6 +5751,23 @@
     (take-credits state :corp)
     (play-from-hand state :runner "Rumor Mill")
     (is (find-card "Rumor Mill" (:hand (get-runner))) "Rumor Mill should still be in hand after trying to play it")))
+
+(deftest the-powers-that-be
+  (do-game
+    (new-game {:corp {:deck ["The Powers That Be" (qty "False Lead" 2) "Anansi"]
+                      :discard ["Vanilla"]}})
+    (play-from-hand state :corp "The Powers That Be" "New remote")
+    (rez state :corp (get-content state :remote1 0))
+    (play-and-score state "False Lead")
+    (click-card state :corp "Anansi")
+    (click-prompt state :corp "R&D")
+    (is (= "Anansi" (:title (get-ice state :rd 0))))
+    (play-and-score state "False Lead")
+    (is (changed? [(:credit (get-corp)) 0]
+                  (click-card state :corp "Vanilla")
+                  (click-prompt state :corp "R&D"))
+        "Corp paid no install cost")
+    (is (= "Vanilla" (:title (get-ice state :rd 1))))))
 
 (deftest the-root-pay-credits-prompt
     ;; Pay-credits prompt
