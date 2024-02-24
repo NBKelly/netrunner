@@ -6,7 +6,7 @@
                              installed-access-trigger
                              steal-cost-bonus]]
    [game.core.bad-publicity :refer [lose-bad-publicity]]
-   [game.core.board :refer [all-active-installed all-installed card->server
+   [game.core.board :refer [all-active-installed all-installed all-installed-corp card->server
                             get-remotes server->zone server-list]]
    [game.core.card :refer [agenda? asset? can-be-advanced?
                            corp-installable-type? corp? get-card get-counters get-zone
@@ -869,50 +869,27 @@
                                      (effect-completed state side eid))}}}})
 
 (defcard "Isaac Liberdade"
-  (let [ability {:interactive (req (->> (all-installed state :corp)
-                                        (filter #(and (ice? %)
-                                                      (same-server? (get-card state card) %)))
-                                        count
-                                        pos?))
-                 :label "place 1 advancement counter (after moving)"
-                 :async true
+  (let [ability {:interactive (req true)
+                 :req (req (some #(and (ice? %)
+                                       (zero? (get-counters % :advancement))
+                                       (same-server? card %))
+                                 (all-installed-corp state)))
                  :effect
                  (effect
                    (continue-ability
-                     (when (->> (all-installed state :corp)
-                                (filter #(and (ice? %)
-                                              (zero? (get-counters % :advancement))
-                                              (same-server? (get-card state card) %)))
-                                count
-                                pos?)
-                       {:prompt (str "Place 1 advancement counter on an ice protecting " (zone->name (second (get-zone card))))
-                        :choices {:card #(and (ice? %)
-                                              (same-server? % card))}
-                        :msg (msg "place 1 advancement counter on " (card-str state target))
-                        :effect (effect (add-prop target :advance-counter 1 {:placed true}))})
+                     {:prompt "Choose a piece of ice protecting this server to place 1 advancement counter on"
+                      :waiting-prompt true
+                      :choices {:card #(and (ice? %)
+                                            (zero? (get-counters % :advancement))
+                                            (same-server? % card))}
+                      :msg (msg "place 1 advancement counter on " (card-str state target))
+                      :effect (effect (add-prop target :advance-counter 1 {:placed true}))}
                      card nil))}]
     {:static-abilities [{:type :ice-strength
                          :req (req (and (ice? target)
                                         (= (card->server state card) (card->server state target))))
                          :value (req (if (pos? (get-counters target :advancement)) 2 0))}]
-     :events [{:event :corp-turn-ends
-               :optional {:prompt (msg "Move " (:title card) " to another server?")
-                          :waiting-prompt true
-                          :yes-ability {:async true
-                                         :effect (effect (continue-ability
-                                                           {:prompt "Choose a server"
-                                                            :choices (server-list state)
-                                                            :msg (msg "move to " target)
-                                                            :async true
-                                                            :effect (req (let [c (move state side card
-                                                                                       (conj (server->zone state target) :content))]
-                                                                           (unregister-events state side card)
-                                                                           (register-default-events state side c)
-                                                                           (continue-ability
-                                                                             state side
-                                                                             ability
-                                                                             (get-card state card) nil)))}
-                                                           card nil))}}}]}))
+     :events [(mobile-sysop-event :corp-turn-ends ability)]}))
 
 (defcard "Jinja City Grid"
   (letfn [(install-ice [ice ices grids server]
