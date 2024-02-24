@@ -1553,11 +1553,18 @@
         abi1 {:prompt (msg "The top card of R&D is: " (:title (first (:deck corp))))
               :async true
               :msg "look at the top card of R&D"
-              :effect (req (if (= target "Done")
-                             (effect-completed state side eid)
-                             (do (system-msg state side "trashes the top card of R&D")
-                                 (mill state :corp eid :corp 1))))}]
-    {:events [(assoc abi1 :event :expend-resolved) ;;formerly :expended
+              :choices ["OK"]
+              :req (req (seq (:deck corp)))
+              :effect
+              (effect (continue-ability
+                        {:optional
+                         {:prompt (str "Trash " (:title (first (:deck corp))) "?")
+                          :async true
+                          :yes-ability
+                          {:msg "trash the top card of R&D"
+                           :effect (req (mill state :corp eid :corp 1))}}}
+                        card nil))}]
+    {:events [(assoc abi1 :event :expend-resolved)
               (assoc abi1 :event :play-operation-resolved)
               abi2]}))
 
