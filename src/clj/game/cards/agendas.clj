@@ -743,18 +743,20 @@
                     {:async true
                      :effect (effect
                                (continue-ability
-                                 (if (not-empty (filter #(not (operation? %)) (:deck corp)))
-                                   {:async true
-                                    :prompt "Choose a card to install"
-                                    :choices (req (filter #(not (operation? %)) (:deck corp)))
-                                    :effect (effect (shuffle! :deck)
-                                                    (corp-install eid target nil
-                                                                  {:install-state :rezzed-no-cost
-                                                                   :ignore-all-cost true}))}
-                                   {:prompt "You have no installables in R&D!"
-                                    :choices ["Carry on!"]
-                                    :prompt-type :bogus
-                                    :effect (effect (shuffle! :deck))})
+                                 {:async true
+                                  :prompt "Choose a card to install"
+                                  :choices (req (concat
+                                                  (->> (:deck corp)
+                                                       (filter #(corp-installable-type? %))
+                                                       (sort-by :title)
+                                                       (seq))
+                                                  ["Done"]))
+                                  :effect (req (shuffle! state side :deck)
+                                               (if (= "Done" target)
+                                                 (effect-completed state side eid)
+                                                 (corp-install state side eid target nil
+                                                               {:install-state :rezzed-no-cost
+                                                                :ignore-all-cost true})))}
                                  card nil))}}}]
     {:on-score score-abi
      :expend expend-abi}))
