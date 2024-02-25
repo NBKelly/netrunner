@@ -3882,6 +3882,7 @@
       (play-from-hand state :runner "Jailbreak")
       (click-prompt state :runner "R&D")
       (run-continue state)
+      (click-prompt state :runner "Jailbreak")
       (click-prompt state :runner "Yes")
       (dotimes [_ 3]
         (click-prompt state :runner "No action")))
@@ -3889,11 +3890,12 @@
     (play-from-hand state :runner "Jailbreak")
     (click-prompt state :runner "R&D")
     (run-continue state)
+    (click-prompt state :runner "Jailbreak")
     (click-prompt state :runner "No")
     (dotimes [_ 2]
       (click-prompt state :runner "No action"))))
 
-(deftest ^:kaocha/pending mary-da-silva-no-trigger-on-single-access
+(deftest mary-da-silva-no-trigger-on-single-access
   (do-game
     (new-game {:corp {:deck [(qty "Hedge Fund" 10)]
                       :hand ["Hedge Fund"]}
