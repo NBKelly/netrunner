@@ -2671,8 +2671,10 @@
 
 (defcard "Sudden Commandment"
   (let [play-instant-second {:optional
-                             {:prompt (msg "Pay 3 to gain a click?")
-                              :yes-ability {:cost [:credit 5]
+                             {:prompt (msg "Pay 3 [Credits] to gain [Click]?")
+                              :waiting-prompt true
+                              :req (req (threat-level 3))
+                              :yes-ability {:cost [:credit 3]
                                             :msg (msg "gain [Click]")
                                             :effect (effect (gain-clicks 1))}}}
 
@@ -2687,9 +2689,9 @@
                             :effect (req
                                       (let [is-first-mandate? (first-event? state side :play-operation #(has-subtype? (:card (first %)) "Mandate"))]
                                         (if (= target "Done")
-                                          (continue-ability state side (when (and (threat-level 4 state) is-first-mandate?) play-instant-second) card nil)
+                                          (continue-ability state side (when is-first-mandate? play-instant-second) card nil)
                                           (wait-for (play-instant state side (assoc (make-eid state eid) :source target :source-type :play) target nil)
-                                                    (continue-ability state side (when (and (threat-level 4 state) is-first-mandate?) play-instant-second) card nil)))))}]
+                                                    (continue-ability state side (when is-first-mandate? play-instant-second) card nil)))))}]
     {:on-play {:msg "Draw 2 cards"
                :async true
                :effect (req (wait-for (draw state side (make-eid state eid) 2)
