@@ -1167,26 +1167,27 @@
 
 (defcard "Hearts and Minds"
   (let [political {:req (req unprotected)
-                   :prompt "Place 1 advancement token on a card"
+                   :prompt "Choose a card you can advance to place 1 advancement counter on"
                    :choices {:card #(and (can-be-advanced? %)
                                          (installed? %))}
-                   :msg (msg "place 1 advancement token on " (card-str state target))
+                   :msg (msg "place 1 advancement counter on " (card-str state target))
                    :effect (effect (add-prop target :advance-counter 1 {:placed true}))}]
     {:derezzed-events [corp-rez-toast]
      :flags {:corp-phase-12 (req true)}
-     :abilities [{:label "Manipulate tokens (start of turn)"
+     :abilities [{:label "Move 1 hosted advancement counter to another card you can advance (start of turn)"
                   :once :per-turn
-                  :waiting-prompt "Corp to make a decision"
-                  :prompt "move a token"
+                  :waiting-prompt true
+                  :prompt "Choose an installed card to move 1 hosted advancement counter from"
                   :choices {:card #(and (installed? %)
                                         (get-counters % :advancement))}
                   :effect (effect
                             (continue-ability
                               (let [from-ice target]
-                                {:prompt "Move to where?"
+                                {:prompt "Choose an installed card you can advance"
                                  :choices {:card #(and (installed? %)
+                                                       (can-be-advanced? %)
                                                        (not (same-card? from-ice %)))}
-                                 :msg (msg "move an advancement token from "
+                                 :msg (msg "move 1 hosted advancement counter from "
                                            (card-str state from-ice)
                                            " to "
                                            (card-str state target))
@@ -2698,12 +2699,11 @@
 
 (defcard "The Powers That Be"
   {:events [{:event :agenda-scored
-             :prompt "Choose a card from Archives or HQ to install"
+             :prompt "Choose a card from Archives or HQ to install, ignoring all costs"
              :show-discard true
              :interactive (req true)
              :async true
-             :choices {:card #(and (not (operation? %))
-                                   (corp? %)
+             :choices {:card #(and (corp-installable-type? %)
                                    (or (in-hand? %)
                                        (in-discard? %)))}
              :msg (msg (corp-install-msg target))
