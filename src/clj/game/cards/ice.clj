@@ -18,7 +18,7 @@
    [game.core.def-helpers :refer [combine-abilities corp-recur defcard
                                   do-brain-damage do-net-damage offer-jack-out
                                   reorder-choice get-x-fn]]
-   [game.core.drawing :refer [draw]]
+   [game.core.drawing :refer [draw maybe-draw draw-up-to]]
    [game.core.effects :refer [get-effects register-lingering-effect unregister-static-abilities]]
    [game.core.eid :refer [complete-with-result effect-completed make-eid]]
    [game.core.engine :refer [gather-events pay register-events resolve-ability
@@ -165,6 +165,21 @@
                                              " due to " (:title card)
                                              " subroutine")))
                           (effect-completed state side eid)))})
+
+(defn maybe-draw-sub
+  "Ability to (maybe) draw a set number of cards"
+  [qty]
+  {:async true
+   :label (str "You may draw " (quantify qty "card"))
+   :effect (effect (maybe-draw eid card qty))})
+
+(defn draw-up-to-sub
+  "Ability to draw between 0 and n cards"
+  ([qty] (draw-up-to-sub qty nil))
+  ([qty args]
+   {:async true
+    :label (str "Draw up to " (quantify qty "card"))
+    :effect (effect (draw-up-to eid card qty args))}))
 
 (defn end-the-run-unless-runner-pays
   ([cost] (end-the-run-unless-runner-pays cost "subroutine"))
@@ -1730,15 +1745,7 @@
   (grail-ice end-the-run))
 
 (defcard "Gatekeeper"
-  (let [draw-ab {:async true
-                 :prompt "How many cards do you want to draw?"
-                 :waiting-prompt true
-                 :choices {:number (req 3)
-                           :max (req 3)
-                           :default (req 1)}
-                 :msg (msg "draw " (quantify target "card"))
-                 :effect (effect (draw eid target))}
-        reveal-and-shuffle {:prompt "Reveal and shuffle up to 3 agendas into R&D"
+  (let [reveal-and-shuffle {:prompt "Reveal and shuffle up to 3 agendas into R&D"
                             :show-discard true
                             :choices {:card #(and (corp? %)
                                                   (or (in-hand? %)
@@ -1773,7 +1780,7 @@
                                    " and shuffle them into R&D")}
         draw-reveal-shuffle {:async true
                              :label "Draw cards, reveal and shuffle agendas"
-                             :effect (req (wait-for (resolve-ability state side draw-ab card nil)
+                             :effect (req (wait-for (draw-up-to state side card 3)
                                                     (continue-ability state side reveal-and-shuffle card nil)))}]
     {:static-abilities [(ice-strength-bonus (req (= :this-turn (:rezzed card))) 6)]
      :subroutines [draw-reveal-shuffle
@@ -3174,21 +3181,12 @@
    :subroutines [end-the-run]})
 
 (defcard "Piranhas"
-  (let [maybe-draw-sub
-        {:label "You may draw a card"
-         :optional
-         {:waiting-prompt true
-          :prompt "Draw 1 card?"
-          :yes-ability
-          {:async true
-           :effect (effect (draw :corp eid 1))
-           :msg "draw 1 card"}}}]
-    {:additional-cost [:tag-or-bad-pub]
-     :subroutines [maybe-draw-sub
-                   (do-net-damage 1)
-                   (assoc end-the-run
-                          :label "End the run if there are more cards in HQ than in the grip"
-                          :req (req (> (count (:hand corp)) (count (:hand runner)))))]}))
+  {:additional-cost [:tag-or-bad-pub]
+   :subroutines [(maybe-draw-sub 1)
+                 (do-net-damage 1)
+                 (assoc end-the-run
+                        :label "End the run if there are more cards in HQ than in the grip"
+                        :req (req (> (count (:hand corp)) (count (:hand runner)))))]})
 
 (defcard "Pop-up Window"
   {:on-encounter (gain-credits-sub 1)
@@ -3299,11 +3297,11 @@
                                           (system-msg state :corp (str "rearranges the top "
                                                                        (quantify (count top-cards) "card")
                                                                        " of R&D"))
-                                          (continue-ability state side maybe-draw-effect card nil))
+                                          (maybe-draw state side eid card 1))
                                         (do
                                           (shuffle! state :corp :deck)
                                           (system-msg state :corp (str "shuffles R&D"))
-                                          (continue-ability state side maybe-draw-effect card nil))))})
+                                          (maybe-draw state side eid card 1))))})
                               card nil))}
                    {:label "Trash 1 card in HQ"
                     :async true
@@ -4018,15 +4016,7 @@
   {:subroutines [(runner-loses-credits 2)
                  (gain-credits-sub 2)
                  (do-net-damage 2)
-                 {:async true
-                  :label "Draw up to 2 cards"
-                  :prompt "How many cards do you want to draw?"
-                  :waiting-prompt true
-                  :choices {:number (req 2)
-                            :max (req 2)
-                            :default (req 2)}
-                  :msg (msg "draw " (quantify target "card"))
-                  :effect (effect (draw eid target))}]})
+                 (draw-up-to-sub 2)]})
 
 (defcard "Vanilla"
   {:subroutines [end-the-run]})

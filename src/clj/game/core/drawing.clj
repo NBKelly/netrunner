@@ -1,14 +1,14 @@
 (ns game.core.drawing
   (:require
     [game.core.eid :refer [effect-completed make-eid make-result]]
-    [game.core.engine :refer [checkpoint queue-event trigger-event trigger-event-simult trigger-event-sync]]
+    [game.core.engine :refer [checkpoint queue-event resolve-ability trigger-event trigger-event-simult trigger-event-sync]]
     [game.core.events :refer [first-event?]]
     [game.core.flags :refer [prevent-draw]]
     [game.core.moving :refer [move]]
     [game.core.say :refer [system-msg]]
     [game.core.set-aside :refer [set-aside-for-me get-set-aside]]
     [game.core.winning :refer [win-decked]]
-    [game.macros :refer [req wait-for]]
+    [game.macros :refer [continue-ability req wait-for msg]]
     [game.utils :refer [quantify safe-zero?]]
     [jinteki.utils :refer [other-side]]))
 
@@ -92,3 +92,41 @@
                                  (effect-completed state side eid))))))
                (when (safe-zero? (remaining-draws state side))
                  (prevent-draw state side))))))))))
+
+(defn maybe-draw
+  ([state side eid card n] (maybe-draw state side eid card n nil))
+  ([state side eid card n args]
+   (if (zero? n)
+     (draw state side eid n args)
+     (resolve-ability
+       state side eid
+       {:optional {:prompt (str "Draw " (quantify n "card") "?")
+                   :waiting-prompt true
+                   :yes-ability {:async true
+                                 :msg (msg "draw " (quantify n " card"))
+                                 :effect (req (draw state side eid n))}
+                   :no-ability {:msg (msg "decline to draw cards")}}}
+       card nil))))
+
+(defn draw-up-to
+  ([state side eid card n] (draw-up-to state side eid card n {:allow-zero-draws true}))
+  ([state side eid card n {:keys [allow-zero-draws] :as args}]
+   (if (zero? n)
+     (draw state side eid n args)
+     (resolve-ability
+       state side eid
+       {:prompt (str "Draw how many cards?" (when-not allow-zero-draws " (minimum 1)"))
+        :choices {:number (req n)
+                  :max (req n)
+                  :default (req 1)}
+        :async true
+        :waiting-prompt true
+        :msg (msg "draw " (quantify target "card"));
+        :effect (req
+                  (continue-ability
+                    state side
+                    (if (and (zero? target) (not allow-zero-draws))
+                      (draw-up-to state side (make-eid state eid) n args)
+                      (draw state side eid target args))
+                    card nil))}
+       card nil))))
