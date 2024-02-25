@@ -98,34 +98,35 @@
   ([state side eid card n args]
    (if (zero? n)
      (draw state side eid n args)
-     (wait-for (resolve-ability
-                 state side
-                 {:optional {:prompt (str "draw " (quantify n "card") "?")
-                             :yes-ability {:async true
-                                           :msg (msg "draw " (quantify n " card"))
-                                           :effect (req (draw state side eid n))}
-                             :no-ability {:effect (req (system-msg state side "declines to draw cards"))}}}
-                 card nil)
-               (effect-completed state side eid)))))
+     (resolve-ability
+       state side eid
+       {:optional {:prompt (str "Draw " (quantify n "card") "?")
+                   :waiting-prompt true
+                   :yes-ability {:async true
+                                 :msg (msg "draw " (quantify n " card"))
+                                 :effect (req (draw state side eid n))}
+                   :no-ability {:msg (msg "decline to draw cards")}}}
+       card nil))))
 
 (defn draw-up-to
   ([state side eid card n] (draw-up-to state side eid card n {:allow-zero-draws true}))
   ([state side eid card n {:keys [allow-zero-draws] :as args}]
    (if (zero? n)
      (draw state side eid n args)
-     (wait-for (resolve-ability
-                 state side
-                 {:prompt (str "Draw how many cards?" (when-not allow-zero-draws " (minimum 1)"))
-                  :choices {:number (req n)
-                            :default (req n)}
-                  :async true
-                  :msg (msg "draw " (quantify target "card"));
-                  :effect (req
-                            (continue-ability
-                              state side
-                              (if (and (zero? target) (not allow-zero-draws))
-                                (draw-up-to state side (make-eid state eid) n args)
-                                (draw state side eid target args))
-                              card nil))}
-                 card nil)
-               (effect-completed state side eid)))))
+     (resolve-ability
+       state side eid
+       {:prompt (str "Draw how many cards?" (when-not allow-zero-draws " (minimum 1)"))
+        :choices {:number (req n)
+                  :max (req n)
+                  :default (req 1)}
+        :async true
+        :waiting-prompt true
+        :msg (msg "draw " (quantify target "card"));
+        :effect (req
+                  (continue-ability
+                    state side
+                    (if (and (zero? target) (not allow-zero-draws))
+                      (draw-up-to state side (make-eid state eid) n args)
+                      (draw state side eid target args))
+                    card nil))}
+       card nil))))
