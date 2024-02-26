@@ -453,6 +453,32 @@
      :effect (effect (trash eid (assoc target :seen true) {:accessed true
                                                            :cause-card card}))}}})
 
+(defcard "Cataloguer"
+  (let [index-ability (successful-run-replace-breach
+                        {:target-server :rd
+                         :mandatory false
+                         :ability
+                         {:async true
+                          :msg "rearrange the top 4 cards of R&D"
+                          :cost [:power 1]
+                          :waiting-prompt true
+                          :effect (req (continue-ability
+                                         state side
+                                         (let [from (take 4 (:deck corp))]
+                                           (when (pos? (count from))
+                                             (reorder-choice :corp :corp from '() (count from) from)))
+                                         card nil))}})
+        access-ability {:cost [:click 1 :power 1]
+                        :req (req (some #{:rd} (:successful-run runner-reg)))
+                        :label "Breach R&D"
+                        :msg "breach R&D"
+                        :async true
+                        :effect (effect (breach-server eid [:rd] #_{:no-root true}))}]
+    {:data {:counter {:power 2}}
+     :abilities [access-ability]
+     :events [(trash-on-empty :power)
+              index-ability]}))
+
 (defcard "Chop Bot 3000"
   (let [ability {:req (req (>= (count (all-installed state :runner)) 2))
                  :label "Trash another installed card to draw 1 card or remove 1 tag"

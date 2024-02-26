@@ -866,6 +866,14 @@
              :effect (req (swap! state update-in [:corp :register :cannot-score] #(cons (:card context) %)))}]
    :leave-play (req (swap! state update-in [:corp :register] dissoc :cannot-score))})
 
+(defcard "Coalescence"
+  {:abilities [{:cost [:power 1]
+                :req (req (= (:active-player @state) :runner))
+                :async true
+                :effect (effect (gain-credits eid 2))
+                :msg "gain 2 [Credits]"}]
+   :data {:counter {:power 2}}})
+
 (defcard "Collective Consciousness"
   {:events [{:event :rez
              :req (req (ice? (:card target)))
@@ -2016,6 +2024,31 @@
                 :msg "prevent a piece of hardware from being trashed"
                 :effect (effect (trash-prevent :hardware 1))}]})
 
+(defcard "Lobisomem"
+  (auto-icebreaker {:data {:counter {:power 1}}
+                    :abilities [(break-sub 1 1 "Code Gate")
+                                {:label "Break X Barrier subroutines"
+                                 :cost [:x-credits :power 1]
+                                 :break-cost [:x-credits :power 1]
+                                 :req (req (and
+                                             (active-encounter? state)
+                                             (<= (get-strength current-ice) (get-strength card))))
+                                 :msg (msg "break " (quantify (cost-value eid :x-credits) "subroutine")
+                                             " on " (card-str state current-ice))
+                                 :effect (effect
+                                             (continue-ability
+                                               (when (pos? (cost-value eid :x-credits))
+                                                 (break-sub nil (cost-value eid :x-credits) "Barrier"))
+                                               card nil))}
+                                (strength-pump 1 2)]
+                    :events [{:event :subroutines-broken
+                              :req (req (and (all-subs-broken-by-card? target card)
+                                             (has-subtype? target "Code Gate")))
+                              :msg "place 1 power counter on itself"
+                              :async true
+                              :effect (effect (add-counter card :power 1)
+                                              (effect-completed eid))}]}))
+
 (defcard "Lustig"
   (trash-to-bypass (break-sub 1 1 "Sentry")
                    (strength-pump 3 5)))
@@ -2247,6 +2280,62 @@
 
 (defcard "Musaazi"
   (virus-breaker "Sentry"))
+
+(defcard "Muse"
+  (letfn [(trojan-auto-hosts?
+            ;; NOTE - this function will theoretically need to be maintained if more cards like this are ever printed - nbkelly, jan '24
+            [card]
+            (not (or (has-subtype? card "Caïssa")
+                     (= (:title card) "Ika"))))
+          (muse-abi [where]
+            {:prompt "Choose a non-daemon program"
+             :msg (msg (if (= target "Done")
+                         (str "shuffle the stack")
+                         (str "install " (:title target))))
+             :choices (req (concat
+                             (->> (where runner)
+                                  (filter
+                                    #(and (program? %)
+                                          (not (has-subtype? % "Daemon"))
+                                          (can-pay? state side
+                                                    (assoc eid :source card :source-type :runner-install)
+                                                    % nil [:credit (install-cost state side %)])))
+                                  (sort-by :title)
+                                  (seq))
+                             ["Done"]))
+             :async true
+             :effect (req (when (= :deck where)
+                            (trigger-event state side :searched-stack nil)
+                            (shuffle! state side :deck))
+                          (if (not= target "Done")
+                            ;; does the card need to be installed on muse?
+                            (if-not (has-subtype? target "Trojan")
+                              (runner-install state side (assoc eid :source card :source-type :runner-install) target {:host-card (get-card state card)})
+                              ;;otherwise, pick a target card to host the trojan on
+                              (if (trojan-auto-hosts? target)
+                                ;; if the trojan does it for free, so be it
+                                (runner-install state side (assoc eid :source card :source-type :runner-install) target nil)
+                                ;; do it the hard way
+                                (let [target-card target]
+                                  (continue-ability
+                                    state side
+                                    {:prompt (msg "Choose an ice to host " (:title target-card))
+                                     :choices {:card #(and (installed? %)
+                                                           (ice? %))}
+                                     :async true
+                                     :effect (req (runner-install state side (assoc eid :source card :source-type :runner-install) target-card {:host-card (get-card state target)}))}
+                                    card nil))))
+                            ;; declined to install
+                            (effect-completed state side eid)))})]
+    {:on-install {:async true
+                  :prompt "Choose where to install from"
+                  :choices (req ["Grip" "Stack"
+                                 (when-not (zone-locked? state :runner :discard) "Heap")])
+                  :msg (msg "search the " target " for a non-daemon program to install")
+                  :effect (effect (continue-ability
+                                    (muse-abi (if (= "Stack" target) :deck
+                                                  (if (= "Grip" target) :hand :discard)))
+                                    card nil))}}))
 
 (defcard "Na'Not'K"
   (auto-icebreaker {:static-abilities [(breaker-strength-bonus (req (count run-ices)))]
@@ -2656,6 +2745,12 @@
                           (:card-target (get-card state card))))
              :msg "place 2 virus counters on itself"
              :effect (effect (add-counter :runner card :virus 2))}]})
+
+(defcard "Pressure Spike"
+  (auto-icebreaker {:implementation "Once per run restriction not enforced"
+                    :abilities [(break-sub 1 1 "Barrier")
+                                (strength-pump 2 3)
+                                (strength-pump 2 9 :end-of-encounter {:req (req (threat-level 4 state))})]}))
 
 (defcard "Progenitor"
   {:abilities [{:label "Install and host a virus program"

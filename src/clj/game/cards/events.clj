@@ -57,7 +57,8 @@
                            total-cards-accessed]]
    [game.core.sabotage :refer [sabotage-ability]]
    [game.core.say :refer [system-msg]]
-   [game.core.servers :refer [central->name is-central? is-remote? target-server unknown->kw zone->name
+   [game.core.servers :refer [central->name is-central? is-remote? remote->name
+                              target-server unknown->kw zone->name
                               zones->sorted-names]]
    [game.core.set-aside :refer [get-set-aside set-aside]]
    [game.core.shuffling :refer [shuffle! shuffle-into-deck]]
@@ -189,6 +190,23 @@
                :effect (req (wait-for
                               (resolve-ability state side corp-trash card nil)
                               (continue-ability state side runner-facedown card nil)))}}))
+
+(defcard "Ashen Epilogue"
+  {:on-play
+   {:msg (msg (if (not (zone-locked? state :runner :discard))
+                "shuffle the grip and heap into the stack"
+                "shuffle the grip into the stack"))
+    :rfg-instead-of-trashing true
+    :async true
+    :effect (req (shuffle-into-deck state :runner :hand :discard)
+                 (let [top-5 (vec (take 5 (:deck runner)))]
+                   (doseq [c top-5]
+                     (move state side c :rfg))
+                   (system-msg state side
+                               (str "removes "
+                                    (enumerate-str (map :title top-5))
+                                    " from the game and draws 5 cards"))
+                   (draw state :runner eid 5)))}})
 
 (defcard "Bahia Bands"
   (let [all [{:async true
@@ -412,6 +430,54 @@
     :async true
     :effect (req (wait-for (gain-credits state side 1)
                            (draw state side eid 2)))}})
+
+(defcard "Burner"
+  (letfn [(move-ab [chosen-cards n]
+            {:prompt (str "Choose a card (" n " remaining)")
+             :choices chosen-cards
+             :async true
+             :effect (req (let [target-card target]
+                            (continue-ability
+                              state side
+                              {:prompt (str "Choose where to put " (:title target-card))
+                               :choices ["Top of R&D" "Bottom of R&D"]
+                               :async true
+                               :msg (msg "add " (:title target-card) "to the "
+                                         (decapitalize target))
+                               :effect (req
+                                         (if (= target "Top of R&D")
+                                           (move state :corp target-card :deck {:front true})
+                                           (move state :corp target-card :deck {:front false}))
+                                         (if (= 1 n)
+                                           (effect-completed state side eid)
+                                           (continue-ability
+                                             state side
+                                             (move-ab
+                                               (remove-once #(= % target-card) chosen-cards)
+                                               (dec n))
+                                             card nil)))}
+                              card nil)))})]
+    {:makes-run true
+     :on-play {:req (req hq-runnable)
+               :async true
+               :effect (effect (make-run eid :hq card))}
+     :events [(successful-run-replace-breach
+                {:target-server :hq
+                 :this-card-run true
+                 :mandatory true
+                 :ability
+                 {:msg "reveal 3 random cards from HQ"
+                  :req (req (<= 1 (count (:hand corp))))
+                  :async true
+                  :effect (req (let [chosen-cards (take 3 (shuffle (:hand corp)))]
+                                 (system-msg
+                                   state side
+                                   (str "reveals " (enumerate-str (map :title chosen-cards))
+                                        " from HQ"))
+                                 (continue-ability
+                                   state side
+                                   (move-ab chosen-cards (min 2 (count chosen-cards)))
+                                   card nil)))}})]}))
 
 (defcard "By Any Means"
   {:on-play
@@ -3534,6 +3600,31 @@
                               :effect (effect (make-run eid target))}
                              card nil)))}})
 
+(defcard "Spree"
+  {:data {:counter {:power 3}}
+   :makes-run true
+   :on-play {:prompt "Choose a server"
+             :choices (req runnable-servers)
+             :async true
+             :effect (effect (make-run eid target card))}
+   :abilities [{:cost [:power 1]
+                :label "Host an installed trojan on a piece of ice protecting this server"
+                :prompt "Choose an installed trojan"
+                :choices {:card #(and (has-subtype? % "Trojan")
+                                      (program? %)
+                                      (installed? %))}
+                :async true
+                :effect (req (let [trojan target]
+                               (continue-ability
+                                 state side
+                                 {:prompt "Choose a piece of ice protecting this server"
+                                  :choices {:card #(and (ice? %)
+                                                        (= (first (:server run)) (second (get-zone %))))}
+                                  :msg (msg "host " (:title trojan) " on " (card-str state target))
+                                  :effect (req (host state side target trojan)
+                                               (update-all-ice state side))}
+                                 card nil)))}]})
+
 (defcard "Steelskin Scarring"
   {:on-play {:async true
              :msg "draw 3 cards"
@@ -3835,6 +3926,42 @@
                        :req (req (ice? target))
                        :value (req [:credit 3])})
                     (make-run eid target card))}})
+
+(defcard "Trick Shot"
+  {:makes-run true
+   :data {:counter {:credit 4}}
+   :interactions {:pay-credits {:req (req run)
+                                :type :credit}}
+   :on-play {:req (req rd-runnable)
+             :msg "make a run on R&D"
+             :async true
+             :effect (effect (make-run eid :rd card))}
+   :events [{:event :successful-run
+             :silent (req true)
+             :async true
+             :req (req (and (#{:rd} (target-server context))
+                            this-card-run))
+             :msg "place 2 [Credits] on itself and access 1 additional card from R&D"
+             :effect (effect
+                       (add-counter card :credit 2 {:placed true})
+                       (register-events
+                         card [(breach-access-bonus (target-server context) 1 {:duration :end-of-run})])
+                       (effect-completed eid))}
+            {:event :run-ends
+             :req (req (and (not (get-in card [:special :run-again]))
+                            (= :rd (target-server context))
+                            this-card-run))
+             :prompt "Choose a remote server to run"
+             :choices (req (cancellable
+                             (->> runnable-servers
+                                  (map unknown->kw)
+                                  (filter is-remote?)
+                                  (map remote->name))))
+             :msg (msg "make a run on " target)
+             :async true
+             :effect (effect
+                       (update! (assoc-in card [:special :run-again] true))
+                       (make-run eid target card))}]})
 
 (defcard "Uninstall"
   {:on-play
