@@ -8,7 +8,7 @@
    [game.core.board :refer [all-active all-active-installed all-installed]]
    [game.core.card :refer [active? corp? event? facedown? get-card get-counters get-title
                            get-zone hardware? has-subtype? ice? in-deck? in-discard?
-                           in-hand? in-scored? installed? program? resource? rezzed?
+                           in-hand? in-scored? installed? is-type? program? resource? rezzed?
                            runner? virus-program? faceup?]]
    [game.core.card-defs :refer [card-def]]
    [game.core.cost-fns :refer [all-stealth install-cost
@@ -146,6 +146,7 @@
 (defcard "Akamatsu Mem Chip"
   {:static-abilities [(mu+ 1)]})
 
+
 (defcard "Alarm Clock"
   (let [ability {:once :per-turn
                  :req (req (:runner-phase-12 @state))
@@ -175,6 +176,20 @@
                 :prompt "Make a run on HQ?"
                 :yes-ability ability}}]
      :abilities [ability]}))
+
+(defcard "Amanuensis"
+  {:static-abilities [(mu+ 1)]
+   :events [{:event :runner-lose-tag
+             :req (req (= :runner side))
+             :optional {:prompt "Remove 1 power counter to draw 2 cards?"
+                        :yes-ability {:cost [:power 1]
+                                      :msg "draw 2 cards"
+                                      :async true
+                                      :effect (req (draw state :runner eid 2))}}}
+            {:event :runner-turn-ends
+             :req (req tagged)
+             :effect (req (add-counter state side (get-card state card) :power 1))}]})
+
 
 (defcard "Aniccam"
   (let [ability {:async true
@@ -2255,6 +2270,59 @@
    :interactions {:pay-credits {:req (req (and (= :ability (:source-type eid))
                                                (has-subtype? target "Icebreaker")))
                                 :type :recurring}}})
+
+(defcard "The Wizard's Chest"
+  (letfn [(install-choice [state side eid card rev-str first-card second-card]
+            (continue-ability
+              state side
+              {:prompt "Choose one"
+               :choices [(str "Install " (:title first-card))
+                         (str "Install " (:title second-card))
+                         "No install"]
+               :msg (msg "reveal " rev-str " from the top of the stack"
+                         (when-not (= target "No install")
+                           (str " and " (decapitalize target) ", ignoring all costs")))
+               :effect (req (if-not (= target "No install")
+                              (wait-for (runner-install
+                                          state side
+                                          (make-eid state {:source card :source-type :runner-install})
+                                          (if (= target (str "Install " (:title first-card)))
+                                            first-card second-card)
+                                          {:ignore-all-cost true})
+                                        (shuffle! state side :deck)
+                                        (system-msg state side "shuffles the Stack")
+                                        (effect-completed state side eid))
+                              (do (shuffle! state side :deck)
+                                  (system-msg state side "shuffles the Stack")
+                                  (effect-completed state side eid))))}
+              card nil))
+          (wiz-search-fn [state side eid card remainder type rev-str first-card]
+            (if (seq remainder)
+              (let [revealed-card (first remainder)
+                    rest-of-deck (rest remainder)
+                    rev-str (if (= "" rev-str)
+                              (:title revealed-card)
+                              (str rev-str ", " (:title revealed-card)))]
+                (if (is-type? revealed-card type)
+                  (if-not first-card
+                    (wiz-search-fn state side eid card rest-of-deck type rev-str revealed-card)
+                    (install-choice state side eid card rev-str first-card revealed-card))
+                  (wiz-search-fn state side eid card rest-of-deck type rev-str first-card)))
+              (continue-ability
+                state side
+                {:msg (msg "reveal " rev-str " from the top of the stack")
+                 :effect (effect (shuffle! :deck)
+                                 (system-msg "shuffles the Stack"))}
+                card nil)))]
+    {:abilities [{:cost [:trash-can]
+                  :label "Set aside cards from the top of the stack"
+                  :prompt "Choose a card type"
+                  :choices (req (cancellable ["Hardware" "Program" "Resource"]))
+                  :req (req (and (some #{:hq} (:successful-run runner-reg))
+                                 (some #{:rd} (:successful-run runner-reg))
+                                 (some #{:archives} (:successful-run runner-reg))))
+                  :async true
+                  :effect (effect (wiz-search-fn eid card (:deck runner) target "" nil))}]}))
 
 (defcard "Time Bomb"
   {:data {:counter {:power 1}}

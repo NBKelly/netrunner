@@ -4380,6 +4380,28 @@
         (score state :corp (refresh house))
         (is (= 1 (:agenda-point (get-corp))) "House of Knives was able to be scored")))))
 
+(deftest sebastiao-pessoa
+  (do-game
+    (new-game {:corp {:hand [(qty "Hedge Fund" 3)]}
+               :runner {:id "Sebastião Pessoa: Activist Organiser"
+                        :hand ["Verbal Plasticity" "Professional Contacts" "Smartware Distributor"]}})
+    (gain-tags state :runner 1)
+    (is (changed? [(:credit (get-runner)) 0]
+                  (click-card state :runner (find-card "Verbal Plasticity" (:hand (get-runner)))))
+        "Verbal Plasticity is not a Connection")
+    (is (changed? [(:credit (get-runner)) -3]
+                  (click-card state :runner (find-card "Professional Contacts" (:hand (get-runner)))))
+        "Install Professional Contacts paying 2 less")
+    (is (= "Professional Contacts" (:title (get-resource state 0))) "Professional Contacts is installed")
+    (gain-tags state :runner 1)
+    (is (no-prompt? state :runner) "No prompt when Seb already has tags")
+    (is (changed? [(count (:hand (get-corp))) -1]
+                  (trash-resource state)
+                  (click-card state :corp (get-resource state 0))
+                  (click-prompt state :corp "Trash 1 card from your hand")
+                  (click-card state :corp (find-card "Hedge Fund" (:hand (get-corp)))))
+        "The corp has to trash a card from HQ to trash a resource")))
+
 (deftest seidr-laboratories-destiny-defined
   ;; Seidr Laboratories: Destiny Defined
   (do-game

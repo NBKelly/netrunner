@@ -134,6 +134,7 @@
     (play-from-hand state :runner "Akamatsu Mem Chip")
     (is (= 5 (core/available-mu state)) "Gain 1 memory")))
 
+
 (deftest alarm-clock
   (do-game
     (new-game {:corp {:hand ["Ice Wall"]}
@@ -152,6 +153,23 @@
                        "Costs 2 clicks"
                        (click-prompt state :runner "Yes"))
     (is (= :movement (:phase (get-run))) "Run has bypassed Ice Wall")))
+
+(deftest amanuensis
+  (do-game
+    (new-game {:runner {:hand ["Amanuensis"]
+                        :deck [(qty "Sure Gamble" 2)]}})
+    (take-credits state :corp)
+    (gain-tags state :runner 1)
+    (play-from-hand state :runner "Amanuensis")
+    (is (changed? [(get-counters (get-hardware state 0) :power) 1]
+                  (take-credits state :runner))
+        "Amanuensis gains a power counter at end of turn")
+    (take-credits state :corp)
+    (remove-tag state :runner)
+    (is (changed? [(get-counters (get-hardware state 0) :power) -1
+                   (count (:hand (get-runner))) 2]
+                  (click-prompt state :runner "Yes"))
+        "Spend a power counter when removing a tag to draw 2 cards")))
 
 (deftest aniccam-trash-trash-before-and-after-install-does-not-trigger
   ;; Aniccam
@@ -4963,6 +4981,33 @@
                            (card-ability state :runner inti 1)
                            (click-card state :runner tt)
                            (click-card state :runner tt)))))
+
+(deftest the-wizards-chest
+  (do-game
+    (new-game {:runner {:hand ["The Wizard's Chest"]
+                        :discard ["Legwork" "Corroder" "Ice Carver" "Prepaid VoicePAD" "Femme Fatale" "Egret" "Earthrise Hotel"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "The Wizard's Chest")
+    (let [chest (get-hardware state 0)]
+      ;; TODO: make this a helper or something for consistently ordered starting deck
+      (doseq [card-name ["Legwork" "Corroder" "Ice Carver" "Prepaid VoicePAD" "Femme Fatale" "Egret" "Earthrise Hotel"]]
+        (core/move state :runner (find-card card-name (get-in @state [:runner :discard])) :deck))
+      (card-ability state :runner chest 0)
+      (is (no-prompt? state :runner) "Cannot trigger The Wizard's Chest until all centrals ran")
+      (run-empty-server state "Archives")
+      (run-empty-server state "R&D")
+      (run-empty-server state "HQ")
+      (card-ability state :runner (refresh chest) 0)
+      (is (= ["Hardware" "Program" "Resource" "Cancel"] (prompt-buttons :runner)))
+      (click-prompt state :runner "Program")
+      (is (= ["Install Corroder" "Install Femme Fatale" "No install"] (prompt-buttons :runner)))
+      (changes-val-macro 0 (:credit (get-runner))
+                         "Install at no cost"
+                         (click-prompt state :runner "Install Femme Fatale"))
+      (is (= "Femme Fatale" (:title (get-program state 0))) "Femme Fatale is installed")
+      (is (second-last-log-contains? state (str "Runner uses The Wizard's Chest"
+                                                " to reveal Legwork, Corroder, Ice Carver, Prepaid VoicePAD, Femme Fatale from the top of the stack"
+                                                " and install Femme Fatale, ignoring all costs."))))))
 
 (deftest time-bomb
   (do-game

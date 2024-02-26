@@ -23,7 +23,7 @@
                              print-msg register-events register-once
                              trigger-event trigger-event-simult unregister-events]]
    [game.core.events :refer [run-events first-event? first-installed-trash? run-events
-                             first-successful-run-on-server? turn-events]]
+                             first-successful-run-on-server? no-event? turn-events]]
    [game.core.expose :refer [expose]]
    [game.core.finding :refer [find-cid]]
    [game.core.flags :refer [can-host? card-flag? lock-zone release-zone zone-locked?]]
@@ -40,7 +40,7 @@
    [game.core.link :refer [get-link]]
    [game.core.mark :refer [identify-mark-ability]]
    [game.core.memory :refer [available-mu update-mu]]
-   [game.core.moving :refer [flip-facedown mill move swap-cards swap-ice trash
+   [game.core.moving :refer [flip-facedown mill move swap-cards swap-ice trash trash-cards
                              trash-prevent]]
    [game.core.optional :refer [get-autoresolve set-autoresolve never?]]
    [game.core.payment :refer [build-cost-label can-pay? cost-target cost-value]]
@@ -156,6 +156,11 @@
      :effect (effect (pump card strength)
                      (continue-ability (break-sub nil strength subtype {:repeatable false}) (get-card state card) nil))
      :pump strength}))
+
+(defn- cond-breaker
+  "The breakers which rely on an event having happened"
+  [keyword fn]
+  {:req (req (not (no-event? state side keyword fn)))})
 
 (def heap-breaker-auto-pump-and-break
   "Implements auto-pump-and-break for heap breakers. Updates an icebreaker's
@@ -679,6 +684,16 @@
 (defcard "Blackstone"
   (auto-icebreaker {:abilities [(break-sub 1 1 "Barrier")
                                 (strength-pump 3 4 :end-of-run {:label "add 4 strength (using at least 1 stealth [Credits])" :cost-req (min-stealth 1)})]}))
+
+(defcard "Boi-tatá"
+  (letfn [(was-a-runner-card?
+            [target]
+            (runner? (:card (first target))))]
+    (auto-icebreaker {:implementation "Effect only applies for printed abilities"
+                      :abilities [(break-sub 1 2 "Sentry" (cond-breaker :runner-trash was-a-runner-card?))
+                                  (break-sub 2 2 "Sentry")
+                                  (strength-pump 2 3 :end-of-encounter (cond-breaker :runner-trash was-a-runner-card?))
+                                  (strength-pump 3 3)]})))
 
 (defcard "Botulus"
   {:implementation "[Erratum] Program: Virus - Trojan"
@@ -1632,6 +1647,72 @@
                      (doseq [lock locks]
                        (lock-zone state side lock :runner :discard)))
                    (flip-facedown state side card)))}})
+
+(defcard "Heliamphora"
+  (let [traps-we-care-about #{"Mavirus" "Cyberdeck Virus Suite" "Breached Dome"
+                              "Honeyfarm" "Increased Drop Rates" "News Team"
+                              "Nightmare Archive" "Shi.Kyū" "Shock!"
+                              "Space Camp"}]
+    ;; TODO - we should probably just add a flag to the cdef of all archives activated ambushes
+    ;; instead of manually listing them. It might come in handy later, too -nbkelly
+  {:events [{:event :breach-server
+             :async true
+             :interactive (req true)
+             :req (req (and (= target :archives)
+                            (not-empty (:discard corp))))
+             :effect (req (swap! state update-in [:corp :discard] #(map (fn [c] (assoc c :seen true)) %))
+                          (update! state side (assoc-in card [:special :host-available] true))
+                          (continue-ability
+                            state side
+                            {:optional
+                             {:prompt "Host a card on this program instead of accessing it?"
+                              :yes-ability {:prompt "Choose a card in Archives"
+                                            :choices (req (:discard corp))
+                                            :msg (msg "host " (:title target) " on itself instead of accessing it")
+                                            :effect (effect
+                                                      (update! (assoc-in card [:special :host-available] false))
+                                                      (host card target))}}}
+                            card nil))}
+            {:event :pre-access-card
+             :req (req (and
+                         (get-in card [:special :host-available])
+                         (in-discard? target)
+                         (or (agenda? target)
+                             (not (:seen target))
+                             (contains? traps-we-care-about (:title target)))))
+             :async true
+             ;; note that it's possible for cards to get added to archives mid-access (even by this card)
+             ;; because of this, we can't just treat this like archives interface
+             ;; and we need special rules to handle these cards (and we also might as well explicitly
+             ;; handle archives poison, too)
+             :effect (req (let [target-card target
+                                is-facedown? (not (:seen target))
+                                is-agenda? (agenda? target)
+                                is-trap? (contains? traps-we-care-about (:title target))]
+                            (continue-ability
+                              state side
+                              (cond
+                                is-facedown?
+                                {:optional
+                                 {:prompt (msg "Host face-down card on this program instead of accessing it?")
+                                  :yes-ability {:msg (msg "host a facedown card on itself instead of accessing it")
+                                                :effect (effect (update! (assoc-in card [:special :host-available] false))
+                                                                (host card target-card))}}}
+                                (or is-agenda? is-trap?)
+                                {:optional
+                                 {:prompt (msg "Host " (:title target-card) " on this program instead of accessing it?")
+                                  :yes-ability {:msg (msg "host a " (:title target-card) " on itself instead of accessing it")
+                                                :effect (effect (update! (assoc-in card [:special :host-available] false))
+                                                                (host card target-card))}}}
+                                _ nil)
+                                card nil)))}
+            {:event :purge
+             :msg "force the Corp to trash 2 cards from HQ at random, then trash itself"
+             :async true
+             :effect (req (wait-for
+                            (trash-cards state :corp (make-eid state eid)
+                                         (take 2 (shuffle (:hand corp))) {:cause-card card})
+                            (trash state :runner eid card {:cause :purge :cause-card card})))}]}))
 
 (defcard "Hemorrhage"
   {:events [{:event :successful-run

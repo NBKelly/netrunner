@@ -33,7 +33,7 @@
    [game.core.hosting :refer [host]]
    [game.core.ice :refer [break-sub update-all-ice update-all-icebreakers]]
    [game.core.initializing :refer [make-card]]
-   [game.core.installing :refer [corp-install runner-can-pay-and-install? runner-install]]
+   [game.core.installing :refer [corp-install install-locked? runner-can-pay-and-install? runner-install]]
    [game.core.link :refer [link+ update-link]]
    [game.core.mark :refer [identify-mark-ability]]
    [game.core.memory :refer [mu+]]
@@ -1797,6 +1797,25 @@
                   :effect (effect (continue-ability (install-card target) card nil))}]
      :events [{:event :corp-turn-begins
                :effect (req (clear-persistent-flag! state side card :can-rez))}]}))
+
+(defcard "Sebastião Pessoa: Activist Organiser"
+  {:static-abilities [{:type :basic-ability-additional-trash-cost
+                       :req (req (and (resource? target) (has-subtype? target "Connection") (= :corp side)))
+                       :value [:trash-from-hand 1]}]
+   :events [{:event :runner-gain-tag
+             :async true
+             :req (req (and (not (install-locked? state side))
+                            (= (second targets) (count-tags state)))) ;; every tag is one that was just gained
+             :prompt "Choose a connection to install, paying 2 [Credits] less"
+             :player :runner
+             :choices
+             {:req (req (and (has-subtype? target "Connection")
+                             (resource? target)
+                             (in-hand? target)
+                             (can-pay? state side (assoc eid :source card :source-type :runner-install) target nil
+                                       [:credit (install-cost state side target {:cost-bonus -2})])))}
+             :msg (msg "install " (:title target) " from the grip, paying 2 [Credit] less")
+             :effect (effect (runner-install (assoc eid :source card :source-type :runner-install) target {:cost-bonus -2}))}]})
 
 (defcard "Seidr Laboratories: Destiny Defined"
   {:implementation "Manually triggered"

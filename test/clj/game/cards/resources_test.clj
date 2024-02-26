@@ -226,6 +226,40 @@
     (is (= 4 (:click (get-runner))) "Spent 1 click; gained 2 clicks")
     (is (= 1 (count (:discard (get-runner)))) "All-nighter is trashed")))
 
+(deftest arruaceiras-crew
+  (do-game
+    (new-game {:corp {:hand ["Palisade" "Whitespace"]}
+               :runner {:hand ["Arruaceiras Crew"]}})
+    (play-from-hand state :corp "Palisade" "New remote")
+    (play-from-hand state :corp "Whitespace" "New remote")
+    (take-credits state :corp)
+    (play-from-hand state :runner "Arruaceiras Crew")
+    (let [pali (get-ice state :remote1 0)
+          ac (get-resource state 0)]
+      (run-on state "Server 1")
+      (rez state :corp pali)
+      (run-continue state)
+      (card-ability state :runner (refresh ac) 1)
+      (is (not (nil? (refresh pali))) "Palisade strength greater than 0, should not be trashed")
+      (is (not (nil? (refresh ac))) "Arruaceiras Crew should not be trashed")
+      (is (changed? [(get-strength (refresh pali)) -2
+                     (count-tags state) 1]
+                    (card-ability state :runner (refresh ac) 0))
+          "Arruaceiras Crew lowers Palisade strength by 2")
+      (fire-subs state (refresh pali)))
+    (let [ws (get-ice state :remote2 0)
+          ac (get-resource state 0)]
+      (run-on state "Server 2")
+      (rez state :corp ws)
+      (run-continue state)
+      (is (changed? [(get-strength (refresh ws)) 0
+                     (count-tags state) 0]
+                    (card-ability state :runner (refresh ac) 0))
+          "Arruaceiras Crew first ability is once per turn")
+      (card-ability state :runner (refresh ac) 1)
+      (is (nil? (refresh ws)) "Whitespace should be trashed")
+      (is (nil? (refresh ac)) "Arruaceiras Crew should be trashed"))))
+
 (deftest asmund-pudlat
   ;; Asmund Pudlat
   (do-game
@@ -2549,6 +2583,22 @@
       (is (= "Shuffle Marilyn Campaign into R&D?" (:msg (prompt-map :corp))) "Now Corp gets shuffle choice")
       (is (= 2 (:credit (get-runner)))) #_ trashed_marilyn))
 
+(deftest friend-of-a-friend
+  (do-game
+    (new-game {:runner {:hand [(qty "Friend of a Friend" 2)]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Friend of a Friend")
+    (is (changed? [(:credit (get-runner)) 9
+                   (count-tags state) 1]
+                  (card-ability state :runner (get-resource state 0) 1))
+        "Runner gains 9 credits a 1 tag")
+    (play-from-hand state :runner "Friend of a Friend")
+    (is (changed? [(:credit (get-runner)) 5
+                   (count-tags state) -1]
+                  (card-ability state :runner (get-resource state 0) 0))
+        "Runner gains 5 credits and loses 1 tag")
+    (is (= 2 (count (:discard (get-runner)))) "Both trashed")))
+
 (deftest gang-sign-accessing-from-hq-not-including-root-issue-2113
     ;; accessing from HQ, not including root. Issue #2113
     (do-game
@@ -3920,6 +3970,45 @@
       (is (zero? (count (:hosted (refresh lib)))) "All programs trashed when turn ends")
       (is (= 2 (count (:hand (get-runner)))) "Darwin never got played, Chameleon returned to hand")
       (is (= 2 (count (:discard (get-runner)))) "Femme Fatale and Study Guide trashed"))))
+
+(deftest manuel-lattes-de-moura
+  (do-game
+    (new-game {:corp {:hand [(qty "Hedge Fund" 5)]
+                      :deck [(qty "Hedge Fund" 5)]}
+               :runner {:hand ["Manuel Lattes de Moura"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Manuel Lattes de Moura")
+    (gain-tags state :runner 1)
+    (run-empty-server state :rd)
+    (click-prompt state :runner "No action")
+    (click-prompt state :runner "No action")
+    (is (not (:run @state)) "Run ended")
+    (run-empty-server state :hq)
+    (click-prompt state :runner "No action")
+    (click-prompt state :runner "No action")
+    (is (not (:run @state)) "Run ended")))
+
+(deftest manuel-lattes-de-moura-threat
+  (do-game
+    (new-game {:corp {:credits 10 :hand ["Obokata Protocol" (qty "Hedge Fund" 3)]}
+               :runner {:hand [(qty "Manuel Lattes de Moura" 2)]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Manuel Lattes de Moura")
+    (gain-tags state :runner 1)
+    (take-credits state :runner)
+    (trash-resource state)
+    (click-card state :corp (get-resource state 0))
+    (is (no-prompt? state :corp) "Manuel threat not yet met")
+    (play-and-score state "Obokata Protocol")
+    (take-credits state :corp)
+    (play-from-hand state :runner "Manuel Lattes de Moura")
+    (take-credits state :runner)
+    (is (changed? [(count (:hand (get-corp))) -1]
+                  (trash-resource state)
+                  (click-card state :corp (get-resource state 0))
+                  (click-prompt state :corp "Trash 1 card from your hand")
+                  (click-card state :corp (find-card "Hedge Fund" (:hand (get-corp)))))
+        "Manuel threat active, Corp must trash a card from HQ to trash Manuel")))
 
 (deftest miss-bones-can-be-used-mid-run-in-a-trash-prompt
     ;; Can be used mid-run in a trash-prompt

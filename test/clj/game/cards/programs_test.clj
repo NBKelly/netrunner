@@ -895,6 +895,25 @@
       (run-continue state)
       (is (no-prompt? state :runner) "Black Orchestra prompt did not come up")))
 
+(deftest boi-tata
+  (do-game
+    (new-game {:corp {:credits 6 :deck ["Ansel 1.0"] }
+               :runner {:credits 15
+                        :hand ["Boi-tatá" "No Free Lunch"]}})
+    (play-from-hand state :corp "Ansel 1.0" "HQ")
+    (rez state :corp (get-ice state :hq 0))
+    (take-credits state :corp)
+    (play-from-hand state :runner "Boi-tatá")
+    (play-from-hand state :runner "No Free Lunch")
+    (run-on state "HQ")
+    (run-continue state)
+    (let [boi (get-program state 0)]
+      (is (= [[:credit 7]] (:cost (first (take-last 2 (:abilities (refresh boi))))))
+          "3 to boost 2 + 2 to fully break Ansel 1.0")
+      (card-ability state :runner (get-resource state 0) 0)
+      (is (= [[:credit 4]] (:cost (first (take-last 2 (:abilities (refresh boi))))))
+          "2 to boost 1 + 1 to fully break Ansel 1.0"))))
+
 (deftest botulus
   ;; Botulus
   (do-game
@@ -3358,6 +3377,19 @@
       (trash state :runner (-> (get-runner) :rig :program first))
       (is (zero? (count (:discard (get-runner)))) "Harbinger not in heap")
       (is (-> (get-runner) :rig :facedown first :facedown) "Harbinger installed facedown")))
+
+(deftest heliamphora-purge
+  (do-game
+    (new-game {:corp {:hand [(qty "Hedge Fund" 5)]}
+               :runner {:hand ["Heliamphora"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Heliamphora")
+    (take-credits state :runner)
+    (is (changed? [(count (:hand (get-corp))) -2
+                   (count (:discard (get-corp))) 2
+                   (count (:discard (get-runner))) 1]
+                  (purge state :corp))
+        "Corp purges and trashes 2 random cards from HQ and Heliamphora")))
 
 (deftest houdini-must-use-a-single-stealth-credit-to-pump
     ;; Must use a single stealth credit to pump
