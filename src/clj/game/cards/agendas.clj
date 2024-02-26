@@ -44,7 +44,7 @@
    [game.core.purging :refer [purge]]
    [game.core.revealing :refer [reveal]]
    [game.core.rezzing :refer [derez rez]]
-   [game.core.runs :refer [end-run jack-out-prevent]]
+   [game.core.runs :refer [end-run force-ice-encounter jack-out-prevent]]
    [game.core.say :refer [system-msg]]
    [game.core.servers :refer [is-remote? target-server zone->name]]
    [game.core.shuffling :refer [shuffle! shuffle-into-deck
@@ -1746,6 +1746,23 @@
               :async true
               :effect (effect (trash eid target {:cause-card card}))}})
 
+(defcard "See How They Run"
+  {:on-score {:interactive (req true)
+              :msg "give the runner 1 tag"
+              :async true
+              :effect (req (wait-for
+                             (gain-tags state :runner 1)
+                             (continue-ability
+                               state side
+                               {:msg "start a psi game (do 1 core damage / do 1 net damage)"
+                                :psi {:not-equal {:msg "do 1 core damage"
+                                                  :async true
+                                                  :effect (effect (damage eid :brain 1 {:card card}))}
+                                      :equal {:async true
+                                              :msg "do 1 net damage"
+                                              :effect (effect (damage eid :net 1 {:card card}))}}}
+                               card nil)))}})
+
 (defcard "Self-Destruct Chips"
   {:move-zone (req (when (and (in-scored? card)
                               (= :corp (:scored-side card)))
@@ -1798,6 +1815,35 @@
   {:on-score {:async true
               :msg "do 2 meat damage"
               :effect (effect (damage eid :meat 2 {:card card}))}})
+
+(defcard "Sisyphus Protocol"
+  {:events [{:event :pass-ice
+             :req (req (and (rezzed? (:ice context))
+                            (or (has-subtype? (:ice context) "Code Gate")
+                                (has-subtype? (:ice context) "Sentry"))
+                            (first-event? state side :pass-ice
+                                          (fn [targets]
+                                            (let [context (first targets)]
+                                              (and (rezzed? (:ice context))
+                                                   (or (has-subtype? (:ice context) "Code Gate")
+                                                       (has-subtype? (:ice context) "Sentry"))))))))
+             :prompt (msg "Make the runner encounter " (:title (:ice context)) " again?")
+             :choices (req [(when (can-pay? state :corp (assoc eid :source card :source-type :ability) card nil [:credit 1]) "Pay 1 [Credit]")
+                            (when (can-pay? state :corp (assoc eid :source card :source-type :ability) card nil [:trash-from-hand 1]) "Trash 1 card from HQ")
+                            "Done"])
+             :async true
+             :effect (req (if (= target "Done")
+                            (effect-completed state side eid)
+                            (let [enc-ice current-ice]
+                              (continue-ability
+                                state side
+                                (assoc {:msg (msg "make the runner encounter " (card-str state enc-ice) " again")
+                                        :async true
+                                        :effect (req (force-ice-encounter state side eid enc-ice))}
+                                        :cost (if (= target "Pay 1 [Credit]")
+                                                [:credit 1]
+                                                [:trash-from-hand 1]))
+                                card nil))))}]})
 
 (defcard "Slash and Burn Agriculture"
   {:expend {:req (req (some #(can-be-advanced? %) (all-installed state :corp)))

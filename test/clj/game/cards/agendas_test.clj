@@ -3,6 +3,7 @@
             [game.core.card :refer :all]
             [game.core.eid :refer [make-eid]]
             [game.core-test :refer :all]
+            [game.utils :as utils]
             [game.utils-test :refer :all]
             [game.macros-test :refer :all]
             [clojure.test :refer :all]))
@@ -3767,6 +3768,32 @@
       (is (no-prompt? state :corp))
       (is (no-prompt? state :runner))))
 
+(deftest see-how-they-run-win-psi
+  (do-game
+    (new-game {:corp {:hand ["See How They Run"]}
+               :runner {:hand ["Sure Gamble"]}})
+    (is (changed? [(count-tags state) 1
+                   (count (:hand (get-runner))) -1
+                   (count (:discard (get-runner))) 1
+                   (:brain-damage (get-runner)) 1]
+                  (play-and-score state "See How They Run")
+                  (click-prompt state :corp "0 [Credits]")
+                  (click-prompt state :runner "1 [Credits]"))
+        "Runner gained 1 tag and got 1 core damage")))
+
+(deftest see-how-they-run-lose-psi
+  (do-game
+    (new-game {:corp {:hand ["See How They Run"]}
+               :runner {:hand ["Sure Gamble"]}})
+    (is (changed? [(count-tags state) 1
+                   (count (:hand (get-runner))) -1
+                   (count (:discard (get-runner))) 1
+                   (:brain-damage (get-runner)) 0]
+                  (play-and-score state "See How They Run")
+                  (click-prompt state :corp "0 [Credits]")
+                  (click-prompt state :runner "0 [Credits]"))
+        "Runner gained 1 tag and got 1 net damage")))
+
 (deftest self-destruct-chips
   ;; Self-Destruct Chips
   (do-game
@@ -3886,6 +3913,50 @@
     (play-and-score state "Show of Force")
     (is (= 1 (count (:hand (get-runner)))) "Runner should have 1 card in hand")
     (is (= 2 (count (:discard (get-runner)))) "Runner should have discarded 2 cards")))
+
+(deftest sisyphus-protocol-trash-from-hq
+  (do-game
+    (new-game {:corp {:hand ["Sisyphus Protocol" "Tithe" "Hedge Fund"]}})
+    (play-and-score state "Sisyphus Protocol")
+    (play-from-hand state :corp "Tithe" "R&D")
+    (take-credits state :corp)
+     (let [tithe (get-ice state :rd 0)]
+       (run-on state "R&D")
+       (rez state :corp tithe)
+       (run-continue state)
+       (run-continue state)
+       (is (= 0 (:position (get-in @state [:run]))) "Passed Tithe")
+       (is (changed? [(count (:hand (get-corp))) -1
+                      (count (:discard (get-corp))) 1]
+                     (click-prompt state :corp "Trash 1 card from HQ")
+                     (click-card state :corp "Hedge Fund"))
+           "Corp discarded 1 card from HQ")
+       (is (= 0 (:position (get-run))) "Run should still be at position 0")
+       (is (utils/same-card? tithe (core/get-current-ice state)))
+       (run-continue state)
+       (run-jack-out state)
+       (run-on state "R&D")
+       (run-continue state)
+       (run-continue state)
+       (is (no-prompt? state :corp) "Sisyphus Protocol ability is only the first time each turn"))))
+
+(deftest sisyphus-protocol-pay-credits
+  (do-game
+    (new-game {:corp {:hand ["Sisyphus Protocol" "Whitespace"]}})
+    (play-and-score state "Sisyphus Protocol")
+    (play-from-hand state :corp "Whitespace" "HQ")
+    (take-credits state :corp)
+     (let [ws (get-ice state :hq 0)]
+       (run-on state "HQ")
+       (rez state :corp ws)
+       (run-continue state)
+       (run-continue state)
+       (is (= 0 (:position (get-in @state [:run]))) "Passed Whitespace")
+       (is (changed? [(:credit (get-corp)) -1]
+                     (click-prompt state :corp "Pay 1 [Credit]"))
+           "Corp spent 1 Credit")
+       (is (= 0 (:position (get-run))) "Run should still be at position 0")
+       (is (utils/same-card? ws (core/get-current-ice state))))))
 
 (deftest slash-and-burn-agriculture
   (do-game

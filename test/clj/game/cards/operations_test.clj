@@ -556,6 +556,48 @@
     (play-from-hand state :corp "BOOM!")
     (is (= 7 (count (:discard (get-runner)))) "Runner should take 7 damage")))
 
+(deftest bring-them-home-trash-card
+  (do-game
+    (new-game {:corp {:hand ["Bring Them Home" "Rashida Jaheem"]}
+               :runner {:hand [(qty "Sure Gamble" 5)]}})
+    (play-from-hand state :corp "Rashida Jaheem" "New remote")
+    (take-credits state :corp)
+    (run-empty-server state "HQ")
+    (click-prompt state :runner "No action")
+    (take-credits state :runner)
+    (is (changed? [(count (:hand (get-corp))) 0]
+                  (play-from-hand state :corp "Bring Them Home"))
+        "Bring Them Home requirements not met")
+    (take-credits state :corp)
+    (run-empty-server state "Server 1")
+    (click-prompt state :runner "Pay 1 [Credits] to trash")
+    (take-credits state :runner)
+    (is (changed? [(count (:hand (get-runner))) -2]
+                  (play-from-hand state :corp "Bring Them Home"))
+        "2 Runner cards moved off the grip")
+    (is (= "Sure Gamble" (:title (nth (:deck (get-runner)) 0))) "Sure Gamble on top of the deck")
+    (is (= "Sure Gamble" (:title (nth (:deck (get-runner)) 1))) "Another Sure Gamble on top of the deck")
+    (is (last-log-contains? state "place Sure Gamble and Sure Gamble from the grip to the top of the stack"))
+    (is (no-prompt? state :corp) "No additional prompt because threat level is not met")
+    (is (zero? (:click (get-corp))) "Terminal ends turns")))
+
+(deftest bring-them-home-threat-steal-card
+  (do-game
+    (new-game {:corp {:hand ["Bring Them Home" "Reeducation"]}
+               :runner {:hand [(qty "Sure Gamble" 5)]}})
+    (play-from-hand state :corp "Reeducation" "New remote")
+    (take-credits state :corp)
+    (run-empty-server state "Server 1")
+    (click-prompt state :runner "Steal")
+    (take-credits state :runner)
+    (play-from-hand state :corp "Bring Them Home")
+    (is (changed? [(count (:hand (get-runner))) -1
+                   (:credit (get-corp)) -2]
+                  (click-prompt state :corp "Yes"))
+        "1 additional Runner cards moved off the grip")
+    (is (= 1 (count (core/turn-events state :runner :runner-shuffle-deck))))
+    (is (= "Sure Gamble" (:title (nth (:deck (get-runner)) 2))) "Yet another Sure Gamble on top of the deck")))
+
 (deftest building-blocks-basic-behavior
     ;; Basic behavior
     (do-game

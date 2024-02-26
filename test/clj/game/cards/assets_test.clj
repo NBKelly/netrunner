@@ -767,6 +767,29 @@
       (is (= ["Bacterial Programming"] (mapv :title (get-scored state :runner))) "Runner shouldn't score Chairman Hiro")
       (is (= ["Chairman Hiro"] (mapv :title (:discard (get-corp)))) "Chairman Hiro should be in Archives")))
 
+(deftest charlotte-cacador
+  (do-game
+    (new-game {:corp {:hand ["Charlotte Caçador"]
+                      :deck [(qty "Hedge Fund" 5)]}})
+    (play-from-hand state :corp "Charlotte Caçador" "New remote")
+    (let [cc (get-content state :remote1 0)]
+      (advance state cc 2)
+      (rez state :corp cc)
+      (take-credits state :corp)
+      (take-credits state :runner)
+      (is (:corp-phase-12 @state) "Corp has opportunity to use Charlotte Caçador")
+      (end-phase-12 state :corp)
+      (is (changed? [(:credit (get-corp)) 4
+                     (count (:hand (get-corp))) 2
+                     (get-counters (refresh cc) :advancement) -1]
+                    (click-prompt state :corp "Yes"))
+          "Corp gaind 4 credits and drew 1 card (+1 when the turn started)")
+      (is (changed? [(:credit (get-corp)) 3
+                     (count (:discard (get-corp))) 1]
+                    (card-ability state :corp (refresh cc) 1))
+          "Corp gaind 3 credits")
+      (is (nil? (refresh cc)) "Charlotte Caçador got trashed"))))
+
 (deftest chekist-scion
   ;; Chekist Scion
   (do-game
@@ -1000,6 +1023,35 @@
         (is (zero? (:credit (get-runner))))
         (is (zero? (count (:deck (get-runner)))))
         (is (no-prompt? state :corp)))))
+
+(deftest cohor-guidance-program
+    (do-game
+      (new-game {:corp {:hand ["Cohor Guidance Program" "NGO Front" "PAD Campaign"]
+                        :deck [(qty "Hedge Fund" 5)]}})
+      (play-from-hand state :corp "Cohor Guidance Program" "New remote")
+      (play-from-hand state :corp "NGO Front" "New remote")
+      (let [cgp (get-content state :remote1 0)
+            ngo (get-content state :remote2 0)]
+        (rez state :corp cgp)
+        (take-credits state :corp)
+        (take-credits state :runner)
+        (is (:corp-phase-12 @state) "Corp has opportunity to use Cohor Guidance Program")
+        (end-phase-12 state :corp)
+        (is (changed? [(:credit (get-corp)) 2
+                       (count (:discard (get-corp))) 1
+                       (count (:hand (get-corp))) 1]
+                      (click-prompt state :corp "Trash 1 card from HQ to gain 2 [Credits] and draw 1 card")
+                      (click-card state :corp "PAD Campaign"))
+            "Corp discarded 1 card, gained 2 credits, and drew 1 card")
+        (take-credits state :corp)
+        (take-credits state :runner)
+        (end-phase-12 state :corp)
+        (is (changed? [(get-counters (refresh ngo) :advancement) 1]
+                      (click-prompt state :corp "Turn 1 facedown card in Archives faceup to place 1 advancement counter")
+                      (click-card state :corp (find-card "PAD Campaign" (:discard (get-corp))))
+                      (click-card state :corp ngo))
+            "Corp turned 1 facedown card in Archived to advance 1 card")
+        (is (empty? (remove #(:seen %) (:discard (get-corp)))) "PAD Campaign was turned faceup"))))
 
 (deftest commercial-bankers-group
   ;; Commercial Bankers Group - Gain 3 credits at turn start if unprotected by ice

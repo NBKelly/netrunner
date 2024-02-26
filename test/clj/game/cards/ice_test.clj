@@ -1118,6 +1118,38 @@
       (is (nil? (refresh bc)))
       (is (nil? (get-run))))))
 
+(deftest boto
+  (do-game
+    (new-game {:corp {:hand ["Boto" "Vanity Project" "Hedge Fund"]
+                      :credits 10}
+               :runner {:hand [(qty "Sure Gamble" 2)]}})
+    (play-from-hand state :corp "Boto" "HQ")
+    (take-credits state :corp)
+    (let [boto (get-ice state :hq 0)]
+      (run-on state :hq)
+      (rez state :corp boto)
+      (run-continue state)
+      (is (changed? [(count (:hand (get-runner))) -2
+                     (count (:discard (get-runner))) 2]
+                    (card-subroutine state :corp (refresh boto) 0))
+          "Runner suffered 2 net damage")
+      (is (changed? [(count (:hand (get-corp))) 0]
+                    (card-subroutine state :corp (refresh boto) 1)
+                    (click-prompt state :corp "No"))
+          "Corp declined to discard 1 card from HQ")
+      (is (:run @state) "Run still in progress")
+      (is (changed? [(count (:hand (get-corp))) -1
+                     (count (:discard (get-corp))) 1]
+                    (card-subroutine state :corp (refresh boto) 2)
+                    (click-prompt state :corp "Yes")
+                    (click-card state :corp "Hedge Fund"))
+          "Corp discarded 1 card from HQ")
+      (is (not (:run @state)) "Run ended")
+      (take-credits state :runner)
+      (is (changed? [(get-strength (refresh boto)) 2]
+                    (play-and-score state "Vanity Project"))
+          "Boto gained 2 strength"))))
+
 (deftest brainstorm-subroutine-gain-loss-ability
   ;; Subroutine gain/loss ability
   (do-game
@@ -1532,6 +1564,43 @@
       (changes-val-macro 0 (count (:hand (get-runner)))
                          "No Damage from Ice Wall ending the run"
                          (core/continue state :corp nil)))))
+
+(deftest cloud-eater
+  (do-game
+    (new-game {:corp {:hand ["Cloud Eater"]
+               :credits 10}
+               :runner {:hand [(qty "Sure Gamble" 3) "Smartware Distributor"]}})
+    (play-from-hand state :corp "Cloud Eater" "HQ")
+    (take-credits state :corp)
+    (let [ce (get-ice state :hq 0)]
+      (play-from-hand state :runner "Smartware Distributor")
+      (run-on state :hq)
+      (rez state :corp ce)
+      (run-continue state)
+      (is (changed? [(count (:discard (get-runner))) 1
+                     (count (get-resource state)) -1]
+                    (card-subroutine state :corp (refresh ce) 0)
+                    (click-card state :corp "Smartware Distributor"))
+          "Smartware Distributor got trashed")
+      (is (changed? [(count-tags state) 2]
+                    (card-subroutine state :corp (refresh ce) 1))
+          "Runner got 2 tags")
+      (is (changed? [(count (:hand (get-runner))) -3
+                     (count (:discard (get-runner))) 3]
+                    (card-subroutine state :corp (refresh ce) 2))
+          "Runner suffered 3 net damage")
+      (run-continue state :movement)
+      (is (= 1 (count (prompt-buttons :runner))) "Runner doesn't have the option to suffer net damage or trash installed cards")
+      (is (changed? [(count-tags state) 2]
+                    (click-prompt state :runner "Take 2 tags"))
+          "Runner got 2 tags")
+      (run-jack-out state)
+      (take-credits state :runner)
+      (take-credits state :corp)
+      (run-on state :hq)
+      (run-continue state)
+      (run-continue state :movement)
+      (is (no-prompt? state :runner) "Runner has no Cloud Eater prompt if it was rezzed since the previous turn"))))
 
 (deftest congratulations
   ;; Congratulations!
@@ -7291,6 +7360,39 @@
         (click-card state :corp enigma))
       (is (= 4 (:credit (get-corp))) "Expend cost was payed")
       (is (= 1 (count (:discard (get-corp)))) "Tree Line discarded as cost"))))
+
+(deftest tributary
+  (do-game
+    (new-game {:corp {:hand ["Tributary" "Rime" "Enigma" "Palisade"]
+                      :deck [(qty "Hedge Fund" 5)]
+                      :credits 20}})
+    (play-from-hand state :corp "Tributary" "HQ")
+    (play-from-hand state :corp "Rime" "New remote")
+    (play-from-hand state :corp "Enigma" "Archives")
+    (rez state :corp (get-ice state :hq 0))
+    (rez state :corp (get-ice state :archives 0))
+    (take-credits state :corp)
+    (run-on state "Archives")
+    (click-prompt state :corp "Yes")
+    (is (= 2 (count (get-in @state [:corp :servers :archives :ices]))) "2 pieces of ice protecting Archives")
+    (is (= 2 (:position (get-run))) "Runner position was adjusted")
+    (run-continue state)
+    (let [enigma (get-ice state :archives 0)
+          trib (get-ice state :archives 1)
+          rime (get-ice state :remote1 1)]
+      (is (changed? [(count (:deck (get-corp))) -1
+                      (count (:hand (get-corp))) 0
+                      (count (get-in @state [:corp :servers :remote1 :ices])) 1]
+                    (card-subroutine state :corp (refresh trib) 0)
+                    (click-prompt state :corp "Yes")
+                    (click-card state :corp "Palisade")
+                    (click-prompt state :corp "Server 1"))
+          "Corp drew and installed ice on R&D")
+      (is (changed? [(get-strength (refresh enigma)) 2
+                     (get-strength (refresh trib)) 2
+                     (get-strength (refresh enigma)) 2]
+                    (card-subroutine state :corp (refresh trib) 1))
+          "All ice got +2 strength"))))
 
 (deftest troll-giving-the-runner-a-choice-on-successful-trace-shouldn-t-make-runner-pay-trace-first-5335
   ;; Giving the runner a choice on successful trace shouldn't make runner pay trace first. #5335
