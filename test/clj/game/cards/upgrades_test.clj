@@ -1901,6 +1901,31 @@
     (click-prompt state :runner "5")
     (is (no-prompt? state :corp) "Prompt closes after lost trace")))
 
+(deftest isaac-liberdade
+  (do-game
+    (new-game {:corp {:hand ["Isaac Liberdade" "Ice Wall" "Tithe"]}})
+    (core/gain state :corp :click 1)
+    (play-from-hand state :corp "Isaac Liberdade" "New remote")
+    (play-from-hand state :corp "Ice Wall" "Server 1")
+    (play-from-hand state :corp "Tithe" "R&D")
+    (let [il (get-content state :remote1 0)
+          iw (get-ice state :remote1 0)
+          tithe (get-ice state :rd 0)]
+      (rez state :corp iw)
+      (rez state :corp tithe)
+      (click-advance state :corp iw)
+      (is (changed? [(get-strength (refresh iw)) 2]
+                    (rez state :corp il))
+          "Ice Wall got +2 strength")
+      (take-credits state :corp)
+      (click-prompt state :corp "Yes")
+      (click-prompt state :corp "R&D")
+      (is (not (no-prompt? state :corp)) "Corp has Isaac Liberdade prompt")
+      (is (changed? [(get-strength (refresh tithe)) 2
+                     (get-counters (refresh tithe) :advancement) 1]
+                    (click-card state :corp tithe))
+          "Tithe got +2 strength and 1 advancement counter"))))
+
 (deftest jinja-city-grid-single-draws
     ;; Single draws
     (do-game

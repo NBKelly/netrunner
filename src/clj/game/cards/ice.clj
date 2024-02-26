@@ -156,6 +156,10 @@
    :async true
    :effect (effect (end-run :corp eid card))})
 
+;; helper for the faceup-archives-count cards
+(defn- faceup-archives-types [corp]
+  (count (distinct (map :type (filter faceup? (:discard corp))))))
+
 (defn runner-pays
   "Ability to pay to avoid a subroutine by paying a resource"
   [cost]
@@ -1970,6 +1974,75 @@
                   :effect  (effect (move :runner target :rfg))}
                  end-the-run]})
 
+(defcard "Hammer"
+  {:implementation "Breaking restriction not implemented"
+   :subroutines [(give-tags 1)
+                 {:label "Trash 1 resource or piece of hardware"
+                  :msg (msg "trash " (:title target))
+                  :prompt "Choose a resource of piece of hardware"
+                  :choices {:req (req (and (installed? target)
+                                           (or (hardware? target)
+                                               (resource? target))))}
+                  :async true
+                  :effect (effect (trash eid target {:cause :subroutine}))}
+                 {:label "Trash 1 program that is not a decoder, fracter or killer"
+                  :prompt "Choose a program that is not a decoder, fracter or killer"
+                  :msg (msg "trash " (:title target))
+                  :choices {:card #(and (installed? %)
+                                        (program? %)
+                                        (not (has-subtype? % "Decoder"))
+                                        (not (has-subtype? % "Fracter"))
+                                        (not (has-subtype? % "Killer")))}
+                  :async true
+                  :effect (effect (trash eid target {:cause :subroutine}))}]})
+
+(defcard "Hangman"
+  (let [shuffle-ab
+        {:label "Draw 1 card and shuffle 2 agendas in HQ and/or Archives into R&D"
+         :msg "draw 1 card"
+         :effect
+         (req (wait-for
+                (draw state side 1)
+                (continue-ability
+                  state side
+                  {:prompt "Choose up to 2 agendas in HQ and/or Archives"
+                   :choices {:max 2
+                   :card #(and (agenda? %)
+                               (or (in-hand? %)
+                                   (in-discard? %)))}
+                   :async true
+                   :show-discard true
+                   :effect
+                   (req (wait-for
+                          (reveal state side targets)
+                          (doseq [c targets]
+                            (move state :corp c :deck))
+                          (shuffle! state :corp :deck)
+                          (let [from-hq (map :title (filter in-hand? targets))
+                                from-archives (map :title (filter in-discard? targets))]
+                            (system-msg
+                              state side
+                              (str "uses " (:title card) " to reveal "
+                                   (enumerate-str
+                                     (filter identity
+                                             [(when (not-empty from-hq)
+                                                (str (enumerate-str from-hq)
+                                                     " from HQ"))
+                                              (when (not-empty from-archives)
+                                                (str (enumerate-str from-archives)
+                                                     " from Archives"))]))
+                                   ", shuffle them into R&D")))
+                          (effect-completed state side eid)))}
+                card nil)))}]
+    {:events [{:event :corp-turn-begins
+               :interactive (req true)
+               :req (req (rezzed? card))
+               :optional {:prompt (msg "Add " (card-str state card) " to HQ?")
+                          :yes-ability {:effect (req (move state side card :hand))
+                                        :msg (msg "add " (card-str state card) " to HQ")}}}]
+     :expend shuffle-ab
+     :subroutines [end-the-run]}))
+
 (defcard "Harvester"
   (let [sub {:label "Runner draws 3 cards and discards down to maximum hand size"
              :msg "make the Runner draw 3 cards and discard down to their maximum hand size"
@@ -2491,6 +2564,21 @@
   {:subroutines [{:label "The Runner cannot draw cards for the remainder of this turn"
                   :msg "prevent the Runner from drawing cards"
                   :effect (effect (prevent-draw))}]})
+
+(defcard "Logjam"
+  {:advanceable :always
+   :static-abilities [(ice-strength-bonus (req (get-counters card :advancement)))]
+   :on-rez {:msg (msg "place " (quantify (inc (faceup-archives-types corp)) "advancement counter") " on itself")
+            :effect (effect (add-prop card
+                                      :advance-counter
+                                      (inc (faceup-archives-types corp))
+                                      {:placed true}))}
+   :subroutines [{:msg "gain 2 [Credits] and end the run"
+                  :async true
+                  :effect (req (wait-for (gain-credits state :corp 2)
+                                         (end-run state side eid card)))}
+                 end-the-run
+                 end-the-run]})
 
 (defcard "Loki"
   {:on-encounter

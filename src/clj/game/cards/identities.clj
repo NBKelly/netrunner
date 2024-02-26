@@ -1542,6 +1542,32 @@
                                (update-all-ice)
                                (trash eid target {:unpreventable true}))}}}]})
 
+(defcard "Nuvem SA"
+  (let [abi2 {:once :per-turn
+              :event :corp-trash
+              :req (req (and (= :corp (:active-player @state))
+                             (= [:deck] (:zone (:card target)))))
+              :msg "gain 2 [Credits]"
+              :async true
+              :effect (effect (gain-credits :corp eid 2))}
+        abi1 {:prompt (msg "The top card of R&D is: " (:title (first (:deck corp))))
+              :async true
+              :msg "look at the top card of R&D"
+              :choices ["OK"]
+              :req (req (seq (:deck corp)))
+              :effect
+              (effect (continue-ability
+                        {:optional
+                         {:prompt (str "Trash " (:title (first (:deck corp))) "?")
+                          :async true
+                          :yes-ability
+                          {:msg "trash the top card of R&D"
+                           :effect (req (mill state :corp eid :corp 1))}}}
+                        card nil))}]
+    {:events [(assoc abi1 :event :expend-resolved)
+              (assoc abi1 :event :play-operation-resolved)
+              abi2]}))
+
 (defcard "Nyusha \"Sable\" Sintashta: Symphonic Prodigy"
   {:events [(assoc identify-mark-ability :event :runner-turn-begins)
             {:event :successful-run

@@ -1234,6 +1234,39 @@
                 :cost [:click 1 :advancement 1]
                 :effect (effect (gain-clicks 2))}]})
 
+(defcard "Hearts and Minds"
+  (let [political {:req (req unprotected)
+                   :prompt "Choose a card you can advance to place 1 advancement counter on"
+                   :choices {:card #(and (can-be-advanced? %)
+                                         (installed? %))}
+                   :msg (msg "place 1 advancement counter on " (card-str state target))
+                   :effect (effect (add-prop target :advance-counter 1 {:placed true}))}]
+    {:derezzed-events [corp-rez-toast]
+     :flags {:corp-phase-12 (req true)}
+     :abilities [{:label "Move 1 hosted advancement counter to another card you can advance (start of turn)"
+                  :once :per-turn
+                  :waiting-prompt true
+                  :prompt "Choose an installed card to move 1 hosted advancement counter from"
+                  :choices {:card #(and (installed? %)
+                                        (get-counters % :advancement))}
+                  :effect (effect
+                            (continue-ability
+                              (let [from-ice target]
+                                {:prompt "Choose an installed card you can advance"
+                                 :choices {:card #(and (installed? %)
+                                                       (can-be-advanced? %)
+                                                       (not (same-card? from-ice %)))}
+                                 :msg (msg "move 1 hosted advancement counter from "
+                                           (card-str state from-ice)
+                                           " to "
+                                           (card-str state target))
+                                 :effect (effect (add-prop :corp target :advance-counter 1)
+                                                 (add-prop :corp from-ice :advance-counter -1)
+                                                 (continue-ability political card nil))
+                                 :cancel-effect (effect (continue-ability political card nil))})
+                              card nil))
+                  :cancel-effect (effect (continue-ability political card nil))}]}))
+
 (defcard "Honeyfarm"
   {:flags {:rd-reveal (req true)}
    :on-access {:msg "force the Runner to lose 1 [Credits]"
@@ -2758,6 +2791,18 @@
              :effect (req (prevent-current state side))}]
    :on-rez {:effect (req (prevent-current state side))}
    :leave-play (req (swap! state assoc-in [:runner :register :cannot-play-current] false))})
+
+(defcard "The Powers That Be"
+  {:events [{:event :agenda-scored
+             :prompt "Choose a card from Archives or HQ to install, ignoring all costs"
+             :show-discard true
+             :interactive (req true)
+             :async true
+             :choices {:card #(and (corp-installable-type? %)
+                                   (or (in-hand? %)
+                                       (in-discard? %)))}
+             :msg (msg (corp-install-msg target))
+             :effect (effect (corp-install eid target nil {:ignore-install-cost true}))}]})
 
 (defcard "The Root"
   {:recurring 3

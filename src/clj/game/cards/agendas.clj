@@ -323,6 +323,18 @@
       {:on-score arrange-rd
        :stolen arrange-rd})))
 
+(defcard "The Basalt Spire"
+  {:on-score {:effect (effect (add-counter card :agenda 2))
+              :silent (req true)}
+   :stolen {:async true
+            :effect (effect (continue-ability (corp-recur) card nil))}
+   :flags {:has-abilities-when-stolen true}
+   :abilities [{:label "Add 1 card from Archives to HQ"
+                :cost [:trash-from-deck 1 :agenda 1]
+                :once :per-turn
+                :msg "add 1 card from Archives to HQ"
+                :effect (effect (continue-ability (corp-recur) card nil))}]})
+
 (defcard "Bellona"
   {:steal-cost-bonus (req [:credit 5])
    :on-score {:async true
@@ -712,6 +724,42 @@
                 :once :per-turn
                 :effect (effect (gain-clicks 2))
                 :msg "gain [Click][Click]"}]})
+
+(defcard "Eminent Domain"
+  (let [expend-abi {:req (req (some corp-installable-type? (:hand corp)))
+                    :cost [:credit 1]
+                    :prompt "Choose 1 card to install and rez"
+                    :choices {:card #(and (in-hand? %)
+                                          (corp-installable-type? %))}
+                    :msg "install and rez 1 card from HQ, paying 5 [Credits] less"
+                    :async true
+                    :effect (req (corp-install state side (make-eid state eid) target nil
+                                               {:install-state :rezzed
+                                                :combined-credit-discount 5}))}
+        score-abi {:interactive (req true)
+                   :optional
+                   {:prompt "Search R&D for 1 card to install and rez, ignoring all costs?"
+                    :yes-ability
+                    {:async true
+                     :effect (effect
+                               (continue-ability
+                                 {:async true
+                                  :prompt "Choose a card to install"
+                                  :choices (req (concat
+                                                  (->> (:deck corp)
+                                                       (filter #(corp-installable-type? %))
+                                                       (sort-by :title)
+                                                       (seq))
+                                                  ["Done"]))
+                                  :effect (req (shuffle! state side :deck)
+                                               (if (= "Done" target)
+                                                 (effect-completed state side eid)
+                                                 (corp-install state side eid target nil
+                                                               {:install-state :rezzed-no-cost
+                                                                :ignore-all-cost true})))}
+                                 card nil))}}}]
+    {:on-score score-abi
+     :expend expend-abi}))
 
 (defcard "Encrypted Portals"
   (ice-boost-agenda "Code Gate"))

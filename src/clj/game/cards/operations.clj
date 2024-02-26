@@ -76,7 +76,7 @@
                                     :effect (effect (trash eid card nil))})))
 
 ;; helper for the faceup-archives-count cards
-(defn faceup-archives-types [corp]
+(defn- faceup-archives-types [corp]
   (count (distinct (map :type (filter faceup? (:discard corp))))))
 
 ;; Card definitions
@@ -498,6 +498,31 @@
                    (reveal state side target)
                    (corp-install state side eid target nil {:ignore-all-cost true
                                                             :install-state :rezzed-no-cost})))}})
+
+(defcard "Business As Usual"
+  (let [faux-purge {:choices {:req (req (and (installed? target)
+                                             (pos? (get-counters target :virus))))}
+                    :effect (effect (add-counter target :virus (* -1 (get-counters target :virus))))
+                    :msg (msg "remove all virus counters from " (card-str state target))}
+        kaguya {:choices {:max 2
+                          :card #(and (corp? %)
+                                      (installed? %)
+                                      (can-be-advanced? %))}
+                      :msg (msg "place 1 advancement counter on " (quantify (count targets) "card"))
+                      :effect (req (doseq [t targets]
+                                     (add-prop state :corp t :advance-counter 1 {:placed true})))}]
+  {:on-play
+   {:prompt "Choose one"
+    :choices (req ["Place 1 advancement counter on each of up to 2 cards you can advance"
+                   (when (seq (get-all-installed state)) "Remove all virus counters from a card")
+                   (when (threat-level 3 state) "Do both")])
+    :async true
+    :effect (req (if (or (= target "Remove all virus counters from a card") (= target "Do both"))
+                   (wait-for (resolve-ability state side faux-purge card nil)
+                             (continue-ability
+                               state side (when (= target "Do both") kaguya)
+                               card nil))
+                   (continue-ability state side kaguya card nil)))}}))
 
 (defcard "Casting Call"
   {:on-play {:choices {:card #(and (agenda? %)
