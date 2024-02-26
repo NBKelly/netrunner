@@ -1047,14 +1047,12 @@
                  (trace-ability 2 end-the-run)]})
 
 (defcard "Capacitor"
-  {:static-abilities [(ice-strength-bonus (req (if (pos? (count-tags state)) 2 0)))]
-   :subroutines [{:label "Gain 1 [Credits] for each tag the runner has"
+  {:static-abilities [(ice-strength-bonus (req (if (is-tagged? state) 2 0)))]
+   :subroutines [{:label "Gain 1 [Credits] for each tag the Runner has"
                   :async true
                   :msg (msg "Gain " (count-tags state) " [Credits]")
-                  :effect (req
-                            (if-not (zero? (count-tags state))
-                              (gain-credits :corp eid (count-tags state))
-                              (effect-completed state side eid)))}
+                  :req (req (pos? (count-tags state)))
+                  :effect (effect (gain-credits :corp eid (count-tags state)))}
                  end-the-run]})
 
 (defcard "Cell Portal"
@@ -3186,18 +3184,9 @@
   {:additional-cost [:tag-or-bad-pub]
    :subroutines [(maybe-draw-sub 1)
                  (do-net-damage 1)
-                 {:label "End run HQ > Grip"
-                  :async true
-                  :effect (req (let [hq (count (:hand corp))
-                                     grip (count (:hand runner))]
-                                 (continue-ability
-                                   state side
-                                   (if (> hq grip)
-                                     {:msg "end the run"
-                                      :async true
-                                      :effect (req (end-run state :corp eid card))}
-                                     {:msg "do nothing"})
-                                   card nil)))}]})
+                 (assoc end-the-run
+                        :label "End the run if there are more cards in HQ than in the grip"
+                        :req (req (> (count (:hand corp)) (count (:hand runner)))))]})
 
 (defcard "Pop-up Window"
   {:on-encounter (gain-credits-sub 1)
@@ -3417,29 +3406,22 @@
 
 (defcard "Seraph"
   (let [encounter-ab
-        {:prompt "choose one"
+        {:prompt "Choose one"
          :player :runner
-         :choices (req ["lose 3 credits"
+         :waiting-prompt true
+         :choices (req ["Lose 3 [Credits]"
                         (when (>= (count (:hand runner)) 2)
-                          "take 2 net damage")
-                        "gain 1 tag"])
-         :msg (msg "force the runner to " target)
+                          "Suffer 2 net damage")
+                        (when-not (forced-to-avoid-tags? state side)
+                          "Take 1 tag")])
+         :msg (msg "force the Runner to " (decapitalize target) " on encountering it")
          :effect (req (cond
-                        (= "lose 3 credits" target) (lose-credits state :runner eid 3)
-                        (= "take 2 net damage" target)
-                        (continue-ability
-                          state :runner
-                          {:player :runner
-                           :cost [:net 2]
-                           :msg (msg "prevent losing 3 credits")}
-                          card nil)
-                        (= "gain 1 tag" target)
-                        (continue-ability
-                          state :runner
-                          {:player :runner
-                           :cost [:gain-tag 1]
-                           :msg (msg "prevent losing 3 credits")}
-                          card nil)))}]
+                        (= "Lose 3 [Credits]" target)
+                          (lose-credits state :runner eid 3)
+                        (= "Suffer 2 net damage" target)
+                          (pay state :runner eid card [:net 2])
+                        (= "Take 1 tag" target)
+                          (gain-tags state :runner eid 1 {:unpreventable true})))}]
     {:on-encounter encounter-ab
      :subroutines [(runner-loses-credits 3)
                    (do-net-damage 2)

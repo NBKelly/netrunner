@@ -3866,6 +3866,38 @@
     (click-prompt state :runner "4")
     (click-prompt state :runner "Pay 0 [Credits] to trash")))
 
+(deftest the-holo-man
+  (do-game
+    (new-game {:corp {:hand ["The Holo Man" "Vanilla" "Rashida Jaheem"]
+                      :credits 10}})
+    (play-from-hand state :corp "The Holo Man" "HQ")
+    (play-from-hand state :corp "Rashida Jaheem" "New remote")
+    (rez state :corp (get-content state :hq 0))
+    (take-credits state :corp)
+    (take-credits state :runner)
+    (is (:corp-phase-12 @state) "The Holo Man is waiting")
+    (end-phase-12 state :corp)
+    (click-prompt state :corp "Yes")
+    (click-prompt state :corp "Server 1")
+    (let [rash (get-content state :remote1 0)
+          thm (get-content state :remote1 1)]
+      (is (changed? [(get-counters (refresh rash) :advancement) 3]
+                    (card-ability state :corp (refresh thm) 0)
+                    (click-card state :corp rash))
+          "Corp placed 3 advancement counters on Rashida")
+      (card-ability state :corp (refresh thm) 0)
+      (is (no-prompt? state :corp) "The Holo Man ability is once per turn")
+      (take-credits state :corp)
+      (take-credits state :runner)
+      (end-phase-12 state :corp)
+      (click-prompt state :corp "No")
+      (play-from-hand state :corp "Vanilla" "Server 1")
+      (let [van (get-ice state :remote1 0)]
+        (is (changed? [(get-counters (refresh van) :advancement) 2]
+                      (card-ability state :corp (refresh thm) 0)
+                      (click-card state :corp van))
+            "Corp placed 2 advancement counters on Vanilla")))))
+
 (deftest the-twins
   ;; The Twins
   (do-game

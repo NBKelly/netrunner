@@ -18,7 +18,7 @@
    [game.core.damage :refer [damage damage-bonus]]
    [game.core.def-helpers :refer [corp-recur defcard do-net-damage
                                   offer-jack-out reorder-choice get-x-fn]]
-   [game.core.drawing :refer [draw draw-up-to]]
+   [game.core.drawing :refer [draw]]
    [game.core.effects :refer [register-lingering-effect]]
    [game.core.eid :refer [effect-completed make-eid]]
    [game.core.engine :refer [pay register-events resolve-ability
@@ -1063,14 +1063,16 @@
 
 (defcard "Kingmaking"
   (let [add-abi
-        {:prompt "select an agenda worth 1 or less points"
-         :req (req true)
+        {:prompt "Choose 1 agenda worth 1 or less points"
+         :req (req (seq (:hand corp)))
          :async true
-         :choices {:req (req (and (agenda? target)
-                                  (>= 1 (:agendapoints target))
-                                  (some #{:hand} (:zone target))))}
+         ;; we want a prompt even if there are no valid targets,
+         ;; to make sure we don't give away hidden info
+         :choices {:card #(and (agenda? %)
+                               (in-hand? %)
+                               (>= 1 (:agendapoints %)))}
          :waiting-prompt true
-         :msg (msg "add " (:title target) " to their score area")
+         :msg (msg "add " (:title target) " from HQ to their score area")
          :effect (req
                    (let [c (move state :corp target :scored)]
                         (card-init state :corp c {:resolve-effect false
@@ -1079,11 +1081,10 @@
                       (update-all-agenda-points state)
                       (check-win-by-agenda state side)
                       (effect-completed state side eid))
-         :cancel-effect (effect (system-msg "does not get a free agenda")
-                                (effect-completed eid))}]
+         :cancel-effect (effect (system-msg (str "declines to use " (:title card))))}]
     {:on-score {:async true
                 :effect (req (wait-for
-                               (draw-up-to state side card 3)
+                               (draw state side 3)
                                (continue-ability state side add-abi card nil)))}}))
 
 (defcard "Labyrinthine Servers"
@@ -1912,33 +1913,30 @@
             {:msg (msg "gain " cred-gain" [Credits]")
              :interactive (req true)
              :async true
-             :waiting-prompt false
              :effect (req (wait-for
                             (gain-credits state side (make-eid state eid) cred-gain)
                             (continue-ability
                               state side
-                              {:choices {:card #(installed? %)}
-                               :msg (msg "place an advancement token on"
+                              {:req (req (seq (all-installed-corp state)))
+                               :choices {:card #(installed? %)}
+                               :waiting-prompt true
+                               :msg (msg "place 1 advancement counter on "
                                          (card-str state target))
                                :effect (effect (add-prop :corp target :advance-counter 1
                                                          {:placed true}))}
                               card nil)))})]
     {:on-score (score-abi 4)
      :derezzed-events [{:event :corp-install
-                        :req (req (and
-                                    (not= [:hand] (:previous-zone card))
-                                    (same-card? (:card target) card)))
-                        :async true
-                        :waiting-prompt false
-                        :effect (effect
-                                  (continue-ability
-                                    {:waiting-prompt false
-                                     :optional
-                                     {:prompt "Resolve the when-scored ability?"
-                                      :waiting-prompt false
-                                      :async true
-                                      :yes-ability (score-abi 2)}}
-                                    card nil))}]}))
+                        :optional
+                        {:prompt "Reveal this agenda to gain 2 [Credits] and place 1 advancement counter on an installed card?"
+                         :req (req (and
+                                     (not= [:hand] (:previous-zone card))
+                                     (same-card? (:card target) card)))
+                         :waiting-prompt true
+                         :yes-ability
+                         {:msg (msg "reveal itself from " (zone->name (:previous-zone card)))
+                          :effect (req (wait-for (reveal state side target)
+                                        (continue-ability state side (score-abi 2) card nil)))}}}]}))
 
 (defcard "Successful Field Test"
   (letfn [(sft [n max-ops]

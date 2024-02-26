@@ -2077,6 +2077,20 @@
     (is (= 1 (count (:discard (get-runner)))) "clippy trashed")
     (is (no-prompt? state :corp))))
 
+(deftest kingmaking
+  (do-game
+    (new-game {:corp {:hand ["Kingmaking"]
+                      :deck ["House of Knives" "Project Atlas" "Hedge Fund"]}})
+    (is (changed? [(count (:deck (get-corp))) -3
+                   (count (:hand (get-corp))) 1
+                   (:agenda-point (get-corp)) 3]
+                  (play-and-score state "Kingmaking")
+                  (click-card state :corp "Project Atlas")
+                  (is (not (no-prompt? state :corp)) "Couldn't choose 2-points agenda")
+                  (click-card state :corp "House of Knives"))
+        "Corp drew 3 cards (2 of which moved to the score area)")
+    (is (zero? (get-counters (get-scored state :runner 1) :agenda)) "House of Knives should have 0 agenda counters")))
+
 (deftest license-acquisition
   ;; License Acquisition
   (do-game
@@ -4136,6 +4150,27 @@
       (click-card state :corp (find-card "Jumon" (:scored (get-runner))))
       (click-card state :corp (find-card "Sting!" (:scored (get-corp))))
       (is (= 1 (-> (get-runner) :discard count)) "Runner should take no damage from the agendas swap")))
+
+(deftest stoke-the-embers
+  (do-game
+    (new-game {:corp {:id "Hyoubu Institute: Absolute Clarity"
+                      :hand ["Stoke the Embers" "NGO Front" "Restore"]
+                      :discard ["Stoke the Embers"]}})
+    (play-from-hand state :corp "NGO Front" "New remote")
+    (is (changed? [(:credit (get-corp)) 4
+                   (get-counters (refresh (get-content state :remote1 0)) :advancement) 1]
+                  (play-and-score state "Stoke the Embers")
+                  (click-card state :corp "NGO Front"))
+        "Corp gained 4 credits and put 1 advancement counter on a card")
+    (play-from-hand state :corp "Restore")
+    (click-card state :corp (find-card "Stoke the Embers" (:discard (get-corp))))
+    (click-prompt state :corp "New remote")
+    (is (changed? [(:credit (get-corp)) 3
+                   (get-counters (refresh (get-content state :remote3 0)) :advancement) 1]
+                  (click-prompt state :corp "Yes")
+                  (is (last-n-log-contains? state 3 "reveal itself from Archives"))
+                  (click-card state :corp (get-content state :remote3 0)))
+        "Corp gained 2 credits (+1 from Hyobu because the agenda was revealed) and put 1 advancement counter on a card")))
 
 (deftest successful-field-test
   ;; Successful Field Test
