@@ -24,7 +24,7 @@
    [game.core.engine :refer [can-trigger? not-used-once? register-events
                              register-once register-suppress resolve-ability trigger-event
                              unregister-floating-events unregister-suppress-by-uuid]]
-   [game.core.events :refer [event-count first-event? first-trash? no-event?
+   [game.core.events :refer [event-count first-event? first-run-event? first-trash? no-event?
                              run-events]]
    [game.core.expose :refer [expose]]
    [game.core.finding :refer [find-card]]
@@ -40,7 +40,7 @@
    [game.core.installing :refer [runner-can-install? runner-can-pay-and-install? runner-install]]
    [game.core.link :refer [get-link link+]]
    [game.core.memory :refer [caissa-mu+ mu+ update-mu virus-mu+]]
-   [game.core.moving :refer [mill move swap-agendas trash trash-cards]]
+   [game.core.moving :refer [as-agenda mill move swap-agendas trash trash-cards]]
    [game.core.optional :refer [get-autoresolve never? set-autoresolve]]
    [game.core.payment :refer [build-cost-string can-pay? cost-value]]
    [game.core.play-instants :refer [play-instant]]
@@ -55,10 +55,12 @@
    [game.core.servers :refer [target-server is-central?]]
    [game.core.shuffling :refer [shuffle!]]
    [game.core.tags :refer [gain-tags lose-tags tag-prevent]]
+   [game.core.threat :refer [threat-level]]
    [game.core.to-string :refer [card-str]]
    [game.core.toasts :refer [toast]]
    [game.core.update :refer [update!]]
    [game.core.virus :refer [count-virus-programs number-of-virus-counters]]
+   [game.core.winning :refer [win]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [game.utils :refer :all]
    [jinteki.utils :refer :all]
@@ -143,6 +145,36 @@
 
 (defcard "Akamatsu Mem Chip"
   {:static-abilities [(mu+ 1)]})
+
+(defcard "Alarm Clock"
+  (let [ability {:once :per-turn
+                 :req (req (:runner-phase-12 @state))
+                 :msg "make a run on HQ"
+                 :makes-run true
+                 :async true
+                 :effect (req (register-events
+                                  state side card
+                                  [{:event :encounter-ice
+                                    :req (req (first-run-event? state side :encounter-ice))
+                                    :unregister-once-resolved true
+                                    :duration :end-of-run
+                                    :optional
+                                    {:prompt "Spend [Click][Click] to bypass encountered ice?"
+                                     :yes-ability {:cost [:click 2]
+                                                   :req (req (>= (:click runner) 2))
+                                                   :msg (msg "bypass " (card-str state (:ice context)))
+                                                   :effect (req (bypass-ice state))}}}])
+                              (wait-for
+                                (make-run state :runner (make-eid state eid) :hq card)
+                                (effect-completed state side eid)))}]
+    {:flags {:runner-phase-12 (req true)}
+     :events [{:event :runner-turn-begins
+               :interactive (req true)
+               :optional
+               {:once :per-turn
+                :prompt "Make a run on HQ?"
+                :yes-ability ability}}]
+     :abilities [ability]}))
 
 (defcard "Aniccam"
   (let [ability {:async true
@@ -1111,6 +1143,39 @@
 
 (defcard "HQ Interface"
   {:events [(breach-access-bonus :hq 1)]})
+
+(defcard "Jeitinho"
+  {:events [{:event :bypassed-ice
+             :location :discard
+             :interactive (req true)
+             :req (req (and (threat-level 3 state)
+                            (in-discard? card)))
+             :async true
+             :effect (req (continue-ability
+                            state side
+                            {:optional
+                             {:prompt "Install this card from the heap?"
+                              :yes-ability {:cost [:lose-click 1]
+                                            :msg (msg "install " (get-title card) " from the heap")
+                                            :async true
+                                            :effect (req (let [target-card (first (filter #(= (:printed-title %) (:printed-title card)) (:discard runner)))]
+                                                           (runner-install state side (assoc eid :source card :source-type :runner-install) target-card nil)))}}}
+                            card nil))}
+            {:event :runner-turn-ends
+             :req (req (and
+                         (installed? card)
+                         (some #{:hq} (:successful-run runner-reg))
+                         (some #{:rd} (:successful-run runner-reg))
+                         (some #{:archives} (:successful-run runner-reg))))
+             :msg "add itself to the score area as an assassination agenda worth 0 agenda points"
+             :async true
+             :effect (req (as-agenda state :runner card 0)
+                          (if (= 3 (count (filter #(= (:printed-title %) (:printed-title card))
+                                                  (get-in @state [:runner :scored]))))
+                            (do (system-msg state side "wins the game")
+                                (win state :runner "Jeitinho assassination event")
+                                (effect-completed state side eid))
+                            (effect-completed state side eid)))}]})
 
 (defcard "Keiko"
   {:static-abilities [(mu+ 2)]

@@ -14,7 +14,7 @@
    [game.core.cost-fns :refer [all-stealth install-cost min-stealth rez-cost]]
    [game.core.costs :refer [total-available-credits]]
    [game.core.damage :refer [damage damage-prevent]]
-   [game.core.def-helpers :refer [breach-access-bonus defcard offer-jack-out trash-on-empty get-x-fn]]
+   [game.core.def-helpers :refer [breach-access-bonus defcard offer-jack-out trash-on-empty get-x-fn rfg-on-empty]]
    [game.core.drawing :refer [draw]]
    [game.core.effects :refer [any-effects register-lingering-effect
                               unregister-effects-for-card]]
@@ -1010,6 +1010,44 @@
                                                            (effect-completed state side eid))
                                                        (trash state side eid card {:cause-card card}))))}]}))
 
+(defcard "Cupellation"
+  {:events [;; Note - we don't actually have access events for inactive cards in archives
+            ;; because of this, we need to perform this evil hack - nbkelly, jan '24
+            {:event :end-breach-server
+             :async true
+             :interactive (req true)
+             :req (req (and (= (:from-server target) :archives)
+                            ;; can-pay-credit           ;;todo - assert that we can pay the credit
+                            (seq (filter #(and (:seen %) (not (agenda? %))) (:discard corp)))
+                            (empty? (filter corp? (:hosted card)))))
+             :prompt "1 [Credits]: Host a card from archives?"
+             :choices (req (cancellable (filter #(and (:seen %) (not (agenda? %)))
+                                                (:discard corp))
+                                        :sorted))
+             :cost [:credit 1]
+             :msg (msg "host " (:title target) " on itself")
+             :effect (req (host state side (assoc card :seen true) target)
+                          (effect-completed state side eid))}
+            {:event :breach-server
+             :async true
+             :optional {:req (req (= :hq target)
+                                  (seq (filter corp? (:hosted card))))
+                        :prompt "Trash this program to access 2 additional cards from HQ?"
+                        :yes-ability {:async true
+                                      :effect (effect (access-bonus :hq 2)
+                                                      (effect-completed eid))
+                                      :cost [:credit 1 :trash-can]
+                                      :msg "access 2 additional cards from HQ"}}}]
+   :interactions {:access-ability {:label "Host a card"
+                                   :req (req (and (empty? (filter corp? (:hosted card)))
+                                                  (not (agenda? target))))
+                                   :cost [:credit 1]
+                                   :msg (msg "host " (:title target) " on itself")
+                                   :async true
+                                   :effect (req (host state side (assoc card :seen true) target)
+                                                (swap! state dissoc :access)
+                                                (effect-completed state side eid))}}})
+
 (defcard "Curupira"
   (auto-icebreaker {:abilities [(break-sub 1 1 "Barrier")
                                 (strength-pump 1 1)]
@@ -1921,6 +1959,28 @@
                               :async true
                               :effect (effect (gain-credits :runner eid 1))}]}))
 
+(defcard "Malandragem"
+  {:data {:counter {:power 2}}
+   :events [(rfg-on-empty :power)
+            {:event :encounter-ice
+             :interactive (req true)
+             :ability-name "Malandragem (rfg)"
+             :optional {:prompt "Remove this program from the game to bypass encountered ice?"
+                        :req (req (threat-level 4 state))
+                        :yes-ability {:cost [:remove-from-game]
+                                      :msg (msg "bypass " (card-str state current-ice))
+                                      :effect (req (bypass-ice state))}}}
+            {:event :encounter-ice
+             :interactive (req true)
+             :ability-name "Malandragem (Power counter)"
+             :optional {:prompt "Spend 1 power counter to bypass encountered ice?"
+                        :once :per-turn
+                        :req (req (and (>= 3 (ice-strength state side current-ice))
+                                       (<= 1 (get-counters (get-card state card) :power))))
+                        :yes-ability {:cost [:power 1]
+                                      :msg (msg "bypass " (card-str state current-ice))
+                                      :effect (req (bypass-ice state))}}}]})
+
 (defcard "Mammon"
   (auto-icebreaker {:flags {:runner-phase-12 (req (pos? (:credit runner)))}
                     :abilities [{:label "Place X power counters"
@@ -2449,6 +2509,28 @@
              :effect (effect (add-counter card :virus 1))}]
    :interactions {:pay-credits {:req (req (= :hq (get-in @state [:run :server 0])))
                                 :type :recurring}}})
+
+(defcard "Physarum Entangler"
+  {:hosting {:card #(and (ice? %)
+                         (can-host? %))}
+   :events [{:event :purge
+             :async true
+             :msg "trash itself"
+             :effect (req (trash state :runner eid card {:cause :purge
+                                                         :cause-card card}))}
+            {:event :encounter-ice
+             :optional {:prompt (msg "Pay " (count (:subroutines (get-card state current-ice)))
+                                     " [Credits] to bypass encountered ice?")
+                        :req (req (and (not (has-subtype? current-ice "Barrier"))
+                                       (same-card? current-ice (:host card))
+                                       (can-pay? state :runner eid (:ice context) nil [:credit (count (:subroutines (get-card state current-ice)))])))
+                        :yes-ability {:async true
+                                      :msg (msg "bypass " (card-str state current-ice))
+                                      :effect (req (wait-for
+                                                     (pay state side (make-eid state eid) card [:credit (count (:subroutines (get-card state current-ice)))])
+                                                     (system-msg state :runner (:msg async-result))
+                                                     (bypass-ice state)
+                                                     (effect-completed state side eid)))}}}]})
 
 (defcard "Pichação"
   ;; TODO - there's not really a way to tell if an event happened during a run?

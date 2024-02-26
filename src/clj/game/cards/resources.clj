@@ -8,7 +8,7 @@
                               update-all-agenda-points]]
    [game.core.bad-publicity :refer [gain-bad-publicity]]
    [game.core.board :refer [all-active all-active-installed all-installed
-                            all-installed-runner card->server server->zone]]
+                            all-installed-runner card->server get-all-cards server->zone]]
    [game.core.card :refer [agenda? asset? assoc-host-zones card-index corp?
                            event? facedown? get-agenda-points get-card get-counters
                            get-title get-zone hardware? has-subtype? ice? identity? in-discard? in-hand?
@@ -31,6 +31,7 @@
                              first-installed-trash-own? first-run-event?
                              first-successful-run-on-server? get-turn-damage no-event? second-event? turn-events]]
    [game.core.expose :refer [expose]]
+   [game.core.finding :refer [find-cid]]
    [game.core.flags :refer [card-flag? clear-persistent-flag!
                             has-flag? in-corp-scored?
                             register-persistent-flag! register-turn-flag! zone-locked?]]
@@ -261,6 +262,23 @@
    :events [{:event :runner-turn-begins
              :effect (req (toast state :runner "Reminder: Always Be Running requires a run on the first click" "info"))}]
    :abilities [(assoc (break-sub [:lose-click 2] 1 "All" {:req (req true)}) :once :per-turn)]})
+
+(defcard "Amelia Earhart"
+  {:flags {:runner-phase-12 (req true)}
+   :events [{:event :run-ends
+             :req (req (and (#{:hq :rd} (target-server context))
+                            (>= (total-cards-accessed context) 3)))
+             :effect (effect (add-counter (get-card state card) :power 1))}
+            {:event :runner-turn-begins
+             :optional
+             {:prompt (str "Trash this resource to force the Corp to lose 10 [Credits]?")
+              :yes-ability
+              {:req (req (>= (get-counters (get-card state card) :power) 3))
+               :msg "trash itself and force the Corp to lose 10 [Credits]"
+               :async true
+               :effect (req (wait-for
+                              (trash state side card {:cause-card card})
+                              (lose-credits state :corp eid (min 10 (:credit corp)))))}}}]})
 
 (defcard "Angel Arena"
   {:on-install {:prompt "How many credits do you want to spend?"
@@ -1775,6 +1793,19 @@
                :effect (effect (gain-tags eid 1))
                :msg "gain 1 tag"}]
      :abilities [ability]}))
+
+(defcard "Juli Moreira Lee"
+  {:data {:counter {:power 4}}
+   :events [(trash-on-empty :power)
+            {:event :runner-spent-click
+             :req (req (let [all-cards (get-all-cards state)]
+                         (and (resource? (find-cid (first target) all-cards))
+                              (first-event? state side :runner-spent-click
+                                            #(resource?
+                                               (find-cid (first (first %)) all-cards))))))
+             :msg "gain [Click]"
+             :effect (effect (add-counter card :power -1)
+                             (gain-clicks 1))}]})
 
 (defcard "Kasi String"
   {:events [{:event :run-ends
