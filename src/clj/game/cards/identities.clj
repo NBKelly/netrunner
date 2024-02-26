@@ -31,7 +31,7 @@
    [game.core.gaining :refer [gain gain-clicks gain-credits lose lose-credits]]
    [game.core.hand-size :refer [corp-hand-size+ hand-size+]]
    [game.core.hosting :refer [host]]
-   [game.core.ice :refer [break-sub update-all-ice update-all-icebreakers]]
+   [game.core.ice :refer [add-extra-sub! break-sub pump-ice remove-sub! update-all-ice update-all-icebreakers]]
    [game.core.initializing :refer [make-card]]
    [game.core.installing :refer [corp-install install-locked? runner-can-pay-and-install? runner-install]]
    [game.core.link :refer [link+ update-link]]
@@ -39,14 +39,14 @@
    [game.core.memory :refer [mu+]]
    [game.core.moving :refer [mill move swap-ice trash trash-cards]]
    [game.core.optional :refer [get-autoresolve never? set-autoresolve]]
-   [game.core.payment :refer [can-pay? cost-name merge-costs]]
+   [game.core.payment :refer [build-cost-label can-pay? cost-name cost->string merge-costs]]
    [game.core.pick-counters :refer [pick-virus-counters-to-spend]]
    [game.core.play-instants :refer [play-instant]]
    [game.core.prompts :refer [cancellable clear-wait-prompt]]
    [game.core.props :refer [add-counter add-prop]]
    [game.core.revealing :refer [conceal-hand reveal reveal-hand]]
    [game.core.rezzing :refer [rez]]
-   [game.core.runs :refer [get-current-encounter make-run redirect-run
+   [game.core.runs :refer [end-run get-current-encounter make-run redirect-run
                            set-next-phase start-next-phase total-cards-accessed]]
    [game.core.sabotage :refer [sabotage-ability]]
    [game.core.say :refer [system-msg]]
@@ -2100,6 +2100,53 @@
                                                          (effect-completed state :runner eid))
                                                (damage state side eid :brain 1 {:card card})))}
                                card nil))}]})
+
+(defcard "Thunderbolt Armaments"
+  (let [thunderbolt-sub
+        {:player :runner
+         :async true
+         :label (str "End the run unless the Runner pays " (build-cost-label [:trash-installed 1]))
+         :prompt "Choose one"
+         :waiting-prompt true
+         :choices (req ["End the run"
+                        (when (can-pay? state :runner eid card nil [:trash-installed 1])
+                          (capitalize (cost->string [:trash-installed 1])))])
+         :msg (msg (if (= "End the run" target)
+                     (decapitalize target)
+                     (str "force the runner to " (decapitalize target))))
+         :effect (req (if (= "End the run" target)
+                        (end-run state :corp eid card)
+                        (wait-for (pay state :runner (make-eid state eid) card [:trash-installed 1])
+                                  (when-let [payment-str (:msg async-result)]
+                                    (system-msg state :runner
+                                                (str payment-str
+                                                     " due to " (:title card)
+                                                     " subroutine")))
+                                  (effect-completed state side eid))))}]
+    {:events [{:event :run-ends
+               :effect (req (let [cid (:cid card)
+                                  ices (get-in card [:special :thunderbolt-armaments])]
+                              (doseq [i ices]
+                                (when-let [ice (get-card state i)]
+                                  (remove-sub! state side ice #(= cid (:from-cid %))))))
+                            (update! state side (dissoc-in card [:special :thunderbolt-armaments])))}
+              {:event :rez
+               :req (req (and run
+                              (ice? (:card context))
+                              (or (has-subtype? (:card context) "AP")
+                                  (has-subtype? (:card context) "Destroyer"))))
+               :msg (msg "give " (card-str state (:card context))
+                         " +1 strength and \""
+                         (:label thunderbolt-sub)
+                         "\" after its other subroutines")
+               :async true
+               :effect (effect (add-extra-sub! (get-card state (:card context))
+                                               thunderbolt-sub
+                                               (:cid card) {:front false})
+                               (update! (update-in card [:special :thunderbolt-armaments]
+                                                   #(conj % (:card context))))
+                               (pump-ice (:card context) 1 :end-of-run)
+                               (effect-completed eid))}]}))
 
 (defcard "Titan Transnational: Investing In Your Future"
   {:events [{:event :agenda-scored

@@ -41,7 +41,7 @@
    [game.core.props :refer [add-counter add-prop set-prop]]
    [game.core.purging :refer [purge]]
    [game.core.revealing :refer [reveal]]
-   [game.core.rezzing :refer [rez]]
+   [game.core.rezzing :refer [rez derez]]
    [game.core.runs :refer [end-run force-ice-encounter jack-out redirect-run
                            set-next-phase start-next-phase]]
    [game.core.say :refer [system-msg]]
@@ -318,6 +318,34 @@
                                               (str "gains 5 [Credits] and draws 1 card. "
                                                    "Black Level Clearance is trashed"))
                                   (trash state :corp eid card {:cause-card card}))))))}]})
+
+(defcard "Brasília Government Grid"
+  {:events [{:event :rez
+             :req (req (and (ice? (:card context))
+                            this-server run
+                            (some #(and (ice? %)
+                                        (not (same-card? % (:card context))))
+                                  (all-active-installed state :corp))))
+             :effect (req
+                       (let [rezzed-card (:card context)]
+                         (continue-ability
+                           state side
+                           {:optional
+                            {:prompt (str "Derez another ice to give "
+                                          (:title rezzed-card)
+                                          " +3 strength for the remainder of the run?")
+                             :waiting-prompt true
+                             :once :per-turn
+                             :async true
+                             :yes-ability {:choices {:card #(and (ice? %)
+                                                                 (rezzed? %)
+                                                                 (not (same-card? % rezzed-card)))}
+                                           :async true
+                                           :msg (msg "derez " (card-str state target) " to give " (card-str state rezzed-card) " +3 strength for the remainder of the run")
+                                           :effect (req (derez state side (get-card state target))
+                                                        (pump-ice state side rezzed-card 3 :end-of-run)
+                                                        (effect-completed state side eid))}}}
+                           card nil)))}]})
 
 (defcard "Breaker Bay Grid"
   {:static-abilities [{:type :rez-cost

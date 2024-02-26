@@ -20,7 +20,7 @@
                                   do-brain-damage do-net-damage offer-jack-out
                                   reorder-choice get-x-fn]]
    [game.core.drawing :refer [draw maybe-draw draw-up-to]]
-   [game.core.effects :refer [get-effects register-lingering-effect unregister-static-abilities]]
+   [game.core.effects :refer [get-effects register-lingering-effect unregister-effects-for-card unregister-static-abilities]]
    [game.core.eid :refer [complete-with-result effect-completed make-eid]]
    [game.core.engine :refer [gather-events pay register-default-events register-events
                              resolve-ability trigger-event trigger-event-simult unregister-events
@@ -2569,6 +2569,65 @@
 (defcard "Lycan"
   (morph-ice "Sentry" "Code Gate" trash-program-sub))
 
+(defcard "Lycian Multi-Munition"
+  (letfn [(ice-subtype-choice [choices]
+            {:prompt "Choose an ice subtype"
+             :waiting-prompt true
+             :choices choices
+             :effect (req (if (= target "Done")
+                            (effect-completed state side eid)
+                            (let [new-choices (->> choices
+                                                   (remove #{target})
+                                                   (#(conj % "Done"))
+                                                   distinct)]
+                              ;; note this is a lingering ability and persists so
+                              ;; long as the card is rezzed
+                              ;; if the card is hushed, it will not derez, so the subtypes will stay!
+                              ;; - nbkelly, jan '24
+                              (system-msg state side (str "uses " (:title card) " to make itself gain " target))
+                              (register-lingering-effect
+                                state side card
+                                (let [ice card]
+                                  {:type :gain-subtype
+                                   :req (req (same-card? ice target))
+                                   :value target}))
+                              (continue-ability
+                                state side
+                                (ice-subtype-choice new-choices)
+                                card nil))))})]
+    {:on-rez {:effect (effect (continue-ability (ice-subtype-choice ["Barrier" "Code Gate" "Sentry"]) card nil))}
+     :derez-effect {:effect (req (unregister-effects-for-card state side card #(= :gain-subtype (:type %))))}
+     :static-abilities [{:type :gain-subtype
+                         :req (req (and (same-card? card target) (:subtype-target card)))
+                         :value (req (:subtype-target card))}]
+     :events [{:event :runner-turn-ends
+               :req (req (rezzed? card))
+               :effect (effect (derez :corp card))}
+              {:event :corp-turn-ends
+               :req (req (rezzed? card))
+               :effect (effect (derez :corp card))}]
+     :subroutines [{:label "(Code Gate) Force the Runner to lose [Click] and 1 [Credit]"
+                    :msg "force the Runner to lose [Click] and 1 [Credit]"
+                    :req (req (has-subtype? card "Code Gate"))
+                    :effect (req (wait-for
+                                   (lose-clicks state :runner 1)
+                                   (lose-credits state :runner (make-eid state eid) 1)))}
+                   {:label "(Sentry) Trash a program"
+                    :prompt "Choose a program to trash"
+                    :req (req (has-subtype? card "Sentry"))
+                    :msg (msg "trash " (:title target))
+                    :choices {:card #(and (installed? %)
+                                          (program? %))}
+                    :async true
+                    :effect (effect (trash eid target {:cause :subroutine}))}
+                   {:label "(Barrier) Gain 1 [Credit] and end the run"
+                    :msg "gain 1 [Credit] and end the run"
+                    :req (req (has-subtype? card "Barrier"))
+                    :async true
+                    :effect (req (wait-for
+                                   (gain-credits state :corp 1)
+                                   (end-run state :corp eid card)))}]}))
+
 (defcard "M.I.C."
   {:abilities [{:label "End the run unless the Runner spends [Click]"
                 :msg "end the run unless the Runner spends [Click]"
@@ -3623,6 +3682,25 @@
 
 (defcard "Snowflake"
   {:subroutines [(do-psi end-the-run)]})
+
+(defcard "Sorocaban Blade"
+  {:events [{:event :corp-trash
+             :silent (req true)
+             :once-per-instance true
+             :req (req (and
+                         (get-current-encounter state)
+                         (some #(and (runner? %) (installed? %)) (map :card targets))))
+             :effect (req (update! state side (assoc-in card [:special :sorocaban-blade] true)))}
+            {:event :end-of-encounter
+             :silent (req true)
+             :req (req true)
+             :effect
+             (req (update! state side (dissoc-in card [:special :sorocaban-blade])))}]
+   :subroutines [trash-resource-sub
+                 (assoc trash-hardware-sub
+                        :req (req (not (get-in card [:special :sorocaban-blade]))))
+                 (assoc trash-program-sub
+                        :req (req (not (get-in card [:special :sorocaban-blade]))))]})
 
 (defcard "Special Offer"
   {:subroutines [{:label "Gain 5 [Credits] and trash this ice"

@@ -1108,6 +1108,60 @@
               :async true
               :effect (effect (corp-install eid target nil {:install-state :rezzed-no-cost}))}})
 
+(defcard "Lightning Laboratory"
+  ;; TODO - I feel this card is OVERLY verbose
+  ;; maybe it could be condensed? I'm not sure
+  (letfn [(ice-derez [zone]
+            {:event :runner-turn-ends
+             :req (req (seq (filter #(= (:zone %) [:servers zone :ices])
+                                    (all-active-installed state :corp))))
+             :effect (req (let [derez-count
+                                (min 2 (count (filter #(= (:zone %) [:servers zone :ices])
+                                                      (all-active-installed state :corp))))]
+                            (continue-ability
+                              state side
+                              {:prompt (msg "Choose " derez-count " pieces of ice protecting " (zone->name [zone]) " to derez")
+                               :choices {:card #(and (ice? %)
+                                                     (rezzed? %)
+                                                     (= (second (get-zone %)) zone))
+                                         :max derez-count
+                                         :min derez-count}
+                               :msg (msg "derez " (enumerate-str (map #(card-str state %) targets)))
+                               :effect (req (doseq [t targets]
+                                              (derez state side t)))}
+                              card nil)))})
+          (ice-free-rez [state side targets card zone eid]
+            (if (zero? (count targets))
+              (do (register-events
+                    state side card
+                    [(ice-derez zone)])
+                  (effect-completed state side eid))
+              (wait-for (rez state :corp (make-eid state eid) (first targets) {:ignore-cost :all-costs})
+                        (ice-free-rez state side (drop 1 targets) card zone eid))))]
+    {:on-score {:effect (effect (add-counter card :agenda 1))
+                :silent (req true)}
+     :events [{:event :run
+               :async true
+               :optional
+               {:prompt (msg "Remove 1 hosted agenda counter to rez up to 2 ice protecting " (zone->name (:server context)) ", ignoring all costs?")
+                :yes-ability
+                {:cost [:agenda 1]
+                 :effect (req (let [current-server (first (:server (:run @state)))]
+                                (continue-ability
+                                  state side
+                                  {:prompt (msg "Choose up to 2 ice protecting " (zone->name current-server))
+                                   :choices {:card #(and (ice? %)
+                                                         (not (rezzed? %))
+                                                         (= (second (get-zone %)) current-server))
+                                             :max 2}
+                                   :msg (msg "rez " (enumerate-str (map :title targets)) ", ignoring all costs")
+                                   :async true
+                                   :cancel-effect (req
+                                                    (system-msg state side (str "declines to use " (:title card)))
+                                                    (ice-free-rez state side [] card current-server eid))
+                                   :effect (req (ice-free-rez state side targets card current-server eid))}
+                                  card nil)))}}}]}))
+
 (defcard "Longevity Serum"
   {:on-score
    {:prompt "Choose any number of cards in HQ to trash"

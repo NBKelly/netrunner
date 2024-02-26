@@ -6442,6 +6442,41 @@
       (is (= 3 (count (:subroutines (refresh eli)))) "Eli 2.0 reverts")
       (is (= 3 (count (:subroutines (refresh ichi)))) "Ichi 2.0 reverts"))))
 
+(deftest warm-reception
+  (do-game
+    (new-game {:corp {:hand ["Warm Reception" "Shipment from Tennin" "Hostile Takeover" "Vanilla"]}})
+    (play-from-hand state :corp "Warm Reception" "New remote")
+    (play-from-hand state :corp "Vanilla" "HQ")
+    (let [wr (get-content state :remote1 0)
+          van (get-ice state :hq 0)]
+      (rez state :corp wr)
+      (rez state :corp van)
+      (take-credits state :corp)
+      (take-credits state :runner)
+      (click-card state :corp (find-card "Hostile Takeover" (:hand (get-corp))))
+      (click-prompt state :corp "New remote")
+      (click-card state :corp van)
+      (is (not (rezzed? (refresh van))) "Vanilla derezzed")
+      (is (not (rezzed? (refresh wr))) "Warm Reception derezzed")
+      (play-from-hand state :corp "Shipment from Tennin")
+      (click-card state :corp "Hostile Takeover")
+      (score state :corp (refresh (get-content state :remote2 0)))
+      (is (empty? (:scored (get-corp))) "Agenda not scored")
+      (is (zero? (:agenda-point (get-corp)))))))
+
+(deftest warm-reception-protected-by-ice
+  (do-game
+    (new-game {:corp {:hand ["Warm Reception" "Hostile Takeover" "Vanilla"]}})
+    (play-from-hand state :corp "Warm Reception" "New remote")
+    (play-from-hand state :corp "Vanilla" "Server 1")
+    (rez state :corp (get-content state :remote1 0))
+    (rez state :corp (get-ice state :remote1 0))
+    (take-credits state :corp)
+    (take-credits state :runner)
+    (click-card state :corp (find-card "Hostile Takeover" (:hand (get-corp))))
+    (click-prompt state :corp "New remote")
+    (is (no-prompt? state :corp) "Corp should have no prompt")))
+
 (deftest watchdog
   ;; Watchdog - Reduce rez cost of first piece of ice per turn by number of Runner tags
   (do-game
@@ -6478,6 +6513,35 @@
       (click-card state :corp (find-card "Global Food Initiative" (:discard (get-corp))))
       (is (= 1 (count (:discard (get-corp)))) "Only card in discard placed in bottom of R&D")
       (is (= "Global Food Initiative" (-> (get-corp) :deck last :title)) "GFI last card in deck"))))
+
+(deftest working-prototype
+  (do-game
+    (new-game {:corp {:hand ["Working Prototype" "Rime"]}
+               :runner {:hand ["Smartware Distributor"]}})
+    (play-from-hand state :corp "Working Prototype" "New remote")
+    (take-credits state :corp)
+    (play-from-hand state :runner "Smartware Distributor")
+    (take-credits state :runner)
+    (let [wp (get-content state :remote1 0)]
+      (is (changed? [(get-counters (refresh wp) :power) 1]
+                    (rez state :corp wp))
+          "Power counter added")
+      (play-from-hand state :corp "Rime" "HQ")
+      (is (changed? [(get-counters (refresh wp) :power) 1]
+                    (rez state :corp (get-ice state :hq 0)))
+          "Power counter added")
+      (core/add-counter state :corp wp :power 4)
+      (is (changed? [(get-counters (refresh wp) :power) -1
+                     (:credit (get-corp)) 3]
+                    (card-ability state :corp (refresh wp) 0))
+          "Power counter removed to gain 3 credits")
+      (is (changed? [(get-counters (refresh wp) :power) -5
+                     (:credit (get-corp)) 6]
+                    (card-ability state :corp (refresh wp) 1)
+                    (click-card state :corp (get-resource state 0)))
+          "5 power counters removed to gain 6 credits")
+      (is (empty (get-resource state)))
+      (is (= "Smartware Distributor" (:title (first (:deck (get-runner)))))))))
 
 (deftest worlds-plaza
   ;; Worlds Plaza

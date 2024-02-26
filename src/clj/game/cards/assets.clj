@@ -3014,6 +3014,37 @@
                                 (has-subtype? (:card context) "Bioroid")))
                  :effect (req (add-one (:cid card) state (get-card state (:card context))))}]})))
 
+(defcard "Warm Reception"
+  (let [install {:prompt "Choose a card to install"
+                 :async true
+                 :choices {:card #(and (corp-installable-type? %)
+                                       (in-hand? %))}
+                 :msg (msg (corp-install-msg target))
+                 :effect
+                 (req (wait-for (corp-install state side (make-eid state eid) target nil nil)
+                                (let [installed-card async-result]
+                                  (register-turn-flag!
+                                    state side
+                                    card :can-score
+                                    (fn [state _ card]
+                                      (if (same-card? card installed-card)
+                                        ((constantly false) (toast state :corp "Cannot score due to Warm Reception." "Warning"))
+                                        true)))
+                                  (effect-completed state side eid))))}
+        derez {:label "Derez another card (start of turn)"
+               :req (req unprotected)
+               :prompt "Choose another card to derez"
+               :choices {:not-self true
+                         :card #(rezzed? %)}
+               :msg (msg "derez itself to derez " (card-str state target))
+               :effect (effect (derez card)
+                               (derez target))}]
+    {:derezzed-events [corp-rez-toast]
+     :events [{:event :corp-turn-begins
+               :async true
+               :effect (req (wait-for (resolve-ability state side install card nil)
+                                      (continue-ability state side derez card nil)))}]}))
+
 (defcard "Watchdog"
   (letfn [(not-triggered? [state]
             (no-event? state :runner :rez #(ice? (:card (first %)))))]
@@ -3045,6 +3076,25 @@
                                              " from Archives to the bottom of R&D")
                                    :effect (effect (move target :deck))}
                                   card nil))}]})
+
+(defcard "Working Prototype"
+  {:events [{:event :rez
+             :silent (req true)
+             :effect (effect (add-counter card :power 1))}]
+   :abilities [{:cost [:click 1 :power 1]
+                :label "Gain 3 [Credits]"
+                :msg "gain 3 [Credits]"
+                :effect (req (gain-credits state side eid 3))}
+               {:cost [:click 1 :power 5]
+                :label "Gain 6 [Credits] and add a resource to the top of the stack"
+                :prompt "Choose a resource"
+                :choices {:card #(resource? %)}
+                :async true
+                :msg (msg "gain 6 [Credits] and add " (:title target) " to the top of the stack")
+                :effect (req
+                          (wait-for (gain-credits state side 6)
+                                    (move state :runner target :deck {:front true})
+                                    (effect-completed state side eid)))}]})
 
 (defcard "Worlds Plaza"
   {:abilities [{:label "Install an asset on this asset"
