@@ -114,7 +114,6 @@
     :req (if (:req args)
            (:req args)
            (req (= server target)))
-    :silent (req true)
     :msg msg
     :effect (effect (access-bonus :runner server bonus))}))
 
