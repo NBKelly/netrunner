@@ -2767,11 +2767,10 @@
   (let [play-instant-second {:optional
                              {:prompt (msg "Pay 3 [Credits] to gain [Click]?")
                               :waiting-prompt true
-                              :req (req (threat-level 3))
+                              :req (req (threat-level 3 state))
                               :yes-ability {:cost [:credit 3]
                                             :msg (msg "gain [Click]")
                                             :effect (effect (gain-clicks 1))}}}
-
         play-instant-first {:prompt (msg "Choose a non-terminal operation")
                             :choices (req (conj (filter #(and (operation? %)
                                                               (not (has-subtype? % "Terminal"))

@@ -4989,7 +4989,7 @@
 
 (deftest thunderbolt-armaments
   (do-game
-    (new-game {:corp {:id "Thunderbolt Armaments: Peace through Power"
+    (new-game {:corp {:id "Thunderbolt Armaments: Peace Through Power"
                       :deck ["Tithe" "Swordsman" "Vanilla"]}
                :runner {:hand ["Smartware Distributor"]}})
     (play-from-hand state :corp "Tithe" "HQ")

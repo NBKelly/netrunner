@@ -2127,7 +2127,7 @@
                                                (damage state side eid :brain 1 {:card card})))}
                                card nil))}]})
 
-(defcard "Thunderbolt Armaments: Peace through Power"
+(defcard "Thunderbolt Armaments: Peace Through Power"
   (let [thunderbolt-sub
         {:player :runner
          :async true

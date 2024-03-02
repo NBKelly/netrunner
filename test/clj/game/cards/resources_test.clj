@@ -4014,10 +4014,10 @@
   (do-game
     (new-game {:corp {:deck [(qty "Hedge Fund" 10)]
                       :hand ["Hedge Fund"]}
-               :runner {:hand ["Mary da Silva" (qty "Jailbreak" 3)]
+               :runner {:hand ["\"Pretty\" Mary da Silva" (qty "Jailbreak" 3)]
                         :credits 10}})
     (take-credits state :corp)
-    (play-from-hand state :runner "Mary da Silva")
+    (play-from-hand state :runner "\"Pretty\" Mary da Silva")
     ;; Mary triggers multiple times during the same turn
     (dotimes [_ 2]
       (play-from-hand state :runner "Jailbreak")
@@ -4040,9 +4040,9 @@
   (do-game
     (new-game {:corp {:deck [(qty "Hedge Fund" 10)]
                       :hand ["Hedge Fund"]}
-               :runner {:hand ["Mary da Silva"]}})
+               :runner {:hand ["\"Pretty\" Mary da Silva"]}})
     (take-credits state :corp)
-    (play-from-hand state :runner "Mary da Silva")
+    (play-from-hand state :runner "\"Pretty\" Mary da Silva")
     (run-empty-server state :rd)
     (click-prompt state :runner "No action")))
 
@@ -5043,24 +5043,6 @@
       (click-prompt state :corp "0")
       (click-prompt state :runner "0")
       (is (= (inc tags) (count-tags state)) "Runner should gain 1 tag from losing trace"))))
-
-;; pending implementation
-(deftest ^:kaocha/pending pretty-mary
-  (do-game
-    (new-game {:corp {:hand ["Hedge Fund"] :deck [(qty "Hedge Fund" 10)]}
-               :runner {:hand ["Mary da Silva" "Jailbreak"] :deck ["Sure Gamble"]}})
-    (take-credits state :corp)
-    (play-from-hand state :runner "Mary da Silva")
-    (run-empty-server state "R&D")
-    (click-prompt state :runner "No action")
-    (is (not (:run @state)) "Run ended")
-    (play-from-hand state :runner "Jailbreak")
-    (click-prompt state :runner "R&D")
-    (run-continue state)
-    (click-prompt state :runner "No action")
-    (click-prompt state :runner "No action")
-    (click-prompt state :runner "No action")
-    (is (not (:run @state)) "Run ended")))
 
 (deftest professional-contacts
   ;; Professional Contacts - Click to gain 1 credit and draw 1 card

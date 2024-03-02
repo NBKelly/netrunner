@@ -1024,18 +1024,18 @@
         (is (zero? (count (:deck (get-runner)))))
         (is (no-prompt? state :corp)))))
 
-(deftest cohor-guidance-program
+(deftest cohort-guidance-program
     (do-game
-      (new-game {:corp {:hand ["Cohor Guidance Program" "NGO Front" "PAD Campaign"]
+      (new-game {:corp {:hand ["Cohort Guidance Program" "NGO Front" "PAD Campaign"]
                         :deck [(qty "Hedge Fund" 5)]}})
-      (play-from-hand state :corp "Cohor Guidance Program" "New remote")
+      (play-from-hand state :corp "Cohort Guidance Program" "New remote")
       (play-from-hand state :corp "NGO Front" "New remote")
       (let [cgp (get-content state :remote1 0)
             ngo (get-content state :remote2 0)]
         (rez state :corp cgp)
         (take-credits state :corp)
         (take-credits state :runner)
-        (is (:corp-phase-12 @state) "Corp has opportunity to use Cohor Guidance Program")
+        (is (:corp-phase-12 @state) "Corp has opportunity to use Cohort Guidance Program")
         (end-phase-12 state :corp)
         (is (changed? [(:credit (get-corp)) 2
                        (count (:discard (get-corp))) 1

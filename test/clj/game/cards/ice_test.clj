@@ -1870,6 +1870,32 @@
       (card-subroutine state :corp dp 0)
       (is (nil? (:run @state)) "Run has ended"))))
 
+(deftest descent
+  (do-game
+    (new-game {:corp {:hand ["Descent"]
+                      :deck ["Hedge Fund" "Project Atlas"]
+                      :discard ["Ikawah Project"]}})
+    (play-from-hand state :corp "Descent" "HQ")
+    (take-credits state :corp)
+    (let [hm (get-ice state :hq 0)]
+      (run-on state "HQ")
+      (rez state :corp hm)
+      (run-continue state)
+      (fire-subs state hm)
+      (is (not (:run @state)) "Run has ended")
+      (take-credits state :runner)
+      (is (changed? [(count (:hand (get-corp))) 2]
+                    (click-prompt state :corp "Yes")
+                    (is (nil? (refresh (get-ice state :hq 0)))))
+          "Hangman returned to HQ + corp mandatory drew")
+      (expend state :corp (find-card "Descent" (:hand (get-corp))))
+      (is (changed? [(count (:hand (get-corp))) -1
+                     (count (:discard (get-corp))) -1
+                     (count (:deck (get-corp))) 2]
+                    (click-card state :corp "Ikawah Project")
+                    (click-card state :corp "Project Atlas"))
+          "The 2 agendas are shuffled into R&D and Hangman is expended"))))
+
 (deftest diviner
   ;; Diviner
   (do-game
@@ -3253,32 +3279,6 @@
                     (card-subroutine state :corp ham 1)
                     (click-card state :corp (get-resource state 0)))
           "Smartware Distributor got trashed"))))
-
-(deftest hangman
-  (do-game
-    (new-game {:corp {:hand ["Hangman"]
-                      :deck ["Hedge Fund" "Project Atlas"]
-                      :discard ["Ikawah Project"]}})
-    (play-from-hand state :corp "Hangman" "HQ")
-    (take-credits state :corp)
-    (let [hm (get-ice state :hq 0)]
-      (run-on state "HQ")
-      (rez state :corp hm)
-      (run-continue state)
-      (fire-subs state hm)
-      (is (not (:run @state)) "Run has ended")
-      (take-credits state :runner)
-      (is (changed? [(count (:hand (get-corp))) 2]
-                    (click-prompt state :corp "Yes")
-                    (is (nil? (refresh (get-ice state :hq 0)))))
-          "Hangman returned to HQ + corp mandatory drew")
-      (expend state :corp (find-card "Hangman" (:hand (get-corp))))
-      (is (changed? [(count (:hand (get-corp))) -1
-                     (count (:discard (get-corp))) -1
-                     (count (:deck (get-corp))) 2]
-                    (click-card state :corp "Ikawah Project")
-                    (click-card state :corp "Project Atlas"))
-          "The 2 agendas are shuffled into R&D and Hangman is expended"))))
 
 (deftest harvester
   ;; Harvester - draw 3, then discard

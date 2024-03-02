@@ -2101,7 +2101,7 @@
              :msg "access 1 additional card"
              :effect (effect (access-bonus target 1))}]})
 
-(defcard "Mary da Silva"
+(defcard "\"Pretty\" Mary da Silva"
   {:implementation "only works after other abilities increasing the number of accesses have resolved"
    :events [{:event :breach-server
              :async true
