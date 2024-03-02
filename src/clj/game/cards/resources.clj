@@ -3,7 +3,7 @@
    [clojure.pprint :as pprint]
    [clojure.string :as str]
    [game.core.access :refer [access-bonus access-n-cards breach-server steal
-                             steal-cost-bonus]]
+                             num-cards-to-access steal-cost-bonus]]
    [game.core.agendas :refer [update-all-advancement-requirements
                               update-all-agenda-points]]
    [game.core.bad-publicity :refer [gain-bad-publicity]]
@@ -2102,18 +2102,22 @@
              :effect (effect (access-bonus target 1))}]})
 
 (defcard "Mary da Silva"
-  {:implementation "Access bonus requirement not enforced"
+  {:implementation "only works after other abilities increasing the number of accesses have resolved"
    :events [{:event :breach-server
-             :optional
-             {:prompt "Access 1 additional card?"
-              ;; TODO add the access bonus requirement
-              ;; Important note: breach-access-bonus effects are silent!
-              :req (req (= :rd target))
-              :yes-ability
-              {:msg "access 1 additional card"
-               :async true
-               :effect (effect (access-bonus :rd 1)
-                               (effect-completed eid))}}}]})
+             :async true
+             :interactive (req true)
+             :req (req (= :rd target))
+             :effect (req
+                       (let [num-access (:random-access-limit (num-cards-to-access state side :rd nil))]
+                         (continue-ability
+                           state side
+                           (when (>= num-access 2)
+                             {:optional
+                              {:prompt "Access 1 additional card?"
+                               :yes-ability
+                               {:msg "access 1 additional card"
+                                :effect (effect (access-bonus :rd 1))}}})
+                           card nil)))}]})
 
 (defcard "Maxwell James"
   {:static-abilities [(link+ 1)]
