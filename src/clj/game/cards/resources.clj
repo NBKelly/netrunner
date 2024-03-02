@@ -2115,7 +2115,6 @@
                :effect (effect (access-bonus :rd 1)
                                (effect-completed eid))}}}]})
 
-
 (defcard "Maxwell James"
   {:static-abilities [(link+ 1)]
    :abilities [{:req (req (some #{:hq} (:successful-run runner-reg)))

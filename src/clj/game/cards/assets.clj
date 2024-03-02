@@ -610,7 +610,7 @@
      :events [(assoc ability :event :corp-turn-begins)]
      :abilities [ability]}))
 
-(defcard "Cohor Guidance Program"
+(defcard "Cohort Guidance Program"
   (let [abi {:prompt "Choose one"
              :interactive (req true)
              :choices (req [(when (seq (:hand corp)) "Trash 1 card from HQ to gain 2 [Credits] and draw 1 card")

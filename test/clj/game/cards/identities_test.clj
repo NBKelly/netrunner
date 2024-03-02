@@ -3866,7 +3866,7 @@
 
 (deftest nuvem-sa
   (do-game
-    (new-game {:corp {:id "Nuvem SA"
+    (new-game {:corp {:id "Nuvem SA: Law of the Land"
                       :deck [(qty "Hedge Fund" 20)]
                       :hand [(qty "Hedge Fund" 2) "Ice Wall" "Tree Line" "Hasty Relocation"]}})
     (play-from-hand state :corp "Hedge Fund")
@@ -3903,7 +3903,7 @@
 
 (deftest nuvem-sa-only-trigger-on-corp-turn
   (do-game
-    (new-game {:corp   {:id "Nuvem SA"
+    (new-game {:corp   {:id "Nuvem SA: Law of the Land"
                         :deck [(qty "Hedge Fund" 20)]
                         :hand ["Hedge Fund"]}
                :runner {:hand ["Cookbook" "Gravedigger"]}})
@@ -4434,7 +4434,7 @@
 (deftest sebastiao-pessoa
   (do-game
     (new-game {:corp {:hand [(qty "Hedge Fund" 3)]}
-               :runner {:id "Sebastião Pessoa: Activist Organiser"
+               :runner {:id "Sebastião Souza Pessoa: Activist Organiser"
                         :hand ["Verbal Plasticity" "Professional Contacts" "Smartware Distributor"]}})
     (gain-tags state :runner 1)
     (is (changed? [(:credit (get-runner)) 0]
@@ -4989,7 +4989,7 @@
 
 (deftest thunderbolt-armaments
   (do-game
-    (new-game {:corp {:id "Thunderbolt Armaments"
+    (new-game {:corp {:id "Thunderbolt Armaments: Peace through Power"
                       :deck ["Tithe" "Swordsman" "Vanilla"]}
                :runner {:hand ["Smartware Distributor"]}})
     (play-from-hand state :corp "Tithe" "HQ")

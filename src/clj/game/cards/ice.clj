@@ -1996,7 +1996,7 @@
                   :async true
                   :effect (effect (trash eid target {:cause :subroutine}))}]})
 
-(defcard "Hangman"
+(defcard "Descent"
   (let [shuffle-ab
         {:label "Draw 1 card and shuffle 2 agendas in HQ and/or Archives into R&D"
          :msg "draw 1 card"

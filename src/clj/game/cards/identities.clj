@@ -1542,7 +1542,7 @@
                                (update-all-ice)
                                (trash eid target {:unpreventable true}))}}}]})
 
-(defcard "Nuvem SA"
+(defcard "Nuvem SA: Law of the Land"
   (let [abi2 {:once :per-turn
               :event :corp-trash
               :req (req (and (= :corp (:active-player @state))
@@ -1824,7 +1824,7 @@
      :events [{:event :corp-turn-begins
                :effect (req (clear-persistent-flag! state side card :can-rez))}]}))
 
-(defcard "Sebastião Pessoa: Activist Organiser"
+(defcard "Sebastião Souza Pessoa: Activist Organiser"
   {:static-abilities [{:type :basic-ability-additional-trash-cost
                        :req (req (and (resource? target) (has-subtype? target "Connection") (= :corp side)))
                        :value [:trash-from-hand 1]}]
@@ -2127,7 +2127,7 @@
                                                (damage state side eid :brain 1 {:card card})))}
                                card nil))}]})
 
-(defcard "Thunderbolt Armaments"
+(defcard "Thunderbolt Armaments: Peace through Power"
   (let [thunderbolt-sub
         {:player :runner
          :async true
