@@ -2773,7 +2773,7 @@
                               :yes-ability {:cost [:credit 3]
                                             :msg (msg "gain [Click]")
                                             :effect (effect (gain-clicks 1))}}}
-        play-instant-first {:prompt (msg "Choose a non-terminal operation")
+        play-instant-first {:prompt "Choose a non-terminal operation"
                             :choices (req (conj (filter #(and (operation? %)
                                                               (not (has-subtype? % "Terminal"))
                                                               (should-trigger? state :corp (assoc eid :source % :source-type :play) % nil (or (:on-play (card-def %)) {}))

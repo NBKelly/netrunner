@@ -470,7 +470,7 @@
                  :mandatory true
                  :ability
                  {:msg "reveal 3 random cards from HQ"
-                  :req (req (<= 1 (count (:hand corp))))
+                  :req (req (not-empty (:hand corp)))
                   :async true
                   :effect (req (let [chosen-cards (take 3 (shuffle (:hand corp)))]
                                  (system-msg

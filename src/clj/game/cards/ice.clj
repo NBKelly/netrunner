@@ -4133,7 +4133,8 @@
                                     :effect (req (let [this (zone->name (second (get-zone card)))
                                                        nice target]
                                                    (continue-ability state side
-                                                                     {:prompt (str "Choose a location to install " (:title target))
+                                                                     {:prompt "Choose a server"
+                                                                      :waiting-prompt true
                                                                       :choices (req (remove #(= this %) (corp-install-list state nice)))
                                                                       :async true
                                                                       :effect (effect (corp-install eid nice target {:ignore-install-cost true}))}

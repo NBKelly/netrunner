@@ -188,6 +188,7 @@
                                       :effect (req (draw state :runner eid 2))}}}
             {:event :runner-turn-ends
              :req (req tagged)
+             :msg "place 1 power counter on itself"
              :effect (req (add-counter state side (get-card state card) :power 1))}]})
 
 

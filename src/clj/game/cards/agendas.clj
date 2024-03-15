@@ -1168,7 +1168,7 @@
                                                       (all-active-installed state :corp))))]
                             (continue-ability
                               state side
-                              {:prompt (msg "Choose " derez-count " pieces of ice protecting " (zone->name [zone]) " to derez")
+                              {:prompt (msg "Choose " (quantify derez-count "piece") " of ice protecting " (zone->name [zone]) " to derez")
                                :choices {:card #(and (ice? %)
                                                      (rezzed? %)
                                                      (= (second (get-zone %)) zone))
@@ -1179,7 +1179,7 @@
                                               (derez state side t)))}
                               card nil)))})
           (ice-free-rez [state side targets card zone eid]
-            (if (zero? (count targets))
+            (if (empty? targets)
               (do (register-events
                     state side card
                     [(ice-derez zone)])
@@ -1191,13 +1191,13 @@
      :events [{:event :run
                :async true
                :optional
-               {:prompt (msg "Remove 1 hosted agenda counter to rez up to 2 ice protecting " (zone->name (:server context)) ", ignoring all costs?")
+               {:prompt (msg "Remove 1 hosted agenda counter to rez up to 2 pieces of ice protecting " (zone->name (:server context)) ", ignoring all costs?")
                 :yes-ability
                 {:cost [:agenda 1]
                  :effect (req (let [current-server (first (:server (:run @state)))]
                                 (continue-ability
                                   state side
-                                  {:prompt (msg "Choose up to 2 ice protecting " (zone->name current-server))
+                                  {:prompt (msg "Choose up to 2 pieces of ice protecting " (zone->name current-server))
                                    :choices {:card #(and (ice? %)
                                                          (not (rezzed? %))
                                                          (= (second (get-zone %)) current-server))
