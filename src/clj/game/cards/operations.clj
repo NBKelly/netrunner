@@ -460,6 +460,7 @@
                        " from the grip to the top of the stack")
              :async true
              :effect (req (doseq [c (shuffle cards)]
+                            (reveal state side c)
                             (move state :runner c :deck {:front true}))
                           (continue-ability
                             state side
