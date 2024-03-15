@@ -1069,8 +1069,7 @@
   {:static-abilities [(ice-strength-bonus (req (if (is-tagged? state) 2 0)))]
    :subroutines [{:label "Gain 1 [Credits] for each tag the Runner has"
                   :async true
-                  :msg (msg "Gain " (count-tags state) " [Credits]")
-                  :req (req (pos? (count-tags state)))
+                  :msg (msg "gain " (count-tags state) " [Credits]")
                   :effect (effect (gain-credits :corp eid (count-tags state)))}
                  end-the-run]})
 
