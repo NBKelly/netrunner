@@ -1445,7 +1445,7 @@
              :async true
              :msg "take 1 tag and access 1 additional card from HQ"
              :effect (req
-                       (wait-for (gain-tags state :runner 1 {:unpreventable true})
+                       (wait-for (gain-tags state :runner 1)
                                  (register-events
                                    state side
                                    card [(breach-access-bonus :hq 1 {:duration :end-of-run})])
