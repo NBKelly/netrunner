@@ -337,7 +337,7 @@
                          (continue-ability
                            state side
                            {:optional
-                            {:prompt (str "Derez another ice to give "
+                            {:prompt (str "Derez another piece of ice to give "
                                           (:title rezzed-card)
                                           " +3 strength for the remainder of the run?")
                              :waiting-prompt true
