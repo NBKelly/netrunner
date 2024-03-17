@@ -44,7 +44,7 @@
    [game.core.prompts :refer [cancellable clear-wait-prompt show-wait-prompt]]
    [game.core.props :refer [add-counter add-prop]]
    [game.core.purging :refer [purge]]
-   [game.core.revealing :refer [reveal]]
+   [game.core.revealing :refer [reveal reveal-and-move]]
    [game.core.rezzing :refer [derez rez]]
    [game.core.runs :refer [end-run make-run]]
    [game.core.say :refer [system-msg]]
@@ -459,9 +459,7 @@
             {:msg (msg "place " (enumerate-str (map :title cards))
                        " from the grip to the top of the stack")
              :async true
-             :effect (req (doseq [c (shuffle cards)]
-                            (reveal state side c)
-                            (move state :runner c :deck {:front true}))
+             :effect (req (reveal-and-move state :runner (make-eid state eid) cards :deck {:front true})
                           (continue-ability
                             state side
                             {:optional
@@ -471,12 +469,12 @@
                               :yes-ability
                               {:cost [:credit 2]
                                :req (req (seq (:hand runner)))
-                                :effect(req (let [target-card (first (shuffle (:hand runner)))]
-                                              (wait-for
-                                                (reveal state side target-card)
-                                                (system-msg state side (str "shuffles " (:title target-card) " into the stack"))
-                                                (move state :runner target-card :deck)
-                                                (shuffle! state :runner :deck))))}}}
+                               :effect(req (let [target-card (first (shuffle (:hand runner)))]
+                                             (wait-for
+                                               (reveal state side target-card)
+                                               (system-msg state side (str "shuffles " (:title target-card) " into the stack"))
+                                               (move state :runner target-card :deck)
+                                               (shuffle! state :runner :deck))))}}}
                             card nil))})]
     {:on-play
      {:async true
