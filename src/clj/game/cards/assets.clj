@@ -498,6 +498,7 @@
                             :req (req (pos? (get-counters card :advancement)))
                             :yes-ability {:msg "gain 4 [Credits] and draw 1 card"
                                           :cost [:advancement 1]
+                                          :async true
                                           :effect (req (wait-for
                                                          (gain-credits state side 4)
                                                          (draw state side eid 1)))}}}
