@@ -98,17 +98,18 @@
 
 (defcard "Accelerated Diagnostics"
   (letfn [(ad [st si e c cards]
-            (when-let [cards (filterv #(and (operation? %)
+            (when-let [choices (filterv #(and (operation? %)
                                             (can-pay? st si (assoc e :source c :source-type :play)
                                                       c nil [:credit (play-cost st si %)]))
                                       cards)]
               {:async true
                :prompt "Choose an operation to play"
-               :choices (cancellable cards)
+               :choices (cancellable choices)
                :msg (msg "play " (:title target))
                :effect (req (wait-for (play-instant state side target {:no-additional-cost true})
-                                      (let [cards (filterv #(not (same-card? % target)) cards)]
-                                        (continue-ability state side (ad state side eid card cards) card nil))))}))]
+                                      (let [remaining (filterv #(not (same-card? % target)) cards)]
+                                        (continue-ability state side (ad state side eid card remaining) card nil))))
+               :cancel-effect (effect (trash-cards eid cards {:unpreventable true :cause-card card}))}))]
     {:on-play
      {:prompt (msg "The top cards of R&D are (top->bottom): " (enumerate-str (map :title (take 3 (:deck corp)))))
       :choices ["OK"]
@@ -120,13 +121,16 @@
         {:msg "give the Runner -1 allotted [Click] for their next turn"
          :async true
          :effect (req (swap! state update-in [:runner :extra-click-temp] (fnil dec 0))
-                      (threat 3
-                        {:optional
-                         {:prompt "Pay 2 [credits] to give the Runner -1 allotted [Click] for their next turn?"
-                          :yes-ability
-                          {:cost [:credit 2]
-                           :msg "give the Runner -1 allotted [Click] for their next turn"
-                           :effect (req (swap! state update-in [:runner :extra-click-temp] (fnil dec 0)))}}}))}]
+                      (continue-ability
+                        state side
+                        (when (threat-level 3 state)
+                          {:optional
+                           {:prompt "Pay 2 [credits] to give the Runner -1 allotted [Click] for their next turn?"
+                            :yes-ability
+                            {:cost [:credit 2]
+                             :msg "give the Runner -1 allotted [Click] for their next turn"
+                             :effect (req (swap! state update-in [:runner :extra-click-temp] (fnil dec 0)))}}})
+                        card nil))}]
   {:on-play {:req (req (or (last-turn? state :runner :trashed-card)
                            (last-turn? state :runner :stole-agenda)))
              :prompt "Choose a card to install"
@@ -1210,7 +1214,6 @@
     (effect (continue-ability
               {:optional
                {:player :runner
-                :async true
                 :waiting-prompt true
                 :prompt "Access the installed card?"
                 :yes-ability
@@ -1377,10 +1380,10 @@
    {:on-play {:prompt "Choose a server"
               :choices (req servers)
               :msg (msg "choose " target)
-              :effect (effect (update! (assoc-in card [:special :hyoubu-precog-target] target)))}
+              :effect (effect (update! (assoc card :card-target target)))}
     :events [{:event :successful-run
               :psi {:req (req (= (zone->name (get-in @state [:run :server]))
-                                 (get-in card [:special :hyoubu-precog-target])))
+                                 (:card-target card)))
                     :not-equal {:msg "end the run"
                                 :async true
                                 :effect (effect (end-run eid card))}}}]}))
@@ -1824,7 +1827,6 @@
    {:optional
     {:prompt "Have each player gain 2 [Credits]?"
      :waiting-prompt true
-     :async true
      :yes-ability
      {:msg "gain 7 [Credits]. The Runner gains 2 [Credits]"
       :async true
@@ -1872,18 +1874,17 @@
                            (last-turn? state :runner :stole-agenda)))
              :effect (req
                        (wait-for (gain-tags state :corp (make-eid state eid) 2)
-                                 (if (threat-level 3 state)
-                                   (continue-ability
+                                 (continue-ability
                                      state side
                                      {:optional
                                       {:prompt "Pay 5 [Credit] to give the Runner 2 tags?"
+                                       :req (req (threat-level 3 state))
                                        :waiting-prompt true
                                        :yes-ability {:async true
                                                      :cost [:credit 5]
                                                      :msg "give the Runner 2 tags"
                                                      :effect (req (gain-tags state :corp eid 2))}}}
-                                     card nil)
-                                   (effect-completed state side eid))))}})
+                                     card nil)))}})
 
 (defcard "Oversight AI"
   {:on-play {:choices {:card #(and (ice? %)
@@ -1984,6 +1985,7 @@
             {:choices {:card #(and (hardware? %)
                                    (<= (:cost %) max-cost))}
              :msg (msg "trash " (:title target))
+             :async true
              :effect (effect (trash eid target {:cause-card card}))})
           card nil))}}}})
 
@@ -2129,7 +2131,7 @@
                   :choices
                   (cancellable (filter #(and (corp-installable-type? %)
                                              (some #{"New remote"} (installable-servers state %)))
-                                       top-five) :sorted)
+                                       top-five))
                   :msg "install a card from the top of the R&D in a remote server"
                   :effect (effect (continue-ability (install-card target) card nil))
                   :cancel-effect (effect (system-msg (str "declines to use " (get-title card) " to install a card from the top of R&D"))
@@ -2771,7 +2773,7 @@
                               :yes-ability {:cost [:credit 3]
                                             :msg (msg "gain [Click]")
                                             :effect (effect (gain-clicks 1))}}}
-        play-instant-first {:prompt "Choose a non-terminal operation"
+        play-instant-first {:prompt (msg "Choose a non-terminal operation")
                             :choices (req (conj (filter #(and (operation? %)
                                                               (not (has-subtype? % "Terminal"))
                                                               (should-trigger? state :corp (assoc eid :source % :source-type :play) % nil (or (:on-play (card-def %)) {}))
@@ -2932,14 +2934,14 @@
                              (gain-tags state :corp eid 1 nil)))}]}))
 
 (defcard "Targeted Marketing"
-  (let [gaincr {:req (req (= (:title (:card context)) (get-in card [:special :marketing-target])))
+  (let [gaincr {:req (req (= (:title (:card context)) (:card-target card)))
                 :async true
-                :msg (msg "gain 10 [Credits] from " (:marketing-target card))
+                :msg "gain 10 [Credits]"
                 :effect (effect (gain-credits :corp eid 10))}]
     {:on-play {:prompt "Name a Runner card"
                :choices {:card-title (req (and (runner? target)
                                                (not (identity? target))))}
-               :effect (effect (update! (assoc-in card [:special :marketing-target] target))
+               :effect (effect (update! (assoc card :card-target target))
                                (system-msg (str "uses " (:title card) " to name " target)))}
      :events [(assoc gaincr :event :runner-install)
               (assoc gaincr :event :play-event)]}))
@@ -2998,10 +3000,11 @@
      {:label "Give the Runner X tags"
       :async true
       :effect (req (let [tags (max 1 (count-tags state))]
-                     (gain-tags state :corp eid tags)
-                     (system-msg
-                       state side
-                       (str "uses " (:title card) " to give the Runner " (quantify tags "tag")))))}}}})
+                     (wait-for (gain-tags state :corp (make-eid state eid) tags)
+                               (system-msg
+                                 state side
+                                 (str "uses " (:title card) " to give the Runner " (quantify tags "tag")))
+                               (effect-completed state nil eid))))}}}})
 
 (defcard "Too Big to Fail"
   {:on-play

@@ -36,6 +36,7 @@
      :snapshot "Snapshot"
      :snapshot-plus "Snapshot Plus"
      :socr "SOCR"
+     :sunset "Sunset"
      :neo "Neo"
      :classic "Classic"
      :casual "Casual"
@@ -436,7 +437,8 @@
    :win-flatlined (fn [[turn]] (str "wins by flatline on turn " turn))
    :win-conceded (fn [[turn]] (str "wins by concession on turn " turn))
    :win-claimed (fn [[turn]] (str "wins by claim on turn " turn))
-   :win-points (fn [[turn]] (str "wins by scoring agenda points on turn " turn))}
+   :win-points (fn [[turn]] (str "wins by scoring agenda points on turn " turn))
+   :win-other (fn [[turn reason]] (str "wins by " reason " on turn " turn))}
    }
 
    :pt
@@ -867,7 +869,8 @@
    :win-flatlined (fn [[turn]] (str "venceu por linha reta no turno " turn))
    :win-conceded (fn [[turn]] (str "venceu por concessão no turno " turn))
    :win-claimed (fn [[turn]] (str "venceu por objetivo no turno " turn))
-   :win-points (fn [[turn]] (str "venceu por pontos de agenda no turno " turn))}
+   :win-points (fn [[turn]] (str "venceu por pontos de agenda no turno " turn))
+   :win-other (fn [[turn reason]] (str "venceu por " reason " no turno " turn))}
    }
    
    :zh-simp
@@ -900,6 +903,7 @@
      :snapshot "快照"
      :snapshot-plus "快照+"
      :socr "SOCR"
+     :sunset "Sunset"
      :neo "Neo"
      :classic "经典"
      :casual "休闲"}
@@ -1260,7 +1264,8 @@
    :win-decked (fn [[turn]] (str "于第" turn "回合因公司无牌可抽获胜"))
    :win-flatlined (fn [[turn]] (str "于第" turn "回合通过杀死潜袭者获胜"))
    :win-conceded (fn [[turn]] (str "于第" turn "回合因对手投降而获胜"))
-   :win-points (fn [[turn]] (str "于第" turn "回合通过议案分数获胜"))}
+   :win-points (fn [[turn]] (str "于第" turn "回合通过议案分数获胜"))
+   :win-other (fn [[turn reason]] (str "wins by " reason " on turn " turn))}
    }
 
    :la-pig
@@ -1293,6 +1298,7 @@
      :snapshot "Apshotsnay"
      :snapshot-plus "Apshotsnay Usplay"
      :socr "SOCRYAY"
+     :sunset "Sunset"
      :neo "Neoyay"
      :classic "Assicclay"
      :casual "Asualcay"
@@ -1667,7 +1673,8 @@
    :win-flatlined (fn [[turn]] (str "insway ybay atlineflay onyay urntay " turn))
    :win-conceded (fn [[turn]] (str "insway ybay oncessionay onyay urntay " turn))
    :win-claimed (fn [[turn]] (str "insway ybay laimcay onyay urntay " turn))
-   :win-points (fn [[turn]] (str "insway ybay oringcay agendayay ointspay onyay urntay " turn))}
+   :win-points (fn [[turn]] (str "insway ybay oringcay agendayay ointspay onyay urntay " turn))
+   :win-other (fn [[turn reason]] (str "insway ybay " reason " onyay urntay " turn))}
    }
 
   :fr
@@ -1700,6 +1707,7 @@
      :snapshot "Snapshot"
      :snapshot-plus "Snapshot Plus"
      :socr "SOCR"
+     :sunset "Sunset"
      :neo "Neo"
      :classic "Classic"
      :casual "Casual"
@@ -2097,7 +2105,8 @@
    :win-flatlined (fn [[turn]] (str "gagne par mort clinique au tour " turn))
    :win-conceded (fn [[turn]] (str "gagne par concession au tour " turn))
    :win-claimed (fn [[turn]] (str "gagne par réclamation au tour " turn))
-   :win-points (fn [[turn]] (str "gagne aux points de projet au tour " turn))}
+   :win-points (fn [[turn]] (str "gagne aux points de projet au tour " turn))
+   :win-other (fn [[turn reason]] (str "gagne par " reason " au tour " turn))}
    }
 
 
@@ -2131,6 +2140,7 @@
     :snapshot "스냅샷"
     :snapshot-plus "스냅샷 플러스"
     :socr "SOCR"
+    :sunset "Sunset"
     :neo "Neo"
     :classic "클래식"
     :casual "캐주얼"}
@@ -2533,6 +2543,7 @@
      :snapshot "Snapshot"
      :snapshot-plus "Snapshot Plus"
      :socr "SOCR"
+     :sunset "Sunset"
      :neo "Neo"
      :classic "Classic"
      :casual "Niekompetytywny"
@@ -2930,7 +2941,8 @@
    :win-flatlined (fn [[turn]] (str "wygrywa przez wypłaszczenie w " turn " turze."))
    :win-conceded (fn [[turn]] (str "wygrywa przez poddanie się przeciwnika w " turn " turze."))
    :win-claimed (fn [[turn]] (str "wygrywa przez zgłoszenie wygranej w " turn " turze."))
-   :win-points (fn [[turn]] (str "wygrywa przez zdobycie punktów zwycięstwa w " turn " turze."))}
+   :win-points (fn [[turn]] (str "wygrywa przez zdobycie punktów zwycięstwa w " turn " turze."))
+   :win-other (fn [[turn reason]] (str "wygrywa przez " reason " w " turn " turze."))}
    } 
 
    :ja
@@ -2963,6 +2975,7 @@
      :snapshot "スナップショット"
      :snapshot-plus "Snapshot Plus"
      :socr "SOCR"
+     :sunset "Sunset"
      :neo "Neo"
      :classic "Classic"
      :casual "Casual"
@@ -3363,7 +3376,8 @@
    :win-flatlined (fn [[turn]] (str "フラットラインによる勝利 " turn " ターン"))
    :win-conceded (fn [[turn]] (str "降参による勝利 " turn " ターン"))
    :win-claimed (fn [[turn]] (str "wins by claim on turn " turn))
-   :win-points (fn [[turn]] (str "計画ポイントによる勝利 " turn " ターン"))}
+   :win-points (fn [[turn]] (str "計画ポイントによる勝利 " turn " ターン"))
+   :win-other (fn [[turn reason]] (str "wins by " reason " on turn " turn))}
    }
    })
 

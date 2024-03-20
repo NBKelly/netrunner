@@ -9,9 +9,9 @@
    [game.core.bad-publicity :refer [gain-bad-publicity]]
    [game.core.board :refer [all-active all-active-installed all-installed
                             all-installed-runner card->server get-all-cards server->zone]]
-   [game.core.card :refer [agenda? asset? assoc-host-zones card-index corp?
+   [game.core.card :refer [agenda? asset? assoc-host-zones card-index corp? condition-counter?
                            event? facedown? get-agenda-points get-card get-counters
-                           get-title get-zone hardware? has-subtype? ice? identity? in-discard? in-hand?
+                           get-title get-zone hardware? has-subtype? ice? identity? in-discard? in-hand? in-scored?
                            installed? is-type? program? resource? rezzed? runner? upgrade? virus-program?]]
    [game.core.card-defs :refer [card-def]]
    [game.core.charge :refer [can-charge charge-ability]]
@@ -21,7 +21,7 @@
    [game.core.damage :refer [damage damage-prevent]]
    [game.core.def-helpers :refer [breach-access-bonus defcard offer-jack-out
                                   reorder-choice trash-on-empty do-net-damage]]
-   [game.core.drawing :refer [draw draw-bonus first-time-draw-bonus]]
+   [game.core.drawing :refer [draw click-draw-bonus]]
    [game.core.effects :refer [register-lingering-effect]]
    [game.core.eid :refer [complete-with-result effect-completed make-eid]]
    [game.core.engine :refer [not-used-once? pay register-events
@@ -272,9 +272,9 @@
             {:event :runner-turn-begins
              :optional
              {:prompt (str "Trash this resource to force the Corp to lose 10 [Credits]?")
+              :req (req (>= (get-counters (get-card state card) :power) 3))
               :yes-ability
-              {:req (req (>= (get-counters (get-card state card) :power) 3))
-               :msg "trash itself and force the Corp to lose 10 [Credits]"
+              {:msg "trash itself and force the Corp to lose 10 [Credits]"
                :async true
                :effect (req (wait-for
                               (trash state side card {:cause-card card})
@@ -1746,7 +1746,8 @@
             {:event :card-moved
              :interactive (req true)
              :optional
-             {:req (req (= :runner (:scored-side (second targets))))
+             {:req (req (and (in-scored? (second targets))
+                          (= :runner (:scored-side (second targets)))))
               :waiting-prompt true
               :prompt (msg "Trash " (:title card) "?")
               :yes-ability
@@ -1815,7 +1816,10 @@
      :events [{:event :runner-turn-begins
                :optional {:prompt "Gain [Click]?"
                           :once :per-turn
-                          :yes-ability ability}}
+                          :yes-ability ability
+                          :no-ability
+                          {:effect (effect (system-msg (str "declines to use " (:title card) " to gain [Click]"))
+                                           (update! (assoc-in card [:special :joshua-b] false)))}}}
               {:event :runner-turn-ends
                :interactive (req true)
                :req (req (get-in card [:special :joshua-b]))
@@ -1887,7 +1891,9 @@
              :optional {:prompt "Trash the top card of the stack?"
                         :waiting-prompt true
                         :req (req (and (not (ice? (:card target)))
-                                       (first-event? state side :corp-install #(not (ice? (:card (first %)))))))
+                                       (not (condition-counter? (:card target)))
+                                       (first-event? state side :corp-install #(and (not (ice? (:card (first %))))
+                                                                                    (not (condition-counter? (:card (first %))))))))
                         :yes-ability {:msg (msg (if (seq (:deck runner))
                                                   (str "trash "
                                                        (:title (first (:deck runner)))
@@ -1901,7 +1907,7 @@
 (defcard "Laguna Velasco District"
   {:events [{:event :runner-click-draw
              :msg "draw 1 additional card"
-             :effect (effect (draw-bonus 1))}]})
+             :effect (effect (click-draw-bonus 1))}]})
 
 (defcard "Levy Advanced Research Lab"
   (letfn [(lab-keep [cards]
@@ -2664,7 +2670,6 @@
                                        (first-successful-run-on-server? state :rd)
                                        (pos? (total-cards-accessed target :deck))))
                         :prompt "Gain 1 [Credits] for each card you accessed from R&D?"
-                        :async true
                         :autoresolve (get-autoresolve :auto-fire)
                         :yes-ability
                         {:msg (msg "gain " (total-cards-accessed target :deck) " [Credits]")
@@ -3487,6 +3492,7 @@
   {:events [{:event :spent-credits-from-card
              :req (req (and
                          (installed? target)
+                         (runner? target)
                          (first-event? state side :spent-credits-from-card #(installed? (first %)))))
              :async true
              :msg "place a power counter on itself"
@@ -3700,8 +3706,7 @@
   {:events [{:event :runner-click-draw
              :req (req (genetics-trigger? state side :runner-click-draw))
              :msg "draw 1 additional card"
-             :async true
-             :effect (effect (draw-bonus 1))}]})
+             :effect (effect (click-draw-bonus 1))}]})
 
 (defcard "Virus Breeding Ground"
   {:events [{:event :runner-turn-begins

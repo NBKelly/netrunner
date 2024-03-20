@@ -27,7 +27,7 @@
                              turn-events]]
    [game.core.expose :refer [expose]]
    [game.core.finding :refer [find-cid find-latest]]
-   [game.core.flags :refer [any-flag-fn? can-rez?
+   [game.core.flags :refer [any-flag-fn? can-rez? can-trash?
                             clear-all-flags-for-card! clear-run-flag! clear-turn-flag!
                             in-corp-scored? register-run-flag! register-turn-flag! zone-locked?]]
    [game.core.gaining :refer [gain gain-clicks gain-credits lose lose-clicks
@@ -199,7 +199,7 @@
     :rfg-instead-of-trashing true
     :async true
     :effect (req (shuffle-into-deck state :runner :hand :discard)
-                 (let [top-5 (vec (take 5 (:deck runner)))]
+                 (let [top-5 (take 5 (get-in @state [:runner :deck]))]
                    (doseq [c top-5]
                      (move state side c :rfg))
                    (system-msg state side
@@ -212,13 +212,6 @@
   (let [all [{:async true
               :effect (effect (draw eid 2))
               :msg "draw 2 cards"}
-             {:effect (effect (add-counter (get-card state card) :credit 4)
-                              (effect-completed eid))
-              :async true
-              :msg "place 4 [Credits] for paying trash costs"}
-             {:msg "remove 1 tag"
-              :async true
-              :effect (effect (lose-tags eid 1))}
              {:msg "install a card from the grip, paying 1 [Credits] less"
               :async true
               :req (req (not (install-locked? state side)))
@@ -233,7 +226,14 @@
                                                                     [:credit (install-cost state side target {:cost-bonus -1})])))}
                                  :async true
                                  :effect (effect (runner-install (assoc eid :source card :source-type :runner-install) target {:cost-bonus -1}))}
-                                card nil))}]
+                                card nil))}
+             {:msg "remove 1 tag"
+              :async true
+              :effect (effect (lose-tags eid 1))}
+             {:effect (effect (add-counter (get-card state card) :credit 4)
+                              (effect-completed eid))
+              :async true
+              :msg "place 4 [Credits] for paying trash costs"}]
         choice (fn choice [abis rem]
                  {:prompt (str "Choose an ability to resolve (" rem " remaining)")
                   :waiting-prompt true
@@ -333,23 +333,26 @@
                                  card
                                  [{:event :pass-ice
                                    :duration :end-of-run
-                                   :effect (effect (update! (update-in (get-card state card) [:special :bravado-passed] conj (:cid (:ice context)))))}])
+                                   :effect (effect (update! (update-in (get-card state card) [:special :bravado-passed] (fnil conj #{}) (:cid (:ice context)))))}])
                          (make-run eid target (get-card state card)))}
      :events [{:event :run-ends
                :silent (req true)
                :msg (msg "gain "
-                      (+ 6 (count (distinct (get-in card [:special :bravado-passed])))
+                      (+ 6 (count (get-in card [:special :bravado-passed]))
                          (get-in card [:special :bravado-moved] 0))
                       " [Credits]")
                :async true
-               :effect (effect (gain-credits :runner eid (+ 6 (count (distinct (get-in card [:special :bravado-passed])))
-                                                            (get-in card [:special :bravado-moved] 0))))}
+               :effect (req (let [qty (+ 6 (count (get-in card [:special :bravado-passed]))
+                                         (get-in card [:special :bravado-moved] 0))]
+                              (gain-credits state :runner eid qty)))}
               {:event :card-moved
                :silent (req true)
-               :req (req (in-coll? (get-in card [:special :bravado-passed] []) (:cid target)))
-               :effect (effect (update! (update-in card [:special :bravado-moved] (fnil inc 0)))
-                         (update! (update-in (get-card state card) [:special :bravado-passed]
-                                             (fn [cids] (remove #(= % (:cid target)) cids)))))}]}))
+               :req (req (get (get-in card [:special :bravado-passed])
+                              (:cid (second targets))))
+               :effect (req (let [card (update! state side (update-in card [:special :bravado-moved] (fnil inc 0)))]
+                              (update! state side
+                                       (update-in card [:special :bravado-passed]
+                                                  disj (:cid (second targets))))))}]}))
 
 (defcard "Bribery"
   {:makes-run true
@@ -467,7 +470,7 @@
                  :mandatory true
                  :ability
                  {:msg "reveal 3 random cards from HQ"
-                  :req (req (not-empty (:hand corp)))
+                  :req (req (<= 1 (count (:hand corp))))
                   :async true
                   :effect (req (let [chosen-cards (take 3 (shuffle (:hand corp)))]
                                  (system-msg
@@ -487,7 +490,8 @@
         card
         [{:event :access
           :duration :end-of-turn
-          :req (req (not (in-discard? target)))
+          :req (req (and (can-trash? state :runner target)
+                         (not (in-discard? target))))
           :interactive (req true)
           :async true
           :msg (msg "trash " (:title target) " at no cost and suffer 1 meat damage")
@@ -1017,7 +1021,8 @@
    :interactions {:access-ability
                   {:label "Trash card"
                    :msg (msg "trash " (:title target) " at no cost")
-                   :req (req (not (in-discard? target))) ;;for if the run gets diverted
+                   :req (req (and (can-trash? state :runner target)
+                                  (not (in-discard? target)))) ;;for if the run gets diverted
                    :async true
                    :effect (effect (trash eid (assoc target :seen true) {:cause-card card}))}}})
 
@@ -1440,7 +1445,7 @@
              :async true
              :msg "take 1 tag and access 1 additional card from HQ"
              :effect (req
-                       (wait-for (gain-tags state :runner 1)
+                       (wait-for (gain-tags state :runner 1 {:unpreventable true})
                                  (register-events
                                    state side
                                    card [(breach-access-bonus :hq 1 {:duration :end-of-run})])
@@ -1822,7 +1827,8 @@
 (defcard "In the Groove"
   {:events [{:event :runner-install
              :duration :end-of-turn
-             :req (req (<= 1 (:cost (:card context))))
+             :req (req (and (<= 1 (:cost (:card context)))
+                            (not (:facedown context))))
              :interactive (req (or (has-subtype? (:card context) "Cybernetic")
                                    (first-event? state side :runner-install)))
              :async true
@@ -2127,7 +2133,8 @@
              :choices (req runnable-servers)
              :effect (effect (make-run eid target card))}
    :events [{:event :successful-run
-             :req (req this-card-run)
+             :req (req (and this-card-run
+                            (not (zone-locked? state :runner :discard))))
              :prompt "Choose 1 card to add to the grip"
              :waiting-prompt true
              :choices (req (cancellable (:discard runner) :sorted))
@@ -2800,6 +2807,7 @@
 
 (defcard "Power to the People"
   {:events [{:event :access
+             :req (req (agenda? target))
              :duration :end-of-turn
              :once :per-turn
              :unregister-once-resolved true
@@ -3035,6 +3043,7 @@
                         runner-identity (:identity runner)
                         format (:format @state)
                         is-swappable #(and (= "Identity" (:type %))
+                                           (= "Runner" (:side %))
                                            (= (:faction runner-identity) (:faction %))
                                            (not (is-draft-id? %))
                                            (not= (:title runner-identity) (:title %))
@@ -3172,7 +3181,7 @@
                :this-card-run true
                :ability
                {:async true
-               :req (req (not (zone-locked? state :runner :discard)))
+                :req (req (not (zone-locked? state :runner :discard)))
                 :prompt "Choose a program to install"
                 :msg (msg "install " (:title target))
                 :choices (req (filter program? (:discard runner)))
@@ -3829,6 +3838,7 @@
                              {:prompt "Choose a card to install"
                               :waiting-prompt true
                               :async true
+                              :req (req (not (zone-locked? state :runner :discard)))
                               :choices (req (cancellable (filter #(and (not (event? %))
                                                                        (runner-can-install? state side % nil)
                                                                        (can-pay? state side (assoc eid :source card :source-type :runner-install) % nil [:credit (install-cost state side % {:cost-bonus -3})])

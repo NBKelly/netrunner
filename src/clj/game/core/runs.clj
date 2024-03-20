@@ -206,12 +206,12 @@
   (let [encounter (get-current-encounter state)
         ice (get-current-ice state)]
     (update-current-encounter state :ending true)
+    (when (:bypass encounter)
+      (queue-event state :bypassed-ice ice)
+      (system-msg state :runner (str "bypasses " (:title ice))))
     (wait-for (end-of-phase-checkpoint state nil (make-eid state eid)
                                        :end-of-encounter
                                        {:ice ice})
-              (when (:bypass encounter)
-                (queue-event state :bypassed-ice ice)
-                (system-msg state :runner (str "bypasses " (:title ice))))
               (let [run (:run @state)
                     phase (:phase run)]
                 (cond
@@ -398,14 +398,11 @@
                           ;; * run ends
                           ;; * run is moved to another server
                           ;; * phase changed
-                          ;; * ice moves
                           ;; * server becomes empty
                           {:cancel-fn (fn [state]
                                         (or (:ended (:end-run @state))
                                             (not= current-server (:server (:run @state)))
                                             (:next-phase (:run @state))
-                                            (and pass-ice?
-                                                 (not (same-card? ice (nth (get-run-ices state) (dec pos) nil))))
                                             (check-for-empty-server state)))})
               (reset-all-ice state side)
               (cond
@@ -477,10 +474,11 @@
                         2500)))))
 
 (defmethod continue :default
-  [_ _ _]
+  [state _ _]
   (.println *err* (with-out-str
                     (print-stack-trace
-                      (Exception. "Continue clicked at the wrong time")
+                      (Exception.
+                        (str "Continue clicked at the wrong time, run phase: " (:phase (:run @state))))
                       2500))))
 
 (defn redirect-run
@@ -667,7 +665,6 @@
            (get-in @state [:run :successful]))
      (handle-end-run state side eid)
      (register-unsuccessful-run state side eid))))
-
 
 ;; todo - ideally we should be able to know not just the card ending the run, but the cause as well
 ;; ie subroutine, card ability (like the trash on bc), or something else

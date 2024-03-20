@@ -41,11 +41,13 @@
           (max 0)))))
 
 (defn rez-additional-cost-bonus
-  [state side card]
-  (merge-costs
-    (concat (:additional-cost card)
-            (:additional-cost (card-def card))
-            (get-effects state side :rez-additional-cost card))))
+  ([state side card] (rez-additional-cost-bonus state side card nil))
+  ([state side card pred]
+   (let [costs (merge-costs
+                 (concat (:additional-cost card)
+                         (:additional-cost (card-def card))
+                         (get-effects state side :rez-additional-cost card)))]
+     (if pred (filterv pred costs) costs))))
 
 (defn score-additional-cost-bonus
   [state side card]
@@ -123,18 +125,20 @@
   "Returns a list of all costs (printed and additional) required to use a given ability"
   ([state side ability card] (card-ability-cost state side ability card nil))
   ([state side ability card targets]
-   (concat (:cost ability)
-           (:additional-cost ability)
-           (get-effects state side :card-ability-additional-cost card (cons ability targets)))))
+   (merge-costs
+     (concat (:cost ability)
+             (:additional-cost ability)
+             (get-effects state side :card-ability-additional-cost card (cons ability targets))))))
 
 (defn break-sub-ability-cost
   ([state side ability card] (break-sub-ability-cost state side ability card nil))
   ([state side ability card targets]
-   (concat (:break-cost ability)
-           (:additional-cost ability)
-           (when-let [break-fn (:break-cost-bonus ability)]
-             (break-fn state side (make-eid state) card targets))
-           (get-effects state side :break-sub-additional-cost card (cons ability targets)))))
+   (merge-costs
+     (concat (:break-cost ability)
+             (:additional-cost ability)
+             (when-let [break-fn (:break-cost-bonus ability)]
+               (break-fn state side (make-eid state) card targets))
+             (get-effects state side :break-sub-additional-cost card (cons ability targets))))))
 
 (defn jack-out-cost
   [state side]

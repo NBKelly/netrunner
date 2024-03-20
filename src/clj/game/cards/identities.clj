@@ -20,7 +20,6 @@
    [game.core.drawing :refer [draw]]
    [game.core.effects :refer [register-lingering-effect]]
    [game.core.eid :refer [effect-completed is-basic-advance-action? make-eid]]
-   [game.core.eid :refer [effect-completed make-eid]]
    [game.core.engine :refer [not-used-once? pay register-events register-once resolve-ability trigger-event]]
    [game.core.events :refer [event-count first-event?
                              first-successful-run-on-server? no-event? not-last-turn? run-events turn-events]]
@@ -143,7 +142,7 @@
              :effect (req (let [original-server (zone->name (second (get-zone (:card context))))]
                             (continue-ability
                               state side
-                              {:prompt "Choose a card to install in another remote server"
+                              {:prompt "Choose a card to install in or protecting another remote server"
                                :waiting-prompt true
                                :choices {:card #(and (corp? %)
                                                      (corp-installable-type? %)
@@ -154,6 +153,7 @@
                                                 state side
                                                 {:prompt "Choose a remote server"
                                                  :waiting-prompt true
+                                                 :msg "install a card from HQ ignoring all costs"
                                                  :choices (req (conj (vec (filter #(not= original-server %)
                                                                                   (get-remote-names state))) "New remote"))
                                                  :async true
@@ -211,13 +211,33 @@
                                          :all true
                                          :card #(and (runner? %)
                                                      (in-play-area? %))}
-                               :effect (req (doseq [c targets]
+                               :effect (req (wait-for
                                               (runner-install
                                                 state side
-                                                (make-eid state eid) c
+                                                (make-eid state eid) (first targets)
                                                 {:ignore-all-cost true
-                                                 :custom-message (fn [_] (str "starts with " (:title c) " in play"))}))
-                                            (swap! state assoc-in [:runner :play-area] []))}
+                                                 :custom-message (fn [_] (str "starts with " (:title (first targets)) " in play"))})
+                                              (wait-for
+                                                (runner-install
+                                                  state side
+                                                  (make-eid state eid) (second targets)
+                                                  {:ignore-all-cost true
+                                                   :custom-message (fn [_] (str "starts with " (:title (second targets)) " in play"))})
+                                                (wait-for
+                                                  (runner-install
+                                                  state side
+                                                  (make-eid state eid) (-> targets
+                                                                           next
+                                                                           next
+                                                                           first)
+                                                  {:ignore-all-cost true
+                                                   :custom-message (fn [_] (str "starts with " (:title (-> targets
+                                                                           next
+                                                                           next
+                                                                           first)) " in play"))})
+                                                  (swap! state assoc-in [:runner :play-area] [])
+                                                  (effect-completed state nil eid))))
+                                            )}
                               card nil)))}]})
 
 (defcard "AgInfusion: New Miracles for a New World"
@@ -311,7 +331,9 @@
              :effect (effect (draw eid 1))}]})
 
 (defcard "Arissana Rocha Nahu: Street Artist"
-  {:abilities [{:req (req (and run (not-used-once? state {:once :per-turn} card)))
+  {:abilities [{:req (req (and run
+                               (not-used-once? state {:once :per-turn} card)
+                               (not (install-locked? state side))))
                 :async true
                 :label "Install a program from the grip"
                 :effect
@@ -1246,10 +1268,11 @@
                                {:prompt "Access 1 additional card?"
                                 :waiting-prompt true
                                 :once :per-turn
-                                :async true
-                                :yes-ability {:msg (msg "access 1 additional card")
-                                              :effect (effect (access-bonus breached-server 1 :end-of-access)
-                                                              (effect-completed eid))}
+                                :yes-ability
+                                {:msg (msg "access 1 additional card")
+                                 :async true
+                                 :effect (req (access-bonus state side breached-server 1 :end-of-access)
+                                              (effect-completed state side eid))}
                                 :no-ability {:effect (effect (system-msg (str "declines to use " (:title card) " to access 1 additional card")))}}}
                               card nil)))}]})
 
@@ -1559,9 +1582,9 @@
               (effect (continue-ability
                         {:optional
                          {:prompt (str "Trash " (:title (first (:deck corp))) "?")
-                          :async true
                           :yes-ability
                           {:msg "trash the top card of R&D"
+                           :async true
                            :effect (req (mill state :corp eid :corp 1))}}}
                         card nil))}]
     {:events [(assoc abi1 :event :expend-resolved)
@@ -1594,7 +1617,7 @@
               (if (= "Done" target)
                 (effect-completed state side eid)
                 ;; if it has an additional cost, the rez needs to be optional
-                (let [add-costs (rez-additional-cost-bonus state side target)
+                (let [add-costs (rez-additional-cost-bonus state side target #(not (= :credit (first %))))
                       inst-target target]
                   (cond
                     (and (pos? (count add-costs))
@@ -1824,7 +1847,7 @@
      :events [{:event :corp-turn-begins
                :effect (req (clear-persistent-flag! state side card :can-rez))}]}))
 
-(defcard "Sebastião Souza Pessoa: Activist Organiser"
+(defcard "Sebastião Souza Pessoa: Activist Organizer"
   {:static-abilities [{:type :basic-ability-additional-trash-cost
                        :req (req (and (resource? target) (has-subtype? target "Connection") (= :corp side)))
                        :value [:trash-from-hand 1]}]
@@ -2247,7 +2270,6 @@
              {:req (req (and (#{:hq :rd} (target-server context))
                           (pos? (total-cards-accessed context))))
               :prompt "Gain 1 [Credits] for each card you accessed?"
-              :async true
               :once :per-turn
               :yes-ability
               {:msg (msg "gain " (total-cards-accessed context) " [Credits]")

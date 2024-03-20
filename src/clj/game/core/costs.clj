@@ -36,7 +36,7 @@
   [cost state side eid card actions]
   (let [a (keep :action actions)]
     (when (not (some #{:steal-cost} a))
-      (swap! state assoc :click-state (dissoc @state :log)))
+      (swap! state update :click-states conj (dissoc @state :log :history)))
     (swap! state update-in [:stats side :lose :click] (fnil + 0) (value cost))
     (deduct state side [:click (value cost)])
     (wait-for (trigger-event-sync state side (make-eid state eid)
@@ -267,7 +267,7 @@
                     ;; everything is queued, then we perform the actual checkpoint.
                     (forfeit state side (make-eid state eid) agenda {:msg false
                                                                      :suppress-checkpoint true}))
-                  (wait-for (checkpoint state nil (make-eid state eid) nil)
+                  (wait-for (checkpoint state nil (make-eid state eid) {:durations [:game-trash]})
                             (complete-with-result
                               state side eid
                               {:msg (str "forfeits " (quantify (value cost) "agenda")
@@ -345,7 +345,7 @@
        :choices [(str "Remove " (quantify (value cost) "tag"))
                  (str "Gain " (value cost) " bad publicity")]
        :async true
-       :effect (req (if (= target (str "Gain " (value cost) "bad publicity"))
+       :effect (req (if (= target (str "Gain " (value cost) " bad publicity"))
                       (wait-for (gain-bad-publicity state side (make-eid state eid) (value cost) nil)
                                 (complete-with-result state side eid {:msg (str "gains " (value cost) " bad publicity")
                                                                       :type :tag-or-bad-pub

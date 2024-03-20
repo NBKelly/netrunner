@@ -212,7 +212,7 @@
 
 (declare do-ability resolve-ability-eid check-ability pay prompt! check-choices do-choices)
 
-(def ability-types (atom {}))
+(defonce ability-types (atom {}))
 
 (defn register-ability-type
   [kw ability-fn]
@@ -638,8 +638,7 @@
   "Prepare the list of the given player's handlers for this event.
   Gather all registered handlers from the state, then append the card-abilities if appropriate,
   then filter to remove suppressed handlers and those whose req is false.
-  This is essentially Phase 9.3 and 9.6.7a of CR 1.1:
-  https://nullsignal.games/wp-content/uploads/2021/03/Comprehensive_Rules_1.1.pdf"
+  This is essentially 9.6.2, 9.6.5, and 9.6.15 of CR 1.8."
   ([state side event targets] (gather-events state side event targets nil))
   ([state side event targets card-abilities] (gather-events state side (make-eid state) event targets card-abilities))
   ([state side eid event targets card-abilities]
@@ -1071,8 +1070,8 @@
                         :unpreventable true})
                 (doseq [card cards-to-trash]
                   (system-say state (to-keyword (:side card))
-                              (str (card-str state card) " is trashed."))
-                  (effect-completed state nil eid)))
+                              (str (card-str state card) " is trashed.")))
+                (effect-completed state nil eid))
       (effect-completed state nil eid))))
 
 (defn check-restrictions
@@ -1113,7 +1112,7 @@
        (check-win-by-agenda state)
        ;; d: uniqueness/console check
        (wait-for
-         (check-unique-and-consoles state nil)
+         (check-unique-and-consoles state nil (make-eid state eid))
          ;; e: restrictions on card abilities or game rules, MU
          (wait-for
            (check-restrictions state nil (make-eid state eid))

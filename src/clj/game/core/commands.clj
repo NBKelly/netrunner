@@ -1,7 +1,6 @@
 (ns game.core.commands
   (:require
    [clojure.string :as string]
-   [game.core.access :refer [access-bonus breach-server]]
    [game.core.board :refer [all-installed server->zone]]
    [game.core.card :refer [agenda? can-be-advanced? corp? get-card
                            has-subtype? ice? in-hand? installed? map->Card rezzed?
@@ -44,13 +43,6 @@
   [value min-value max-value]
   (min max-value (max min-value value)))
 
-(defn command-access-bonus [state side args]
-  (when (= :runner side)
-    (let [server (keyword (string/lower-case (first args)))
-          server (if (= :r&d server) :rd server)
-          value (constrain-value (if-let [n (string->num (second args))] n 0) 0 1000)]
-      (access-bonus state side server value))))
-
 (defn- set-adv-counter [state side target value]
   (set-prop state side target :advance-counter value)
   (system-msg state side (str "sets advancement counters to " value " on "
@@ -66,12 +58,6 @@
 
 (defn command-save-replay [state _]
   (swap! state assoc-in [:options :save-replay] true))
-
-(defn command-breach [state side args]
-  (when (= :runner side)
-    (let [server (keyword (string/lower-case (first args)))
-          server (if (= :r&d server) :rd server)]
-      (breach-server state side (make-eid state) [server]))))
 
 (defn command-bug-report [state side]
   (swap! state update :bug-reported (fnil inc -1))
@@ -190,9 +176,9 @@
 (defn command-undo-click
   "Resets the game state back to start of the click"
   [state side]
-  (when-let [click-state (:click-state @state)]
+  (when-let [click-state (peek (:click-states @state))]
     (when (= (:active-player @state) side)
-      (reset! state (assoc click-state :log (:log @state) :click-state click-state :run nil :history (:history @state)))
+      (reset! state (assoc click-state :log (:log @state) :click-states (pop (:click-states @state)) :run nil :history (:history @state)))
       (doseq [c (filter #(not (has-subtype? % "Lockdown")) (:play-area (side @state)))]
         (move state side c (:previous-zone c) {:suppress-event true}))
       (system-say state side (str "[!] " (if (= side :corp) "Corp" "Runner") " uses the undo-click command"))
@@ -363,14 +349,12 @@
         num   (if-let [n (-> args first (safe-split #"#") second string->num)] (dec n) 0)]
     (if (= (ffirst args) \#)
       (case command
-        "/access-bonus" #(command-access-bonus %1 %2 args)
         "/deck"       #(move %1 %2 (nth (get-in @%1 [%2 :hand]) num nil) :deck {:front true})
         "/discard"    #(move %1 %2 (nth (get-in @%1 [%2 :hand]) num nil) :discard)
         nil)
       (case command
         "/adv-counter" #(command-adv-counter %1 %2 value)
         "/bp"         #(swap! %1 assoc-in [%2 :bad-publicity :base] (constrain-value value -1000 1000))
-        "/breach"     #(command-breach %1 %2 args)
         "/bug"        command-bug-report
         "/card-info"  #(resolve-ability %1 %2
                                         {:effect (effect (system-msg (str "shows card-info of "

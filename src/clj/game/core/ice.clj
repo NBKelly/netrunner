@@ -14,7 +14,8 @@
     [game.macros :refer [req effect msg continue-ability wait-for]]
     [game.utils :refer [same-card? pluralize quantify remove-once]]
     [jinteki.utils :refer [make-label]]
-    [clojure.string :as string]))
+    [clojure.string :as string]
+    [clojure.set :as set]))
 
 ;; These should be in runs.clj, but `req` needs get-current-ice and
 ;; moving.clj needs set-current-ice
@@ -217,18 +218,11 @@
   [state ice]
   (update! state :corp (dont-resolve-all-subroutines ice)))
 
-(defn reset-sub
-  [ice sub]
-  (assoc ice :subroutines (assoc (:subroutines ice) (:index sub) (dissoc sub :broken :fired :resolve))))
-
-(defn reset-sub!
-  [state ice sub]
-  (update! state :corp (reset-sub ice sub)))
-
 (defn reset-all-subs
   "Mark all broken/fired subroutines as unbroken/unfired"
   [ice]
-  (reduce reset-sub ice (:subroutines ice)))
+  (letfn [(reset-sub [sub] (dissoc sub :broken :fired :resolve))]
+    (update ice :subroutines #(into [] (map reset-sub %)))))
 
 (defn reset-all-subs!
   "Marks all broken subroutines as unbroken, update!s state"
@@ -520,10 +514,13 @@
   ([ice broken-subs breaker args]
    (str "use " (:title breaker)
         " to break " (quantify (count broken-subs)
-                           (str (when-let [subtype (:subtype args)]
-                                  (when (not= "All" subtype)
-                                    (str subtype " ")))
-                                "subroutine"))
+                               (str (when-let [subtypes (:subtype args)]
+                                      (when-not (= #{"All"} subtypes)
+                                        (-> subtypes
+                                            (set/intersection (set (:subtypes ice)))
+                                            (first)
+                                            (str " "))))
+                                    "subroutine"))
         " on " (:title ice)
         " (\"[subroutine] "
         (string/join "\" and \"[subroutine] "
@@ -538,7 +535,7 @@
                      args)]
      {:async true
       :effect (req (wait-for
-                     (resolve-ability state side (break-subroutines-impl ice (if (zero? n) (count (:subroutines current-ice)) n) '() args) card nil)
+                     (resolve-ability state side (make-eid state eid) (break-subroutines-impl ice (if (zero? n) (count (:subroutines current-ice)) n) '() args) card nil)
                      (let [broken-subs (:broken-subs async-result)
                            early-exit (:early-exit async-result)
                            total-cost (when (seq broken-subs)
@@ -578,23 +575,30 @@
 
 (defn break-sub
   "Creates a break subroutine ability.
-  If n = 0 then any number of subs are broken.
-  :label can be used to add a non-standard label to the ability
-  :additional-ability is a non-async ability that is called after using the break ability.
-  :req will be added to the standard checks for encountering a piece of ice and strengths of the ice and breaker."
+
+  cost: A number (for credits) or a cost vector.
+  n: A number of subs to break or a 5-fn that returns a number.
+    If n = 0 then any number of subs are broken.
+    If n is an fn, it will be called at action execution, not at definition.
+  subtypes: A string, a set of strings, or nil.
+    A string for a single subtype, a set for multiple, or nil for any (AI).
+  args: A map or nil.
+    * `:label` can be used to add a non-standard label to the ability.
+    * `:additional-ability` is a non-async ability that is called after using the break ability.
+    * `:req` will be added to the standard checks for encountering a piece of ice and strengths of the ice and breaker."
   ([cost n] (break-sub cost n nil nil))
-  ([cost n subtype] (break-sub cost n subtype nil))
-  ([cost n subtype args]
+  ([cost n subtypes] (break-sub cost n subtypes nil))
+  ([cost n subtypes args]
    (let [cost (if (number? cost) [:credit cost] cost)
-         subtype (or subtype "All")
-         args (assoc args :subtype subtype :break n)
+         subtypes (cond (string? subtypes) #{subtypes}
+                        (set? subtypes) subtypes
+                        :else #{"All"})
+         args (assoc args :subtype subtypes :break n)
          break-req (req (and current-ice
                              (peek (:encounters @state))
                              (active-ice? state current-ice)
-                             (if subtype
-                               (or (= subtype "All")
-                                   (has-subtype? current-ice subtype))
-                               true)
+                             (or (contains? subtypes "All")
+                                 (some #(has-subtype? current-ice %) subtypes))
                              (pos? (count (breakable-subroutines-choice state side eid card current-ice)))
                              (if (:req args)
                                ((:req args) state side eid card targets)
@@ -610,8 +614,9 @@
                        (strength-req state side eid card targets)))
         :break-req break-req
         :break n
-        :breaks subtype
+        :breaks subtypes
         :break-cost cost
+        :auto-break-sort (:auto-break-sort args)
         :cost-req (:cost-req args)
         :break-cost-bonus (:break-cost-bonus args)
         :additional-ability (:additional-ability args)
@@ -619,17 +624,21 @@
                         (str "break "
                              (when (< 1 n) "up to ")
                              (if (pos? n) n "any number of")
-                             (when (not= "All" subtype) (str " " subtype))
+                             (when-not (= #{"All"} subtypes)
+                               (str " " (string/join " or " (sort subtypes))))
                              (pluralize " subroutine" n))))
         :effect (effect (continue-ability
-                          (when (can-pay? state side
-                                          (assoc eid :source-type :ability)
-                                          card nil
-                                          (break-sub-ability-cost
-                                            state side
-                                            (assoc args :break-cost cost :broken-subs (take n (:subroutines current-ice)))
-                                            card current-ice))
-                            (break-subroutines current-ice card cost n (assoc args :ability-idx (:ability-idx (:source-info eid)))))
+                          (let [n (if (fn? n)
+                                    (n state side (assoc eid :source-type :ability) card nil)
+                                    n)]
+                            (when (can-pay? state side
+                                            (assoc eid :source-type :ability)
+                                            card nil
+                                            (break-sub-ability-cost
+                                              state side
+                                              (assoc args :break-cost cost :broken-subs (take n (:subroutines current-ice)))
+                                              card current-ice))
+                              (break-subroutines current-ice card cost n (assoc args :ability-idx (:ability-idx (:source-info eid))))))
                           card nil))}))))
 
 (defn strength-pump
@@ -654,6 +663,7 @@
       :cost-req (:cost-req args)
       :pump strength
       :pump-bonus (:pump-bonus args)
+      :auto-pump-sort (:auto-break-sort args)
       :msg (msg "increase its strength from " (get-strength card)
                 " to " (+ (get-pump-strength
                             state side

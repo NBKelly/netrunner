@@ -198,7 +198,7 @@
     :req (req (not-empty (:deck corp)))
     :effect (effect (continue-ability
                       {:prompt "Choose a card to install"
-                       :choices (cancellable (filter corp-installable-type? (take 5 (:deck corp))) :sorted)
+                       :choices (cancellable (filter corp-installable-type? (take 5 (:deck corp))))
                        :async true
                        :effect (effect (corp-install eid target nil
                                                      {:ignore-all-cost true
@@ -441,7 +441,6 @@
     {:on-score
      {:optional
       {:prompt "Take 1 bad publicity?"
-       :async true
        :yes-ability {:async true
                      :msg "take 1 bad publicity"
                      :effect (req (wait-for (gain-bad-publicity state :corp 1)
@@ -522,7 +521,7 @@
                             :effect (effect (shuffle! :deck)
                                             (corp-install eid chosen-ice target
                                                           {:ignore-all-cost true
-                                                           :install-state :rezzed-no-rez-cost}))})
+                                                           :install-state :rezzed-no-cost}))})
                          card nil))}
                     {:prompt "You have no ice in R&D"
                      :choices ["Carry on!"]
@@ -554,7 +553,7 @@
                             :effect (effect (shuffle! :deck)
                                             (corp-install eid chosen-ice target
                                                           {:ignore-all-cost true
-                                                           :install-state :rezzed-no-rez-cost}))})
+                                                           :install-state :rezzed-no-cost}))})
                          card nil))}
                     {:prompt "You have no ice in R&D"
                      :choices ["Carry on!"]
@@ -1045,7 +1044,8 @@
                              {:optional
                               {:prompt "Take 1 bad publicity?"
                                :yes-ability {:msg "take 1 bad publicity"
-                                             :effect (effect (gain-bad-publicity :corp 1))}}}
+                                             :async true
+                                             :effect (effect (gain-bad-publicity :corp eid 1))}}}
                              card nil)
                            (let [n (* 3 (count-bad-pub state))]
                              (system-msg state side (str "uses " (:title card) " to gain " n " [Credits]"))
@@ -1096,14 +1096,14 @@
     :choices {:card #(rezzed? %)}
     :cancel-effect (effect (system-msg (str "declines to use " (:title card)))
                            (effect-completed eid))
-    :effect (req (let [target-cost (rez-cost state :corp target)]
+    :effect (req (let [target-cost (:cost target)]
                    (wait-for (trash state side target {:cause-card card})
                              (continue-ability
                                state side
                                {:prompt (str "Choose a runner card that costs " target-cost " or less to trash")
                                 :choices {:card #(and (installed? %)
                                                       (runner? %)
-                                                      (<= (install-cost state :runner %) target-cost))}
+                                                      (<= (:cost %) target-cost))}
                                 :msg (msg "trash " (:title target))
                                 :async true
                                 :effect (effect (trash eid target))}
@@ -1168,7 +1168,7 @@
                                                       (all-active-installed state :corp))))]
                             (continue-ability
                               state side
-                              {:prompt (msg "Choose " (quantify derez-count "piece") " of ice protecting " (zone->name [zone]) " to derez")
+                              {:prompt (msg "Choose " derez-count " pieces of ice protecting " (zone->name [zone]) " to derez")
                                :choices {:card #(and (ice? %)
                                                      (rezzed? %)
                                                      (= (second (get-zone %)) zone))
@@ -1179,7 +1179,7 @@
                                               (derez state side t)))}
                               card nil)))})
           (ice-free-rez [state side targets card zone eid]
-            (if (empty? targets)
+            (if (zero? (count targets))
               (do (register-events
                     state side card
                     [(ice-derez zone)])
@@ -1191,13 +1191,14 @@
      :events [{:event :run
                :async true
                :optional
-               {:prompt (msg "Remove 1 hosted agenda counter to rez up to 2 pieces of ice protecting " (zone->name (:server context)) ", ignoring all costs?")
+               {:prompt (msg "Remove 1 hosted agenda counter to rez up to 2 ice protecting " (zone->name (:server context)) ", ignoring all costs?")
+                :req (req (pos? (get-counters card :agenda)))
                 :yes-ability
                 {:cost [:agenda 1]
                  :effect (req (let [current-server (first (:server (:run @state)))]
                                 (continue-ability
                                   state side
-                                  {:prompt (msg "Choose up to 2 pieces of ice protecting " (zone->name current-server))
+                                  {:prompt (msg "Choose up to 2 ice protecting " (zone->name current-server))
                                    :choices {:card #(and (ice? %)
                                                          (not (rezzed? %))
                                                          (= (second (get-zone %)) current-server))
@@ -1929,7 +1930,7 @@
                                               (and (rezzed? (:ice context))
                                                    (or (has-subtype? (:ice context) "Code Gate")
                                                        (has-subtype? (:ice context) "Sentry"))))))))
-             :prompt (msg "Choose one cost to pay to make the runner encounter " (:title (:ice context)) " again")
+             :prompt (msg "Make the runner encounter " (:title (:ice context)) " again?")
              :choices (req [(when (can-pay? state :corp (assoc eid :source card :source-type :ability) card nil [:credit 1]) "Pay 1 [Credit]")
                             (when (can-pay? state :corp (assoc eid :source card :source-type :ability) card nil [:trash-from-hand 1]) "Trash 1 card from HQ")
                             "Done"])
@@ -2083,8 +2084,9 @@
                          :waiting-prompt true
                          :yes-ability
                          {:msg (msg "reveal itself from " (zone->name (:previous-zone card)))
-                          :effect (req (wait-for (reveal state side target)
-                                                 (continue-ability state side (score-abi 2) card nil)))}}}]}))
+                          :effect (req (wait-for
+                                         (reveal state side target)
+                                         (continue-ability state side (score-abi 2) card nil)))}}}]}))
 
 (defcard "Successful Field Test"
   (letfn [(sft [n max-ops]
