@@ -1,11 +1,9 @@
 (ns game.core.actions-test
-  (:require [game.core :as core]
-            [game.core.card :refer :all]
-            [game.utils :as utils]
-            [game.core-test :refer :all]
-            [game.utils-test :refer :all]
-            [game.macros-test :refer :all]
-            [clojure.test :refer :all]))
+  (:require
+   [clojure.test :refer :all]
+   [game.core :as core]
+   [game.core.card :refer :all]
+   [game.test-framework :refer :all]))
 
 (deftest undo-turn
   (do-game
@@ -114,16 +112,16 @@
       (click-advance state :corp (refresh oaktown))
       (click-advance state :corp (refresh oaktown))
       (is (= 8 (:credit (get-corp))) "Corp 5+3 creds from Oaktown")
-      (core/end-turn state :corp nil)
+      (end-turn state :corp)
       (testing "Turn 1 Runner"
-        (core/start-turn state :runner nil)
+        (start-turn state :runner)
         (take-credits state :runner 3)
         (click-credit state :runner)
-        (core/end-turn state :runner nil)
+        (end-turn state :runner)
         (rez state :corp (refresh adonis))
         (rez state :corp (refresh publics1)))
       (testing "Turn 2 Corp"
-        (core/start-turn state :corp nil)
+        (start-turn state :corp)
         (rez state :corp (refresh publics2))
         (is (= 3 (:click (get-corp))))
         (is (= 3 (:credit (get-corp))) "only Adonis money")

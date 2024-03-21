@@ -81,15 +81,7 @@
                   "Description:\n\n"
                   "[EDITME] Please describe the steps to reproduce your bug and the resulting effect here.")]
     (unsafe-say state [:div.bugreport [:div.smallwarning "!"]
-                       "Thanks for helping us make the game better! The replay was saved. "
-                       "Please report a bug following "
-                       [:a {:target "_blank"
-                            :href (str "https://github.com/mtgred/netrunner/issues/new?title="
-                                       (string/replace title #" " "%20")
-                                       "&body="
-                                       (string/replace (string/replace body #" " "%20") #"\n" "%0A"))}
-                        "this link"]
-                       " to GitHub."])))
+                       "Honestly, just send me an @ on discord. I'll figure it out. Remember that the bug might not be present in main, and may leak playtest information."])))
 
 (defn command-counter-smart [state side args]
   (resolve-ability
@@ -190,9 +182,9 @@
 (defn command-undo-click
   "Resets the game state back to start of the click"
   [state side]
-  (when-let [click-state (:click-state @state)]
+  (when-let [click-state (peek (:click-states @state))]
     (when (= (:active-player @state) side)
-      (reset! state (assoc click-state :log (:log @state) :click-state click-state :run nil :history (:history @state)))
+      (reset! state (assoc click-state :log (:log @state) :click-states (pop (:click-states @state)) :run nil :history (:history @state)))
       (doseq [c (filter #(not (has-subtype? % "Lockdown")) (:play-area (side @state)))]
         (move state side c (:previous-zone c) {:suppress-event true}))
       (system-say state side (str "[!] " (if (= side :corp) "Corp" "Runner") " uses the undo-click command"))

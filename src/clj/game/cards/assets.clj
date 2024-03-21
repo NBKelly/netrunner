@@ -493,19 +493,23 @@
 
 (defcard "Charlotte Caçador"
   (let [ability {:label "Gain 4 [Credits] and draw 1 card"
-                 :optional {:once :per-turn
-                            :prompt "Remove 1 hosted advancement counter to gain 4 [Credits] and draw 1 card?"
-                            :req (req (pos? (get-counters card :advancement)))
-                            :async true
-                            :yes-ability {:msg "remove 1 hosted advancement counter from itself to gain 4 [Credits] and draw 1 card"
-                                          :effect (req
-                                                    (add-prop state :corp card :advance-counter -1)
-                                                    (wait-for
-                                                      (gain-credits state side 4)
-                                                      (draw state side eid 1)))}}}
+                 :interactive (req true)
+                 :optional
+                 {:once :per-turn
+                  :prompt "Remove 1 hosted advancement counter to gain 4 [Credits] and draw 1 card?"
+                  :req (req (pos? (get-counters card :advancement)))
+                  :yes-ability
+                  {:msg "remove 1 hosted advancement counter from itself to gain 4 [Credits] and draw 1 card"
+                   :async true
+                   :effect (req
+                             (add-prop state :corp card :advance-counter -1)
+                             (wait-for
+                               (gain-credits state side 4)
+                               (draw state side eid 1)))}}}
         trash-ab {:cost [:advancement 1 :trash-can]
                   :label "Gain 3 [Credits]"
-                  :msg "gain 3 [Credits]"
+                  :msg (msg "gain 3 [Credits]")
+                  :async true
                   :effect (req (gain-credits state :corp eid 3))}]
     {:advanceable :always
      :flags {:corp-phase-12 (req true)}
@@ -856,21 +860,21 @@
    :on-trash executive-trash-effect})
 
 (defcard "Docklands Crackdown"
-  {:abilities [{:cost [:click 2]
-                :keep-menu-open :while-2-clicks-left
-                :msg "place 1 power counter"
-                :effect (effect (add-counter card :power 1))}]
-   :static-abilities [{:type :install-cost
-                       :req (req (and (pos? (get-counters card :power))
-                                      (not (get-in @state [:per-turn (:cid card)]))))
-                       :value (req (get-counters card :power))}]
-   :events [{:event :runner-install
-             :silent (req true)
-             :req (req (and (pos? (get-counters card :power))
-                            (not (get-in @state [:per-turn (:cid card)]))))
-             :msg (msg "increase the install cost of " (:title (:card context))
-                       " by " (get-counters card :power) " [Credits]")
-             :effect (req (swap! state assoc-in [:per-turn (:cid card)] true))}]})
+  (letfn [(not-triggered? [state] (no-event? state :runner :runner-install))]
+    {:abilities [{:cost [:click 2]
+                  :keep-menu-open :while-2-clicks-left
+                  :msg "place 1 power counter in itself"
+                  :effect (effect (add-counter card :power 1))}]
+     :static-abilities [{:type :install-cost
+                         :req (req (and (runner? target)
+                                        (not-triggered? state)))
+                         :value (req (get-counters card :power))}]
+     :events [{:event :runner-install
+               :silent (req true)
+               :req (req (and (pos? (get-counters card :power))
+                              (not-triggered? state)))
+               :msg (msg "increase the install cost of " (:title (:card context))
+                         " by " (get-counters card :power) " [Credits]")}]}))
 
 (defcard "Dr. Vientiane Keeling"
   {:static-abilities [(runner-hand-size+ (req (- (get-counters card :power))))]
@@ -1240,32 +1244,37 @@
                    :choices {:card #(and (can-be-advanced? %)
                                          (installed? %))}
                    :msg (msg "place 1 advancement counter on " (card-str state target))
-                   :effect (effect (add-prop target :advance-counter 1 {:placed true}))}]
+                   :effect (effect (add-prop target :advance-counter 1 {:placed true}))}
+        ability {:req (req (:corp-phase-12 @state))
+                 :label "Move 1 hosted advancement counter to another card you can advance (start of turn)"
+                 :once :per-turn
+                 :waiting-prompt true
+                 :prompt "Choose an installed card to move 1 hosted advancement counter from"
+                 :choices {:card #(and (installed? %)
+                                       (get-counters % :advancement))}
+                 :async true
+                 :effect (effect
+                           (continue-ability
+                             (let [from-ice target]
+                               {:prompt "Choose an installed card you can advance"
+                                :choices {:card #(and (installed? %)
+                                                      (can-be-advanced? %)
+                                                      (not (same-card? from-ice %)))}
+                                :msg (msg "move 1 hosted advancement counter from "
+                                          (card-str state from-ice)
+                                          " to "
+                                          (card-str state target))
+                                :async true
+                                :effect (effect (add-prop :corp target :advance-counter 1)
+                                                (add-prop :corp from-ice :advance-counter -1)
+                                                (continue-ability political card nil))
+                                :cancel-effect (effect (continue-ability political card nil))})
+                             card nil))
+                 :cancel-effect (effect (continue-ability political card nil))}]
     {:derezzed-events [corp-rez-toast]
      :flags {:corp-phase-12 (req true)}
-     :abilities [{:label "Move 1 advancement counter from a card to another card you can advance (start of turn)"
-                  :once :per-turn
-                  :waiting-prompt true
-                  :prompt "Choose an installed card to move 1 hosted advancement counter from"
-                  :choices {:card #(and (installed? %)
-                                        (pos? (get-counters % :advancement)))}
-                  :effect (effect
-                            (continue-ability
-                              (let [from-card target]
-                                {:prompt "Choose another installed card you can advance"
-                                 :choices {:card #(and (installed? %)
-                                                       (can-be-advanced? %)
-                                                       (not (same-card? from-card %)))}
-                                 :msg (msg "move 1 hosted advancement counter from "
-                                           (card-str state from-card)
-                                           " to "
-                                           (card-str state target))
-                                 :effect (effect (add-prop :corp target :advance-counter 1)
-                                                 (add-prop :corp from-card :advance-counter -1)
-                                                 (continue-ability political card nil))
-                                 :cancel-effect (effect (continue-ability political card nil))})
-                              card nil))
-                  :cancel-effect (effect (continue-ability political card nil))}]}))
+     :events [(assoc ability :event :corp-turn-begins)]
+     :abilities [ability]}))
 
 (defcard "Honeyfarm"
   {:flags {:rd-reveal (req true)}
@@ -1274,31 +1283,25 @@
                :effect (effect (lose-credits :runner eid 1))}})
 
 (defcard "Hostile Architecture"
-  (let [valid-trash (fn [target] (and (corp? (:card target)) (installed? (:card target))))
-        ability
-        {:event :runner-trash
-         :async true
-         :once :per-turn
-         :once-per-instance false
-         :req (req (and (valid-trash target)
-                        (first-event? state side :runner-trash #(valid-trash (first %)))))
-         :msg "do 2 meat damage"
-         :effect (effect (damage :corp eid :meat 2 {:card card}))}]
-    {:on-trash (assoc ability :req (req (and (= :runner side)
-                                             (no-event? state side :runner-trash #(valid-trash (first %))))))
-     :events [ability]}))
-
+  (letfn [(valid-trash [target]
+            (and (corp? (:card target))
+                 (installed? (:card target))))]
+    {:events [{:event :runner-trash
+               :async true
+               :once :per-turn
+               :once-per-instance false
+               :req (req (and (valid-trash target)
+                              (first-event? state side :runner-trash #(valid-trash (first %)))))
+               :msg "do 2 meat damage"
+               :effect (effect (damage :corp eid :meat 2 {:card card}))}]}))
 
 (defcard "Hostile Infrastructure"
-  (let [ability
-        {:event :runner-trash
-         :async true
-         :once-per-instance false
-         :req (req (corp? (:card target)))
-         :msg "do 1 net damage"
-         :effect (effect (damage :corp eid :net 1 {:card card}))}]
-    {:on-trash (assoc ability :req (req (= :runner side)))
-     :events [ability]}))
+  {:events [{:event :runner-trash
+             :async true
+             :once-per-instance false
+             :req (req (corp? (:card target)))
+             :msg "do 1 net damage"
+             :effect (effect (damage :corp eid :net 1 {:card card}))}]})
 
 (defcard "Hyoubu Research Facility"
   {:events [{:event :reveal-spent-credits
@@ -1587,21 +1590,25 @@
              :effect (req (gain-tags state :runner eid 1))}]})
 
 (defcard "Malia Z0L0K4"
-  (let [re-enable-target (req (when-let [malia-target (:malia-target card)]
-                                (when (:disabled (get-card state malia-target))
-                                  (system-msg state side (str "uses " (:title card) " to unblank "
-                                                              (card-str state malia-target)))
-                                  (enable-card state :runner (get-card state malia-target))
-                                  (remove-icon state :runner card (get-card state malia-target))
-                                  (when-let [reactivate-effect (:reactivate (card-def malia-target))]
-                                    (resolve-ability state :runner reactivate-effect (get-card state malia-target) nil)))))]
-    {:on-rez {:msg (msg (str "blank the text box of " (card-str state target)))
+  (let [re-enable-target
+        (req (if-let [malia-target (:malia-target card)]
+               (if (:disabled (get-card state malia-target))
+                 (do (system-msg state side (str "uses " (:title card) " to unblank "
+                                                 (card-str state malia-target)))
+                     (enable-card state :runner (get-card state malia-target))
+                     (remove-icon state :runner card (get-card state malia-target))
+                     (if-let [reactivate-effect (:reactivate (card-def malia-target))]
+                       (resolve-ability state :runner eid reactivate-effect (get-card state malia-target) nil)
+                       (effect-completed state nil eid)))
+                 (effect-completed state nil eid))
+               (effect-completed state nil eid)))]
+    {:on-rez {:msg (msg "blank the text box of " (card-str state target))
               :choices {:card #(and (runner? %)
                                     (installed? %)
                                     (resource? %)
                                     (not (has-subtype? % "Virtual")))}
               :effect (effect (add-icon card target "MZ" (faction-label card))
-                              (update! (assoc card :malia-target target))
+                              (update! (assoc (get-card state card) :malia-target target))
                               (disable-card :runner (get-card state target)))}
      :leave-play re-enable-target
      :move-zone re-enable-target}))
@@ -2647,7 +2654,7 @@
                             (not (pos? (get-counters (get-card state card) :bad-publicity)))
                             (:borehole-valid (:special card))))
              :msg "win the game"
-             :effect (req (win state :corp "Superdeep Borehole extinction event"))}]})
+             :effect (req (win state :corp (:title card)))}]})
 
 (defcard "Sundew"
   ; If this a run event then handle in :begin-run as we do not know the server

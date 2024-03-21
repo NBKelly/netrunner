@@ -16,7 +16,7 @@
    [nr.appstate :refer [app-state]]
    [nr.cardbrowser :refer [card-as-text]]
    [nr.end-of-game-stats :refer [build-game-stats]]
-   [nr.gameboard.actions :refer [send-command toast]]
+   [nr.gameboard.actions :refer [send-command]]
    [nr.gameboard.card-preview :refer [card-highlight-mouse-out
                                       card-highlight-mouse-over card-preview-mouse-out
                                       card-preview-mouse-over zoom-channel]]
@@ -288,6 +288,18 @@
                   keyword)]
      [tag {:src (str "/img/" card-back "-" s ".png")
            :alt alt}])))
+
+(defn sort-archives
+  [cards] (->> cards (sort-by get-title) (sort-by #(not (faceup? %)))))
+
+(defn sort-heap
+  [cards] (sort-by get-title cards))
+
+(defn sort-archives?
+  [] (get-in @app-state [:options :archives-sorted] false))
+
+(defn sort-heap?
+  [] (get-in @app-state [:options :heap-sorted] false))
 
 (defn card-img
   "Build an image of the card (is always face-up). Only shows the zoomed card image, does not do any interaction."
@@ -889,7 +901,7 @@
         [:div
          [:a {:on-click #(close-popup % (:popup @s) nil false false)} (tr [:game.close "Close"])]]
         (doall
-          (for [card @discard]
+          (for [card (if (sort-heap?) (sort-heap @discard) @discard)]
             ^{:key (:cid card)}
             [card-view card]))]])))
 
@@ -920,7 +932,7 @@
                          face-up (count (filter faceup? @discard))]
                      (tr [:game.face-down-count] total face-up))]]
           (doall
-            (for [[idx c] (map-indexed vector @discard)]
+            (for [[idx c] (map-indexed vector (if (sort-archives?) (sort-archives @discard) @discard))]
               ^{:key idx}
               [:div (draw-card c false)]))]]))))
 
@@ -1190,8 +1202,11 @@
               (= "Claim" (capitalize reason))
               (tr [:game.win-claimed] turn)
 
+              (= "Agenda" (capitalize reason))
+              (tr [:game.win-points] turn)
+
               :else
-              (tr [:game.win-points] turn))]
+              (tr [:game.win-other] turn reason))]
            [:div (tr [:game.time-taken] time)]
            [:br]
            [build-game-stats (get-in @game-state [:stats :corp]) (get-in @game-state [:stats :runner])]
@@ -1277,14 +1292,6 @@
                                               (reset! mulliganed true))]))]]]
            [:br]
            [:button.win-right {:on-click #(swap! app-state assoc :start-shown true) :type "button"} "✘"]])))))
-
-(defn audio-component [_input]
-  (r/with-let [sfx-state (r/track #(select-keys @game-state [:sfx :sfx-current-id]))]
-    (r/create-class
-      {:display-name "audio-component"
-       :component-did-update (fn [] (update-audio @sfx-state))
-       ;; make this component rebuild when sfx changes.
-       :reagent-render (fn [sfx] @sfx nil)})))
 
 (defn get-run-ices []
   (let [server (-> (:run @game-state)
@@ -1691,9 +1698,7 @@
            (set! (.-cursor (.-style (.-body js/document))) "url('/img/gold_crosshair.png') 12 12, crosshair")
            (set! (.-cursor (.-style (.-body js/document))) "default"))
          (when (= "card-title" @prompt-type)
-           (-> "#card-title" js/$ .focus))
-         (doseq [{:keys [msg type options]} (get-in @game-state [side :toast])]
-           (toast msg type options)))
+           (-> "#card-title" js/$ .focus)))
 
        :reagent-render
        (fn [{:keys [side run encounters prompt-state me] :as button-pane-args}]
@@ -1940,7 +1945,9 @@
         active-player (r/cursor game-state [:active-player])
         zoom-card (r/cursor app-state [:zoom])
         background (r/cursor app-state [:options :background])
-        custom-bg-url (r/cursor app-state [:options :custom-bg-url])]
+        custom-bg-url (r/cursor app-state [:options :custom-bg-url])
+        labeled-unrezzed-cards (r/cursor app-state [:options :labeled-unrezzed-cards])
+        labeled-cards (r/cursor app-state [:options :labeled-cards])]
 
     (go (while true
           (let [zoom (<! zoom-channel)]
@@ -2024,7 +2031,9 @@
                  runner-rig (r/cursor game-state [:runner :rig])
                  sfx (r/cursor game-state [:sfx])]
              [:div.gameview
-              [:div.gameboard
+              [:div {:class [:gameboard
+                             (when @labeled-unrezzed-cards :show-unrezzed-card-labels)
+                             (when @labeled-cards :show-card-labels)]}
                (let [me-keep (r/cursor game-state [me-side :keep])
                      op-keep (r/cursor game-state [op-side :keep])
                      me-quote (r/cursor game-state [me-side :quote])
@@ -2064,8 +2073,6 @@
                  [hand-view op-side op-hand op-hand-size op-hand-count (atom nil) (= @side :spectator)]]
 
                 [:div.inner-leftpane
-                 [audio-component sfx]
-
                  [:div.left-inner-leftpane
                   [:div
                    [stats-view opponent]
@@ -2105,3 +2112,6 @@
               (when (:replay @game-state)
                 [:div.bottompane
                  [replay-panel]])])))})))
+
+(defonce sfx (r/track #(select-keys @game-state [:sfx :sfx-current-id])))
+(defonce trigger-sfx (r/track! #(update-audio @sfx)))

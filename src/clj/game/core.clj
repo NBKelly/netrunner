@@ -339,8 +339,7 @@
    get-ability-targets
    is-basic-advance-action?
    make-eid
-   make-result
-   register-effect-completed])
+   make-result])
 
 (expose-vars
   [game.core.engine
@@ -519,8 +518,6 @@
    reset-all-ice
    reset-all-subs
    reset-all-subs!
-   reset-sub
-   reset-sub!
    resolve-subroutine
    resolve-subroutine!
    resolve-unbroken-subs!

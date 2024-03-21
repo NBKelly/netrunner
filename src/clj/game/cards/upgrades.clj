@@ -62,27 +62,22 @@
 (defn mobile-sysop-event
   ([] (mobile-sysop-event :corp-turn-ends))
   ([ev] (mobile-sysop-event ev nil))
-  ([ev callback] {:event ev
-         :optional
-         {:prompt (msg "Move " (:title card) " to another server?")
-          :waiting-prompt true
-          :yes-ability
-          {:async true
-           :effect (effect (continue-ability
-                             {:prompt "Choose a server"
-                              :waiting-prompt true
-                              :choices (server-list state)
-                              :msg (msg "move itself to " target)
-                              :async true
-                              :effect (req (let [c (move state side card
-                                                         (conj (server->zone state target) :content))]
-                                             (unregister-events state side card)
-                                             (register-default-events state side c)
-                                             (if callback
-                                               (continue-ability state side callback c nil)
-                                               (effect-completed state side eid))
-                                             ))}
-                             card nil))}}}))
+  ([ev callback]
+   {:event ev
+    :optional
+    {:prompt (msg "Move " (:title card) " to another server?")
+     :waiting-prompt true
+     :yes-ability
+     {:prompt "Choose a server"
+      :waiting-prompt true
+      :choices (req (server-list state))
+      :msg (msg "move itself to " target)
+      :async true
+      :effect (req (let [c (move state side card
+                                 (conj (server->zone state target) :content))]
+                     (unregister-events state side card)
+                     (register-default-events state side c)
+                     (continue-ability state side callback c nil)))}}}))
 
 ;; Card definitions
 
@@ -337,12 +332,11 @@
                          (continue-ability
                            state side
                            {:optional
-                            {:prompt (str "Derez another piece of ice to give "
+                            {:prompt (str "Derez another ice to give "
                                           (:title rezzed-card)
                                           " +3 strength for the remainder of the run?")
                              :waiting-prompt true
                              :once :per-turn
-                             :async true
                              :yes-ability {:choices {:card #(and (ice? %)
                                                                  (rezzed? %)
                                                                  (not (same-card? % rezzed-card)))}
@@ -656,6 +650,7 @@
                      :req (req (and this-server tagged))
                      :successful
                      {:msg "do 1 meat damage"
+                      :async true
                       :effect (effect (damage eid :meat 1 {:card card
                                                            :unpreventable true}))}}}]})
 
@@ -902,6 +897,7 @@
                                        (zero? (get-counters % :advancement))
                                        (same-server? card %))
                                  (all-installed-corp state)))
+                 :async true
                  :effect
                  (effect
                    (continue-ability
@@ -1027,6 +1023,7 @@
                  :effect (effect (add-prop target :advance-counter 1 {:placed true}))}]
     {:install-req (req (remove #{"HQ" "R&D" "Archives"} targets))
      :derezzed-events [corp-rez-toast]
+     :flags {:corp-phase-12 (req true)}
      :events [(assoc ability :event :corp-turn-begins)]
      :abilities [ability]}))
 
@@ -1441,15 +1438,12 @@
                         :msg (str "give the Runner " (quantify n "tag"))
                         :effect (effect (gain-tags :corp eid n))})
                      card nil))}]
-    {:on-trash
-     {:async true
-      :interactive (req true)
-      :req (req (= :runner side))
-      :effect (req (when (:run @state)
-                     (register-events
-                       state side card
-                       [(assoc ability :duration :end-of-run)]))
-                   (continue-ability state side (dissoc-req ability) card targets))}
+    {:on-trash {:silent (req true)
+                :req (req (= :runner side))
+                :effect (req (when run
+                               (register-events
+                                 state side card
+                                 [(assoc ability :duration :end-of-run)])))}
      :events [ability]}))
 
 (defcard "Panic Button"
@@ -1772,7 +1766,7 @@
                  :waiting-prompt true
                  :interactive (req true)
                  :choices (req (cancellable (filter ice? (:deck corp)) true))
-                 :msg (msg "install from HQ and rez " (card-str state target) ", paying a total of 3 [Credits] less")
+                 :msg (msg "install and rez " (card-str state target) ", paying a total of 3 [Credits] less")
                  :effect (req (wait-for (corp-install state side (make-eid state eid) target nil {:install-state :rezzed :combined-credit-discount 3})
                                         (shuffle! state :corp :deck)
                                         (system-msg state side (str "shuffles R&D"))
@@ -1855,7 +1849,9 @@
                        :card #(and (runner? %)
                                    (installed? %))}
              :msg (msg "force the Runner to trash " (enumerate-str (map :title targets)))
-             :effect (req (trash-cards state :runner eid targets {:unpreventable true :cause-card card :cause :forced-to-trash}))})
+             :effect (req (trash-cards state :runner eid targets {:unpreventable true
+                                                                  :cause-card card
+                                                                  :cause :forced-to-trash}))})
           (ability []
             {:trace {:base 4
                      :successful
@@ -1870,11 +1866,7 @@
                                           (when (pos? n)
                                             (wt n)))
                                         card nil))}}})]
-    {:on-trash {:async true
-                :once-per-instance true
-                :req (req (= side :runner))
-                :effect (effect (continue-ability (ability) card nil))}
-     :events [{:event :runner-trash
+    {:events [{:event :runner-trash
                :async true
                :once-per-instance true
                :req (req (some (fn [target]
@@ -1905,34 +1897,30 @@
                                                    (effect-completed state side eid)))}}}]})
 
 (defcard "Yakov Erikovich Avdakov"
-  (letfn [(valid-target-fn [target card]
-            (and (same-server? card (:card target))
-                 (corp? (:card target))
-                 (installed? (:card target))))]
-    {:on-trash {:async true
-                :once-per-instance false
-                :interactive (req true)
-                :msg "gain 2 [Credits]"
-                :effect (effect (gain-credits eid 2))}
-     :events [{:event :runner-trash
+  (letfn [(valid-target-fn [context card]
+            (and (same-server? card (:card context))
+                 (corp? (:card context))
+                 (installed? (:card context))))]
+    {:events [{:event :runner-trash
                :async true
                :once-per-instance false
                :interactive (req true)
-               :req (req (valid-target-fn target card))
+               :req (req (valid-target-fn context card))
                :msg "gain 2 [Credits]"
                :effect (effect (gain-credits eid 2))}
               {:event :corp-trash
                :interactive (req true)
                :once-per-instance false
-               :req (req (let [cause (:cause target)
-                               cause-card (:cause-card target)]
-                           (and (or
-                                  (corp? (:source eid))
-                                  (= :ability-cost cause)
-                                  (= :subroutine cause)
-                                  (and (corp? cause-card) (not= cause :opponent-trashes))
-                                  (and (runner? cause-card) (= cause :forced-to-trash)))
-                                (valid-target-fn target card))))
+               :req (req (let [cause (:cause context)
+                               cause-card (:cause-card context)]
+                           (and (or (corp? (:source eid))
+                                    (= :ability-cost cause)
+                                    (= :subroutine cause)
+                                    (and (corp? cause-card)
+                                         (not= cause :opponent-trashes))
+                                    (and (runner? cause-card)
+                                         (= cause :forced-to-trash)))
+                                (valid-target-fn context card))))
                :async true
                :msg "gain 2 [Credits]"
                :effect (effect (gain-credits eid 2))}]}))

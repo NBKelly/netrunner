@@ -181,7 +181,7 @@
                         (rez state side eid moved-card {:no-msg no-msg :cost-bonus cost-bonus})
                         (rez state side eid moved-card {:no-msg no-msg}))
                       (do (when-let [dre (:derezzed-events cdef)]
-                                (register-events state side moved-card (map #(assoc % :condition :derezzed) dre)))
+                            (register-events state side moved-card (map #(assoc % :condition :derezzed) dre)))
                           (checkpoint state nil eid)))
                     ;; "Face-up" cards
                     :face-up

@@ -10,7 +10,8 @@
    [nr.gameboard.state :refer [game-state get-side not-spectator?]]
    [nr.help :refer [command-info]]
    [nr.translations :refer [tr]]
-   [nr.utils :refer [influence-dot render-message]]
+   [nr.utils :refer [influence-dot player-highlight-option-class
+                     render-message render-player-highlight]]
    [nr.ws :as ws]
    [reagent.core :as r]
    [reagent.dom :as rdom]))
@@ -82,10 +83,10 @@
   ([input commands]
    (when (= "/" (first input))
      (->> commands
-          (map (fn [target] {:match target :score (fuzzy-match-score input target)}))
-          (filter :score)
-          (sort-by :score)
-          (map :match)))))
+       (map (fn [target] {:match target :score (fuzzy-match-score input target)}))
+       (filter :score)
+       (sort-by :score)
+       (map :match)))))
 
 (defn show-command-menu? [s]
   (seq (:command-matches s)))
@@ -148,8 +149,8 @@
                                        (reset-command-menu state)
                                        (.focus @!input-ref))}
 
-                   (get-in command-info-map [match :usage])]])
-               (:command-matches @state)))]]))
+                          (get-in command-info-map [match :usage])]])
+                      (:command-matches @state)))]]))
 
 (defn log-input []
   (let [current-game (r/cursor app-state [:current-game])
@@ -175,9 +176,10 @@
          [indicate-action]
          [command-menu !input-ref state]]))))
 
-
 (defn log-messages []
-  (let [log (r/cursor game-state [:log])]
+  (let [log (r/cursor game-state [:log])
+        corp (r/cursor game-state [:corp :user :username])
+        runner (r/cursor game-state [:runner :user :username])]
     (r/create-class
       {:display-name "log-messages"
 
@@ -203,7 +205,8 @@
        :reagent-render
        (fn []
          (into [:div.messages {:class [(when (:replay @game-state)
-                                         "panel-bottom")]
+                                         "panel-bottom")
+                                       (player-highlight-option-class)]
                                :on-mouse-over #(card-preview-mouse-over % zoom-channel)
                                :on-mouse-out #(card-preview-mouse-out % zoom-channel)
                                :aria-live "polite"}]
@@ -211,7 +214,7 @@
                  (fn [{:keys [user text timestamp]}]
                    ^{:key timestamp}
                    (if (= user "__system__")
-                     [:div.system (render-message text)]
+                     [:div.system (render-message (render-player-highlight text @corp @runner))]
                      [:div.message
                       [avatar user {:opts {:size 38}}]
                       [:div.content

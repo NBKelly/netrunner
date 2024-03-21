@@ -27,8 +27,8 @@
    [game.core.events :refer [event-count first-event? first-run-event? first-trash? no-event?
                              run-events]]
    [game.core.expose :refer [expose]]
-   [game.core.finding :refer [find-card]]
-   [game.core.flags :refer [card-flag? in-corp-scored? register-run-flag!
+   [game.core.finding :refer [find-card find-latest]]
+   [game.core.flags :refer [can-trash? card-flag? in-corp-scored? register-run-flag!
                             zone-locked?]]
    [game.core.gaining :refer [gain-clicks gain-credits lose-clicks
                               lose-credits]]
@@ -117,7 +117,7 @@
                                     :effect (effect (unregister-suppress-by-uuid (:uuid suppress)))}])))}]
     {:data {:counter {:power 3}}
      :interactions {:prevent [{:type #{:net}
-                               :req (req true)}]}
+                               :req (req run)}]}
      :events [(trash-on-empty :power)
               {:event :encounter-ice
                :req (req (contains? (card-def current-ice) :on-encounter))
@@ -188,7 +188,6 @@
                                       :effect (req (draw state :runner eid 2))}}}
             {:event :runner-turn-ends
              :req (req tagged)
-             :msg "place 1 power counter on itself"
              :effect (req (add-counter state side (get-card state card) :power 1))}]})
 
 
@@ -281,6 +280,52 @@
                                                          " and is not forced to rez " cname)}}}
                                 card nil)
                               (rez state :corp eid target))))}]})
+
+(defcard "BMI Buffer"
+  (let [grip-program-trash?
+        (fn [card]
+          (and (runner? card)
+               (program? card)
+               (in-discard? card)
+               (= (first (:previous-zone card)) :hand)))
+        triggered-ability
+        {:async true
+         :effect (req (doseq [c (filter grip-program-trash? (mapv #(find-latest state (:card %)) targets))]
+                        (host state side (get-card state card) c))
+                      (effect-completed state side eid))}]
+    {:events [(assoc triggered-ability :event :runner-trash)
+              (assoc triggered-ability :event :corp-trash)]
+     :abilities [{:cost [:click 2]
+                  :label "Install a hosted program"
+                  :prompt "Choose a program to install"
+                  :choices (req (cancellable (filter #(can-pay? state side (assoc eid :source card :source-type :runner-install)
+                                                                % nil [:credit (install-cost state side %)])
+                                                     (:hosted card))))
+                  :msg (msg "install " (:title target))
+                  :async true
+                  :effect (effect (runner-install (assoc eid :source card :source-type :runner-install) target))}]}))
+
+(defcard "BMI Buffer 2"
+  (let [grip-program-trash?
+        (fn [card]
+          (and (runner? card)
+               (program? card)
+               (in-discard? card)
+               (= (first (:previous-zone card)) :hand)))
+        triggered-ability
+        {:async true
+         :effect (req (doseq [c (filter grip-program-trash? (mapv #(find-latest state (:card %)) targets))]
+                        (host state side (get-card state card) c))
+                      (effect-completed state side eid))}]
+    {:events [(assoc triggered-ability :event :runner-trash)
+              (assoc triggered-ability :event :corp-trash)]
+     :abilities [{:cost [:click 2]
+                  :label "Install a hosted program"
+                  :prompt "Choose a program to install"
+                  :choices (req (:hosted card))
+                  :msg (msg "install " (:title target))
+                  :async true
+                  :effect (effect (runner-install (assoc eid :source card :source-type :runner-install) target {:ignore-all-cost true}))}]}))
 
 (defcard "Bookmark"
   {:abilities [{:label "Host up to 3 cards from the grip facedown"
@@ -444,8 +489,9 @@
    :interactions
    {:access-ability
     {:label "Trash card"
-     :req (req (and (not (get-in @state [:per-turn (:cid card)]))
-                    (not (in-discard? target)) ;;for if the run gets diverted
+     :req (req (and (can-trash? state :runner target)
+                    (not (in-discard? target))
+                    (not (get-in @state [:per-turn (:cid card)]))
                     (<= 2 (count (:hand runner)))))
      :cost [:trash-from-hand 2]
      :msg (msg "trash " (:title target) " at no cost")
@@ -1372,7 +1418,7 @@
                                             (can-pay? state side (assoc eid :source card :source-type :runner-install) target nil
                                                       [:credit (install-cost state side target {:cost-bonus 1})])))}
                             :msg (msg "install " (:title target) " from the grip, paying 1 [Credit] more")
-                            :effect (effect (runner-install eid target {:cost-bonus 1}))}}}
+                            :effect (effect (runner-install (assoc eid :source card :source-type :runner-install) target {:cost-bonus 1}))}}}
             {:event :runner-install
              :async true
              :interactive (req true)
@@ -2119,17 +2165,18 @@
                                 :type :recurring}}})
 
 (defcard "Simulchip"
-  {:static-abilities [{:type :card-ability-additional-cost
-                       :req (req (and (same-card? card target)
-                                      (let [pred (fn [targets]
-                                                   (some #(and (runner? (:card %))
-                                                               (installed? (:card %))
-                                                               (program? (:card %)))
-                                                         targets))]
-                                        (zero? (+ (event-count state nil :runner-trash pred)
-                                                  (event-count state nil :corp-trash pred)
-                                                  (event-count state nil :game-trash pred))))))
-                       :value [:program 1]}]
+  {:static-abilities
+   [{:type :card-ability-additional-cost
+     :req (req (and (same-card? card target)
+                    (let [pred (fn [targets]
+                                 (some #(and (runner? (:card %))
+                                             (installed? (:card %))
+                                             (program? (:card %)))
+                                       targets))]
+                      (zero? (+ (event-count state nil :runner-trash pred)
+                                (event-count state nil :corp-trash pred)
+                                (event-count state nil :game-trash pred))))))
+     :value [:program 1]}]
    :abilities [{:async true
                 :label "Install a program from the heap"
                 :req (req (some #(and (program? %)
@@ -2164,8 +2211,8 @@
              :interactive (req (pos? (get-counters (get-card state card) :power)))
              :prompt "Choose one"
              :waiting-prompt true
-             :choices (req [(when (pos? (count-real-tags state)) "Remove 1 tag")
-                            "Draw 1 card"
+             :choices (req ["Draw 1 card"
+                            (when (pos? (count-real-tags state)) "Remove 1 tag")
                             "Done"])
              :effect (req (if (= target "Draw 1 card")
                             (do (add-counter state side card :power -1)

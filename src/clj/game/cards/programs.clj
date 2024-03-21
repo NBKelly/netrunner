@@ -26,7 +26,7 @@
                              first-successful-run-on-server? no-event? turn-events]]
    [game.core.expose :refer [expose]]
    [game.core.finding :refer [find-cid]]
-   [game.core.flags :refer [can-host? card-flag? lock-zone release-zone zone-locked?]]
+   [game.core.flags :refer [can-host? can-trash? card-flag? lock-zone release-zone zone-locked?]]
    [game.core.gaining :refer [gain-clicks gain-credits lose-credits]]
    [game.core.hosting :refer [host]]
    [game.core.ice :refer [all-subs-broken-by-card? all-subs-broken?
@@ -53,8 +53,8 @@
                            update-current-encounter]]
    [game.core.sabotage :refer [sabotage-ability]]
    [game.core.say :refer [system-msg]]
-   [game.core.servers :refer [is-central? is-remote? protecting-same-server?
-                              target-server zone->name]]
+   [game.core.servers :refer [central->name is-central? is-remote? protecting-same-server?
+                              remote->name target-server unknown->kw zone->name]]
    [game.core.shuffling :refer [shuffle!]]
    [game.core.tags :refer [gain-tags lose-tags]]
    [game.core.to-string :refer [card-str]]
@@ -240,27 +240,22 @@
   "Strength depends on available memory units
   (Greek/Philosopher suite: Adept, Sage, Savant)"
   [abilities]
-  (auto-icebreaker {:abilities abilities
-                    :static-abilities [(breaker-strength-bonus (req (available-mu state)))]}))
+  {:abilities abilities
+   :static-abilities [(breaker-strength-bonus (req (available-mu state)))]})
 
 (defn- break-multiple-types
   "Single ability to break multiple types of ice
   (Greek/Philosopher suite: Adept, Sage, Savant)"
   [first-qty first-type second-qty second-type]
-  {:break-cost [:credit 2]
-   :cost [:credit 2]
-   :req (req (and (active-encounter? state)
-                  (or (has-subtype? current-ice first-type)
-                      (has-subtype? current-ice second-type))))
-   :label (str "break "
-               (quantify first-qty (str first-type " subroutine")) " or "
-               (quantify second-qty (str second-type " subroutine")))
-   :effect (effect
-             (continue-ability
-               (if (has-subtype? current-ice first-type)
-                 (break-sub nil first-qty first-type {:all (< 1 first-qty)})
-                 (break-sub nil second-qty second-type {:all (< 1 second-qty)}))
-               card nil))})
+  (break-sub 2
+             (req
+               (cond (has-subtype? current-ice first-type) first-qty
+                     (has-subtype? current-ice second-type) second-qty
+                     :else (throw (ex-info "What are we encountering?" current-ice))))
+             (hash-set first-type second-type)
+             {:label (str "break "
+                          (quantify first-qty (str first-type " subroutine")) " or "
+                          (quantify second-qty (str second-type " subroutine")))}))
 
 (defn- give-ice-subtype
   "Make currently encountered ice gain chosen type until end of encounter
@@ -313,14 +308,14 @@
     {:abilities [(break-sub (:break-cost break) (:break break) (:breaks break)
                             {:req (req (and (#{:hq :rd :archives} (target-server run))
                                             (<= (get-strength current-ice) (get-strength card))
-                                            (has-subtype? current-ice (:breaks break))))})
+                                            (has-subtype? current-ice (first (:breaks break)))))})
                  pump]}))
 
 (defn- return-and-derez
   "Return to grip to derez current ice
   (Bird suite: Golden, Peregrine, Saker)"
   [break pump]
-  (let [ice-type (:breaks break)]
+  (let [ice-type (first (:breaks break))]
     (auto-icebreaker
       {:abilities [break
                    pump
@@ -337,7 +332,7 @@
   "Trash to bypass current ice
   (Fraud suite: Abagnale, Demara, Lustig)"
   [break pump]
-  (let [ice-type (:breaks break)]
+  (let [ice-type (first (:breaks break))]
     (auto-icebreaker
       {:abilities [break
                    pump
@@ -852,8 +847,8 @@
 (defcard "Clot"
   {:on-install
    {:effect (req (let [agendas (->> (turn-events state :corp :corp-install)
-                                    (filter #(agenda? (:card (first %))))
-                                    (map first))]
+                                    (map #(:card (first %)))
+                                    (filter agenda?))]
                    (swap! state assoc-in [:corp :register :cannot-score] agendas)))}
    :events [{:event :purge
              :async true
@@ -1803,8 +1798,9 @@
 (defcard "Imp"
   {:data {:counter {:virus 2}}
    :interactions {:access-ability {:label "Trash card"
-                                   :req (req (and (not (get-in @state [:per-turn (:cid card)]))
-                                                  (not (in-discard? target))))
+                                   :req (req (and (can-trash? state :runner target)
+                                                  (not (in-discard? target))
+                                                  (not (get-in @state [:per-turn (:cid card)]))))
                                    :cost [:virus 1]
                                    :msg (msg "trash " (:title target) " at no cost")
                                    :once :per-turn
@@ -2430,9 +2426,7 @@
    :abilities [(set-autoresolve :auto-fire "Nyashia")]})
 
 (defcard "Odore"
-  (auto-icebreaker {:abilities [(break-sub 2 0 "Sentry"
-                                           {:req (req (> 3 (count (filter #(has-subtype? % "Virtual")
-                                                                          (all-active-installed state :runner)))))})
+  (auto-icebreaker {:abilities [(break-sub 2 0 "Sentry")
                                 (break-sub 0 1 "Sentry"
                                            {:label "Break 1 Sentry subroutine (Virtual restriction)"
                                             :req (req (<= 3 (count (filter #(has-subtype? % "Virtual")
@@ -2819,7 +2813,7 @@
 (defcard "Revolver"
   (auto-icebreaker
    {:data {:counter {:power 6}}
-    :abilities [(break-sub [:power 1] 1 "Sentry")
+    :abilities [(break-sub [:power 1] 1 "Sentry" {:auto-break-sort 1})
                 (break-sub [:trash-can] 1 "Sentry")
                 (strength-pump 2 3)]}))
 
@@ -3048,6 +3042,52 @@
                                     :effect (req (swap! state assoc-in [:run :server] [:hq])
                                                  (trigger-event state :corp :no-action))}])
                                 (make-run eid :archives (get-card state card)))}]})
+
+(defcard "Sneakdoor Prime A"
+  {:abilities [{:cost [:click 2]
+                :prompt "Choose a server"
+                :choices (req (cancellable
+                                (->> runnable-servers
+                                     (map unknown->kw)
+                                     (filter is-remote?)
+                                     (map remote->name))))
+                :msg "make a run on a remote server"
+                :makes-run true
+                :async true
+                :effect (req (let [initial-server target]
+                                  (register-events state side card
+                                    [{:event :pre-successful-run
+                                      :duration :end-of-run
+                                      :unregister-once-resolved true
+                                      :req (req (= (unknown->kw initial-server) (-> run :server first)))
+                                      :prompt "Choose a server"
+                                      :choices (req ["Archives" "R&D" "HQ"])
+                                      :msg (msg "change the attacked server to " target)
+                                      :effect (req (swap! state assoc-in [:run :server] [(unknown->kw target)]))}])
+                                  (make-run state side eid initial-server card)))}]})
+
+(defcard "Sneakdoor Prime B"
+  {:abilities [{:cost [:click 2]
+                :prompt "Choose a server"
+                :choices (req (cancellable
+                                (->> runnable-servers
+                                     (map unknown->kw)
+                                     (filter is-central?)
+                                     (map central->name))))
+                :msg "make a run on central server"
+                :makes-run true
+                :async true
+                :effect (req (let [initial-server target]
+                               (register-events state side card
+                                 [{:event :pre-successful-run
+                                   :duration :end-of-run
+                                   :unregister-once-resolved true
+                                   :req (req (= (unknown->kw initial-server) (-> run :server first)))
+                                   :prompt "Choose a server"
+                                   :choices (req (cancellable remotes))
+                                   :msg (msg "change the attacked server to " target)
+                                   :effect (req (swap! state assoc-in [:run :server] [(unknown->kw target)]))}])
+                               (make-run state side eid initial-server card)))}]})
 
 (defcard "Snitch"
   {:events [{:event :approach-ice

@@ -40,10 +40,11 @@
              (unregister-floating-events state side :start-of-turn)
              (unregister-lingering-effects state side (if (= side :corp) :until-corp-turn-begins :until-runner-turn-begins))
              (unregister-floating-events state side (if (= side :corp) :until-corp-turn-begins :until-runner-turn-begins))
-             (when (= side :corp)
-               (system-msg state side "makes mandatory start of turn draw")
-               (wait-for (draw state side 1 nil)
-                         (trigger-event-simult state side eid :corp-mandatory-draw nil nil)))
+             (if (= side :corp)
+               (do (system-msg state side "makes mandatory start of turn draw")
+                   (wait-for (draw state side 1 nil)
+                             (trigger-event-simult state side eid :corp-mandatory-draw nil nil)))
+               (effect-completed state nil eid))
              (swap! state dissoc (if (= side :corp) :corp-phase-12 :runner-phase-12))
              (when (= side :corp)
                (update-all-advancement-requirements state)))))
@@ -57,6 +58,7 @@
 
   ; Functions to set up state for undo-turn functionality
   (doseq [s [:runner :corp]] (swap! state dissoc-in [s :undo-turn]))
+  (swap! state assoc :click-states [])
   (swap! state assoc :turn-state (dissoc @state :log :turn-state))
 
   (when (= side :corp)
