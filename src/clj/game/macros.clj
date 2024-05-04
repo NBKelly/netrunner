@@ -85,6 +85,8 @@
   (let [needed-locals (find-undefined-locals expr)
         nls (emit-only needed-locals)]
     `(fn ~['state 'side 'eid 'card 'targets]
+       (assert (or (nil? (:source ~'eid)) (:cid (:source ~'eid)))
+               (str ":source should be a card, received: " (:source ~'eid)))
        (let [~@nls]
          ~@expr))))
 
@@ -94,20 +96,20 @@
 (defmacro msg [& expr]
   `(req (str ~@expr)))
 
-
 (defmacro wait-for
   [& body]
   (let [[binds action] (if (vector? (first body))
                          (first body)
                          [[{'async-result :result}] (first body)])
         expr (next body)
-        abnormal? (#{'apply 'handler 'payable?} (first action))
+        abnormal? (#{'handler 'payable?} (first action))
         to-take (if abnormal? 4 3)
         fn-name (gensym (name (first action)))
         [_ state _ eid?] (if abnormal? (next action) action)]
     `(let [eid?# ~eid?
            use-eid# (and (map? eid?#) (:eid eid?#))
-           new-eid# (if use-eid# eid?# (game.core.eid/make-eid ~state))]
+           existing-eid# ~(when (contains? &env 'eid) 'eid)
+           new-eid# (if use-eid# eid?# (game.core.eid/make-eid ~state existing-eid#))]
        (game.core.eid/register-effect-completed
          ~state new-eid#
          (fn ~fn-name ~(if (vector? binds) binds [binds])
@@ -129,7 +131,9 @@
 
 (defmacro continue-ability
   [state side ability card targets]
-  `(game.core.engine/resolve-ability ~state ~side (if (:eid ~ability) ~ability (assoc ~ability :eid ~'eid)) ~card ~targets))
+  `(let [ability# ~ability
+         ability# (if (:eid ability#) ability# (assoc ability# :eid ~'eid))]
+     (game.core.engine/resolve-ability ~state ~side ability#  ~card ~targets)))
 
 (defmacro when-let*
   ([bindings & body]

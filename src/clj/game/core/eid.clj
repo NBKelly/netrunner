@@ -9,20 +9,9 @@
   ([state existing-eid]
    (assoc existing-eid :eid (:eid (swap! state update :eid inc)))))
 
-(defn eid-set-defaults
-  "Set default values for fields in the `eid` if they are not already set."
-  [eid & args]
-  (let
-    [remove-fn (fn [[k _]]
-                 (contains? eid k))
-     kvs (remove remove-fn (partition 2 args))]
-    (if (not-empty kvs)
-      (apply assoc eid (flatten kvs))
-      eid)))
-
 (defn get-ability-targets
   [eid]
-  (get-in eid [:source-info :ability-targets]))
+  (get-in eid [:source-info :ability-targets 0]))
 
 (defn is-basic-advance-action?
   [eid]

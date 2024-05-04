@@ -97,6 +97,11 @@
     (if (:host card) (update card :host card-for-click) card)
     click-card-keys))
 
+(defn playable?
+  "Checks whether a card or ability is playable"
+  [action]
+  (:playable action))
+
 (defn handle-abilities
   [side {:keys [abilities corp-abilities runner-abilities subroutines facedown] :as card}]
   (let [actions (action-list card)
@@ -134,14 +139,10 @@
         ;; Trigger first (and only) ability / action
         (and (= c 1)
              (= side card-side))
-        (if (= (count abilities) 1)
+        (if (and (= (count abilities) 1)
+                 (playable? (first abilities)))
           (send-command "ability" {:card (card-for-click card) :ability 0})
           (send-command (first actions) {:card (card-for-click card)}))))))
-
-(defn playable?
-  "Checks whether a card or ability is playable"
-  [action]
-  (:playable action))
 
 (defn handle-card-click [{:keys [type zone] :as card}]
   (let [side (:side @game-state)]
@@ -198,8 +199,6 @@
   (let [card (-> e .-dataTransfer (.getData "card") ((.-parse js/JSON)) (js->clj :keywordize-keys true))]
     (when (not= "Identity" (:type card))
       (send-command "move" {:card card :server server}))))
-
-(defn abs [n] (max n (- n)))
 
 ;; touch support
 (defonce touchmove (atom {}))
@@ -1624,13 +1623,17 @@
      (when (and (not (or @runner-phase-12 @corp-phase-12))
                 (zero? (:click @me))
                 (not @end-turn))
-       [:button {:on-click #(send-command "end-turn")} (tr [:game.end-turn "End Turn"])])
+       [:button {:on-click #(send-command "end-turn")}
+        (tr [:game.end-turn "End Turn"])])
      (when @end-turn
-       [:button {:on-click #(send-command "start-turn")} (tr [:game.start-turn "Start Turn"])]))
+       [:button {:on-click #(send-command "start-turn")}
+        (tr [:game.start-turn "Start Turn"])]))
    (when (and (= (keyword @active-player) side)
               (or @runner-phase-12 @corp-phase-12))
      [:button {:on-click #(send-command "end-phase-12")}
-      (if (= side :corp) (tr [:game.mandatory-draw "Mandatory Draw"]) (tr [:game.take-clicks "Take Clicks"]))])
+      (if (= side :corp)
+        (tr [:game.mandatory-draw "Mandatory Draw"])
+        (tr [:game.take-clicks "Take Clicks"]))])
    (when (= side :runner)
      [:div
       [cond-button (tr [:game.remove-tag "Remove Tag"])

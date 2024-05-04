@@ -121,7 +121,6 @@
    generate-install-list
    generate-runnable-zones
    move-card
-   play
    play-ability
    play-auto-pump
    play-auto-pump-and-break
@@ -335,7 +334,6 @@
   [game.core.eid
    complete-with-result
    effect-completed
-   eid-set-defaults
    get-ability-targets
    is-basic-advance-action?
    make-eid
@@ -620,7 +618,6 @@
    build-spend-msg
    can-pay?
    cost->string
-   cost-name
    cost-target
    cost-targets
    cost-value
@@ -735,8 +732,7 @@
    successful-run
    successful-run-replace-breach
    toggle-auto-no-action
-   total-cards-accessed
-   total-run-cost])
+   total-cards-accessed])
 
 
 (expose-vars

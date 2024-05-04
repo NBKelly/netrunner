@@ -1024,8 +1024,8 @@
      (take-credits state :corp)
      (play-from-hand state :runner "Dirty Laundry")
      (click-prompt state :runner "HQ")
-     (is (second-last-log-contains? state "Runner spends \\[Click\\] and pays 2 \\[Credits\\] to play Dirty Laundry."))
-     (is (last-log-contains? state "Runner spends \\[Click\\] and pays 1 \\[Credits\\] to make a run on HQ."))))
+     (is (second-last-log-contains? state "Runner spends [Click] and pays 2 [Credits] to play Dirty Laundry."))
+     (is (last-log-contains? state "Runner spends [Click] and pays 1 [Credits] to make a run on HQ."))))
 
 (deftest corporate-troubleshooter
   ;; Corporate Troubleshooter - Pay X credits and trash to add X strength to a piece of rezzed ice
@@ -1368,7 +1368,7 @@
       (is (no-prompt? state :corp) "Corp should be waiting on Runner")
       (is (no-prompt? state :runner) "Runner should be able to take actions")))
 
-(deftest Djupstad-grid
+(deftest djupstad-grid
   (do-game
     (new-game {:corp {:hand ["Project Atlas" "Djupstad Grid"] :credits 10}
                :runner {:hand [(qty "Sure Gamble" 5)]}})
@@ -1914,7 +1914,8 @@
       (is (changed? [(get-strength (refresh tithe)) 2
                      (get-counters (refresh tithe) :advancement) 1]
                     (click-card state :corp tithe))
-          "Tithe got +2 strength and 1 advancement counter"))))
+          "Tithe got +2 strength and 1 advancement counter")
+      (is (no-prompt? state :runner) "No lingering prompt"))))
 
 (deftest jinja-city-grid-single-draws
     ;; Single draws
@@ -2658,7 +2659,7 @@
       (core/gain state :runner :credit 2)
       (run-empty-server state "Server 1")
       ;; Runner not force to trash since Imp is installed
-      (is (= 2 (count (prompt-buttons :runner))) "Runner has 2 choices when Imp is installed")
+      (is (= 2 (count (prompt-titles :runner))) "Runner has 2 choices when Imp is installed")
       (is (= 5 (:credit (get-runner))) "Runner not forced to trash MVT when Imp installed")
       (is (empty? (:discard (get-corp))) "MVT is not force-trashed when Imp installed")
       (click-prompt state :runner "[Imp] Hosted virus counter: Trash card")
@@ -2676,21 +2677,21 @@
       (core/gain state :runner :credit 2)
       (run-empty-server state "Server 1")
       (is (= #{"[Imp] Hosted virus counter: Trash card" "Pay 5 [Credits] to trash"}
-             (into #{} (prompt-buttons :runner))) "Should have Imp and MVT options")
+             (into #{} (prompt-titles :runner))) "Should have Imp and MVT options")
       (click-prompt state :runner "[Imp] Hosted virus counter: Trash card")
       (take-credits state :runner)
       (core/lose state :runner :credit (:credit (get-runner)))
       (play-from-hand state :corp "Mumbad Virtual Tour" "New remote")
       (take-credits state :corp)
       (run-empty-server state "Server 2")
-      (is (= ["[Imp] Hosted virus counter: Trash card"] (prompt-buttons :runner)) "Should only have Imp option")
+      (is (= ["[Imp] Hosted virus counter: Trash card"] (prompt-titles :runner)) "Should only have Imp option")
       (click-prompt state :runner "[Imp] Hosted virus counter: Trash card")
       (take-credits state :runner)
       (core/lose state :runner :credit (:credit (get-runner)))
       (play-from-hand state :corp "Mumbad Virtual Tour" "New remote")
       (take-credits state :corp)
       (run-empty-server state "Server 3")
-      (is (= ["No action"] (prompt-buttons :runner)) "Should only have no action option")
+      (is (= ["No action"] (prompt-titles :runner)) "Should only have no action option")
       (click-prompt state :runner "No action")
       (is (= 2 (->> (get-corp) :discard count)) "Runner was not forced to trash MVT")))
 
@@ -2717,7 +2718,7 @@
       (play-from-hand state :runner "Daily Casts")
       (is (= 2 (:credit (get-runner))) "Runner paid install costs")
       (run-empty-server state "Server 1")
-      (is (= ["[Freedom Khumalo] Trash card"] (prompt-buttons :runner)) "Runner is not given the choice")))
+      (is (= ["[Freedom Khumalo] Trash card"] (prompt-titles :runner)) "Runner is not given the choice")))
 
 (deftest mumbad-virtual-tour-forced-to-trash-after-playing-demolition-run
     ;; forced to trash after playing Demolition Run
@@ -2732,7 +2733,7 @@
       (click-prompt state :runner "R&D")
       (run-continue state)
       (click-prompt state :runner "Unrezzed upgrade")
-      (is (= ["[Demolition Run] Trash card"] (prompt-buttons :runner)) "Runner is not given the choice")))
+      (is (= ["[Demolition Run] Trash card"] (prompt-titles :runner)) "Runner is not given the choice")))
 
 (deftest mumbad-virtual-tour-not-to-trash-after-installing-salsette-slums
     ;; not to trash after installing Salsette Slums
@@ -2747,14 +2748,14 @@
       (is (= 8 (:credit (get-runner))) "Runner paid install costs")
       (run-empty-server state "R&D")
       (click-prompt state :runner "Unrezzed upgrade")
-      (is (= ["Pay 5 [Credits] to trash"] (prompt-buttons :runner)) "Runner is not given the choice")))
+      (is (= ["Pay 5 [Credits] to trash"] (prompt-titles :runner)) "Runner is not given the choice")))
 
 (deftest mwanza-city-grid
   ;; Mwanza City Grid - runner accesses 3 additional cards, gain 2C for each card accessed
   (do-game
       (new-game {:corp {:deck ["Mwanza City Grid" (qty "Hedge Fund" 5)]}})
       (play-from-hand state :corp "Mwanza City Grid")
-      (is (= ["R&D" "HQ"] (prompt-buttons :corp)) "Mwanza can only be installed in root of HQ or R&D")
+      (is (= ["R&D" "HQ"] (prompt-titles :corp)) "Mwanza can only be installed in root of HQ or R&D")
       (click-prompt state :corp "HQ")
       (take-credits state :corp)
       (run-on state "HQ")
@@ -4204,7 +4205,7 @@
     (play-from-hand state :corp "Project Atlas" "Server 1")
     (score-agenda state :corp (get-content state :remote1 1))
     (is (changed? [(:credit (get-corp)) -2]
-          (is (= ["Fire Wall" "Ice Wall" nil] (prompt-titles :corp)))
+          (is (= ["Fire Wall" "Ice Wall" "Cancel"] (prompt-titles :corp)))
           (click-prompt state :corp "Fire Wall")
           (is (= ["Archives" "R&D" "HQ" "Server 1" "New remote"] (prompt-buttons :corp)))
           (click-prompt state :corp "HQ")
@@ -4224,7 +4225,7 @@
     (click-prompt state :runner "Pay 1 [Credits] to trash")
     (is (changed? [(:credit (get-corp)) -2]
           (click-prompt state :runner "Steal")
-          (is (= ["Fire Wall" "Ice Wall" nil] (prompt-titles :corp)) "Tucana persistent, effect fires")
+          (is (= ["Fire Wall" "Ice Wall" "Cancel"] (prompt-titles :corp)) "Tucana persistent, effect fires")
           (click-prompt state :corp "Fire Wall")
           (is (= ["Archives" "R&D" "HQ" "New remote"] (prompt-buttons :corp)) "Corp choices should not include original server as it's gone")
           (click-prompt state :corp "HQ")

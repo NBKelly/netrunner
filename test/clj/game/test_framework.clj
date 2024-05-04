@@ -4,12 +4,13 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [game.core :as core :refer [map->Card]]
+   [game.core :as core]
    [game.core.board :refer [server-list]]
    [game.core.card :refer [active? get-card get-counters get-title installed?
                            rezzed?]]
    [game.core.eid :as eid]
    [game.core.ice :refer [active-ice?]]
+   [game.core.initializing :refer [make-card]]
    [game.test-framework.asserts]
    [game.utils :as utils]
    [game.utils-test :refer [error-wrapper is']]
@@ -849,14 +850,16 @@
 (defn trace
   [state base]
   (core/init-trace state :corp
-                   (map->Card {:title "/trace command" :side :corp})
+                   (make-card {:title "/trace command" :side "Corp"})
                    {:base base}))
 
-(defn print-log [state]
+(defn log-str [state]
   (->> (:log @state)
        (map :text)
-       (str/join " ")
-       (prn)))
+       (str/join " ")))
+
+(defn print-log [state]
+  (prn (log-str state)))
 
 (defmacro do-game [s & body]
   `(let [~'state ~s
@@ -873,7 +876,7 @@
          ~'prompt-map (fn [side#] (-> @~'state side# :prompt first))
          ~'prompt-type (fn [side#] (:prompt-type (~'prompt-map side#)))
          ~'prompt-buttons (fn [side#] (->> (~'prompt-map side#) :choices (map :value)))
-         ~'prompt-titles (fn [side#] (map :title (~'prompt-buttons side#)))
+         ~'prompt-titles (fn [side#] (map #(or (:title %) %) (~'prompt-buttons side#)))
          ~'prompt-fmt (fn [side#]
                         (let [prompt# (~'prompt-map side#)
                               choices# (:choices prompt#)
@@ -903,8 +906,7 @@
     `(do ~@bundles)))
 
 (defn escape-log-string [s]
-  ; (str/escape s {\[ "\\[" \] "\\]"})
-  s)
+  (str/escape s {\[ "\\[" \] "\\]"}))
 
 (defn last-log-contains?
   [state content]
