@@ -2617,6 +2617,27 @@
       (is (= 4 (count (:discard (get-runner))))
           "Discard is 4 cards - 2 from Philotic, 1 EStrike, 1 from PU mill")))
 
+(deftest employee-strike-vs-pe-philotic
+  ;; vs PU/Philotic
+  (do-game
+    (new-game {:corp {:id "Jinteki: Personal Evolution"
+                      :deck ["Sting!" (qty "Braintrust" 2)]}
+               :runner {:hand [(qty "Employee Strike" 5)]}})
+    (play-from-hand state :corp "Braintrust" "New remote")
+    (play-from-hand state :corp "Braintrust" "New remote")
+    (take-credits state :corp)
+    (play-from-hand state :runner "Employee Strike")
+    (run-empty-server state "Server 1")
+    (click-prompt state :runner "Steal")
+    (run-empty-server state "Server 2")
+    (click-prompt state :runner "Steal")
+    (take-credits state :runner)
+    (play-and-score state "Sting!")
+    (is (no-prompt? state :corp) "No prompt to interact because PE is dead")
+    (is (= 2 (count (:discard (get-runner))))
+        "Discard is 2 cards - 1 from String1, 1 EStrike")))
+
+
 (deftest en-passant
   ;; En Passant
   (do-game
@@ -3101,7 +3122,7 @@
       (take-credits state :corp)
       (play-from-hand state :runner "Frantic Coding")
       (click-prompt state :runner "OK")
-      (is (= ["Corroder" "Magnum Opus" nil] (prompt-titles :runner)) "No Torch in list because can't afford")
+      (is (= ["Corroder" "Magnum Opus" "Done"] (prompt-titles :runner)) "No Torch in list because can't afford")
       (is (= 2 (:credit (get-runner))))
       (is (zero? (count (:discard (get-runner)))))
       (click-prompt state :runner "Magnum Opus")
@@ -3119,7 +3140,7 @@
       (take-credits state :corp)
       (play-from-hand state :runner "Frantic Coding")
       (click-prompt state :runner "OK")
-      (is (= ["Corroder" "Magnum Opus" nil] (prompt-titles :runner)) "No Torch in list because can't afford")
+      (is (= ["Corroder" "Magnum Opus" "Done"] (prompt-titles :runner)) "No Torch in list because can't afford")
       (is (zero? (count (:discard (get-runner)))))
       (click-prompt state :runner "Done")
       (is (zero? (count (get-program state))))
@@ -3394,32 +3415,30 @@
 (deftest hostage
   ;; Hostage - Search for connection, add it to grip, optionally play installing cost
   (do-game
-     (new-game {:runner {:hand ["Hostage"]
-                         :deck ["Kati Jones"]}}) ; 2 cost connection
+    (new-game {:runner {:hand ["Hostage"]
+                        :deck ["Kati Jones"]}}) ; 2 cost connection
     (take-credits state :corp)
-     (let [original-deck-count (count (:deck (get-runner)))
-           original-hand-count (count (:hand (get-runner)))]
-       (play-from-hand state :runner "Hostage")
-       (click-prompt state :runner "Kati Jones")
-       (click-prompt state :runner "No")
-       (is (= (+ 5 -1) (:credit (get-runner))) "Spent 1 credits")
-       (is (= 0 (count (get-resource state))) "Pulled card was not installed")
-       (is (= (+ original-deck-count -1) (count (:deck (get-runner)))) "Took card from deck")
-       (is (= (+ original-hand-count -1 1) (count (:hand (get-runner)))) "Put card in hand")))
+    (let [original-deck-count (count (:deck (get-runner)))
+          original-hand-count (count (:hand (get-runner)))]
+      (play-from-hand state :runner "Hostage")
+      (click-prompt state :runner "Kati Jones")
+      (click-prompt state :runner "No")
+      (is (= (+ 5 -1) (:credit (get-runner))) "Spent 1 credits")
+      (is (= 0 (count (get-resource state))) "Pulled card was not installed")
+      (is (= (+ original-deck-count -1) (count (:deck (get-runner)))) "Took card from deck")
+      (is (= (+ original-hand-count -1 1) (count (:hand (get-runner)))) "Put card in hand")))
   (testing "Basic test, installing"
     (do-game
-     (new-game {:runner {:hand ["Hostage"]
-                         :deck ["Kati Jones"]}}) ; 2 cost connection
-    (take-credits state :corp)
-     (let [original-deck-count (count (:deck (get-runner)))
-           original-hand-count (count (:hand (get-runner)))]
-       (play-from-hand state :runner "Hostage")
-       (click-prompt state :runner "Kati Jones")
-       (click-prompt state :runner "Yes")
-       (is (= (+ 5 -1 -2) (:credit (get-runner))) "Spent 3 credits")
-       (is (= "Kati Jones" (:title (get-resource state 0))) "Pulled card was correctly installed")
-       (is (= (+ original-deck-count -1) (count (:deck (get-runner)))) "Took card from deck")
-       (is (= (+ original-hand-count -1) (count (:hand (get-runner)))) "Did not install card.")))))
+      (new-game {:runner {:hand ["Hostage"]
+                          :deck ["Kati Jones"]}}) ; 2 cost connection
+      (take-credits state :corp)
+      (is (changed? [(count (:deck (get-runner))) -1
+                     (count (:hand (get-runner))) -1
+                     (:credit (get-runner)) -3]
+            (play-from-hand state :runner "Hostage")
+            (click-prompt state :runner "Kati Jones")
+            (click-prompt state :runner "Yes")))
+      (is (= "Kati Jones" (:title (get-resource state 0))) "Pulled card was correctly installed"))))
 
 (deftest hostage-not-enough-to-play-pulled-card-4364
     ;; Not enough to play pulled card (#4364)
@@ -4630,9 +4649,9 @@
     (click-prompt state :runner "Yes")
     (click-prompt state :runner "Cookbook")
     (is (changed? [(:credit (get-runner)) 2]
-                  (click-card state :runner "Cookbook")
-                  (click-card state :runner "Always Be Running")
-                  (click-prompt state :runner "Done"))
+          (click-card state :runner "Cookbook")
+          (click-card state :runner "Always Be Running")
+          (click-prompt state :runner "Done"))
         "Runner gained 2 credits")
     (is (no-prompt? state :runner))
     ;; Choosing connection
@@ -4641,9 +4660,9 @@
     (click-prompt state :runner "Yes")
     (click-prompt state :runner "The Class Act")
     (is (changed? [(:credit (get-runner)) 2]
-                  (click-card state :runner "The Class Act")
-                  (click-card state :runner "Kati Jones")
-                  (click-prompt state :runner "Done"))
+          (click-card state :runner "The Class Act")
+          (click-card state :runner "Kati Jones")
+          (click-prompt state :runner "Done"))
         "Runner gained 2 credits")))
 
 (deftest mining-accident
@@ -5402,7 +5421,7 @@
     (play-from-hand state :runner "Privileged Access")
     (is (changed? [(count-tags state) 1]
                   (run-continue state)
-                  (is (= ["Verbal Plasticity" nil] (prompt-titles :runner)))
+                  (is (= ["Verbal Plasticity" "Done"] (prompt-titles :runner)))
                   (is (changed? [(:credit (get-runner)) -1]
                                 (click-prompt state :runner "Verbal Plasticity"))
                       "Install Verbal Plasticity from heap for 2 credits less")
@@ -5420,7 +5439,7 @@
     (play-run-event state "Privileged Access" :archives)
     (click-prompt state :runner "Privileged Access (resource)")
     (click-prompt state :runner "Done")
-    (is (= ["Cleaver" nil] (prompt-titles :runner)))
+    (is (= ["Cleaver" "Done"] (prompt-titles :runner)))
     (click-prompt state :runner "Cleaver")
     (is (= "Cleaver" (get-title (get-program state 0))))
     (is (not (:run @state)) "Run ended")))
@@ -7152,24 +7171,60 @@
           "Paid 4 credits to rez Ice Wall"))))
 
 (deftest trick-shot
+  (before-each [state (new-game {:corp {:deck [(qty "Hedge Fund" 10)]
+                                        :hand ["Spin Doctor" "NGO Front"]}
+                                 :runner {:hand ["Trick Shot"]}})
+                _ (do (play-from-hand state :corp "Spin Doctor" "New remote")
+                      (play-from-hand state :corp "NGO Front" "New remote")
+                      (take-credits state :corp)
+                      (play-from-hand state :runner "Trick Shot"))
+                ts (-> (:runner @state) :play-area first)]
+    (testing "basic"
+      (do-game state
+        (is (= :rd (first (get-in @state [:run :server]))))
+        (is (= 4 (get-counters (refresh ts) :credit)) "Trick Shot has 4 credits on it")
+        (is (changed? [(get-counters (refresh ts) :credit) 2]
+              (run-continue state))
+            "Trick Shot gains 2 credits on successful run")
+        (click-prompt state :runner "No action")
+        (click-prompt state :runner "No action")
+        (click-prompt state :runner "Server 1")
+        (is (= :remote1 (first (get-in @state [:run :server]))))
+        (is (= 6 (get-counters (refresh ts) :credit)) "Trick Shot still has 6 credits on it")))
+    (testing "only 2 runs please"
+      (do-game state
+        (run-continue state)
+        (is (= "You accessed Hedge Fund." (:msg (prompt-map :runner))))
+        (click-prompt state :runner "No action")
+        (click-prompt state :runner "No action")
+        (is (= "Choose a remote server to run" (:msg (prompt-map :runner))))
+        (click-prompt state :runner "Server 1")
+        (is (some? (:phase (:run @state))))
+        (run-continue state)
+        (is (= "You accessed Spin Doctor." (:msg (prompt-map :runner))))
+        (click-prompt state :runner "No action")
+        (is (no-prompt? state :runner))
+        (is (nil? (:phase (:run @state))) "Run is finished")))))
+
+(deftest trick-shot-aginfusion-interaction
   (do-game
-    (new-game {:corp {:deck [(qty "Hedge Fund" 10)]
-                      :hand ["Spin Doctor"]}
+    (new-game {:corp {:id "AgInfusion: New Miracles for a New World"
+                      :deck [(qty "Hedge Fund" 10)]
+                      :hand ["Vanilla"]}
                :runner {:hand ["Trick Shot"]}})
-    (play-from-hand state :corp "Spin Doctor" "New remote")
+    (play-from-hand state :corp "Vanilla" "New remote")
     (take-credits state :corp)
     (play-from-hand state :runner "Trick Shot")
-    (is (= :rd (first (get-in @state [:run :server]))))
-    (let [ts (-> (get-runner) :play-area first)]
-      (is (= 4 (get-counters (refresh ts) :credit)) "Trick Shot has 4 credits on it")
-      (is (changed? [(get-counters (refresh ts) :credit) 2]
-                    (run-continue state))
-          "Trick Shot gains 2 credits on successful run")
-      (click-prompt state :runner "No action")
-      (click-prompt state :runner "No action")
-      (click-prompt state :runner "Server 1")
-      (is (= :remote1 (first (get-in @state [:run :server]))))
-      (is (= 6 (get-counters (refresh ts) :credit)) "Trick Shot still has 6 credits on it"))))
+    (run-continue state)
+    (click-prompt state :runner "No action")
+    (click-prompt state :runner "No action")
+    (click-prompt state :runner "Server 1")
+    (is (= :remote1 (first (get-in @state [:run :server]))))
+    (card-ability state :corp (:identity (get-corp)) 0)
+    (click-prompt state :corp "R&D")
+    (run-continue state)
+    (click-prompt state :runner "No action")
+    (is (no-prompt? state :runner))))
 
 (deftest uninstall
   ;; Uninstall
@@ -7422,7 +7477,7 @@
       (take-credits state :corp)
       (play-from-hand state :runner "Window of Opportunity")
       (click-prompt state :runner "HQ")
-      (is (= 2 (-> (prompt-map :runner) :choices count)) "Runner has 2 choices")
+      (is (= 3 (-> (prompt-map :runner) :choices count)) "Runner has 3 choices (done is a choice)")
       (is (changed? [(:credit (get-runner)) -1]
                     (click-prompt state :runner "Fermenter"))
           "Runner paid Fermenter install cost")

@@ -2,14 +2,14 @@
   (:require
     [clj-uuid :as uuid]
     [clojure.stacktrace :refer [print-stack-trace]]
-    [clojure.string :as str]
     [cond-plus.core :refer [cond+]]
-    [game.core.board :refer [clear-empty-remotes all-installed-runner-type all-active-installed]]
+    [game.core.board :refer [clear-empty-remotes get-all-cards all-installed-runner
+                             all-installed-runner-type all-active-installed]]
     [game.core.card :refer [active? facedown? faceup? get-card get-cid get-title in-discard? in-hand? installed? rezzed? program? console? unique?]]
     [game.core.card-defs :refer [card-def]]
-    [game.core.effects :refer [get-effect-maps unregister-lingering-effects]]
+    [game.core.effects :refer [get-effect-maps unregister-lingering-effects is-disabled? is-disabled-reg? update-disabled-cards]]
     [game.core.eid :refer [complete-with-result effect-completed make-eid]]
-    [game.core.payment :refer [build-spend-msg can-pay? handler merge-costs]]
+    [game.core.payment :refer [build-spend-msg can-pay? handler]]
     [game.core.prompt-state :refer [add-to-prompt-queue]]
     [game.core.prompts :refer [clear-wait-prompt show-prompt show-select show-wait-prompt]]
     [game.core.say :refer [system-msg system-say]]
@@ -52,7 +52,7 @@
 ; :req -- 5-fn
 ;   Must return true or false. If false, the ability will not be resolved.
 ; :cost -- vector
-;   A vector of cost pairs to charge, for example [:credit 1 :click 1].
+;   A vector of ->c costs to charge, for example [(->c :credit 1) (->c :click 1)].
 ;   If the costs cannot be paid, the ability will not be resolved.
 ; :msg -- string or 5-fn.
 ;   Must return a string. (`msg` is expressly built for this.)
@@ -74,8 +74,6 @@
 ;   Mark the ability as "async", meaning the :effect function must call effect-completed itself.
 ;   Without this being set to true, resolve-ability will call effect-completed once it's done.
 ;   This part of the engine is really dumb and complicated, so ask someone on slack about it.
-; :cost-req -- 1-fn
-;   A function which will be applied to the cost of an ability immediatly prior to being paid. See all-stealth or min-stealth for examples.
 
 ; PROMPT KEYS
 ; :prompt -- string or 5-fn
@@ -254,8 +252,8 @@
 
 (defn is-ability?
   "Checks to see if a given map represents a card ability."
-  [{:keys [effect msg]}]
-  (or effect msg (seq (keys @ability-types))))
+  [{:keys [effect msg] :as ability}]
+  (or effect msg (seq (select-keys ability (keys @ability-types)))))
 
 (defn resolve-ability
   ([state side {:keys [eid] :as ability} card targets]
@@ -271,10 +269,11 @@
     (effect-completed state side eid)
     ;; This was called directly without an eid present
     (and ability (not eid))
-    (resolve-ability-eid state side (assoc ability :eid (make-eid state eid)) card targets)
+    (resolve-ability state side ability card targets)
     ;; Both ability and eid are present, so we're good to go
     (and ability eid)
-    (let [ab (select-ability-kw ability)
+    (let [ability (assoc-in ability [:eid :source] card)
+          ab (select-ability-kw ability)
           ability-fn (get @ability-types ab)]
       (cond
         ab (ability-fn state side ability card targets)
@@ -306,8 +305,9 @@
   (when-let [message (:msg ability)]
     (let [desc (if (string? message) message (message state side eid card targets))
           cost-spend-msg (build-spend-msg payment-str "use")]
-      (system-msg state (to-keyword (:side card))
-                  (str cost-spend-msg (get-title card) (str " to " desc))))))
+      (when desc
+        (system-msg state (to-keyword (:side card))
+                    (str cost-spend-msg (get-title card) (str " to " desc)))))))
 
 (defn register-once
   "Register ability as having happened if :once specified"
@@ -322,54 +322,34 @@
     (ability-effect state side eid card targets)
     (effect-completed state side eid)))
 
-(defn- ugly-counter-hack
-  "This is brought over from the old do-ability because using `get-card` or `find-latest`
-  currently doesn't work properly with `pay-counters`"
-  [card cost]
-  ;; TODO: Remove me some day
-  (let [[counter-type counter-amount]
-        (->> cost
-             (remove map?)
-             merge-costs
-             (filter #(some #{:advancement :agenda :power :virus :bad-publicity} %))
-             first)]
-    (if counter-type
-      (let [counter (if (= :advancement counter-type)
-                      [:advance-counter]
-                      [:counter counter-type])]
-        (update-in card counter - counter-amount))
-      card)))
-
 (defn merge-costs-paid
-  ([cost-paid]
-   (into {} (map (fn [[k {:keys [type value targets]}]]
-                   [k {:type type
-                       :value value
-                       :targets targets}])
-                 cost-paid)))
+  ([cost-paid] cost-paid)
   ([cost-paid1 cost-paid2]
-   (let [costs-paid [cost-paid1 cost-paid2]
-         cost-keys (mapcat keys costs-paid)]
+   (let [costs-paid (concat (vals cost-paid1) (vals cost-paid2))]
      (reduce (fn [acc cur]
-               (let [costs (map cur costs-paid)
-                     cost-obj {:type cur
-                               :value (apply + (keep :value costs))
-                               :targets (seq (apply concat (keep :targets costs)))}]
-                 (assoc acc cur cost-obj)))
+               (let [existing (get acc (:paid/type cur))
+                     cost-obj {:paid/type (:paid/type cur)
+                               :paid/value (+ (:paid/value existing 0) (:paid/value cur 0))
+                               :paid/targets (seq (concat (:paid/targets existing) (:paid/targets cur)))}]
+                 (assoc acc (:paid/type cur) cost-obj)))
              {}
-             cost-keys)))
+             costs-paid)))
   ([cost-paid1 cost-paid2 & costs-paid]
    (reduce merge-costs-paid (merge-costs-paid cost-paid1 cost-paid2) costs-paid)))
 
-(defn- do-paid-ability [state side {:keys [eid cost] :as ability} card targets async-result]
+(defn- do-paid-ability [state side {:keys [eid] :as ability} card targets async-result]
   (let [payment-str (:msg async-result)
         cost-paid (merge-costs-paid (:cost-paid eid) (:cost-paid async-result))
-        ability (assoc-in ability [:eid :cost-paid] cost-paid)]
+        ability (assoc-in ability [:eid :cost-paid] cost-paid)
+        ;; After paying costs, counters will be removed, so fetch the latest version.
+        ;; We still want the card if the card is trashed, so default to given
+        ;; when the latest is gone.
+        card (or (get-card state card) card)]
     ;; Print the message
     (print-msg state side ability card targets payment-str)
     ;; Trigger the effect
     (register-once state side ability card)
-    (do-effect state side ability (ugly-counter-hack card cost) targets)
+    (do-effect state side ability card targets)
     ;; If the ability isn't async, complete it
     (when-not (:async ability)
       (effect-completed state side eid))))
@@ -392,7 +372,7 @@
                    waiting-prompt))}))
   (if (seq cost)
     ;; Ensure that any costs can be paid
-    (wait-for (pay state side (make-eid state eid) card cost {:action (:cid card)})
+    (wait-for (pay state side (make-eid state (assoc eid :action (:cid card))) card cost)
               (if (:cost-paid async-result)
                 ;; If the cost can be and is paid, perform the ablity
                 (do-paid-ability state side ability card targets async-result)
@@ -600,7 +580,7 @@
   (= (:active-player @state) (get-side ability)))
 
 (defn- valid-condition?
-  [state card {:keys [condition location]}]
+  [state card {:keys [condition location] :as ability}]
   (when (case condition
           :accessed (same-card? card (:access @state))
           :active (active? card)
@@ -617,7 +597,10 @@
                            (and (contains? location :hand)
                                 (in-hand? card)))
           :test-condition true)
-    card))
+    (when
+        (and (not (is-disabled? state nil card))
+             (not (is-disabled-reg? state card)))
+      card)))
 
 (defn- card-for-ability
   [state {:keys [card duration] :as ability}]
@@ -662,24 +645,28 @@
 (defn trigger-event
   "Resolves all abilities registered as handlers for the given event key, passing them
   the targets given."
-  [state side event & targets]
-  (when (some? event)
-    (log-event state event targets)
-    (let [handlers (gather-events state side event targets)]
-      (doseq [to-resolve handlers]
-        (when-let [card (card-for-ability state to-resolve)]
-          (resolve-ability state side (dissoc-req (:ability to-resolve)) card targets)
-          (when (:unregister-once-resolved to-resolve)
-            (unregister-event-by-uuid state side (:uuid to-resolve))))))))
+  ([state side event] (trigger-event state side event nil))
+  ([state side event context]
+   (assert (or (nil? context) (map? context)) "context must be a nilable map")
+   (when (some? event)
+     (log-event state event [context])
+     (let [handlers (gather-events state side event [context])]
+       (doseq [to-resolve handlers]
+         (when-let [card (card-for-ability state to-resolve)]
+           (when (:unregister-once-resolved to-resolve)
+             (unregister-event-by-uuid state side (:uuid to-resolve)))
+           (let [eid (make-eid state {:source card :source-type :ability})]
+             (resolve-ability state side eid (dissoc-req (:ability to-resolve)) card [context]))))))))
 
 (defn- trigger-event-sync-next
   [state side eid handlers event targets]
   (if-let [to-resolve (first handlers)]
     (if-let [card (card-for-ability state to-resolve)]
-      (wait-for (resolve-ability state side (make-eid state (assoc eid :source card :source-type :ability)) (dissoc-req (:ability to-resolve)) card targets)
-                (when (:unregister-once-resolved to-resolve)
-                  (unregister-event-by-uuid state side (:uuid to-resolve)))
-                (trigger-event-sync-next state side eid (rest handlers) event targets))
+      (do (when (:unregister-once-resolved to-resolve)
+            (unregister-event-by-uuid state side (:uuid to-resolve)))
+          (let [new-eid (make-eid state (assoc eid :source card :source-type :ability))]
+            (wait-for (resolve-ability state side new-eid (dissoc-req (:ability to-resolve)) card targets)
+                      (trigger-event-sync-next state side eid (rest handlers) event targets))))
       (trigger-event-sync-next state side eid (rest handlers) event targets))
     (effect-completed state side eid)))
 
@@ -740,16 +727,18 @@
                                              (rest handlers))]
                     (if-let [the-card (card-for-ability state to-resolve)]
                       {:async true
-                       :effect (req (wait-for (resolve-ability state (to-keyword (:side the-card))
-                                                               (make-eid state (assoc eid :source the-card :source-type :ability))
-                                                               ability-to-resolve
-                                                               the-card event-targets)
-                                              (when (:unregister-once-resolved to-resolve)
-                                                (unregister-event-by-uuid state side (:uuid to-resolve)))
-                                              (if (should-continue state handlers)
-                                                (continue-ability state side
-                                                                  (choose-handler remaining-handlers) nil event-targets)
-                                                (effect-completed state side eid))))}
+                       :effect (req
+                                 (when (:unregister-once-resolved to-resolve)
+                                   (unregister-event-by-uuid state side (:uuid to-resolve)))
+                                 (let [new-eid (make-eid state (assoc eid :source the-card :source-type :ability))]
+                                   (wait-for (resolve-ability state (to-keyword (:side the-card))
+                                                              new-eid
+                                                              ability-to-resolve
+                                                              the-card event-targets)
+                                             (if (should-continue state handlers)
+                                               (continue-ability state side
+                                                                 (choose-handler remaining-handlers) nil event-targets)
+                                               (effect-completed state side eid)))))}
                       {:async true
                        :effect (req (if (should-continue state handlers)
                                       (continue-ability state side (choose-handler (rest handlers)) nil event-targets)
@@ -763,20 +752,20 @@
                                                              (same-card? chosen-card card)))
                                       to-resolve (some #(when (same-card-ability? target %) %) handlers)
                                       ability-to-resolve (dissoc-req (:ability to-resolve))
-                                      the-card (card-for-ability state to-resolve)]
+                                      the-card (card-for-ability state to-resolve)
+                                      new-eid (make-eid state (assoc eid :source the-card :source-type :ability))]
+                                  (when (:unregister-once-resolved to-resolve)
+                                    (unregister-event-by-uuid state side (:uuid to-resolve)))
                                   (wait-for
                                     (resolve-ability state (to-keyword (:side the-card))
-                                                     (make-eid state (assoc eid :source the-card :source-type :ability))
+                                                     new-eid
                                                      ability-to-resolve the-card event-targets)
-                                    (when (:unregister-once-resolved to-resolve)
-                                      (unregister-event-by-uuid state side (:uuid to-resolve)))
                                     (if (should-continue state handlers)
                                       (continue-ability state side
                                                         (choose-handler
                                                           (remove-once #(same-card-ability? target %) handlers))
                                                         nil event-targets)
                                       (effect-completed state side eid)))))})))]
-
       (continue-ability state side (choose-handler handlers) nil event-targets))
     (effect-completed state side eid)))
 
@@ -876,6 +865,7 @@
                  (let [card (card-for-ability state handler)
                        ability (:ability handler)]
                    (and (not (apply trigger-suppress state (to-keyword (:side card)) (:event handler) card context))
+                        card
                         (can-trigger? state (to-keyword (:side card)) eid ability card context)))))
        (sort-by (complement #(is-active-player state (:handler %))))
        (seq)))
@@ -899,7 +889,6 @@
                                                      (:context %)))))
                              handlers)
           cards-with-titles (filter #(card-for-ability state (:handler %)) non-silent)
-          titles (map #(card-for-ability state (:handler %)) cards-with-titles)
           choices-map (map #(vector (or (:ability-name (:ability (:handler %)))
                                         (card-for-ability state (:handler %)))
                                     %) cards-with-titles)
@@ -923,16 +912,17 @@
               ability-card (card-for-ability state to-resolve)
               remaining-handlers (if (= 1 (count non-silent))
                                    (remove-once #(same-card? ability-card (card-for-ability state (:handler %))) handlers)
-                                   (rest handlers))]
+                                   (rest handlers))
+              new-eid (make-eid state (assoc eid :source ability-card :source-type :ability))]
           (if ability-card
-            (wait-for (resolve-ability state (to-keyword (:side ability-card))
-                                       (make-eid state (assoc eid :source ability-card :source-type :ability))
-                                       (dissoc-req ability)
-                                       ability-card
-                                       context)
-                      (when (:unregister-once-resolved to-resolve)
-                        (unregister-event-by-uuid state side (:uuid to-resolve)))
-                      (trigger-queued-event-player state side eid remaining-handlers args))
+            (do (when (:unregister-once-resolved to-resolve)
+                  (unregister-event-by-uuid state side (:uuid to-resolve)))
+                (wait-for (resolve-ability state (to-keyword (:side ability-card))
+                                           new-eid
+                                           (dissoc-req ability)
+                                           ability-card
+                                           context)
+                          (trigger-queued-event-player state side eid remaining-handlers args)))
             (trigger-queued-event-player state side eid remaining-handlers args)))
         (continue-ability
           state side
@@ -946,15 +936,16 @@
                                 to-resolve (:handler handler)
                                 ability (:ability to-resolve)
                                 context (:context handler)
-                                ability-card (card-for-ability state to-resolve)]
+                                ability-card (card-for-ability state to-resolve)
+                                new-eid (make-eid state (assoc eid :source ability-card :source-type :ability))]
+                            (when (:unregister-once-resolved to-resolve)
+                              (unregister-event-by-uuid state side (:uuid to-resolve)))
                             (wait-for
                               (resolve-ability state (to-keyword (:side ability-card))
-                                               (make-eid state (assoc eid :source ability-card :source-type :ability))
+                                               new-eid
                                                (dissoc-req ability)
                                                ability-card
                                                context)
-                              (when (:unregister-once-resolved to-resolve)
-                                (unregister-event-by-uuid state side (:uuid to-resolve)))
                               (let [remaining-handlers (remove-once #(= handler %) handlers)]
                                 (trigger-queued-event-player state side eid remaining-handlers args)))))})
           nil nil)))))
@@ -1074,6 +1065,45 @@
                 (effect-completed state nil eid))
       (effect-completed state nil eid))))
 
+(defn trash-on-tag
+  [state _ eid]
+  (let [trash-when-tagged (when (jinteki.utils/is-tagged? state)
+                            (filter :trash-when-tagged (all-installed-runner state)))
+        trash-when-tagged (filter #(not (is-disabled? state nil %)) trash-when-tagged)]
+    (if (seq trash-when-tagged)
+      (wait-for (move* state nil (make-eid state eid)
+                       :trash-cards trash-when-tagged
+                       {:unpreventable true})
+                (doseq [card trash-when-tagged]
+                  (system-say state (to-keyword (:side card))
+                              (str "trashes " (card-str state card) " for being tagged")))
+                (effect-completed state nil eid))
+      (effect-completed state nil eid))))
+
+(defn- enforce-conditions-impl
+  [state _ eid cards]
+  (if (seq cards)
+    (let [fc (first cards)]
+      (wait-for
+        (resolve-ability
+          state (to-keyword (:side fc))
+          (when-not
+              (is-disabled-reg? state fc)
+            (:enforce-conditions fc))
+          fc nil)
+        (enforce-conditions-impl state nil eid (rest cards))))
+    (effect-completed state nil eid)))
+
+(defn enforce-conditions
+  [state _ eid]
+  (wait-for
+    (trash-on-tag state nil (make-eid state eid))
+    (if-let [cards (seq (filter
+                          :enforce-conditions
+                          [(get-in @state [:corp :identity])]))]
+      (enforce-conditions-impl state nil eid cards)
+      (effect-completed state nil eid))))
+
 (defn check-restrictions
   [state _ eid]
   ;; memory limit check
@@ -1094,7 +1124,7 @@
                                   (update-mu state)
                                   (effect-completed state side eid)))})
         nil nil)
-      (effect-completed state nil eid))))
+      (enforce-conditions state nil eid))))
 
 (defn checkpoint
   "10.3. Checkpoints: A CHECKPOINT is a process wherein objects that have entered an
@@ -1108,6 +1138,8 @@
      ;; b: Any ability with a duration that has passed is removed from the game state
      (wait-for
        (unregister-expired-durations state nil (make-eid state eid) (conj durations duration) context-maps)
+       ;; update the disabled-card registry here
+        (update-disabled-cards state)
        ;; c: Check winning or tying by agenda points
        (check-win-by-agenda state)
        ;; d: uniqueness/console check
@@ -1135,32 +1167,31 @@
 ;; PAYMENT
 
 (defn- pay-next
-  [state side eid costs card actions msgs]
+  [state side eid costs card msgs]
   (if (empty? costs)
     (complete-with-result state side eid msgs)
-    (wait-for (handler (first costs) state side (make-eid state eid) card actions)
-              (pay-next state side eid (rest costs) card actions (conj msgs async-result)))))
+    (wait-for (handler (first costs) state side (make-eid state eid) card)
+              (pay-next state side eid (rest costs) card (conj msgs async-result)))))
 
 (defn pay
-  "Same as pay, but awaitable."
-  [state side eid card & args]
-  (let [args (flatten args)
-        raw-costs (remove map? args)
-        actions (filter map? args)
-        costs (can-pay? state side eid card (:title card) raw-costs)]
+  [state side eid card & costs]
+  (let [costs (flatten costs)
+        costs (can-pay? state side eid card (:title card) costs)]
+    (when (some keyword? costs)
+      (throw (ex-info "Please convert to wrapped cost" {:args costs})))
     (if (nil? costs)
       (complete-with-result state side eid nil)
-      (wait-for (pay-next state side (make-eid state eid) costs card actions [])
+      (wait-for (pay-next state side (make-eid state eid) costs card [])
                 (let [payment-result async-result]
                   (wait-for (checkpoint state nil (make-eid state eid) nil)
                             (complete-with-result
                               state side eid
                               {:msg (->> payment-result
-                                         (keep :msg)
-                                         enumerate-str)
+                                         (keep :paid/msg)
+                                         (enumerate-str))
                                :cost-paid (->> payment-result
-                                               (keep #(not-empty (select-keys % [:type :targets :value])))
+                                               (keep #(not-empty (dissoc % :paid/msg)))
                                                (reduce
-                                                 (fn [acc cost]
-                                                   (assoc acc (:type cost) cost))
+                                                 (fn [acc paid]
+                                                   (assoc acc (:paid/type paid) paid))
                                                  {}))})))))))

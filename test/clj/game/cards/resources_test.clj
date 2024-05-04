@@ -255,6 +255,24 @@
       (is (nil? (refresh ws)) "Whitespace should be trashed")
       (is (nil? (refresh ac)) "Arruaceiras Crew should be trashed"))))
 
+(deftest artist-colony
+  ;; Artist Colony
+  (do-game
+    (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                      :hand ["Vanity Project"]}
+               :runner {:deck ["Monolith" "Chatterjee University"]
+                        :hand ["Artist Colony"]}})
+    (take-credits state :corp)
+    (run-empty-server state :hq)
+    (click-prompt state :runner "Steal")
+    (play-from-hand state :runner "Artist Colony")
+    (card-ability state :runner (get-resource state 0) 0)
+    (click-prompt state :runner "Chatterjee University")
+    (click-card state :runner "Vanity Project")
+    (is (last-n-log-contains? state 1 "forfeits 1 agenda .* to use Artist Colony to install Chatterjee University"))
+    (is (= "Chatterjee University" (:title (get-resource state 1))))
+    (is (empty? (:scored (get-runner))))))
+
 (deftest asmund-pudlat
   ;; Asmund Pudlat
   (do-game
@@ -1379,10 +1397,10 @@
       (take-credits state :corp)
       (play-from-hand state :runner "Dadiana Chacon")
       (play-from-hand state :runner "Corroder")
-      (is (last-n-log-contains? state 3 "Runner spends \\[Click\\] and pays 0 \\[Credits\\] to install Dadiana Chacon."))
+      (is (last-n-log-contains? state 3 "Runner spends [Click] and pays 0 [Credits] to install Dadiana Chacon."))
       (is (last-n-log-contains? state 2 "Runner uses Dadiana Chacon to suffer 3 meat damage."))
       (is (second-last-log-contains? state "Runner trashes Corroder, Corroder, and Corroder due to meat damage."))
-      (is (last-log-contains? state "Runner spends \\[Click\\] and pays 2 \\[Credits\\] to install Corroder."))))
+      (is (last-log-contains? state "Runner spends [Click] and pays 2 [Credits] to install Corroder."))))
 
 (deftest daeg-first-net-cat
   ;; Daeg, First Net-Cat - charge on score/steal
@@ -1862,8 +1880,6 @@
               hosted-ct #(first (:hosted (refresh dj-fenris)))]
           (rez state :corp malia)
           (click-card state :corp dj-fenris)
-          (is (:disabled (refresh dj-fenris)) "DJ Fenris is disabled")
-          (is (:disabled (hosted-ct)) "CT is disabled")
           (is (= 4 (core/available-mu state)) "Disabling DJ Fenris also disabled CT, reducing MU back to 4")
           ;; Trash Malia to stop disable
           (trash state :corp (refresh malia))
@@ -3580,6 +3596,40 @@
       (is (= 14 (:credit (get-runner))) "Take 6cr from Kati")
       (is (zero? (get-counters (refresh kati) :credit)) "No counters left on Kati"))))
 
+(deftest keros-mcintyre
+  ;; Keros Mcintyre
+  (do-game
+    (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
+                      :hand ["Enigma" "Chimera"]
+                      :credits 100}
+               :runner {:hand ["Keros Mcintyre" (qty "Emergency Shutdown" 2)]
+                        :credits 100}})
+    (play-from-hand state :corp "Enigma" "New remote")
+    (play-from-hand state :corp "Chimera" "New remote")
+    (take-credits state :corp)
+    (play-from-hand state :runner "Keros Mcintyre")
+    (take-credits state :runner)
+    (let [enigma (get-ice state :remote1 0)
+          chimera (get-ice state :remote2 0)]
+      (rez state :corp chimera)
+      (click-prompt state :corp "Code Gate")
+      (is (changed? [(:credit (get-runner)) 0]
+            (take-credits state :corp))
+          "No credit gain from corp derezzing a card")
+      (rez state :corp chimera)
+      (click-prompt state :corp "Code Gate")
+      (rez state :corp enigma)
+      (run-empty-server state :hq)
+      (click-prompt state :runner "No action")
+      (is (changed? [(:credit (get-runner)) 2]
+            (play-from-hand state :runner "Emergency Shutdown")
+            (click-card state :runner "Enigma"))
+          "Credit gain from runner derezzing a card")
+      (is (changed? [(:credit (get-runner)) 0]
+            (play-from-hand state :runner "Emergency Shutdown")
+            (click-card state :runner "Chimera"))
+          "No credit gain a second time"))))
+
 (deftest kongamato
   ;; Kongamato
   (do-game
@@ -3689,7 +3739,7 @@
    (take-credits state :corp)
    (click-prompt state :runner "Dr. Lovegood")
    (click-card state :runner "Lewi Guilherme")
-   (is (= 5 (hand-size :corp)) "-1 hand size from lewi")
+   (is (= 5 (hand-size :corp)) "regular hand size from lewi")
    (is (no-prompt? state :runner) "No more prompt to activate")))
 
 (deftest liberated-account
@@ -3816,7 +3866,6 @@
    (play-from-hand state :corp "NGO Front" "New remote")
    (play-from-hand state :corp "Sand Storm" "Server 1")
    (play-from-hand state :corp "Hokusai Grid" "New remote")
-   ;(let [ht (get-content state :remote2 0)]
    (click-advance state :corp (refresh (get-content state :remote1 0)))
    (take-credits state :corp)
    (play-from-hand state :runner "Light the Fire!")
@@ -3874,7 +3923,7 @@
       (is (zero? (:click (get-runner))) "Should now have 0 clicks")
       (is (= 1 (count (:discard (get-runner)))) "Logic Bomb should be discarded")
       (is (last-log-contains? state "use Logic Bomb"))
-      (is (last-log-contains? state "\\[Click\\]\\[Click\\]") "Log should mention 2 clicks")))
+      (is (last-log-contains? state "[Click][Click]") "Log should mention 2 clicks")))
 
 (deftest logic-bomb-if-the-runner-has-no-clicks-left
     ;; if the runner has no clicks left
@@ -3894,7 +3943,7 @@
       (is (zero? (:click (get-runner))) "Should still have 0 clicks")
       (is (= 1 (count (:discard (get-runner)))) "Logic Bomb should be discarded")
       (is (last-log-contains? state "use Logic Bomb"))
-      (is (not (last-log-contains? state "\\[Click\\]")) "Log shouldn't mention any clicks")))
+      (is (not (last-log-contains? state "[Click]")) "Log shouldn't mention any clicks")))
 
 (deftest london-library
   ;; Install non-virus programs on London library. Includes #325/409
@@ -4520,7 +4569,7 @@
       (is (changed? [(:credit (get-runner)) -1]
             (play-from-hand state :runner "Order of Sol"))
           "Only spends 1 credit total to install Order of Sol")
-      (is (last-log-contains? state "Runner uses Order of Sol to gain 1 \\[Credits]."))))
+      (is (last-log-contains? state "Runner uses Order of Sol to gain 1 [Credits]."))))
 
 (deftest order-of-sol-get-down-to-zero-credits-from-playing-an-event
     ;; Get down to zero credits from playing an event
@@ -4532,7 +4581,7 @@
       (is (changed? [(:credit (get-runner)) 5]
             (play-from-hand state :runner "Sure Gamble"))
           "Gain 5 total credits from playing Sure Gamble")
-      (is (last-n-log-contains? state 2 "Runner uses Order of Sol to gain 1 \\[Credits]."))))
+      (is (last-n-log-contains? state 2 "Runner uses Order of Sol to gain 1 [Credits]."))))
 
 (deftest order-of-sol-losing-credits
     ;; Losing credits
@@ -4548,7 +4597,7 @@
       (is (changed? [(:credit (get-runner)) 0]
             (rez state :corp (get-content state :remote1 0)))
           "Gain and lose 1 credit")
-      (is (last-log-contains? state "Runner uses Order of Sol to gain 1 \\[Credits]."))))
+      (is (last-log-contains? state "Runner uses Order of Sol to gain 1 [Credits]."))))
 
 (deftest pad-tap
   ;; PAD Tap
@@ -4822,21 +4871,21 @@
           (is (changed? [(:credit (get-runner)) -4]
                 (click-card state :runner mo))
               "Pay 4 for MOpus install (1+5-2)")
-          (is (second-last-log-contains? state "Runner pays 1 \\[Credits\\] to use Paule's Café to install hosted card\\.") "Correct message for Paule usage")
-          (is (last-log-contains? state "Runner pays 3 \\[Credits\\] to install Magnum Opus using Paule's Café\\.") "Correct message for MOpus install")
+          (is (second-last-log-contains? state "Runner pays 1 [Credits] to use Paule's Café to install hosted card\\.") "Correct message for Paule usage")
+          (is (last-log-contains? state "Runner pays 3 [Credits] to install Magnum Opus using Paule's Café\\.") "Correct message for MOpus install")
           (card-ability state :runner pau 1)
           (is (changed? [(:credit (get-runner)) -4]
                 (click-card state :runner des))
               "Pay 4 for Desperado install (1+3)")
-          (is (second-last-log-contains? state "Runner pays 1 \\[Credits\\] to use Paule's Café to install hosted card\\.") "Correct message for Paule usage")
-          (is (last-log-contains? state "Runner pays 3 \\[Credits\\] to install Desperado using Paule's Café\\.") "Correct message for Desperado install")
+          (is (second-last-log-contains? state "Runner pays 1 [Credits] to use Paule's Café to install hosted card\\.") "Correct message for Paule usage")
+          (is (last-log-contains? state "Runner pays 3 [Credits] to install Desperado using Paule's Café\\.") "Correct message for Desperado install")
           (take-credits state :runner)
           (card-ability state :runner pau 1)
           (is (changed? [(:credit (get-runner)) -3]
                 (click-card state :runner cor))
               "Pay 3 for Corroder install in Corp turn (1+2)")
-          (is (second-last-log-contains? state "Runner pays 1 \\[Credits\\] to use Paule's Café to install hosted card\\.") "Correct message for Paule usage")
-          (is (last-log-contains? state "Runner pays 2 \\[Credits\\] to install Corroder using Paule's Café\\.") "Correct message for Corroder install")))))
+          (is (second-last-log-contains? state "Runner pays 1 [Credits] to use Paule's Café to install hosted card\\.") "Correct message for Paule usage")
+          (is (last-log-contains? state "Runner pays 2 [Credits] to install Corroder using Paule's Café\\.") "Correct message for Corroder install")))))
 
 (deftest paule-s-cafe-can-t-lower-cost-below-1-issue-4816
     ;; Can't lower cost below 1. Issue #4816
@@ -4858,8 +4907,8 @@
                 (card-ability state :runner pau 1)
                 (click-card state :runner cor))
               "Pay 1 credit for Corroder (2 - 4 + 1 base)")
-          (is (second-last-log-contains? state "Runner pays 1 \\[Credits\\] to use Paule's Café to install hosted card\\.") "Correct message for Paule usage")
-          (is (last-log-contains? state "Runner pays 0 \\[Credits\\] to install Corroder using Paule's Café\\.") "Correct message for Corroder install")))))
+          (is (second-last-log-contains? state "Runner pays 1 [Credits] to use Paule's Café to install hosted card\\.") "Correct message for Paule usage")
+          (is (last-log-contains? state "Runner pays 0 [Credits] to install Corroder using Paule's Café\\.") "Correct message for Corroder install")))))
 
 (deftest penumbral-toolkit-install-cost-reduction-after-hq-run
     ;; install cost reduction after HQ run
@@ -5327,7 +5376,7 @@
       (run-empty-server state :remote3)
       (is (not (no-prompt? state :runner)) "Prompting to trash")
       (is (= ["[Salsette Slums] Remove card from game" "Pay 1 [Credits] to trash" "No action"]
-             (prompt-buttons :runner))
+             (prompt-titles :runner))
           "Second Salsette Slums can be used")
       (click-prompt state :runner "[Salsette Slums] Remove card from game")
       (is (= 2 (count (:rfg (get-corp)))) "Two cards should be RFG now"))))
@@ -6134,7 +6183,7 @@
         (card-ability state :runner (refresh the-back) 1)
         (is (no-prompt? state :runner) "The Back prompt did not come up"))))
 
-(deftest ^:kaocha/pending the-back-automated
+#_(deftest ^:kaocha/pending the-back-automated
   ;; TODO: Enable this once card is fully implemented
   (testing "Basic test"
     (do-game
@@ -7118,6 +7167,18 @@
                   (click-prompt state :runner "Gain 2 [Credits]"))
         "Threat 3: Runner can gain 2 credits when installing Valentina")))
 
+(deftest valentina-ferreira-carvalho-op-tag
+  (do-game
+    (new-game {:runner {:hand ["Valentina Ferreira Carvalho"]}
+               :corp {:hand ["End of the Line"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Valentina Ferreira Carvalho")
+    (gain-tags state :runner 1)
+    (take-credits state :runner)
+    (is (changed? [(:credit (get-runner)) 0]
+                  (play-from-hand state :corp "End of the Line"))
+        "Runner does NOT gain a credit from EOTL")))
+
 (deftest verbal-plasticity
   ;; Verbal Plasticity
   (do-game
@@ -7379,6 +7440,15 @@
       (is (= 3 (:credit (get-corp))) "Paid 1 instead of 0 to rez Paper Wall")
       (rez state :corp lc)
       (is (= 2 (:credit (get-corp))) "Paid 1 to rez Launch Campaign; no effect on non-ice"))))
+
+(deftest zona-sul-shipping-trash-on-install
+  ;; Zona Sul Shipping - Gain 1c per turn, click to take all credits. Trash when tagged
+  (do-game
+    (new-game {:runner {:deck ["Zona Sul Shipping"]}})
+    (take-credits state :corp)
+    (gain-tags state :runner 1)
+    (play-from-hand state :runner "Zona Sul Shipping")
+    (is (= 1 (count (:discard (get-runner)))) "Zona Sul trashed when tag taken")))
 
 (deftest zona-sul-shipping
   ;; Zona Sul Shipping - Gain 1c per turn, click to take all credits. Trash when tagged

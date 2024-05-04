@@ -133,7 +133,7 @@
                 (not no-mu))
        (init-mu-cost state c))
      (if (and resolve-effect (is-ability? cdef))
-       (resolve-ability state side eid (dissoc cdef :cost :additional-cost) c nil)
+       (resolve-ability state side (assoc eid :source-type :ability) (dissoc cdef :cost :additional-cost) c nil)
        (effect-completed state side eid))
      (when-let [in-play (:in-play cdef)]
        (apply gain state side in-play))
@@ -190,6 +190,8 @@
                 :subroutines (subroutines-init (assoc card :cid cid) cdef)
                 :abilities (ability-init cdef)
                 :expend (:expend cdef)
+                :enforce-conditions (:enforce-conditions cdef)
+                :trash-when-tagged (:trash-when-tagged cdef)
                 :x-fn (:x-fn cdef)
                 :printed-title (:title card))
          (dissoc :setname :text :_id :influence :number :influencelimit

@@ -3,14 +3,14 @@
     [game.core.card :refer [asset? condition-counter? get-card ice? upgrade?]]
     [game.core.card-defs :refer [card-def]]
     [game.core.cost-fns :refer [rez-additional-cost-bonus rez-cost]]
-    [game.core.effects :refer [unregister-static-abilities]]
-    [game.core.eid :refer [complete-with-result effect-completed eid-set-defaults make-eid]]
+    [game.core.effects :refer [is-disabled? unregister-static-abilities update-disabled-cards]]
+    [game.core.eid :refer [complete-with-result effect-completed make-eid]]
     [game.core.engine :refer [register-pending-event queue-event checkpoint pay register-events resolve-ability trigger-event unregister-events]]
     [game.core.flags :refer [can-host? can-rez?]]
     [game.core.ice :refer [update-ice-strength]]
     [game.core.initializing :refer [card-init deactivate]]
     [game.core.moving :refer [trash-cards]]
-    [game.core.payment :refer [build-spend-msg can-pay? merge-costs]]
+    [game.core.payment :refer [build-spend-msg can-pay? merge-costs ->c]]
     [game.core.runs :refer [continue]]
     [game.core.say :refer [play-sfx system-msg implementation-msg]]
     [game.core.toasts :refer [toast]]
@@ -23,20 +23,20 @@
   [state side card {:keys [ignore-cost alternative-cost cost-bonus]}]
   (merge-costs
     (cond
-      (= :all-costs ignore-cost) [:credit 0]
-      alternative-cost alternative-cost
+      (= :all-costs ignore-cost) [(->c :credit 0)]
+      alternative-cost (when-not (is-disabled? state side card) alternative-cost)
       :else (let [cost (rez-cost state side card {:cost-bonus cost-bonus})
-                  additional-costs (rez-additional-cost-bonus state side card (when ignore-cost #(not (= :credit (first %)))))]
+                  additional-costs (rez-additional-cost-bonus state side card (when ignore-cost #(not= :credit (:cost/type %))))]
               (concat
                 (when-not ignore-cost
-                  [:credit cost])
+                  [(->c :credit cost)])
                 (when (not (:disabled card))
                   additional-costs))))))
 
 (defn trash-hosted-cards
   [state side eid card]
   (let [hosted-cards (seq (remove condition-counter? (:hosted card)))]
-    (if (can-host? card)
+    (if (can-host? state card)
       (effect-completed state side eid)
       (wait-for (trash-cards state side hosted-cards {:unpreventable true :game-trash true})
                 (when (pos? (count hosted-cards))
@@ -98,10 +98,11 @@
   ([state side eid card] (rez state side eid card nil))
   ([state side eid card
     {:keys [ignore-cost force declined-alternative-cost alternative-cost] :as args}]
-   (let [eid (eid-set-defaults eid :source nil :source-type :rez)
+   (let [eid (assoc eid :source-type :rez)
          card (get-card state card)
          alternative-cost (when (and card
                                      (not alternative-cost)
+                                     (not (is-disabled? state side card))
                                      (not declined-alternative-cost))
                             (:alternative-cost (card-def card)))]
      (if (and card
@@ -141,4 +142,5 @@
       (when-let [derezzed-events (:derezzed-events cdef)]
         (register-events state side card (map #(assoc % :condition :derezzed) derezzed-events))))
     (unregister-static-abilities state side card)
-    (trigger-event state side :derez card side)))
+    (update-disabled-cards state)
+    (trigger-event state side :derez {:card card :side side})))

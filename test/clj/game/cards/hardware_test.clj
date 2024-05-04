@@ -183,6 +183,20 @@
                   (click-prompt state :runner "Yes"))
         "Spend a power counter when removing a tag to draw 2 cards")))
 
+(deftest amanuensis-corp-spend-tag
+  (do-game
+    (new-game {:runner {:hand ["Amanuensis"]
+                        :deck [(qty "Sure Gamble" 2)]}
+               :corp {:hand ["End of the Line"]}})
+    (take-credits state :corp)
+    (gain-tags state :runner 1)
+    (play-from-hand state :runner "Amanuensis")
+    (is (changed? [(get-counters (get-hardware state 0) :power) 1]
+                  (take-credits state :runner))
+        "Amanuensis gains a power counter at end of turn")
+    (play-from-hand state :corp "End of the Line")
+    (is (no-prompt? state :runner) "No runner prompt for amen")))
+
 (deftest aniccam-trash-trash-before-and-after-install-does-not-trigger
   ;; Aniccam
   (doseq [first-side [:corp :runner]
@@ -413,7 +427,7 @@
       (run-jack-out state)
       (is (= "Autoscripter" (:title (last (:discard (get-runner))))) "Autoscripter was trashed after successful run"))))
 
-(deftest basilar-synth
+[(deftest basilar-synth
   (do-game
     (new-game {:runner {:hand ["Basilar Synthgland 2KVJ" (qty "Sure Gamble" 4)]}})
     (take-credits state :corp)
@@ -423,7 +437,7 @@
     (is (= 3 (:click (get-runner))))
     (take-credits state :runner)
     (take-credits state :corp)
-    (is (= 5 (:click (get-runner))) "4+1  base clicks")))
+    (is (= 5 (:click (get-runner))) "4+1  base clicks")))]
 
 (deftest blackguard
   ;; Blackguard - +2 MU, forced rez of exposed ice
@@ -1523,6 +1537,25 @@
     (run-on state "Archives")
     (is (= 2 (count (:hand (get-runner)))) "No cards drawn")))
 
+(deftest deep-red
+  ;; Deep Red
+  (do-game
+    (new-game {:corp {:deck [(qty "Hedge Fund" 10)]
+                      :hand ["Ice Wall"]
+                      :credits 100}
+               :runner {:hand ["Deep Red" "Rook"]
+                        :credit 100}})
+    (play-from-hand state :corp "Ice Wall" "R&D")
+    (rez state :corp (get-ice state :rd 0))
+    (take-credits state :corp)
+    (play-from-hand state :runner "Deep Red")
+    (is (changed? [(:click (get-runner)) -1]
+          (play-from-hand state :runner "Rook")
+          (click-prompt state :runner "Yes")
+          (click-card state :runner "Ice Wall"))
+        "Only spend 1 click")
+    (is (= ["Rook"] (map get-title (:hosted (get-ice state :rd 0)))))))
+
 (deftest demolisher
   ;; Demolisher
   (do-game
@@ -1747,13 +1780,15 @@
     (take-credits state :corp)
     (play-from-hand state :runner "Dorm Computer")
     (let [dorm (get-hardware state 0)]
-      (card-ability state :runner dorm 0)
-      (click-prompt state :runner "Server 1")
-      (run-continue state)
-      (is (= :waiting (prompt-type :runner)) "Runner has prompt to wait for Snare!")
-      (click-prompt state :corp "Yes")
-      (is (zero? (count-tags state)) "Runner has 0 tags")
-      (is (= 3 (get-counters (refresh dorm) :power))))))
+      (is (changed? [(count-tags state) 0
+                     (get-counters (refresh dorm) :power) -1]
+            (card-ability state :runner dorm 0)
+            (click-prompt state :runner "Server 1")
+            (run-continue state)
+            (is (= "Snare!" (:title (:card (prompt-map :corp)))))
+            (is (= :waiting (prompt-type :runner)) "Runner has prompt to wait for Snare!")
+            (click-prompt state :corp "Yes"))
+          "No tags, spent a power counter"))))
 
 (deftest dyson-fractal-generator-pay-credits-prompt
     ;; Pay-credits prompt
@@ -2583,7 +2618,7 @@
       (take-credits state :runner)
       (is (= (+ 1 n) (count (:scored (get-runner)))) "Jeitinho moved to score area")
       (is (zero? (:agenda-point (get-runner))) "Jeitinho scored for 0 agenda point"))
-    (is (= "Jeitinho assassination event" (:reason @state)) "Win condition reports jeitinho")))
+    (is (= "assassination plot (Jeitinho)" (:reason @state)) "Win condition reports jeitinho")))
 
 (deftest jeitinho-threat
   (do-game
@@ -3938,7 +3973,7 @@
       (take-credits state :corp)
       (play-from-hand state :runner "Prognostic Q-Loop")
       (card-ability state :runner (get-hardware state 0) 1)
-      (is (last-log-contains? state "Runner spends \\[Click] and pays 1 \\[Credits] to install Prognostic Q-Loop.")
+      (is (last-log-contains? state "Runner spends [Click] and pays 1 [Credits] to install Prognostic Q-Loop.")
           "Shouldn't print anything to log as the stack is empty")))
 
 (deftest prognostic-q-loop-orders-correctly-with-other-on-run-triggers-when-firing-first-issue-4973
@@ -4526,7 +4561,7 @@
               (card-ability state :runner (get-hardware state 0) 0)
               ;; Issue #4889
               (is (= "Choose 1 installed program to trash" (:msg (prompt-map :runner)))
-              "Runner chooses program to trash as a cost")
+                  "Runner chooses program to trash as a cost")
               (click-card state :runner "Corroder"))
             "Corroder is installed for free")
         (is (= "Choose a target for Simulchip" (:msg (prompt-map :runner)))
@@ -5078,6 +5113,33 @@
       (is (= "Femme Fatale" (:title (get-program state 0))) "Femme Fatale is installed")
       (is (second-last-log-contains? state (str "Runner uses The Wizard's Chest"
                                                 " to reveal Legwork, Corroder, Ice Carver, Prepaid VoicePAD, Femme Fatale from the top of the stack"
+                                                " and install Femme Fatale, ignoring all costs."))))))
+
+(deftest the-wizards-chest-single-card-selection
+  (do-game
+    (new-game {:runner {:hand ["The Wizard's Chest"]
+                        :discard ["Legwork" "Ice Carver" "Prepaid VoicePAD" "Femme Fatale" "Earthrise Hotel"]}})
+    (take-credits state :corp)
+    (play-from-hand state :runner "The Wizard's Chest")
+    (let [chest (get-hardware state 0)]
+      ;; TODO: make this a helper or something for consistently ordered starting deck
+      (doseq [card-name ["Legwork" "Ice Carver" "Prepaid VoicePAD" "Femme Fatale" "Earthrise Hotel"]]
+        (core/move state :runner (find-card card-name (get-in @state [:runner :discard])) :deck))
+      (card-ability state :runner chest 0)
+      (is (no-prompt? state :runner) "Cannot trigger The Wizard's Chest until all centrals ran")
+      (run-empty-server state "Archives")
+      (run-empty-server state "R&D")
+      (run-empty-server state "HQ")
+      (card-ability state :runner (refresh chest) 0)
+      (is (= ["Hardware" "Program" "Resource" "Cancel"] (prompt-buttons :runner)))
+      (click-prompt state :runner "Program")
+      (is (= ["Install Femme Fatale" "No install"] (prompt-buttons :runner)))
+      (is (changed? [(:credit (get-runner)) 0]
+                    (click-prompt state :runner "Install Femme Fatale"))
+          "Install at no cost")
+      (is (= "Femme Fatale" (:title (get-program state 0))) "Femme Fatale is installed")
+      (is (second-last-log-contains? state (str "Runner uses The Wizard's Chest"
+                                                " to reveal Legwork, Ice Carver, Prepaid VoicePAD, Femme Fatale, Earthrise Hotel from the top of the stack"
                                                 " and install Femme Fatale, ignoring all costs."))))))
 
 (deftest time-bomb

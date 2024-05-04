@@ -823,7 +823,7 @@
       (is (changed? [(:credit (get-corp)) +1]
             (card-ability state :runner cor 0)
             (click-prompt state :runner "End the run")
-            (is (last-log-contains? state "Corp uses Bailiff to gain 1 \\[Credits\\]")
+            (is (last-log-contains? state "Corp uses Bailiff to gain 1 [Credits]")
             "Correct message"))
           "Gained 1c from subroutines being broken"))))
 
@@ -902,8 +902,8 @@
         (is (changed? [(:credit (get-corp)) +2]
               (auto-pump-and-break state cor))
             "Gained 2c from the runner breaking")
-        (is (last-n-log-contains? state 2 "Corp uses Bailiff to gain 1 \\[Credits\\]"))
-        (is (last-n-log-contains? state 3 "Corp uses Bailiff to gain 1 \\[Credits\\]"))))))
+        (is (last-n-log-contains? state 2 "Corp uses Bailiff to gain 1 [Credits]"))
+        (is (last-n-log-contains? state 3 "Corp uses Bailiff to gain 1 [Credits]"))))))
 
 (deftest ballista
   ;; Ballista
@@ -1577,7 +1577,7 @@
                     (card-subroutine state :corp (refresh ce) 2))
           "Runner suffered 3 net damage")
       (run-continue state :movement)
-      (is (= 1 (count (prompt-buttons :runner))) "Runner doesn't have the option to suffer net damage or trash installed cards")
+      (is (= 2 (count (prompt-buttons :runner))) "Runner doesn't have the option to suffer net damage")
       (is (changed? [(count-tags state) 2]
                     (click-prompt state :runner "Take 2 tags"))
           "Runner got 2 tags")
@@ -1928,7 +1928,7 @@
       (click-prompt state :corp "0")
       (click-prompt state :runner "0")
       (is (= 1 (count-tags state)) "Runner took 1 tag")
-      (is (nil? (get-in @state [:run])) "Run was ended"))))
+      (is (nil? (:run @state)) "Run was ended"))))
 
 (deftest drafter-subroutine-1-add-1-card-from-archives-to-hq
   ;; Subroutine 1: Add 1 card from Archives to HQ
@@ -2874,7 +2874,7 @@
             (card-ability state :runner cor 0)
             (click-prompt state :runner "End the run unless the Runner pays 3 [Credits]")
             (click-prompt state :runner "Done")
-            (is (last-log-contains? state "Corp uses Gold Farmer to force the runner to lose 1 \\[Credits\\] for breaking printed subs")
+            (is (last-log-contains? state "Corp uses Gold Farmer to force the runner to lose 1 [Credits] for breaking printed subs")
             "Correct message"))
           "Paid 1c + 1c for breaking"))))
 
@@ -2894,9 +2894,9 @@
       (run-continue state)
       (is (changed? [(:credit (get-runner)) -4]
             (auto-pump-and-break state cor)
-            (is (last-n-log-contains? state 2 "Corp uses Gold Farmer to force the runner to lose 1 \\[Credits\\] for breaking printed subs")
+            (is (last-n-log-contains? state 2 "Corp uses Gold Farmer to force the runner to lose 1 [Credits] for breaking printed subs")
                 "Correct messages")
-            (is (last-n-log-contains? state 3 "Corp uses Gold Farmer to force the runner to lose 1 \\[Credits\\] for breaking printed subs")))
+            (is (last-n-log-contains? state 3 "Corp uses Gold Farmer to force the runner to lose 1 [Credits] for breaking printed subs")))
           "Paid 2c + 2c for breaking"))))
 
 (deftest gold-farmer-interaction-with-paperclip
@@ -3361,13 +3361,13 @@
       (take-credits state :corp)
       (run-on state "HQ")
       (run-continue state)
-      (= 4 (:credit (get-corp)))
+      (is (= 4 (:credit (get-corp))))
       (card-subroutine state :corp herald 0)
-      (= 6 (:credit (get-corp)))
+      (is (= 6 (:credit (get-corp))))
       (card-subroutine state :corp herald 1)
       (click-prompt state :corp "2")
       (click-card state :corp beale)
-      (= 4 (:credit (get-corp)) "Paid 2 credits through Herald second sub")
+      (is (= 4 (:credit (get-corp))) "Paid 2 credits through Herald second sub")
       (is (= 2 (get-counters (refresh beale) :advancement)) "Herald placed 2 advancement tokens"))))
 
 (deftest herald-access-test
@@ -3379,13 +3379,13 @@
     (let [beale (get-content state :remote1 0)]
       (take-credits state :corp)
       (run-empty-server state :hq)
-      (= 4 (:credit (get-corp)))
+      (is (= 7 (:credit (get-corp))))
       (is (= "Herald" (:title (core/get-current-ice state))) "Encountering Herald on access")
       (fire-subs state (core/get-current-ice state))
-      (= 6 (:credit (get-corp)))
+      (is (= 9 (:credit (get-corp))))
       (click-prompt state :corp "2")
       (click-card state :corp beale)
-      (= 4 (:credit (get-corp)) "Paid 2 credits through Herald second sub")
+      (is (= 7 (:credit (get-corp))) "Paid 2 credits through Herald second sub")
       (is (= 2 (get-counters (refresh beale) :advancement)) "Herald placed 2 advancement tokens"))))
 
 (deftest herald-partial-break
@@ -3399,13 +3399,13 @@
     (play-from-hand state :runner "Unity")
     (let [unity (get-program state 0)]
       (run-empty-server state :hq)
-      (= 4 (:credit (get-corp)))
+      (is (= 7 (:credit (get-corp))))
       (is (= "Herald" (:title (core/get-current-ice state))) "Encountering Herald on access")
       (is (= 3 (count (:abilities (refresh unity)))) "Has auto break abilities")
       (card-ability state :runner unity 0)
       (click-prompt state :runner "Pay up to 2 [Credits] to place up to 2 advancement tokens")
       (fire-subs state (core/get-current-ice state))
-      (= 6 (:credit (get-corp)))
+      (is (= 9 (:credit (get-corp))))
       (is (not= "How many advancement tokens?" (:msg (prompt-map :corp))) "Second subroutine did not fire"))))
 
 (deftest hive
@@ -4405,7 +4405,7 @@
       (take-credits state :corp 2)
       (is (= 5 (get-strength (refresh lotus))) "Lotus Field strength increased"))))
 
-(deftest ^:kaocha/pending lycian-multi-munition
+(deftest lycian-multi-munition
   (do-game
     (new-game {:corp {:hand ["Lycian Multi-Munition"]}
                :runner {:hand ["Marjanah"]}})
@@ -4415,9 +4415,14 @@
       (play-from-hand state :runner "Marjanah")
       (run-on state "HQ")
       (rez state :corp lmm)
+      (is (= 3 (count (:choices (prompt-map :corp)))) "Corp cannot select Done right away")
       (click-prompt state :corp "Code Gate")
+      (is (= 3 (count (:choices (prompt-map :corp)))) "Done is added to the choices list")
       (click-prompt state :corp "Sentry")
+      (is (= 2 (count (:choices (prompt-map :corp)))))
       (click-prompt state :corp "Barrier")
+      (is (= 1 (count (:choices (prompt-map :corp)))))
+      (click-prompt state :corp "Done")
       (run-continue state)
       (is (changed? [(:credit (get-runner)) -1
                      (:click (get-runner)) -1]
@@ -6267,15 +6272,16 @@
 
 (deftest searchlight-x-fn
   (do-game
-    (new-game {:corp {:deck ["Searchlight"]}})
+    (new-game {:corp {:deck ["Searchlight"]}
+               :runner {:hand ["Hush"]}})
     (core/gain state :corp :credit 10)
     (play-from-hand state :corp "Searchlight" "HQ")
     (let [searchlight (get-ice state :hq 0)]
       (rez state :corp searchlight)
       (advance state (refresh searchlight) 1)
       (take-credits state :corp)
-      (core/disable-card state :corp (refresh searchlight))
-      (core/fake-checkpoint state)
+      (play-from-hand state :runner "Hush")
+      (click-card state :runner "Searchlight")
       (run-on state "HQ")
       (run-continue state)
       (card-subroutine state :corp (refresh searchlight) 0)
@@ -6284,8 +6290,7 @@
       (click-prompt state :corp "0")
       (click-prompt state :runner "0")
       (is (zero? (count-tags state)) "Trace failed with 0 advancements")
-      (core/enable-card state :corp (refresh searchlight))
-      (core/fake-checkpoint state)
+      (trash state :runner (first (:hosted (get-ice state :hq 0))))
       (card-subroutine state :corp (refresh searchlight) 0)
       (is (= :trace (prompt-type :corp)) "Trace is initiated")
       (is (= 1 (:base (prompt-map :corp))) "Trace is now base 1")
@@ -6571,7 +6576,7 @@
         (card-subroutine state :corp shiro 1)
         (let [credits (:credit (get-corp))]
           (click-prompt state :corp "Yes")
-          (is (last-log-contains? state "pays 1 \\[Credits\\]") "Payment is logged")
+          (is (last-log-contains? state "pays 1 [Credits]") "Payment is logged")
           (is (last-log-contains? state "keep the Runner from breaching R&D") "Prevention is logged")
           (is (= (dec credits) (:credit (get-corp))) "Corp pays 1 to prevent access"))))))
 

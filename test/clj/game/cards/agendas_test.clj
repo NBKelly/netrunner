@@ -416,18 +416,21 @@
 
 (deftest azef-protocol-requires-valid-target
   ;; Azef Protocol needs a valid target to pay the cost to score
-    (do-game
-   (new-game {:corp {:hand ["Azef Protocol", "PAD Campaign"]}
-              :runner {:hand ["Sure Gamble" "Sure Gamble" "Sure Gamble"]}})
-   (play-from-hand state :corp "Azef Protocol" "New remote")
-   (core/add-prop state :corp (get-content state :remote1 0) :advance-counter 3)
-   (score state :corp (get-content state :remote1 0))
-   (is (= 0 (count (:scored (get-corp)))) "Azef Protocol requires a cost be paid")
-   (is (no-prompt? state :corp) "No prompt for Azef Protocol because there are no targets")
-   (is (= 0 (count (:discard (get-corp)))) "Did not trashed PAD Campaign")
-   (is (= 0 (count (:scored (get-corp)))) "Azef Protocol not scored")))
+  (do-game
+    (new-game {:corp {:hand ["Azef Protocol", "PAD Campaign"]
+                      :credit 100}
+               :runner {:hand ["Sure Gamble" "Sure Gamble" "Sure Gamble"]}})
+    (play-from-hand state :corp "Azef Protocol" "New remote")
+    (let [azef (get-content state :remote1 0)]
+      (core/gain state :corp :click 3)
+      (advance state (refresh azef) 3)
+      (score state :corp (refresh azef))
+      (is (= 0 (count (:scored (get-corp)))) "Azef Protocol requires a cost be paid")
+      (is (no-prompt? state :corp) "No prompt for Azef Protocol because there are no targets")
+      (is (= 0 (count (:discard (get-corp)))) "Did not trashed PAD Campaign")
+      (is (= 0 (count (:scored (get-corp)))) "Azef Protocol not scored"))))
 
-(deftest ^:kaocha/pending azef-protocol-cant-target-self
+(deftest azef-protocol-cant-target-self
   ;; Azef Protocol can't trash itself to pay its cost
   (do-game
    (new-game {:corp {:hand ["Azef Protocol", "PAD Campaign"]}
@@ -2132,11 +2135,25 @@
                    (count (:hand (get-corp))) 1
                    (:agenda-point (get-corp)) 3]
                   (play-and-score state "Kingmaking")
+                  (click-prompt state :corp "3")
                   (click-card state :corp "Project Atlas")
                   (is (not (no-prompt? state :corp)) "Couldn't choose 2-points agenda")
                   (click-card state :corp "House of Knives"))
         "Corp drew 3 cards (2 of which moved to the score area)")
     (is (zero? (get-counters (get-scored state :runner 1) :agenda)) "House of Knives should have 0 agenda counters")))
+
+(deftest kingmaking-draw-n
+  (dotimes [n 4]
+    (do-game
+      (new-game {:corp {:hand ["Kingmaking" "Hedge Fund"]
+                        :deck ["House of Knives" "Project Atlas" "Hedge Fund"]}})
+      (is (changed? [(count (:deck (get-corp))) (- n)
+                     (count (:hand (get-corp))) (- n 1)]
+                    (play-and-score state "Kingmaking")
+                    (click-prompt state :corp (str n))
+                    (click-prompt state :corp "Done"))
+          (str "Corp drew " n " cards")))))
+
 
 (deftest license-acquisition
   ;; License Acquisition
@@ -2202,7 +2219,10 @@
       (click-card state :corp rime)
       (is (not (rezzed? (refresh archer))))
       (is (not (rezzed? (refresh rime))))
-      (is (rezzed? (refresh bloop))))))
+      (is (rezzed? (refresh bloop)))
+      (take-credits state :corp)
+      (take-credits state :runner)
+      (is (no-prompt? state :corp) "no repeat prompt"))))
 
 (deftest longevity-serum-basic-behavior
     ;; Basic behavior

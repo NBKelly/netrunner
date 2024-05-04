@@ -1011,7 +1011,7 @@
         (is (changed? [(:credit (get-runner)) -1]
               (run-on state :hq))
             "Paid 1c to run on HQ")
-        (is (last-log-contains? state "spends \\[Click\\] and pays 1 \\[Credits\\] to make a run on HQ") "Should have correct log with credits price for the run")))
+        (is (last-log-contains? state "spends [Click] and pays 1 [Credits] to make a run on HQ") "Should have correct log with credits price for the run")))
 
 (deftest earth-station-sea-headquarters-front-side-flipping-costs-1-click
       ;; Flipping costs 1 click
@@ -1021,7 +1021,7 @@
               (card-ability state :corp (get-in @state [:corp :identity]) 0))
             "Paid 1 click to flip Earth Station")
         (is (:flipped (get-in @state [:corp :identity])) "Earth Station is on flip side")
-        (is (last-log-contains? state "Corp spends \\[Click\\] to use Earth Station: SEA Headquarters to flip their identity to Earth Station: Ascending to Orbit.") "Should have correct log with click price")))
+        (is (last-log-contains? state "Corp spends [Click] to use Earth Station: SEA Headquarters to flip their identity to Earth Station: Ascending to Orbit.") "Should have correct log with click price")))
 
 (deftest earth-station-sea-headquarters-flip-side-no-additional-cost-to-run-hq
       ;; No additional cost to run HQ
@@ -1056,7 +1056,7 @@
         (is (changed? [(:credit (get-runner)) -6]
               (run-on state :remote1))
             "Paid 6c to run on remote server")
-        (is (last-log-contains? state "spends \\[Click\\] and pays 6 \\[Credits\\] to make a run on Server 1") "Should have correct log with credits price for the run")))
+        (is (last-log-contains? state "spends [Click] and pays 6 [Credits] to make a run on Server 1") "Should have correct log with credits price for the run")))
 
 (deftest earth-station-sea-headquarters-flip-side-flip-back-on-successful-hq-run
       ;; Flip back on successful HQ run
@@ -1743,7 +1743,8 @@
 (deftest gamenet-where-dreams-are-real-gain-credits-from-bellona-steal
     ;; Gain credits from Bellona steal
     (do-game
-      (new-game {:corp {:id "GameNET: Where Dreams are Real" :hand ["Bellona"]}})
+      (new-game {:corp {:id "GameNET: Where Dreams are Real"
+                        :hand ["Bellona"]}})
       (take-credits state :corp)
       (run-on state "HQ")
       (run-continue state)
@@ -1754,7 +1755,8 @@
 (deftest gamenet-where-dreams-are-real-gain-credits-from-napd-cordon-steal
     ;; Gain credits from NAPD cordon steal
     (do-game
-      (new-game {:corp {:id "GameNET: Where Dreams are Real" :hand ["Send a Message" "NAPD Cordon"]}})
+      (new-game {:corp {:id "GameNET: Where Dreams are Real"
+                        :hand ["Send a Message" "NAPD Cordon"]}})
       (play-from-hand state :corp "NAPD Cordon")
       (take-credits state :corp)
       (run-on state "HQ")
@@ -1782,7 +1784,8 @@
 (deftest gamenet-where-dreams-are-real-gain-credits-from-psi-games
     ;; Gain credits from psi games
     (do-game
-      (new-game {:corp {:id "GameNET: Where Dreams are Real" :hand ["Caprice Nisei"]}})
+      (new-game {:corp {:id "GameNET: Where Dreams are Real"
+                        :hand ["Caprice Nisei"]}})
       (play-from-hand state :corp "Caprice Nisei" "New remote")
       (let [caprice (get-content state :remote1 0)]
         (take-credits state :corp)
@@ -1820,7 +1823,8 @@
 (deftest gamenet-where-dreams-are-real-no-credits-from-the-source
     ;; No credits from the source
     (do-game
-      (new-game {:corp {:id "GameNET: Where Dreams are Real" :hand ["Send a Message"]}
+      (new-game {:corp {:id "GameNET: Where Dreams are Real"
+                        :hand ["Send a Message"]}
                  :runner {:hand ["The Source"]}})
       (take-credits state :corp)
       (play-from-hand state :runner "The Source")
@@ -2376,7 +2380,6 @@
       (is (= 6 (:agenda-point-req (get-corp))) "Corp Agenda point requirement reduced by 1")
       (is (= 1 (get-counters (refresh issuaq) :power)) "Issuaq Adaptics has 1 power counter"))))
 
-
 (deftest issuaq-adaptics-multiple-score
   ;; Issuaq Adaptics - Adjusts point requirement after multiple agendas are scored
   (do-game
@@ -2828,6 +2831,7 @@
       (end-turn state :runner)
       (is (= "Draw 1 card?" (:msg (prompt-map :runner))))
       (is (= 5 (count (:hand (get-runner)))))
+      (is (not (no-prompt? state :corp)) "Corp should have a waiting prompt")
       (click-prompt state :runner "Yes")
       (is (= 6 (count (:hand (get-runner)))))))
 
