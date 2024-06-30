@@ -23,7 +23,7 @@
    [nr.gameboard.player-stats :refer [stat-controls stats-view]]
    [nr.gameboard.replay :refer [replay-panel]]
    [nr.gameboard.right-pane :refer [content-pane]]
-   [nr.gameboard.state :refer [game-state not-spectator? replay-side]]
+   [nr.gameboard.state :refer [get-side game-state not-spectator? replay-side]]
    [nr.sounds :refer [update-audio]]
    [nr.translations :refer [tr tr-side]]
    [nr.utils :refer [banned-span checkbox-button cond-button get-image-path
@@ -381,7 +381,7 @@
    Performs the function provided on click or pressing the Enter or Space keys"
   ([label func] (card-menu-item label func true))
   ([label func enabled]
-   (if enabled
+   (if (and enabled (not (waiting-prompt? (get-side @game-state))))
      [:li {:tab-index 0
            :on-click func
            :on-key-down #(when (= "Enter" (.-key %))
@@ -413,23 +413,25 @@
 (defn list-abilities
   [ab-type card abilities]
   (map-indexed
-   (fn [i ab]
-     (let [command (case ab-type
-                     :runner "runner-ability"
-                     :corp "corp-ability"
-                     :ability (if (:dynamic ab) "dynamic-ability" "ability"))
-           args (merge {:card card}
-                       (if (:dynamic ab)
-                         (select-keys ab [:dynamic :source :index])
-                         {:ability i}))]
-       ^{:key i}
-       [card-menu-item (render-icons (add-cost-to-label ab))
-        #(do (send-command command args)
-             (if (:keep-menu-open ab)
-               (swap! card-menu assoc :keep-menu-open (keyword (:keep-menu-open ab)))
-               (close-card-menu)))
-        (:playable ab)]))
-   abilities))
+    (fn [i ab]
+      (let [command (case ab-type
+                      :runner "runner-ability"
+                      :corp "corp-ability"
+                      :ability (if (:dynamic ab) "dynamic-ability" "ability"))
+            args (merge {:card card}
+                        (if (:dynamic ab)
+                          (select-keys ab [:dynamic :source :index])
+                          {:ability i}))]
+        ^{:key i}
+        [card-menu-item (render-icons (add-cost-to-label ab))
+         ;; short-circuit abilities on the front-end when it's not legal to play them
+         #(when-not (waiting-prompt? (:side @game-state))
+            (do (send-command command args)
+                (if (:keep-menu-open ab)
+                  (swap! card-menu assoc :keep-menu-open (keyword (:keep-menu-open ab)))
+                  (close-card-menu))))
+         (and (:playable ab) (not (waiting-prompt? (get-side @game-state))))]))
+    abilities))
 
 (defn check-keep-menu-open
   [card]

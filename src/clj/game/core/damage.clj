@@ -174,6 +174,7 @@
                                           " " (damage-name type) " damage")
                                      "will not prevent damage"))
                        (clear-wait-prompt state other-player)
+                       (swap! state assoc-in [:prevent :current] nil)
                        (effect-completed state side eid)))))
        (effect-completed state side eid)))))
 

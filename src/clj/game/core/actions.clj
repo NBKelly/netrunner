@@ -65,7 +65,9 @@
          args (assoc args :card card)
          ability (nth (:abilities card) ability-idx)
          cannot-play (or (:disabled card)
-                         (not (not-waiting state side))
+                         (and (get-in @state [side :prompt-state])                          ;; there's an active prompt
+                              (not= (get-in @state [side :prompt-state :prompt-type]) :run) ;; it's not a run prompt
+                              (not (get-in @state [:prevent :current])))                    ;; we're not in prevention mode
                          (any-effects state side :prevent-paid-ability true? card [ability ability-idx]))]
      (when-not cannot-play
        (do-play-ability state side eid (assoc args :ability-idx ability-idx :ability ability))))))

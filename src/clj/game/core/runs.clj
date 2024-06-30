@@ -744,10 +744,12 @@
                        (do (system-msg state :runner (str (build-spend-msg payment-str "attempt to" "attempts to") "jack out"))
                            (system-msg state :corp "has the option to prevent the Runner from jacking out")
                            (show-wait-prompt state :runner "Corp to prevent the jack out")
+                           (swap! state assoc-in [:prevent :current] :jack-out)
                            (show-prompt state :corp nil
                                         (str "Prevent the Runner from jacking out?") ["Done"]
                                         (fn [_]
                                           (clear-wait-prompt state :runner)
+                                          (swap! state assoc-in [:prevent :current] :jack-out)
                                           (if-let [_ (get-in @state [:jack-out :jack-out-prevent])]
                                             (effect-completed state side (make-result eid false))
                                             (do (system-msg state :corp "will not prevent the Runner from jacking out")
