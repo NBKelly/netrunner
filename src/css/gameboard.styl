@@ -38,6 +38,11 @@
         text-shadow 1px 1px 2px black-solid
         border-radius: 4px
 
+    .graveyard-highlight-bg
+        background: alpha(purple-core, o-60)
+        text-shadow 1px 1px 2px purple-core
+        border-radius: 4px
+
     .server-label
         color: white-solid
         text-align: center
@@ -74,6 +79,18 @@
         }
     }
 
+    @keyframes graveyard-card {
+        0% {
+            box-shadow: 0 0 1px 2px purple-core, 20px 20px 15px 10px lighten(alpha(purple-core, 30%), 80%), -20px -20px 15px 10px lighten(alpha(purple-core, 30%), 80%), 0 0 30px 15px spin(alpha(purple-core, 70%), -15deg)
+        }
+        100% {
+            box-shadow: 0 0 1px 2px purple-core, 0px 0px 0px 0px lighten(alpha(purple-core, 30%), 80%), 0px 0px 0px 0px lighten(alpha(purple-core, 30%), 80%), 0 0 0px 0px spin(alpha(purple-core, 70%), -15deg)
+        }
+    }
+
+    .card.graveyard-highlight
+        animation: graveyard-card 1s cubic-bezier(0.5,1,0.5,1) forwards
+
     .card.new
         animation: new-card 1s cubic-bezier(0.5,1,0.5,1) forwards
 
@@ -105,6 +122,11 @@
 
     .card.playable
         box-shadow(0 0 1px 2px gold-base)
+        animation: none
+
+    .card.ghost
+        filter: opacity(0.65) grayscale(80%);
+        box-shadow(0 0 1px 2px blue-light)
         animation: none
 
     .card.hovered
@@ -1083,32 +1105,3 @@
                             li.command-match.highlight span
                                 color: gold-base
                                 cursor: pointer
-
-.playtest-buttons
-    font-size: .875rem
-    font-weight: bold
-    margin-bottom: .5rem
-
-    .small
-        margin-right: .25rem!important
-
-    .group
-        margin-bottom: .75rem
-
-
-.hidemenu
-
-    display-flex()
-    flex-direction(row)
-    justify-content(center)
-
-    button
-        width: 1.5rem
-        height: 1.5rem
-        border-top-right-radius: 0rem
-        border-top-left-radius: 0rem
-        border-bottom-left-radius: 2rem
-        border-bottom-right-radius: 2rem
-        margin: 0
-        padding: 0
-        padding-bottom: 0.25rem

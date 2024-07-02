@@ -23,7 +23,7 @@
                                   reorder-choice trash-on-empty get-x-fn]]
    [game.core.drawing :refer [draw first-time-draw-bonus max-draw
                               remaining-draws]]
-   [game.core.effects :refer [register-lingering-effect]]
+   [game.core.effects :refer [register-lingering-effect update-disabled-cards]]
    [game.core.eid :refer [complete-with-result effect-completed is-basic-advance-action? make-eid get-ability-targets]]
    [game.core.engine :refer [pay register-events resolve-ability]]
    [game.core.events :refer [first-event? no-event? turn-events event-count]]
@@ -422,6 +422,7 @@
 
 (defcard "Breached Dome"
   {:flags {:rd-reveal (req true)}
+   :poison true
    :on-access {:async true
                :effect (req (let [c (first (get-in @state [:runner :deck]))]
                               (system-msg state :corp (str "uses " (:title card) " to do 1 meat damage"
@@ -636,6 +637,7 @@
                                            :all true
                                            :card #(and (corp? %)
                                                        (in-hand? %))}
+                                 :async true
                                  :effect (req (wait-for (trash-cards state side targets {:cause-card card})
                                                         (wait-for (gain-credits state side 2)
                                                                   (draw state side eid 1))))}
@@ -727,20 +729,24 @@
                 :effect (effect (damage eid :meat 2 {:card card}))}]})
 
 (defcard "Corporate Town"
-  {:derezzed-events [corp-rez-toast]
-   :additional-cost [(->c :forfeit)]
-   :flags {:corp-phase-12 (req (and (rezzed? card)
-                                    (->> (all-active-installed state :runner)
-                                         (filter resource?)
-                                         count
-                                         pos?)))}
-   :abilities [{:label "Trash a resource"
-                :once :per-turn
-                :async true
-                :prompt "Choose a resource to trash"
-                :choices {:card resource?}
-                :msg (msg "trash " (:title target))
-                :effect (effect (trash eid target {:unpreventable true :cause-card card}))}]})
+  (let [ability {:label "Trash a resource"
+                 :once :per-turn
+                 :async true
+                 :prompt "Choose a resource to trash"
+                 :choices {:card resource?}
+                 :msg (msg "trash " (:title target))
+                 :interactive (req true)
+                 :req (req (some resource? (all-installed state :runner)))
+                 :effect (effect (trash eid target {:unpreventable true :cause-card card}))}]
+    {:derezzed-events [corp-rez-toast]
+     :additional-cost [(->c :forfeit)]
+     :flags {:corp-phase-12 (req (and (rezzed? card)
+                                      (->> (all-active-installed state :runner)
+                                           (filter resource?)
+                                           count
+                                           pos?)))}
+     :events [(assoc ability :event :corp-turn-begins)]
+     :abilities [ability]}))
 
 (defcard "CPC Generator"
   {:events [{:event :runner-credit-gain
@@ -934,7 +940,7 @@
 (defcard "Echo Chamber"
   {:abilities [{:label "Add this asset to your score area as an agenda worth 1 agenda point"
                 :cost [(->c :click 3)]
-                :msg "add itself to their score area as an agenda worth 1 agenda point"
+                :msg (msg "add itself to [their] score area as an agenda worth 1 agenda point")
                 :effect (req (as-agenda state :corp card 1))}]})
 
 (defcard "Edge of World"
@@ -1065,7 +1071,7 @@
                  :effect (effect (gain-tags :corp eid (tag-count (get-card state card))))}
      :abilities [{:cost [(->c :click 1) (->c :advancement 7)]
                   :label "Add this asset to your score area as an agenda worth 3 agenda points"
-                  :msg "add itself to their score area as an agenda worth 3 agenda points"
+                  :msg (msg "add itself to [their] score area as an agenda worth 3 agenda points")
                   :effect (req (as-agenda state :corp card 3))}]}))
 
 (defcard "Federal Fundraising"
@@ -1111,7 +1117,7 @@
 (defcard "Franchise City"
   {:events [{:event :access
              :req (req (agenda? target))
-             :msg "add itself to their score area as an agenda worth 1 agenda point"
+             :msg "add itself to [their] score area as an agenda worth 1 agenda point"
              :effect (req (as-agenda state :corp card 1))}]})
 
 (defcard "Front Company"
@@ -1205,11 +1211,11 @@
                                        {:card card}))}
    :abilities [{:cost [(->c :click 1) (->c :advancement 3)]
                 :label "Add this asset to your score area as an agenda worth 1 agenda point"
-                :msg "add itself to their score area as an agenda worth 1 agenda point"
+                :msg "add itself to [their] score area as an agenda worth 1 agenda point"
                 :effect (req (as-agenda state :corp card 1))}]})
 
 (defcard "Genetics Pavilion"
-  {:on-rez {:msg "prevent the Runner from drawing more than 2 cards during their turn"
+  {:on-rez {:msg (msg "prevent the Runner from drawing more than 2 cards during [runner-pronoun] turn")
             :effect (req (max-draw state :runner 2)
                          (when (zero? (remaining-draws state :runner))
                            (prevent-draw state :runner)))}
@@ -1253,7 +1259,7 @@
                  :waiting-prompt true
                  :prompt "Choose an installed card to move 1 hosted advancement counter from"
                  :choices {:card #(and (installed? %)
-                                       (get-counters % :advancement))}
+                                       (pos? (get-counters % :advancement)))}
                  :async true
                  :effect (effect
                            (continue-ability
@@ -1280,6 +1286,7 @@
 
 (defcard "Honeyfarm"
   {:flags {:rd-reveal (req true)}
+   :poison true
    :on-access {:msg "force the Runner to lose 1 [Credits]"
                :async true
                :effect (effect (lose-credits :runner eid 1))}})
@@ -1608,7 +1615,7 @@
                                     (not (has-subtype? % "Virtual")))}
               :effect (req (add-icon state side card target "MZ" (faction-label card))
                            (update! state side (assoc-in (get-card state card) [:special :malia-target] target))
-                           (fake-checkpoint state))}
+                           (update-disabled-cards state))}
      :leave-play unmark
      :move-zone unmark
      :static-abilities [{:type :disable-card
@@ -1927,6 +1934,7 @@
 
 (defcard "News Team"
   {:flags {:rd-reveal (req true)}
+   :poison true
    :on-access {:async true
                :msg (msg "force the Runner to " (decapitalize target))
                :player :runner
@@ -1976,6 +1984,7 @@
 
 (defcard "Nightmare Archive"
   {:flags {:rd-reveal (req true)}
+   :poison true
    :on-access {:async true
                :msg (msg (if (= target "Suffer 1 core damage")
                            "do 1 core damage"
@@ -1984,9 +1993,8 @@
                :prompt "Choose one"
                :choices ["Suffer 1 core damage" "Add Nightmare Archive to score area"]
                :effect (req (if (= target "Suffer 1 core damage")
-                              (wait-for (damage state :corp :brain 1 {:card card})
-                                        (move state :corp card :rfg)
-                                        (effect-completed state side eid))
+                              (do (move state :corp card :rfg)
+                                  (damage state :corp eid :brain 1 {:card card}))
                               (do (as-agenda state :runner card -1)
                                   (effect-completed state side eid))))}})
 
@@ -2195,7 +2203,7 @@
             {:event :counter-added
              :req (req (same-card? card target)
                        (not (pos? (get-counters card :power))))
-             :msg "add itself to their score area as an agenda worth 1 agenda point"
+             :msg "add itself to [their] score area as an agenda worth 1 agenda point"
              :effect (effect (as-agenda card 1))}]})
 
 (defcard "Quarantine System"
@@ -2271,6 +2279,7 @@
                         :msg "gain 3 [Credits] and draw 3 cards"
                         :effect (req (wait-for
                                        (trash state side card {:cause-card card})
+                                       (swap! state update-in [:stats side :rashida-count] (fnil + 0) 1)
                                        (wait-for
                                          (gain-credits state side 3)
                                          (draw state side eid 3))))}}}
@@ -2544,7 +2553,8 @@
                      :effect (effect (trash-cards eid targets {:cause-card card}))}))
 
 (defcard "Shi.Kyū"
-  {:on-access
+  {:poison true
+   :on-access
    {:optional
     {:req (req (not (in-deck? card)))
      :waiting-prompt true
@@ -2564,7 +2574,7 @@
                      :async true
                      :effect (req (if (str/starts-with? target "Add")
                                     (do (system-msg state :runner (str "adds " (:title card)
-                                                                       " to their score area as an agenda worth "
+                                                                       " to [their] score area as an agenda worth "
                                                                        (quantify -1 "agenda point")))
                                         (as-agenda state :runner card -1)
                                         (effect-completed state side eid))
@@ -2574,6 +2584,7 @@
 
 (defcard "Shock!"
   {:flags {:rd-reveal (req true)}
+   :poison true
    :on-access {:msg "do 1 net damage"
                :async true
                :effect (effect (damage eid :net 1 {:card card}))}})
@@ -2608,6 +2619,7 @@
 
 (defcard "Space Camp"
   {:flags {:rd-reveal (req true)}
+   :poison true
    :on-access {:optional
                {:waiting-prompt true
                 :prompt "Place 1 advancement token on a card that can be advanced?"

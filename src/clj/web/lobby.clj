@@ -21,14 +21,13 @@
 (defn create-new-lobby
   [{uid :uid
     user :user
-    {:keys [gameid now
-            allow-spectator api-access format mute-spectators password room save-replay
+    {:keys [gameid allow-spectator api-access first-five format mute-spectators password room save-replay
             side singleton spectatorhands timer title]
-     :or {gameid (random-uuid)
-          now (inst/now)}} :options}]
+     :or {gameid (random-uuid)}} :options}]
   (let [player {:user user
                 :uid uid
-                :side side}]
+                :side side}
+        now (inst/now)]
     {:gameid gameid
      :date now
      :last-update now
@@ -38,6 +37,7 @@
      ;; options
      :allow-spectator allow-spectator
      :api-access api-access
+     :first-five first-five
      :format format
      :mute-spectators mute-spectators
      :password (when (not-empty password) (bcrypt/encrypt password))
@@ -109,6 +109,7 @@
   [:allow-spectator
    :api-access
    :date
+   :first-five
    :format
    :gameid
    :messages
@@ -183,12 +184,16 @@
            lobby-summaries (summaries-for-lobbies filtered-lobbies)]
        [uid [:lobby/list lobby-summaries]])))
 
+(defn lobby-update-uids
+  []
+  (filter #(app-state/receive-lobby-updates? %) (ws/connected-uids)))
+
 (defn broadcast-lobby-list
   "Sends the lobby list to all users or a given list of users.
   Filters the list per each users block list."
   ([]
    (let [user-cache (:users @app-state/app-state)
-         uids (filter #(app-state/receive-lobby-updates? %) (ws/connected-uids))
+         uids (lobby-update-uids)
          users (map #(get user-cache %) uids)]
      (broadcast-lobby-list users)))
   ([users]

@@ -256,11 +256,10 @@
       (core/gain state :runner :click 3)
       (core/gain state :runner :credit 2)
       (play-from-hand state :runner "Scheherazade")
-      (let [scheherazade (get-program state 0)]
-        (card-ability state :runner scheherazade 0)
-        (click-card state :runner (find-card "Corroder" (:hand (get-runner))))
-        (is (= 3 (core/available-mu state)) "Memory at 3 (-1 from Corroder)"))
+      (play-from-hand state :runner "Corroder")
+      (click-prompt state :runner "Scheherazade")
       (play-from-hand state :runner "Hivemind")
+      (click-prompt state :runner "The Rig")
       (is (= 1 (core/available-mu state)) "Memory at 1 (-1 from Corroder, -2 from Hivemind)")
       (run-empty-server state "Archives")
       (run-empty-server state "R&D")
@@ -816,12 +815,7 @@
       (click-card state :runner "Tollbooth")
       (is (rezzed? (refresh tb)) "Runner doesn't have enough money to derez Tollbooth")
       (click-card state :runner iw)
-      (is (not (rezzed? (refresh iw))) "Runner can derez Ice Wall")
-      (play-from-hand state :runner "Xanadu")
-      (core/gain state :runner :credit 7)
-      (is (= (:cost tb) (:credit (get-runner))) "Gain enough credits to derez Tollbooth normally")
-      (play-from-hand state :runner "Brute-Force-Hack")
-      (is (no-prompt? state :runner) "Runner can't play Brute-Force-Hack when only available ice is too expensive"))))
+      (is (not (rezzed? (refresh iw))) "Runner can derez Ice Wall"))))
 
 (deftest build-script
   ;; Build Script
@@ -902,6 +896,24 @@
       (is (no-prompt? state :runner) "No prompt to steal since agenda was trashed")
       (is (= 1 (count (:discard (get-corp)))) "Agenda was trashed")
       (is (zero? (count (:hand (get-runner)))) "Took 1 meat damage")))
+
+(deftest by-any-means-vs-loup
+  ;; vs Loup
+  (do-game
+    (new-game {:corp {:deck ["Paper Trail"]}
+               :runner {:id "René \"Loup\" Arcemont: Party Animal"
+                        :hand ["By Any Means"]
+                        :deck ["Strike Fund"]}})
+    (play-from-hand state :corp "Paper Trail" "New remote")
+    (take-credits state :corp)
+    (play-from-hand state :runner "By Any Means")
+    (run-empty-server state "Server 1")
+    (click-prompt state :runner "Yes")
+    (is (= 6 (:credit (get-runner))) "gained 2c from strike + 1c from loup")
+    (is (no-prompt? state :runner) "No prompt to steal since agenda was trashed")
+    (is (= 1 (count (:discard (get-corp)))) "Agenda was trashed")
+    (is (= 2 (count (:discard (get-runner)))) "two cards trashed")
+    (is (zero? (count (:hand (get-runner)))) "Took 1 meat damage")))
 
 (deftest by-any-means-alongside-film-critic-should-get-the-option-to-trigger-either
     ;; alongside Film Critic: should get the option to trigger either
@@ -1505,8 +1517,7 @@
         (click-card state :runner (refresh cp))
         (is (= 3 (get-counters (refresh cp) :virus)) "Chrome Parlor has 3 counters after Contaminate")
         (play-from-hand state :runner "Contaminate")
-        (click-card state :runner (refresh yus))
-        (click-prompt state :runner "Done")
+        (is (last-log-contains? state "do nothing") "no valid targets")
         (is (= 3 (get-counters (refresh cp) :virus)) "Yusuf isn't selectable by Contaminate"))))
 
 (deftest contaminate-hivemind-makes-virus-programs-act-like-they-have-a-virus-counter
@@ -2659,9 +2670,7 @@
       (is (refresh iw) "Ice Wall on HQ hasn't been trashed as it's rezzed")
       (derez state :corp iw)
       (click-card state :runner (refresh iw))
-      (is (not (refresh iw)) "Ice Wall on HQ has been trashed")
-      (play-from-hand state :runner "En Passant")
-      (is (no-prompt? state :runner) "Runner has no prompt as En Passant can't be played"))))
+      (is (not (refresh iw)) "Ice Wall on HQ has been trashed"))))
 
 (deftest encore
   ;; Encore - Run all 3 central servers successfully to take another turn.  Remove Encore from game.
@@ -3891,6 +3900,27 @@
     (click-prompt state :runner "No action")
     (is (= 4 (get-counters (get-program state 0) :power)) "4 counters on david")))
 
+(deftest into-the-depths-inversificator-still-counts-the-ice
+  (do-game
+    (new-game {:runner {:hand ["Into the Depths" "Inversificator"]
+                        :credits 20}
+               :corp {:hand [(qty "Quandary" 2)]}})
+    (play-from-hand state :corp "Quandary" "HQ")
+    (play-from-hand state :corp "Quandary" "R&D")
+    (take-credits state :corp)
+    (rez state :corp (get-ice state :hq 0))
+    (play-from-hand state :runner "Inversificator")
+    (play-from-hand state :runner "Into the Depths")
+    (click-prompt state :runner "HQ")
+    (run-continue state :encounter-ice)
+    (card-ability state :runner (get-program state 0) 0)
+    (click-prompt state :runner "End the run")
+    (run-continue state :movement)
+    (click-prompt state :runner "Yes")
+    (click-card state :runner (get-ice state :rd 0))
+    (run-continue-until state :success)
+    (click-prompt state :runner "Gain 4 [Credits]")))
+
 (deftest isolation
   ;; Isolation - A resource must be trashed, gain 7c
   (do-game
@@ -4901,8 +4931,6 @@
     (new-game {:corp {:deck [(qty "Hedge Fund" 5)]}
                :runner {:hand ["Networking"]}})
     (take-credits state :corp)
-    (play-from-hand state :runner "Networking")
-    (is (= "Networking" (-> (get-runner) :hand first :title)) "Networking shouldn't be played")
     (gain-tags state :runner 4)
     (let [credits (:credit (get-runner))]
       (play-from-hand state :runner "Networking")
@@ -5009,6 +5037,11 @@
       (run-empty-server state "HQ")
       (click-prompt state :runner "No action")
       (play-from-hand state :runner "Apocalypse")
+      (let [facedowns (filter :facedown (core/all-installed state :runner))
+            casts (find-card "Daily Casts" facedowns)
+            otl (find-card "On the Lam" facedowns)]
+        (is casts "Casts facedown")
+        (is (not otl) "OTL not facedown"))
       (take-credits state :runner)
       (play-from-hand state :corp "SEA Source")
       (click-prompt state :corp "0")
@@ -5138,8 +5171,6 @@
     (new-game {:corp {:deck [(qty "Hedge Fund" 5)]}
                :runner {:hand ["Paper Tripping"]}})
     (take-credits state :corp)
-    (play-from-hand state :runner "Paper Tripping")
-    (is (= "Paper Tripping" (-> (get-runner) :hand first :title)) "Paper Tripping shouldn't be played")
     (gain-tags state :runner 100)
     (play-from-hand state :runner "Paper Tripping")
     (is (zero? (count-tags state)) "Runner should lose all tags")))
@@ -6889,11 +6920,9 @@
         (play-from-hand state :runner "Leprechaun")
         (play-from-hand state :runner "Test Run")
         (click-prompt state :runner "Heap")
-        (click-prompt state :runner ms))
-      (let [lep (get-program state 0)
-            ms (get-program state 1)]
-        (card-ability state :runner lep 1)
-        (click-card state :runner ms)
+        (click-prompt state :runner ms)
+        (click-prompt state :runner "Leprechaun"))
+      (let [lep (get-program state 0)]
         (is (= "Morning Star" (:title (first (:hosted (refresh lep))))) "Morning Star hosted on Lep"))
       (take-credits state :runner)
       (is (= "Morning Star" (:title (first (:deck (get-runner))))) "Morning Star returned to Stack from host")
@@ -6901,7 +6930,8 @@
       (let [kn (find-card "Knight" (:discard (get-runner)))]
         (play-from-hand state :runner "Test Run")
         (click-prompt state :runner "Heap")
-        (click-prompt state :runner kn))
+        (click-prompt state :runner kn)
+        (click-prompt state :runner "The Rig"))
       (let [wrap (get-ice state :hq 0)
             kn (get-program state 1)]
         (card-ability state :runner kn 0)

@@ -542,6 +542,7 @@
       (play-from-hand state :runner "The Maker's Eye")
       (click-prompt state :corp "Yes")
       (is (= 1 (count-tags state)) "Runner takes 1 tag for playing a Run event")
+      (run-jack-out state)
       (play-from-hand state :runner "Wyrm")
       (is (no-prompt? state :corp) "Corp shouldn't get a prompt to use Better Citizen Program")
       (is (= 1 (count-tags state)) "Runner doesn't gain a tag from installing an icebreaker after playing a Run event")
@@ -1025,7 +1026,7 @@
         (run-empty-server state "Server 2")
         (click-prompt state :runner "No action")
         (is (= 3 (:agenda-point (get-runner))) "Runner stole Degree Mill with single card")
-        (card-ability state :runner hg 1)
+        (card-ability state :runner hg 0)
         (is (= 2 (count (get-in (get-runner) [:rig :facedown]))) "Hunting Ground did not install cards facedown")
         (is (empty? (:deck (get-runner))) "Hunting Grounds did not remove cards from deck")
         (let [fd1 (get-runner-facedown state 0)
@@ -4324,11 +4325,10 @@
         "Corp gained 4 credits and put 1 advancement counter on a card")
     (play-from-hand state :corp "Restore")
     (click-card state :corp (find-card "Stoke the Embers" (:discard (get-corp))))
-    (click-prompt state :corp "New remote")
     (is (changed? [(:credit (get-corp)) 3
                    (get-counters (refresh (get-content state :remote3 0)) :advancement) 1]
+                  (click-prompt state :corp "New remote")
                   (click-prompt state :corp "Yes")
-                  (is (last-n-log-contains? state 3 "reveal itself from Archives"))
                   (click-card state :corp (get-content state :remote3 0)))
         "Corp gained 2 credits (+1 from Hyobu because the agenda was revealed) and put 1 advancement counter on a card")))
 

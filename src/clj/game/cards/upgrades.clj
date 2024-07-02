@@ -502,6 +502,7 @@
 
 (defcard "Cyberdex Virus Suite"
   {:flags {:rd-reveal (req true)}
+   :poison true
    :on-access {:optional
                {:waiting-prompt true
                 :prompt "Purge virus counters?"
@@ -856,6 +857,7 @@
 
 (defcard "Increased Drop Rates"
   {:flags {:rd-reveal (req true)}
+   :poison true
    :on-access {:interactive (req true)
                :player :runner
                :async true
@@ -1065,7 +1067,7 @@
              :prompt "Choose one"
              :waiting-prompt true
              :req (req this-server)
-             :choices (req [(when (can-pay? state :runner eid card nil [(->c :click 2)])
+             :choices (req [(when (can-pay? state :runner eid card nil [(->c :click 2 {:allowed-during-run true})])
                               "Spend [Click][Click]")
                             (when (can-pay? state :runner eid card nil [(->c :credit 5)])
                               "Pay 5 [Credits]")
@@ -1073,8 +1075,8 @@
              :async true
              :effect (req (cond+
                             [(and (= target "Spend [Click][Click]")
-                                  (can-pay? state :runner eid card nil [(->c :click 2)]))
-                             (wait-for (pay state side (make-eid state eid) card (->c :click 2))
+                                  (can-pay? state :runner eid card nil [(->c :click 2 {:allowed-during-run true})]))
+                             (wait-for (pay state side (make-eid state eid) card (->c :click 2 {:allowed-during-run true}))
                                        (system-msg state side (:msg async-result))
                                        (effect-completed state :runner eid))]
                             [(and (= target "Pay 5 [Credits]")
@@ -1125,6 +1127,7 @@
 
 (defcard "Mavirus"
   {:flags {:rd-reveal (req true)}
+   :poison true
    :on-access {:optional
                {:waiting-prompt true
                 :prompt "Purge virus counters?"
@@ -1518,7 +1521,7 @@
 (defcard "Ruhr Valley"
   {:static-abilities [{:type :run-additional-cost
                        :req (req (= (:server (second targets)) (unknown->kw (get-zone card))))
-                       :value [(->c :click 1)]}]})
+                       :value [(->c :click 1 {:allowed-during-run true})]}]})
 
 (defcard "Rutherford Grid"
   {:static-abilities [{:type :trace-base-strength
@@ -1612,11 +1615,11 @@
                        :req (req (or (= (get-zone target) (:previous-zone card))
                                      (= (central->zone (get-zone target))
                                         (butlast (:previous-zone card)))))
-                       :value (req (->c :click 1))}))}
+                       :value (req (->c :click 1 {:allowed-during-run true}))}))}
    :static-abilities [{:type :steal-additional-cost
                        :req (req (or (in-same-server? card target)
                                      (from-same-server? card target)))
-                       :value (req (->c :click 1))}]})
+                       :value (req (->c :click 1 {:allowed-during-run true}))}]})
 
 (defcard "Surat City Grid"
   {:events [{:event :rez
@@ -1662,14 +1665,18 @@
                                        (damage state side eid :brain 1 {:card card})))}}}})
 
 (defcard "The Holo Man"
-  (let [abi
+  (let [is-boosted-fn?
+        (fn [state side]
+          (no-event? state side :corp-install #(= [:hand] (:previous-zone (:card (first %))))))
+        abi
         {:cost [(->c :click) (->c :credit 4)]
          :label "Place advancement counters on a card in or protecting this server"
          :once :per-turn
          :choices {:req (req (same-server? card target))}
+         :msg (msg "place " (if (is-boosted-fn? state side) 3 2) " advancement counters on "
+                   (card-str state target))
          :effect
-         (req (let [n (if (no-event? state side :corp-install #(= [:hand] (:previous-zone (:card (first %))))) 3 2)]
-                (system-msg state side (str "uses " (card-str state card) " to place " (quantify n "advancement counter") " on " (card-str state target)))
+         (req (let [n (if (is-boosted-fn? state side) 3 2)]
                 (add-prop state side eid target :advance-counter n {:placed true})))}]
     {:abilities [abi]
      :events [(mobile-sysop-event :corp-turn-begins)]}))

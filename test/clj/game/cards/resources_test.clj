@@ -3004,23 +3004,6 @@
       (play-from-hand state :runner "Hunting Grounds")
       (run-on state "Server 1")
       (let [credits (:credit (get-runner))]
-        (card-ability state :runner (get-resource state 0) 0)
-        (run-continue state)
-        (is (= credits (:credit (get-runner))) "Runner doesn't lose any credits to Tollbooth")
-        (is (:run @state) "Run hasn't ended from not paying Tollbooth"))))
-
-(deftest hunting-grounds-preventing-an-on-encounter-effect-auto-fire
-    ;; Preventing an on-encounter effect auto-fire
-    (do-game
-      (new-game {:corp {:hand ["Tollbooth"]
-                        :credits 10}
-                 :runner {:hand ["Hunting Grounds"]}})
-      (play-from-hand state :corp "Tollbooth" "New remote")
-      (rez state :corp (get-ice state :remote1 0))
-      (take-credits state :corp)
-      (play-from-hand state :runner "Hunting Grounds")
-      (run-on state "Server 1")
-      (let [credits (:credit (get-runner))]
         (run-continue state)
         (click-prompt state :runner "Yes")
         (is (= credits (:credit (get-runner))) "Runner doesn't lose any credits to Tollbooth")
@@ -3042,23 +3025,6 @@
       (is (zero? (:credit (get-runner))) "Runner loses credits to Tollbooth")
       (is (:run @state) "Run hasn't ended when paying Tollbooth")))
 
-(deftest hunting-grounds-prints-correctly-to-the-log
-    ;; Prints correctly to the log
-    (do-game
-      (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
-                        :hand ["Tollbooth"]
-                        :credits 10}
-                 :runner {:deck [(qty "Sure Gamble" 5)]
-                          :hand ["Hunting Grounds"]}})
-      (play-from-hand state :corp "Tollbooth" "New remote")
-      (rez state :corp (get-ice state :remote1 0))
-      (take-credits state :corp)
-      (play-from-hand state :runner "Hunting Grounds")
-      (run-on state "Server 1")
-      (card-ability state :runner (get-resource state 0) 0)
-      (is (last-log-contains? state "prevent the encounter effect on Tollbooth protecting Server 1 at position 0")
-          "Hunting Grounds logs the ability")))
-
 (deftest hunting-grounds-only-prevents-the-on-encounter-effects-of-a-single-ice
     ;; Only prevents the on-encounter effects of a single ice
     (do-game
@@ -3075,35 +3041,13 @@
       (play-from-hand state :runner "Hunting Grounds")
       (run-on state "Server 1")
       (let [credits (:credit (get-runner))]
-        (card-ability state :runner (get-resource state 0) 0)
         (run-continue state)
+        (click-prompt state :runner "Yes")
         (run-continue-until state :encounter-ice)
         (is (= (- credits 3) (:credit (get-runner))) "Runner loses 3 credits to Tollbooth 2 "))))
 
 (deftest hunting-grounds-only-prevents-the-on-encounter-effects-once-per-turn-issue-4807
     ;; Only prevents the on-encounter effects once per turn. Issue #4807
-    (do-game
-      (new-game {:corp {:hand ["Tollbooth"]
-                        :credits 10}
-                 :runner {:hand ["Hunting Grounds"]}})
-      (play-from-hand state :corp "Tollbooth" "New remote")
-      (rez state :corp (get-ice state :remote1 0))
-      (take-credits state :corp)
-      (play-from-hand state :runner "Hunting Grounds")
-      (let [credits (:credit (get-runner))]
-        (run-on state "Server 1")
-        (card-ability state :runner (get-resource state 0) 0)
-        (run-continue state)
-        (is (= credits (:credit (get-runner))) "Runner doesn't lose any credits to Tollbooth")
-        (run-continue state :movement)
-        (run-jack-out state))
-      (let [credits (:credit (get-runner))]
-        (run-on state "Server 1")
-        (run-continue state)
-        (is (= (- credits 3) (:credit (get-runner))) "Runner loses credits to Tollbooth"))))
-
-(deftest hunting-grounds-only-prevents-the-on-encounter-effects-once-per-turn-auto-fire-case
-    ;; Only prevents the on-encounter effects once per turn, auto-fire case
     (do-game
       (new-game {:corp {:hand ["Tollbooth"]
                         :credits 10}
@@ -3122,47 +3066,7 @@
       (let [credits (:credit (get-runner))]
         (run-on state "Server 1")
         (run-continue state)
-        (is (no-prompt? state :runner) "No Hunting Grounds prompt")
         (is (= (- credits 3) (:credit (get-runner))) "Runner loses credits to Tollbooth"))))
-
-(deftest hunting-grounds-only-prevents-the-on-encounter-effects-once-per-turn-mixed-use-case
-    ;; Only prevents the on-encounter effects once per turn, mixed-use case
-    (do-game
-      (new-game {:corp {:hand ["Tollbooth"]
-                        :credits 10}
-                 :runner {:hand ["Hunting Grounds"]}})
-      (play-from-hand state :corp "Tollbooth" "New remote")
-      (rez state :corp (get-ice state :remote1 0))
-      (take-credits state :corp)
-      (play-from-hand state :runner "Hunting Grounds")
-      (let [credits (:credit (get-runner))]
-        (run-on state "Server 1")
-        (card-ability state :runner (get-resource state 0) 0)
-        (run-continue state)
-        (is (= credits (:credit (get-runner))) "Runner doesn't lose any credits to Tollbooth")
-        (run-continue state :movement)
-        (run-jack-out state))
-      (let [credits (:credit (get-runner))]
-        (run-on state "Server 1")
-        (run-continue state)
-        (is (no-prompt? state :runner) "No Hunting Grounds prompt")
-        (is (= (- credits 3) (:credit (get-runner))) "Runner loses credits to Tollbooth"))))
-
-(deftest hunting-grounds-preventing-an-on-encounter-effect-5037
-    ;; Preventing an on-encounter effect #5037
-    (do-game
-      (new-game {:corp {:deck [(qty "Hedge Fund" 5)]
-                        :hand ["Konjin"]
-                        :credits 10}
-                 :runner {:deck [(qty "Sure Gamble" 5)]
-                          :hand ["Hunting Grounds"]}})
-      (play-from-hand state :corp "Konjin" "New remote")
-      (rez state :corp (get-ice state :remote1 0))
-      (take-credits state :corp)
-      (play-from-hand state :runner "Hunting Grounds")
-      (run-on state "Server 1")
-      (card-ability state :runner (get-resource state 0) 0)
-      (is (last-log-contains? state "uses Hunting Grounds to prevent the encounter effect on Konjin"))))
 
 (deftest ice-analyzer-pay-credits-prompt
     ;; Pay-credits prompt
@@ -4474,17 +4378,16 @@
 (deftest off-campus-apartment-ability-shows-a-simultaneous-resolution-prompt-when-appropriate
     ;; ability shows a simultaneous resolution prompt when appropriate
     (do-game
-      (new-game {:runner {:deck ["Street Peddler" "Off-Campus Apartment"
-                                 "Underworld Contact" (qty "Spy Camera" 6)]}})
+      (new-game {:runner {:hand ["Street Peddler" "Off-Campus Apartment" "Underworld Contact"]
+                          :deck [(qty "Spy Camera" 6)]}})
       (take-credits state :corp)
-      (starting-hand state :runner ["Street Peddler" "Off-Campus Apartment" "Underworld Contact"])
       (play-from-hand state :runner "Off-Campus Apartment")
       (let [oca (get-resource state 0)]
-        (card-ability state :runner oca 0)
-        (click-card state :runner (find-card "Underworld Contact" (:hand (get-runner))))
+        (play-from-hand state :runner "Underworld Contact")
+        (click-prompt state :runner (:title oca))
         (is (= 2 (count (:hand (get-runner)))) "Drew a card from OCA")
-        (card-ability state :runner oca 0)
-        (click-card state :runner (find-card "Street Peddler" (:hand (get-runner))))
+        (play-from-hand state :runner "Street Peddler")
+        (click-prompt state :runner (:title oca))
         ;; Make sure the simultaneous-resolution prompt is showing with 2 choices
         (is (= 2 (count (prompt-buttons :runner))) "Simultaneous-resolution prompt is showing")
         (click-prompt state :runner "Off-Campus Apartment")
@@ -4493,20 +4396,20 @@
 (deftest off-campus-apartment-second-ability-does-not-break-cards-that-are-hosting-others-e-g-street-peddler
     ;; second ability does not break cards that are hosting others, e.g., Street Peddler
     (do-game
-      (new-game {:runner {:deck [(qty "Street Peddler" 2) "Off-Campus Apartment" (qty "Spy Camera" 6)]}})
+      (new-game {:runner {:hand ["Street Peddler" "Street Peddler" "Off-Campus Apartment"]
+                          :deck [(qty "Spy Camera" 6)]}})
       (take-credits state :corp)
-      (starting-hand state :runner ["Street Peddler" "Street Peddler" "Off-Campus Apartment"])
       (core/move state :runner (find-card "Street Peddler" (:hand (get-runner))) :deck {:front true})
       (play-from-hand state :runner "Off-Campus Apartment")
       (let [oca (get-resource state 0)]
-        (card-ability state :runner oca 0)
-        (click-card state :runner (find-card "Street Peddler" (:hand (get-runner))))
+        (play-from-hand state :runner "Street Peddler")
+        (click-prompt state :runner (:title oca))
         (click-prompt state :runner "Street Peddler")
         (let [ped1 (first (:hosted (refresh oca)))]
           (card-ability state :runner ped1 0)
           (click-prompt state :runner (last (prompt-buttons :runner))) ; choose Street Peddler
-          (card-ability state :runner (refresh oca) 1)
-          (click-card state :runner (get-resource state 1))
+          (click-prompt state :runner (:title oca))
+          (click-prompt state :runner (:title oca))
           (let [ped2 (first (:hosted (refresh oca)))]
             (card-ability state :runner ped2 0)
             (click-prompt state :runner (first (prompt-buttons :runner))) ; choose Spy Camera
@@ -4521,8 +4424,8 @@
       (take-credits state :corp)
       (play-from-hand state :runner "Off-Campus Apartment")
       (let [oca (get-resource state 0)]
-        (card-ability state :runner oca 0)
-        (click-card state :runner "The Class Act")
+        (play-from-hand state :runner "The Class Act")
+        (click-prompt state :runner (:title oca))
         (click-card state :runner (last (:set-aside (get-runner))))
         (is (= 1 (count (:hand (get-runner)))))
         (take-credits state :runner)
@@ -7178,6 +7081,30 @@
     (is (changed? [(:credit (get-runner)) 0]
                   (play-from-hand state :corp "End of the Line"))
         "Runner does NOT gain a credit from EOTL")))
+
+(deftest valentina-remove-tag-async-issue-#7390
+  (do-game
+    (new-game {:corp {:hand []}
+               :runner {:hand ["Valentina Ferreira Carvalho" "Privileged Access" "Fermenter"]
+                        :id "Sebastião Souza Pessoa: Activist Organizer"
+                        :discard ["Thunder Art Gallery" "Cleaver"]
+                        :credits 10}})
+    (game.core.change-vals/change
+      ;; theoretically, either side is fine!
+      state (first (shuffle [:corp :runner])) {:key :agenda-point :delta 3})
+    (take-credits state :corp)
+    (play-from-hand state :runner "Privileged Access")
+    (run-continue state :success)
+    (click-prompt state :runner "Privileged Access (resource)")
+    (click-prompt state :runner "Thunder Art Gallery")
+    (click-prompt state :runner "Sebastião Souza Pessoa: Activist Organizer")
+    (click-card state :runner "Valentina Ferreira Carvalho")
+    (click-prompt state :runner "Remove 1 tag")
+    (click-card state :runner "Fermenter")
+    (click-prompt state :runner "Cleaver")
+    (is (= 1 (count (:discard (get-runner)))))
+    (is (= 0 (count (:hand (get-runner)))))
+    (is (no-prompt? state :runner))))
 
 (deftest verbal-plasticity
   ;; Verbal Plasticity
