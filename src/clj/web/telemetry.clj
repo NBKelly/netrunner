@@ -58,7 +58,8 @@
     (str (int (* 100 (/ (.getSystemLoadAverage bean) (.getAvailableProcessors bean)))) "%")))
 
 (defonce log-stats
-  (go (while true
+  (go (timbre/info (str (into [] (.getInputArguments (java.lang.management.ManagementFactory/getRuntimeMXBean)))))
+      (while true
     (<! (timeout log-stat-frequency))
     (let [lobbies (:lobbies @app-state)
           lobbies-count (count lobbies)
