@@ -1203,14 +1203,11 @@
 
 (defcard "Midway Station Grid"
   {:static-abilities [{:type :break-sub-additional-cost
-                       :req (req (and ; The card is an icebreaker
-                                      (has-subtype? (:card context) "Icebreaker")
-                                      ; and is using a break ability
+                       :req (req (and (has-subtype? (:card context) "Icebreaker")
                                       (contains? (:ability context) :break)
-                                      (pos? (count (:broken-subs (:ability context))))
                                       ; during a run on this server
                                       this-server))
-                       :value (->c :credit 1)}]})
+                       :value [(->c :credit 1)]}]})
 
 (defcard "Mr. Hendrik"
   (installed-access-trigger
