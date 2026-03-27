@@ -175,7 +175,7 @@
          @players))])
 
 (defn options-list [current-game]
-  (let [{:keys [allow-spectator api-access password
+  (let [{:keys [allow-spectator api-access legacy-bad-pub password
                 save-replay spectatorhands timer]} @current-game]
     [:<>
      [tr-element :h3 [:lobby_options "Options"]]
@@ -196,7 +196,9 @@
           [tr-element :p [:lobby_save-replay-unshared "Only your latest 15 unshared games will be kept, so make sure to either download or share the match afterwards."]]
           [tr-element :p [:lobby_save-replay-beta "BETA Functionality: Be aware that we might need to reset the saved replays, so make sure to download games you want to keep. Also, please keep in mind that we might need to do future changes to the site that might make replays incompatible."]]]])
       (when api-access
-        [tr-element :li [:lobby_api-access "Allow API access to game information"]])]]))
+        [tr-element :li [:lobby_api-access "Allow API access to game information"]])
+      (when legacy-bad-pub
+        [tr-element :li [:lobby_legacy-bad-publicity "Legacy bad publicity"]])]]))
 
 (defn spectator-list [current-game]
   (let [{:keys [allow-spectator spectators]} @current-game]

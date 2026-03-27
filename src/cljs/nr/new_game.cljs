@@ -14,6 +14,7 @@
    :api-access
    :description
    :format
+   :legacy-bad-pub
    :password
    :room
    :save-replay
@@ -250,7 +251,15 @@
     {:style {:display (if (:api-access @options) "block" "none")}}
     [tr-element :p [:lobby_api-access-details "This allows access to information about your game to 3rd party extensions. Requires an API Key to be created in Settings."]]]])
 
-(defn options-section [options user]
+(defn legacy-bad-pub [options fmt-state]
+  (when (#{"casual" "eternal" "preconstructed" "chimera"} @fmt-state)
+    [:p
+     [:label
+      [:input {:type "checkbox" :checked (:legacy-bad-pub @options)
+               :on-change #(swap! options assoc :legacy-bad-pub (.. % -target -checked))}]
+      "Legacy bad publicity"]]))
+
+(defn options-section [options user fmt-state]
   [:section
    [tr-element :h3 [:lobby_options "Options"]]
    [allow-spectators options]
@@ -259,7 +268,8 @@
    [password-input options]
    [add-timer options]
    [save-replay options]
-   [api-access options user]])
+   [api-access options user]
+   [legacy-bad-pub options fmt-state]])
 
 (defn create-new-game [lobby-state user]
   (r/with-let [state (r/atom {:flash-message ""
@@ -271,6 +281,7 @@
                               :title (str (:username @user) "'s game")})
                options (r/atom {:allow-spectator true
                                 :api-access false
+                                :legacy-bad-pub false
                                 :password ""
                                 :protected false
                                 :save-replay (not= "casual" (:room @lobby-state))
@@ -301,4 +312,4 @@
         [side-section side]
         [format-section fmt options gateway-type precon]
         [description-section description]
-        [options-section options user]]])))
+        [options-section options user fmt]]])))

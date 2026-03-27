@@ -105,7 +105,7 @@
   [{uid :uid
     user :user
     {:keys [gameid now
-            allow-spectator api-access format mute-spectators password room save-replay
+            allow-spectator api-access format legacy-bad-pub mute-spectators password room save-replay
             precon gateway-type side singleton spectatorhands timer title open-decklists description]
      :or {gameid (random-uuid)
           now (inst/now)}} :options}]
@@ -134,6 +134,7 @@
      :save-replay save-replay
      :spectatorhands spectatorhands
      :singleton (when (some #{format} `("standard" "startup" "casual" "eternal")) singleton)
+     :legacy-bad-pub (when (some #{format} '("casual" "eternal" "preconstructed" "chimera")) legacy-bad-pub)
      :timer timer
      :title title}))
 
@@ -200,6 +201,7 @@
    :date
    :format
    :gameid
+   :legacy-bad-pub
    :precon
    :messages
    :mute-spectators

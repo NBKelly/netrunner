@@ -391,6 +391,24 @@
     (select-bad-pub state 1)
     (is (= 5 (:credit (get-runner))) "1 BP credit spent to trash CVS")))
 
+(deftest legacy-bad-publicity-credits
+  ;; With legacy-bad-pub option, bad pub credits are added as run-credits
+  ;; and bad-publicity-available is not tracked on the run
+  (do-game
+    (new-game {:corp {:deck [(qty "Cyberdex Virus Suite" 3)]
+                      :bad-pub 1}
+               :options {:legacy-bad-pub true}})
+    (is (= 1 (count-bad-pub state)) "Corp starts with 1 BP")
+    (play-from-hand state :corp "Cyberdex Virus Suite" "New remote")
+    (take-credits state :corp)
+    (run-on state :remote1)
+    (is (= 1 (:run-credit (get-runner))) "Runner gained 1 run credit from bad pub")
+    (is (nil? (get-in @state [:run :bad-publicity-available])) "No bad-publicity-available tracking in legacy mode")
+    (run-continue state)
+    (click-prompt state :corp "No")
+    (click-prompt state :runner "Pay 1 [Credits] to trash")
+    (is (zero? (:run-credit (get-runner))) "Run credits cleared after run ends")))
+
 (deftest run-psi-bad-publicity-credits
   ;; Should pay from Bad Pub for Psi games during run #2374
   (do-game
